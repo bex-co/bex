@@ -1036,6 +1036,42 @@ const ptDeploys: Record<string, TranslationEntry> = {
     message: "{seconds} s",
     description: "A deferred restart's wait in words (w5/m356): its seconds",
   },
+  "deploys.factBuild": {
+    message: "Compilação",
+    description:
+      "Deploy page: label of the fact naming the Build Source build ID (bld-…) this deploy ran",
+  },
+  "deploys.factBuildSource": {
+    message: "Origem de build",
+    description:
+      "Deploy page: label of the fact naming the linked Build Source (name and bds-… ID)",
+  },
+  "deploys.buildIdLabel": {
+    message: "ID do build",
+    description: "Deploy page: accessible field name for copying the Build ID",
+  },
+  "deploys.buildIdCopied": {
+    message: "ID do build copiado",
+    description: "Deploy page: toast shown after copying the Build ID",
+  },
+  "deploys.buildIdCopyFailed": {
+    message: "Não foi possível copiar o ID do build",
+    description: "Deploy page: toast shown when copying the Build ID fails",
+  },
+  "deploys.buildSourceIdLabel": {
+    message: "ID da origem de build",
+    description:
+      "Deploy page: accessible field name for copying the Build Source ID",
+  },
+  "deploys.buildSourceIdCopied": {
+    message: "ID da origem de build copiado",
+    description: "Deploy page: toast shown after copying the Build Source ID",
+  },
+  "deploys.buildSourceIdCopyFailed": {
+    message: "Não foi possível copiar o ID da origem de build",
+    description:
+      "Deploy page: toast shown when copying the Build Source ID fails",
+  },
 };
 
 export default ptDeploys;

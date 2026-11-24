@@ -195,6 +195,7 @@ query ServiceEvents(
 mutation TriggerDeploy(
   $serviceId: String!
   $commitId: String
+  $buildId: String
   $deployMode: String
   $clearCache: String
   $confirm: String
@@ -203,6 +204,7 @@ mutation TriggerDeploy(
   triggerDeploy(
     serviceId: $serviceId
     commitId: $commitId
+    buildId: $buildId
     deployMode: $deployMode
     clearCache: $clearCache
     confirm: $confirm
@@ -214,6 +216,7 @@ mutation TriggerDeploy(
     trigger
     rollbackOf
     image
+    buildId
   }
 }
 

@@ -23,6 +23,31 @@ vi.mock("@apollo/client/react", () => ({
   useApolloClient: () => ({ query: apolloQuery }),
 }));
 
+const buildSourceBuildsState: {
+  builds: Array<{
+    id: string;
+    buildSourceId: string;
+    status: string;
+    succeeded: boolean;
+    commitId: string | null;
+    commitUrl: string | null;
+    imageRef: string | null;
+    imageSha: string | null;
+    createdAt: string | null;
+  }>;
+  loading: boolean;
+  error: Error | undefined;
+  refetch: ReturnType<typeof vi.fn>;
+} = {
+  builds: [],
+  loading: false,
+  error: undefined,
+  refetch: vi.fn(),
+};
+vi.mock("@/features/services/hooks/use-build-sources", () => ({
+  useBuildSourceBuilds: () => buildSourceBuildsState,
+}));
+
 const refresh = vi.fn();
 const allowedDeploy = [
   { action: "deploy", outcome: "allowed", reason: null, precondition: null },
@@ -106,6 +131,10 @@ beforeEach(() => {
   mockNavigate.mockReset();
   trigger.mockReset();
   restart.mockReset();
+  buildSourceBuildsState.builds = [];
+  buildSourceBuildsState.loading = false;
+  buildSourceBuildsState.error = undefined;
+  buildSourceBuildsState.refetch.mockReset();
 });
 
 describe("ManualDeployButton permission freshness", () => {
@@ -497,5 +526,145 @@ describe("ManualDeployButton — Deploy a specific commit (w1/m148, Render parit
       }),
     );
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+});
+
+describe("ManualDeployButton — Build-Source-linked service (w2/m612 t004)", () => {
+  const linked = { buildSourceId: "bds-mono", repo: null };
+
+  it("shows Deploy latest build and Deploy a specific build… (never Deploy latest image or git-only items)", async () => {
+    trigger.mockResolvedValue("dep-bds-latest");
+    const user = userEvent.setup();
+    render(<ManualDeployButton service={svc(linked)} pending={false} />);
+
+    await user.click(screen.getByRole("button", { name: /Manual Deploy/i }));
+    expect(
+      screen.getByRole("menuitem", { name: "Deploy latest build" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: "Deploy a specific build…" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Deploy latest image")).not.toBeInTheDocument();
+    expect(screen.queryByText("Deploy latest commit")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Deploy a specific commit"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Clear build cache & deploy"),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("menuitem", { name: "Deploy latest build" }),
+    );
+    expect(trigger).toHaveBeenCalledExactlyOnceWith("web");
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/services/$serviceId/deploys/$deployId",
+        params: { serviceId: "web", deployId: "dep-bds-latest" },
+      }),
+    );
+  });
+
+  it("lets the user pick a succeeded build, disables non-succeeded builds, triggers with buildId, and navigates", async () => {
+    trigger.mockResolvedValue("dep-bds-picked");
+    buildSourceBuildsState.builds = [
+      {
+        id: "bld-failed01",
+        buildSourceId: "bds-mono",
+        status: "failed",
+        succeeded: false,
+        commitId: "1111111aaaa",
+        commitUrl: null,
+        imageRef: null,
+        imageSha: null,
+        createdAt: "2026-11-23T12:00:00Z",
+      },
+      {
+        id: "bld-ok00002",
+        buildSourceId: "bds-mono",
+        status: "succeeded",
+        succeeded: true,
+        commitId: "abcdef123456",
+        commitUrl: null,
+        imageRef: null,
+        imageSha: null,
+        createdAt: "2026-11-23T11:00:00Z",
+      },
+    ];
+
+    const user = userEvent.setup();
+    render(<ManualDeployButton service={svc(linked)} pending={false} />);
+    await user.click(screen.getByRole("button", { name: /Manual Deploy/i }));
+    await user.click(
+      screen.getByRole("menuitem", { name: "Deploy a specific build…" }),
+    );
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Deploy a specific build");
+    const confirm = screen.getByRole("button", { name: "Deploy build" });
+    expect(confirm).toBeDisabled();
+
+    const failedRow = screen.getByRole("button", { name: /bld-failed01/ });
+    expect(failedRow).toBeDisabled();
+    expect(failedRow).toHaveTextContent("Failed");
+
+    const okRow = screen.getByRole("button", { name: /bld-ok00002/ });
+    expect(okRow).toBeEnabled();
+    expect(okRow).toHaveTextContent("Succeeded");
+    expect(okRow).toHaveTextContent("abcdef1");
+
+    await user.click(okRow);
+    expect(okRow).toHaveAttribute("aria-pressed", "true");
+    expect(confirm).toBeEnabled();
+
+    await user.click(confirm);
+    expect(trigger).toHaveBeenCalledExactlyOnceWith("web", {
+      buildId: "bld-ok00002",
+    });
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/services/$serviceId/deploys/$deployId",
+        params: { serviceId: "web", deployId: "dep-bds-picked" },
+      }),
+    );
+  });
+
+  it("gates Deploy a specific build… behind can_create for Contributors", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    const user = userEvent.setup();
+    render(<ManualDeployButton service={svc(linked)} pending={false} />);
+    await user.click(screen.getByRole("button", { name: /Manual Deploy/i }));
+    expect(
+      screen.getByRole("menuitem", { name: "Deploy latest build" }),
+    ).not.toHaveAttribute("aria-disabled", "true");
+    expect(
+      screen.getByRole("menuitem", { name: "Deploy a specific build…" }),
+    ).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("shows empty and error+retry states in the build picker", async () => {
+    buildSourceBuildsState.error = new Error("upstream down");
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <ManualDeployButton service={svc(linked)} pending={false} />,
+    );
+    await user.click(screen.getByRole("button", { name: /Manual Deploy/i }));
+    await user.click(
+      screen.getByRole("menuitem", { name: "Deploy a specific build…" }),
+    );
+    expect(
+      screen.getByText("Couldn't load builds for this Build Source."),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(buildSourceBuildsState.refetch).toHaveBeenCalledOnce();
+
+    buildSourceBuildsState.error = undefined;
+    buildSourceBuildsState.builds = [];
+    rerender(<ManualDeployButton service={svc(linked)} pending={false} />);
+    expect(
+      screen.getByText(/This Build Source has no builds yet/),
+    ).toBeInTheDocument();
   });
 });

@@ -29,6 +29,7 @@ export interface CreateServiceInput {
   environmentId?: string;
   repo?: string;
   image?: string;
+  buildSourceId?: string;
   registryCredentialId?: string;
   branch?: string;
   rootDir?: string;
@@ -43,10 +44,12 @@ export interface CreateServiceInput {
     | "rust";
   buildCommand?: string;
   startCommand?: string;
+  dockerCommand?: string;
   dockerfilePath?: string;
   /** Render's Build Filters (glob paths/ignoredPaths) gating git-push auto-deploys. */
   buildFilter?: { paths: string[]; ignoredPaths: string[] };
   plan?: string;
+  region?: string;
   autoDeploy?: boolean;
   schedule?: string;
   command?: string;

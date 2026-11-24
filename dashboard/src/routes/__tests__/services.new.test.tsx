@@ -108,6 +108,26 @@ vi.mock("@/features/services/hooks/use-repos", () => ({
   useRepos: () => ({ ...reposState, refetch: vi.fn() }),
 }));
 
+const buildSourcesState: {
+  sources: Array<{
+    id: string;
+    name: string;
+    source: string;
+    kind: "git" | "image";
+    branch?: string | null;
+    region?: string | null;
+    nativeRuntime: "node" | null;
+  }>;
+  loading: boolean;
+  error: Error | undefined;
+} = { sources: [], loading: false, error: undefined };
+vi.mock("@/features/services/hooks/use-build-sources", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/features/services/hooks/use-build-sources")
+  >()),
+  useBuildSources: () => buildSourcesState,
+}));
+
 const connectionState: {
   connections: Array<{
     accountLogin: string;
@@ -1986,4 +2006,122 @@ it("keeps the service form, Port included, inside the hydration fieldset (w4/m21
   const fieldset = (await screen.findByLabelText("Name")).closest("fieldset");
   expect(fieldset).not.toBeNull();
   expect(fieldset).toContainElement(screen.getByLabelText(/^Port/));
+});
+
+describe("NewServicePage Build Source tab (w2/m612 t003)", () => {
+  beforeEach(() => {
+    buildSourcesState.loading = false;
+    buildSourcesState.error = undefined;
+    buildSourcesState.sources = [
+      {
+        id: "bds-native",
+        name: "Mono Node",
+        source: "https://github.com/acme/mono",
+        kind: "git",
+        branch: "main",
+        region: "oregon",
+        nativeRuntime: "node",
+      },
+      {
+        id: "bds-image",
+        name: "Prebuilt Nginx",
+        source: "nginx:1.27",
+        kind: "image",
+        branch: null,
+        region: null,
+        nativeRuntime: null,
+      },
+    ];
+  });
+
+  it("offers Build source tab on web/pserv/worker/cron and omits it on static_site", async () => {
+    for (const type of [
+      "web_service",
+      "private_service",
+      "background_worker",
+      "cron_job",
+    ] as const) {
+      const { unmount } = renderPage(`/?type=${type}`);
+      expect(
+        await screen.findByRole("tab", { name: "Build source" }),
+      ).toBeInTheDocument();
+      unmount();
+    }
+
+    renderPage("/?type=static_site");
+    await screen.findByRole("tab", { name: "GitHub" });
+    expect(
+      screen.queryByRole("tab", { name: "Build source" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("adapts fields for a native git Build Source and submits buildSourceId + region + startCommand", async () => {
+    create.mockResolvedValue({ id: "srv-bds-1", deployId: "dep-bds-1" });
+    const user = userEvent.setup();
+    renderPage("/?type=web_service");
+
+    await user.click(await screen.findByRole("tab", { name: "Build source" }));
+    await user.click(screen.getByRole("combobox", { name: "Build source" }));
+    await user.click(
+      await screen.findByRole("option", { name: /Mono Node/ }),
+    );
+
+    // Source-owned fields are hidden; region notice + Start Command are shown.
+    expect(screen.queryByLabelText("Runtime")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Branch/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Build Command")).not.toBeInTheDocument();
+    expect(screen.getByTestId("build-source-region-notice")).toHaveTextContent(
+      "oregon",
+    );
+    const startInput = screen.getByLabelText("Start Command");
+    expect(startInput).toHaveValue("npm start");
+
+    await user.click(screen.getByRole("button", { name: /^Deploy / }));
+    await waitFor(() =>
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          buildSourceId: "bds-native",
+          region: "oregon",
+          startCommand: "npm start",
+          runtime: undefined,
+        }),
+      ),
+    );
+    expect(create.mock.calls[0]?.[0]?.repo).toBeUndefined();
+  });
+
+  it("hides Start Command and submits optional dockerCommand for an image Build Source", async () => {
+    create.mockResolvedValue({ id: "srv-bds-2", deployId: "dep-bds-2" });
+    const user = userEvent.setup();
+    renderPage("/?type=web_service");
+
+    await user.click(await screen.findByRole("tab", { name: "Build source" }));
+    await user.click(screen.getByRole("combobox", { name: "Build source" }));
+    await user.click(
+      await screen.findByRole("option", { name: /Prebuilt Nginx/ }),
+    );
+
+    expect(screen.queryByLabelText("Start Command")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("build-source-region-notice"),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Advanced/ }));
+    await user.type(
+      screen.getByLabelText(/^Docker Command/),
+      "nginx -g 'daemon off;'",
+    );
+
+    await user.click(screen.getByRole("button", { name: /^Deploy / }));
+    await waitFor(() =>
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          buildSourceId: "bds-image",
+          dockerCommand: "nginx -g 'daemon off;'",
+          startCommand: undefined,
+          region: undefined,
+        }),
+      ),
+    );
+  });
 });

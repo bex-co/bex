@@ -2,6 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useInstanceTypes } from "@/features/services/hooks/use-instance-types";
 import { offeredInstanceTypes } from "@/features/services/lib/instance-type";
 import { useBuildRuntimeFields } from "@/features/services/hooks/use-build-runtime-fields";
+import {
+  defaultStartCommand,
+  useBuildSources,
+} from "@/features/services/hooks/use-build-sources";
 import { useServiceNameDraft } from "@/features/services/hooks/use-service-name-draft";
 import { useRepoRuntimeDetection } from "@/features/services/hooks/use-repo-runtime-detection";
 import type { RepoView } from "@/features/services/hooks/use-repos";
@@ -25,6 +29,9 @@ interface PlainFields {
   gitUrl: string;
   image: string;
   imageCommand: string;
+  buildSourceId: string;
+  buildSourceStartCommand: string;
+  buildSourceDockerCommand: string;
   registryCredentialId: string;
   branch: string;
   /** The Public Git tab's Branch, kept for the URL it was typed against. */
@@ -65,6 +72,9 @@ export function useNewServiceForm(search: NewServiceSearch) {
     gitUrl: "",
     image: "",
     imageCommand: "",
+    buildSourceId: "",
+    buildSourceStartCommand: "",
+    buildSourceDockerCommand: "",
     registryCredentialId: "",
     branch: "",
     gitBranchDraft: null,
@@ -99,11 +109,40 @@ export function useNewServiceForm(search: NewServiceSearch) {
     [],
   );
 
+  const buildSourcesState = useBuildSources(
+    fields.serviceType !== "static_site" && fields.tab === "build-source",
+  );
+  const selectedBuildSource =
+    buildSourcesState.sources.find((s) => s.id === fields.buildSourceId) ??
+    null;
+
+  const selectBuildSource = useCallback(
+    (id: string) => {
+      const next =
+        buildSourcesState.sources.find((s) => s.id === id) ?? null;
+      set((current) => {
+        const patch: Partial<PlainFields> = { buildSourceId: id };
+        if (next?.nativeRuntime) {
+          const fallback = defaultStartCommand(next);
+          if (!current.buildSourceStartCommand.trim()) {
+            patch.buildSourceStartCommand = fallback;
+          }
+          if (current.serviceType === "cron_job" && !current.command.trim()) {
+            patch.command = fallback;
+          }
+        }
+        return patch;
+      });
+    },
+    [buildSourcesState.sources, set],
+  );
+
   const name = useServiceNameDraft({
     tab: fields.tab,
     selectedRepo: fields.selectedRepo,
     gitUrl: fields.gitUrl,
     image: fields.image,
+    selectedBuildSource,
     onRepoDefaultBranch: (branch) =>
       set((current) => ({ branch: current.branch || branch })),
   });
@@ -136,6 +175,7 @@ export function useNewServiceForm(search: NewServiceSearch) {
 
   const form: NewServiceForm = {
     ...fields,
+    selectedBuildSource,
     name: name.name,
     runtime: build.runtime,
     buildCommand: build.buildCommand,
@@ -163,13 +203,14 @@ export function useNewServiceForm(search: NewServiceSearch) {
     [set],
   );
 
-  // A static site builds from a Git repo (ADR029) — it has no image source, so
-  // arriving on Static Site from the Existing Image tab moves the selection
-  // back to GitHub exactly as a manual tab switch would.
+  // A static site builds from a Git repo (ADR029, ADR097) — it has no image
+  // or Build Source, so arriving on Static Site from either tab moves the
+  // selection back to GitHub exactly as a manual tab switch would.
   const setServiceType = useCallback(
     (serviceType: ServiceType) =>
       set((current) =>
-        serviceType === "static_site" && current.tab === "image"
+        serviceType === "static_site" &&
+        (current.tab === "image" || current.tab === "build-source")
           ? { serviceType, tab: "github", selectedRepo: null, branch: "" }
           : { serviceType },
       ),
@@ -181,6 +222,8 @@ export function useNewServiceForm(search: NewServiceSearch) {
     set,
     setTab,
     setServiceType,
+    selectBuildSource,
+    buildSources: buildSourcesState,
     build,
     name,
     instanceTypes: offeredTypes,

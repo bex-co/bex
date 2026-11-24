@@ -1041,6 +1041,42 @@ const esDeploys: Record<string, TranslationEntry> = {
     message: "{seconds} s",
     description: "A deferred restart's wait in words (w5/m356): its seconds",
   },
+  "deploys.factBuild": {
+    message: "Compilación",
+    description:
+      "Deploy page: label of the fact naming the Build Source build ID (bld-…) this deploy ran",
+  },
+  "deploys.factBuildSource": {
+    message: "Origen de build",
+    description:
+      "Deploy page: label of the fact naming the linked Build Source (name and bds-… ID)",
+  },
+  "deploys.buildIdLabel": {
+    message: "ID de la compilación",
+    description: "Deploy page: accessible field name for copying the Build ID",
+  },
+  "deploys.buildIdCopied": {
+    message: "ID de la compilación copiado",
+    description: "Deploy page: toast shown after copying the Build ID",
+  },
+  "deploys.buildIdCopyFailed": {
+    message: "No se pudo copiar el ID de la compilación",
+    description: "Deploy page: toast shown when copying the Build ID fails",
+  },
+  "deploys.buildSourceIdLabel": {
+    message: "ID del origen de build",
+    description:
+      "Deploy page: accessible field name for copying the Build Source ID",
+  },
+  "deploys.buildSourceIdCopied": {
+    message: "ID del origen de build copiado",
+    description: "Deploy page: toast shown after copying the Build Source ID",
+  },
+  "deploys.buildSourceIdCopyFailed": {
+    message: "No se pudo copiar el ID del origen de build",
+    description:
+      "Deploy page: toast shown when copying the Build Source ID fails",
+  },
 };
 
 export default esDeploys;

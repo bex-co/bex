@@ -9,6 +9,7 @@ import { relayableReason } from "@/common/lib/graphql-error";
 import { isUnauthenticatedError } from "@/common/apollo/auth-error-link";
 import { ResourceLoadError } from "@/common/components/resource-load-error";
 import { useServiceBase } from "@/features/services/lib/service-base";
+import { useBuildSource } from "@/features/services/hooks/use-build-sources";
 import { useServer } from "@/features/services/hooks/use-server";
 import { useDeploy } from "../hooks/use-deploy";
 import { useCanceledStepEnd } from "../hooks/use-canceled-step-end";
@@ -49,6 +50,9 @@ export function DeployDetailPage({
   const { deploy, error, notFound, refetch } = useDeploy(serviceId, deployId);
   // The service chrome above already reads it; this shares the cached read.
   const { service } = useServer(serviceId, { poll: false });
+  const { source: buildSource } = useBuildSource(
+    service?.buildSourceId ?? null,
+  );
 
   // A dead deploy id under a live service redirects to that service's Deploys
   // tab — the nearest live parent — not all the way home (w9/m55). A dead
@@ -176,7 +180,12 @@ export function DeployDetailPage({
         {backLink}
         <DeployHeader
           deploy={deploy}
-          repo={service?.repo}
+          repo={
+            service?.repo ||
+            (buildSource?.kind === "git" ? buildSource.source : null)
+          }
+          buildSourceId={service?.buildSourceId}
+          buildSourceName={buildSource?.name}
           actions={
             deploy ? (
               <DeployActions

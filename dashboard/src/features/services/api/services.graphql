@@ -101,15 +101,18 @@ mutation CreateService(
   $type: String
   $repo: String
   $image: String
+  $buildSourceId: String
   $registryCredentialId: String
   $branch: String
   $rootDir: String
   $runtime: String
   $buildCommand: String
   $startCommand: String
+  $dockerCommand: String
   $dockerfilePath: String
   $buildFilter: BuildFilterInput
   $plan: String
+  $region: String
   $autoDeploy: Boolean
   $schedule: String
   $command: String
@@ -125,15 +128,18 @@ mutation CreateService(
     type: $type
     repo: $repo
     image: $image
+    buildSourceId: $buildSourceId
     registryCredentialId: $registryCredentialId
     branch: $branch
     rootDir: $rootDir
     runtime: $runtime
     buildCommand: $buildCommand
     startCommand: $startCommand
+    dockerCommand: $dockerCommand
     dockerfilePath: $dockerfilePath
     buildFilter: $buildFilter
     plan: $plan
+    region: $region
     autoDeploy: $autoDeploy
     schedule: $schedule
     command: $command
@@ -148,6 +154,7 @@ mutation CreateService(
     phase
     projectId
     environmentId
+    buildSourceId
     registryCredentialId
     latestDeployId
   }

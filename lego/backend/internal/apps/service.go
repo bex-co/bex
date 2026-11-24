@@ -2418,15 +2418,17 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	}
 	var carrier *appv1alpha1.App
 	if req.BuildSourceID != "" {
-		start := req.StartCommand
-		if desired.Type == appv1alpha1.TypeCronJob {
-			start = req.Command
-		}
-		link, _, linked, err := s.buildSourceLink(ctx, tenantID, req.BuildSourceID, desired.Type, s.Metadata.EffectiveRegion(req.Region), &start, req.startIsDockerCommand, "")
+		start := linkStartCommand(desired.Type, req.StartCommand, req.Command)
+		link, normalized, linked, err := s.buildSourceLink(ctx, tenantID, req.BuildSourceID, desired.Type, s.Metadata.EffectiveRegion(req.Region), &start, req.startIsDockerCommand, "")
 		if err != nil {
 			return AppView{}, err
 		}
 		desired.BuildSource, carrier = link, linked
+		if desired.Type == appv1alpha1.TypeCronJob {
+			desired.Command = normalized
+		} else {
+			desired.StartCommand = normalized
+		}
 	}
 	// After the link: a linked service's image rules read its build source
 	// (sourceForImageRules).

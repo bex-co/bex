@@ -21,6 +21,7 @@ import { servesHttp } from "@/features/services/lib/service-type";
 import { DEFAULT_SERVICE_PORT, parsePort } from "@/features/services/lib/port";
 import type { GitRuntime } from "@/features/services/lib/runtime";
 import type { SourceTab } from "@/features/services/components/service-source-picker";
+import type { BuildSourceOption } from "@/features/services/hooks/use-build-sources";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import type {
   CreateServiceInput,
@@ -38,6 +39,14 @@ export interface NewServiceForm {
   image: string;
   /** Docker Command override for an Existing Image source (not cron). */
   imageCommand: string;
+  /** Selected Build Source id (`bds-…`) when `tab === "build-source"`. */
+  buildSourceId?: string;
+  /** Resolved Build Source metadata for the selected `buildSourceId`. */
+  selectedBuildSource?: BuildSourceOption | null;
+  /** Start command for a native-runtime Build Source (non-cron). */
+  buildSourceStartCommand?: string;
+  /** Optional Docker command override for a Docker/image Build Source (non-cron). */
+  buildSourceDockerCommand?: string;
   registryCredentialId: string;
   branch: string;
   rootDir: string;
@@ -76,6 +85,14 @@ export interface BuildShape {
   isImageSource: boolean;
   /** An Existing Image long-running service: its Docker Command override. */
   showImageCommand: boolean;
+  /** Linking to an existing workspace Build Source (`tab === "build-source"`). */
+  isBuildSource: boolean;
+  /** Selected Build Source uses a native runtime (requires start/cron command). */
+  isNativeBuildSource: boolean;
+  /** Selected Build Source uses Docker or a prebuilt image (optional dockerCommand). */
+  isContainerBuildSource: boolean;
+  /** Docker/image Build Source long-running service: optional Docker Command override. */
+  showBuildSourceDockerCommand: boolean;
   isGitSource: boolean;
   isBuildableGit: boolean;
   isDockerBuild: boolean;
@@ -91,9 +108,10 @@ export interface BuildShape {
    */
   showPort: boolean;
   /**
-   * A service whose image supplies its ports (a Docker build or a prebuilt
-   * image): its port is optional, blank by default, and only picks the primary
-   * when set. bex-api applies the same rule to a create with no port.
+   * A service whose image supplies its ports (a Docker build, prebuilt image,
+   * or Docker/image Build Source): its port is optional, blank by default, and
+   * only picks the primary when set. bex-api applies the same rule to a create
+   * with no port.
    */
   imagePorts: boolean;
 }
@@ -109,20 +127,29 @@ function imagePortShape(
   serviceType: NewServiceForm["serviceType"],
   isDockerBuild: boolean,
   isImageSource: boolean,
+  isContainerBuildSource: boolean,
 ): boolean {
   return (
     (serviceType === "web_service" || serviceType === "private_service") &&
-    (isDockerBuild || isImageSource)
+    (isDockerBuild || isImageSource || isContainerBuildSource)
   );
 }
 
 export function buildShape(form: NewServiceForm): BuildShape {
   const isCronType = form.serviceType === "cron_job";
   const isStaticType = form.serviceType === "static_site";
-  // A static site has no image source (ADR029) — even if the form somehow
-  // holds tab === "image" for one, the shape refuses to read it as an image
-  // source, so the submit gate and the payload can never emit static+image.
+  // A static site has no image or Build Source (ADR029, ADR097) — even if the
+  // form somehow holds tab === "image" or "build-source" for one, the shape
+  // refuses to read it as such, so the submit gate and payload never emit it.
   const isImageSource = form.tab === "image" && !isStaticType;
+  const isBuildSource = form.tab === "build-source" && !isStaticType;
+  const selectedBuildSource = isBuildSource
+    ? (form.selectedBuildSource ?? null)
+    : null;
+  const isNativeBuildSource =
+    selectedBuildSource !== null && selectedBuildSource.nativeRuntime !== null;
+  const isContainerBuildSource =
+    selectedBuildSource !== null && selectedBuildSource.nativeRuntime === null;
   const isGitSource = form.tab === "github" || form.tab === "git";
   const isBuildableGit = isGitSource && !isStaticType;
   const isDockerBuild = isBuildableGit && form.runtime === "docker";
@@ -131,6 +158,10 @@ export function buildShape(form: NewServiceForm): BuildShape {
     isStaticType,
     isImageSource,
     showImageCommand: isImageSource && !isCronType,
+    isBuildSource,
+    isNativeBuildSource,
+    isContainerBuildSource,
+    showBuildSourceDockerCommand: isContainerBuildSource && !isCronType,
     isGitSource,
     isBuildableGit,
     isDockerBuild,
@@ -139,7 +170,12 @@ export function buildShape(form: NewServiceForm): BuildShape {
     usesRegistryCredential: isImageSource || isDockerBuild,
     showPlan: !isStaticType,
     showPort: servesHttp(form.serviceType),
-    imagePorts: imagePortShape(form.serviceType, isDockerBuild, isImageSource),
+    imagePorts: imagePortShape(
+      form.serviceType,
+      isDockerBuild,
+      isImageSource,
+      isContainerBuildSource,
+    ),
   };
 }
 
@@ -233,31 +269,40 @@ export function createFormErrors(form: NewServiceForm): CreateFormErrors {
 }
 
 /** Whether the selected tab names a source the service can be built or run
- *  from: a picked repository, a valid repository URL, or a valid image. The
- *  create page reveals its settings once it does, as Render's does. */
+ *  from: a picked repository, a valid repository URL, a valid image, or a
+ *  selected Build Source. The create page reveals its settings once it does,
+ *  as Render's does. */
 export function sourceChosen(form: NewServiceForm): boolean {
+  const shape = buildShape(form);
   return (
     (form.tab === "github" && form.selectedRepo != null) ||
     (form.tab === "git" &&
       isValidGitUrl(form.gitUrl) &&
       !parseGitHubPage(form.gitUrl)?.file) ||
-    (buildShape(form).isImageSource && isValidDockerImageRef(form.image))
+    (shape.isImageSource && isValidDockerImageRef(form.image)) ||
+    (shape.isBuildSource && form.selectedBuildSource != null)
   );
 }
 
-/** A native build is missing its build command, or its start command (a cron
- *  job's: its command). */
+/** A native build (git or native Build Source) is missing a required command. */
 export function nativeCommandsMissing(
   form: NewServiceForm,
   shape: BuildShape = buildShape(form),
 ): boolean {
-  return (
-    shape.isNativeBuild &&
-    (form.buildCommand.trim() === "" ||
+  if (shape.isNativeBuild) {
+    return (
+      form.buildCommand.trim() === "" ||
       (shape.isCronType
         ? form.command.trim() === ""
-        : form.startCommand.trim() === ""))
-  );
+        : form.startCommand.trim() === "")
+    );
+  }
+  if (shape.isNativeBuildSource) {
+    return shape.isCronType
+      ? form.command.trim() === ""
+      : (form.buildSourceStartCommand ?? "").trim() === "";
+  }
+  return false;
 }
 
 /** A secret file the server would refuse: a bad name or a repeated one. */
@@ -316,14 +361,24 @@ export function buildCreateServiceInput(
     .map((p) => p.trim())
     .filter(Boolean);
 
-  const source = shape.isImageSource
-    ? { image: form.image.trim() }
-    : form.tab === "github" && form.selectedRepo
+  const source =
+    shape.isBuildSource && form.selectedBuildSource
       ? {
-          repo: form.selectedRepo.cloneUrl,
-          branch: form.branch || form.selectedRepo.defaultBranch || undefined,
+          buildSourceId: form.selectedBuildSource.id,
+          region:
+            form.selectedBuildSource.kind === "git"
+              ? form.selectedBuildSource.region || undefined
+              : undefined,
         }
-      : { repo: form.gitUrl.trim(), branch: form.branch || undefined };
+      : shape.isImageSource
+        ? { image: form.image.trim() }
+        : form.tab === "github" && form.selectedRepo
+          ? {
+              repo: form.selectedRepo.cloneUrl,
+              branch:
+                form.branch || form.selectedRepo.defaultBranch || undefined,
+            }
+          : { repo: form.gitUrl.trim(), branch: form.branch || undefined };
 
   return {
     ...source,
@@ -335,7 +390,7 @@ export function buildCreateServiceInput(
       ? form.registryCredentialId
       : undefined,
     // The Git draft's root survives a tab switch so returning restores it, but
-    // an image source has no repository root to scope (w4/226).
+    // an image or Build Source has no repository root to scope (w4/226).
     rootDir: shape.isGitSource ? form.rootDir || undefined : undefined,
     runtime: shape.isImageSource
       ? "image"
@@ -353,6 +408,13 @@ export function buildCreateServiceInput(
         : optionalCommand(form.startCommand)
       : shape.showImageCommand
         ? optionalCommand(form.imageCommand)
+        : shape.isNativeBuildSource && !shape.isCronType
+          ? commandText(form.buildSourceStartCommand ?? "")
+          : undefined,
+    dockerCommand: shape.showBuildSourceDockerCommand
+      ? optionalCommand(form.buildSourceDockerCommand ?? "")
+      : shape.isContainerBuildSource && shape.isCronType
+        ? optionalCommand(form.command)
         : undefined,
     dockerfilePath: shape.isDockerBuild ? set(form.dockerfilePath) : undefined,
     buildFilter:
@@ -360,9 +422,16 @@ export function buildCreateServiceInput(
         ? { paths, ignoredPaths }
         : undefined,
     plan: shape.showPlan ? form.plan || undefined : undefined,
-    autoDeploy: shape.isGitSource ? form.autoDeploy : undefined,
+    autoDeploy:
+      shape.isGitSource || shape.isBuildSource ? form.autoDeploy : undefined,
     schedule: shape.isCronType ? set(form.schedule) : undefined,
-    command: shape.isCronType ? optionalCommand(form.command) : undefined,
+    // A Docker/image Build Source cron sends its optional command override as
+    // dockerCommand (Render's command rule refuses startCommand/command on
+    // container Build Sources).
+    command:
+      shape.isCronType && !shape.isContainerBuildSource
+        ? optionalCommand(form.command)
+        : undefined,
     publishPath: shape.isStaticType ? set(form.publishPath) : undefined,
     // The wizard used to send no port at all, so an image binding anything but
     // 3000 (nginx:alpine binds :80) came up unroutable and answered 503

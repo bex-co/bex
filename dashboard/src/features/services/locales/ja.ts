@@ -6524,6 +6524,103 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "Create-wizard action bar: Deploy is held while the port is out of range",
   },
+  "services.createBuildSourceRegionNotice": {
+    message:
+      "この Git ビルドソースにリンクされたサービスは、ビルドソースに合わせて {region} に作成されます。",
+    description:
+      "Create service wizard: notice explaining that a git Build Source determines the new service's region; {region} is the Render region name",
+  },
+  "services.createBuildSourceAutoDeployHint": {
+    message:
+      "リンクされたビルドソースの新しいビルドが成功するたびに、このサービスを自動的にデプロイします。",
+    description:
+      "Create service wizard: Auto-Deploy toggle description when creating from a Build Source",
+  },
+  "services.buildSourceKindGit": {
+    message: "Git リポジトリ",
+    description: "Badge or label for a git-backed Build Source",
+  },
+  "services.buildSourceKindImage": {
+    message: "コンテナイメージ",
+    description: "Badge or label for an image-backed Build Source",
+  },
+  "services.sourceBuildSourceIdLabel": {
+    message: "ビルドソース ID",
+    description: "Accessible field name for copying a Build Source ID",
+  },
+  "services.sourceBuildSourceIdCopied": {
+    message: "ビルドソース ID をコピーしました",
+    description: "Toast shown after copying a Build Source ID",
+  },
+  "services.sourceBuildSourceIdCopyFailed": {
+    message: "ビルドソース ID をコピーできませんでした",
+    description: "Toast shown when copying a Build Source ID fails",
+  },
+  "services.deployMenuLatestBuild": {
+    message: "最新のビルドをデプロイ",
+    description:
+      "Manual Deploy dropdown item for a Build-Source-linked service: deploy the latest succeeded build from the Build Source",
+  },
+  "services.deployMenuSpecificBuild": {
+    message: "特定のビルドをデプロイ…",
+    description:
+      "Manual Deploy dropdown item for a Build-Source-linked service: pick a specific succeeded build (bld-…) to deploy",
+  },
+  "services.deployBuildTitle": {
+    message: "特定のビルドをデプロイ",
+    description: "Title of the dialog to pick a specific Build Source build",
+  },
+  "services.deployBuildBody": {
+    message:
+      "リンクされたビルドソースから成功したビルドを選択して、このサービスにデプロイします。",
+    description:
+      "Description in the dialog to pick a specific Build Source build",
+  },
+  "services.deployBuildConfirm": {
+    message: "ビルドをデプロイ",
+    description: "Confirm button label in the deploy-a-specific-build dialog",
+  },
+  "services.deployBuildListLabel": {
+    message: "リンクされたビルドソースのビルド一覧",
+    description:
+      "Accessible label for the build list inside the deploy-a-specific-build dialog",
+  },
+  "services.deployBuildEmpty": {
+    message:
+      "このビルドソースにはまだビルドがありません。先にビルドソースでビルドを実行してください。",
+    description:
+      "Empty state in the deploy-a-specific-build dialog when no builds exist",
+  },
+  "services.deployBuildLoadError": {
+    message: "このビルドソースのビルド一覧を読み込めませんでした。",
+    description:
+      "Error message in the deploy-a-specific-build dialog when fetching builds fails",
+  },
+  "services.deployBuildNoSucceeded": {
+    message: "デプロイ可能な成功済みビルドはまだありません。",
+    description:
+      "Notice in the deploy-a-specific-build dialog when builds exist but none succeeded",
+  },
+  "services.buildStatusCreated": {
+    message: "待機中",
+    description: "Build Source build status badge: created/queued",
+  },
+  "services.buildStatusInProgress": {
+    message: "ビルド中",
+    description: "Build Source build status badge: in_progress",
+  },
+  "services.buildStatusSucceeded": {
+    message: "成功",
+    description: "Build Source build status badge: succeeded",
+  },
+  "services.buildStatusFailed": {
+    message: "失敗",
+    description: "Build Source build status badge: failed",
+  },
+  "services.buildStatusCanceled": {
+    message: "キャンセル済み",
+    description: "Build Source build status badge: canceled",
+  },
 };
 
 export default jaServices;

@@ -40,6 +40,8 @@ export interface DeployView {
    * it cannot be rolled back to (w8/m156). Null from an older server.
    */
   buildAvailable: boolean | null;
+  /** The Build Source build (`bld-…`) this deploy ran, or "" when not from a Build Source. */
+  buildId?: string;
   /** The resolved commit this deploy ran (w9/001 + w2/m42); "" when unresolved. */
   commitId: string;
   commitMessage: string;
@@ -172,6 +174,7 @@ function toDeployView(
     imageSha: d.imageSha ?? "",
     rollbackOf: d.rollbackOf ?? "",
     buildAvailable: d.buildAvailable ?? null,
+    buildId: d.buildId ?? "",
     commitId: d.commitId ?? "",
     commitMessage: d.commitMessage ?? "",
     commitCreatedAt: d.commitCreatedAt ?? null,

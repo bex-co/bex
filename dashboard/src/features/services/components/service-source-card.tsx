@@ -6,6 +6,8 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/common/components/ui/alert";
+import { CopyButton } from "@/common/components/copy-button";
+import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import {
   Card,
@@ -48,6 +50,7 @@ import {
   type SourceTab,
 } from "@/features/services/components/service-source-picker";
 import {
+  buildSourceDisplayLabel,
   defaultStartCommand,
   useBuildSource,
   useBuildSources,
@@ -195,16 +198,47 @@ export function ServiceSourceCard(props: ServiceSourceCardProps) {
               )}
             </dt>
             <dd className="break-all font-mono font-medium">
-              {props.buildSourceId
-                ? (linked?.name ??
-                  (linkedLoading ? (
-                    <Skeleton className="inline-block h-4 w-32 align-middle" />
-                  ) : (
-                    props.buildSourceId
-                  )))
-                : props.repo
-                  ? formatRepoLabel(props.repo)
-                  : props.imagePath || t("services.sourceMissing")}
+              {props.buildSourceId ? (
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span>
+                      {linked?.name ??
+                        (linkedLoading ? (
+                          <Skeleton className="inline-block h-4 w-32 align-middle" />
+                        ) : (
+                          props.buildSourceId
+                        ))}
+                    </span>
+                    {linked ? (
+                      <Badge
+                        variant="outline"
+                        className="font-sans text-xs font-normal"
+                      >
+                        {t(
+                          linked.kind === "git"
+                            ? "services.buildSourceKindGit"
+                            : "services.buildSourceKindImage",
+                        )}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <div className="flex items-center gap-1 text-xs font-normal text-muted-foreground">
+                    <span className="break-all">{props.buildSourceId}</span>
+                    <CopyButton
+                      value={props.buildSourceId}
+                      label={t("common.copyField", {
+                        field: t("services.sourceBuildSourceIdLabel"),
+                      })}
+                      successText={t("services.sourceBuildSourceIdCopied")}
+                      errorText={t("services.sourceBuildSourceIdCopyFailed")}
+                    />
+                  </div>
+                </div>
+              ) : props.repo ? (
+                formatRepoLabel(props.repo)
+              ) : (
+                props.imagePath || t("services.sourceMissing")
+              )}
             </dd>
           </div>
           {props.buildSourceId && linked?.source && (
@@ -213,7 +247,7 @@ export function ServiceSourceCard(props: ServiceSourceCardProps) {
                 {t("services.sourceBuildSourceBuildsFrom")}
               </dt>
               <dd className="break-all font-mono font-medium">
-                {sourceLabel(linked)}
+                {buildSourceDisplayLabel(linked)}
               </dd>
             </div>
           )}
@@ -962,7 +996,7 @@ function BuildSourceTab({
                 {source.name}
                 {source.source && (
                   <span className="ml-2 font-mono text-xs text-muted-foreground">
-                    {sourceLabel(source)}
+                    {buildSourceDisplayLabel(source)}
                   </span>
                 )}
               </SelectItem>
@@ -989,9 +1023,4 @@ function BuildSourceTab({
       )}
     </div>
   );
-}
-
-/** What a build source builds from: a repo label, or the image as is. */
-function sourceLabel(source: BuildSourceOption): string {
-  return source.kind === "git" ? formatRepoLabel(source.source) : source.source;
 }

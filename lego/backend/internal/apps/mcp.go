@@ -203,13 +203,14 @@ type createWebServiceArgs struct {
 	EnvironmentID        string          `json:"environmentId,omitempty" jsonschema:"an environment id (evm-...) in the target workspace; assignment also joins its project"`
 	Name                 string          `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
 	Type                 string          `json:"type,omitempty" jsonschema:"service type: web_service (default), private_service, or background_worker. Use create_cron_job for a cron_job"`
-	Repo                 string          `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
-	Image                string          `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
+	Repo                 string          `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image or buildSourceId"`
+	Image                string          `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo or buildSourceId"`
+	BuildSourceID        string          `json:"buildSourceId,omitempty" jsonschema:"an existing build source id (bds-...) to build and deploy from; omit repo, branch, image, runtime, buildCommand, rootDir, buildFilter, dockerfilePath, dockerContext, and registryCredentialId when set. Native-runtime build sources require startCommand; Docker/image build sources refuse startCommand and accept optional dockerCommand"`
 	RegistryCredentialID *string         `json:"registryCredentialId,omitempty" jsonschema:"stored registry credential id for a private prebuilt image or Dockerfile FROM; omit for automatic image-host matching, empty to explicitly use none"`
 	Branch               string          `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default: the repository's default branch)"`
 	RootDir              string          `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
 	BuildFilter          *buildFilterArg `json:"buildFilter,omitempty" jsonschema:"Render's Build Filters: glob patterns (paths/ignoredPaths) gating git-push auto-deploys; omit for no filter"`
-	Runtime              string          `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, docker, or image (a prebuilt OCI image — a bex extension, pass it with image and no repo)"`
+	Runtime              string          `json:"runtime,omitempty" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, docker, or image (a prebuilt OCI image — a bex extension, pass it with image and no repo); omit when using buildSourceId"`
 	// buildCommand/startCommand are OPTIONAL, unlike Render's tool, which
 	// requires them because it is git-only (w4/114). bex added the image path
 	// and kept the required set verbatim, which deadlocked it: the schema
@@ -342,6 +343,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 	docker := a.dockerDetails()
 	startCommand, _, dockerContext := docker.resolve()
 	return CreateRequest{
+		BuildSourceID:           a.BuildSourceID,
 		EnvironmentID:           a.EnvironmentID,
 		Name:                    a.Name,
 		Type:                    a.Type,
@@ -368,6 +370,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		MaintenanceMode:         a.MaintenanceMode.toView(),
 		Port:                    a.Port,
 		DryRun:                  a.DryRun,
+		startIsDockerCommand:    docker.startIsDockerCommand(),
 	}
 }
 
@@ -379,12 +382,13 @@ type createCronJobArgs struct {
 	Name                 string  `json:"name" jsonschema:"the cron job name (a DNS label, 1-30 chars)"`
 	Schedule             string  `json:"schedule" jsonschema:"the cron schedule (standard 5-field crontab, e.g. '0 * * * *')"`
 	Command              string  `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run under /bin/sh, e.g. 'npm run report'; omit to run the image's own command. A native runtime runs startCommand in Bash instead"`
-	Repo                 string  `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
-	Image                string  `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
+	Repo                 string  `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image or buildSourceId"`
+	Image                string  `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo or buildSourceId"`
+	BuildSourceID        string  `json:"buildSourceId,omitempty" jsonschema:"an existing build source id (bds-...) to build and deploy from; omit repo, branch, image, runtime, buildCommand, rootDir, dockerfilePath, dockerContext, and registryCredentialId when set. Native-runtime build sources require startCommand or command; Docker/image build sources refuse startCommand and accept optional dockerCommand"`
 	RegistryCredentialID *string `json:"registryCredentialId,omitempty" jsonschema:"stored registry credential id for a private prebuilt image or Dockerfile FROM; omit for automatic image-host matching, empty to explicitly use none"`
 	Branch               string  `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default: the repository's default branch)"`
 	RootDir              string  `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
-	Runtime              string  `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, docker, or image (a prebuilt OCI image — a bex extension, pass it with image and no repo)"`
+	Runtime              string  `json:"runtime,omitempty" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, docker, or image (a prebuilt OCI image — a bex extension, pass it with image and no repo); omit when using buildSourceId"`
 	// Optional for the same reason as create_web_service's pair (w4/114): this
 	// tool inherited the identical required set from Render's git-only tool,
 	// and reproduced the identical deadlock on the image path.
@@ -430,12 +434,13 @@ func (a createCronJobArgs) dockerDetails() dockerDetails {
 func (a createCronJobArgs) toCreateRequest() CreateRequest {
 	docker := a.dockerDetails()
 	startCommand, command, dockerContext := docker.resolve()
-	// REST's cron bridge for a prebuilt image: its run command may arrive as
-	// startCommand, and REST stores it as the cron's command (rest.go).
-	if command == "" && docker.build() == buildImage {
+	// REST's cron bridge for a prebuilt image or build source: its run command
+	// may arrive as startCommand, and REST stores it as the cron's command (rest.go).
+	if command == "" && (docker.build() == buildImage || a.BuildSourceID != "") {
 		command = startCommand
 	}
 	return CreateRequest{
+		BuildSourceID:        a.BuildSourceID,
 		EnvironmentID:        a.EnvironmentID,
 		Name:                 a.Name,
 		Type:                 appv1alpha1.TypeCronJob,
@@ -458,6 +463,7 @@ func (a createCronJobArgs) toCreateRequest() CreateRequest {
 		AutoDeploy:           parseYesNo(a.AutoDeploy),
 		NotifyOnFail:         a.NotifyOnFail,
 		DryRun:               a.DryRun,
+		startIsDockerCommand: docker.startIsDockerCommand(),
 	}
 }
 

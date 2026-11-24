@@ -984,6 +984,42 @@ const zhDeploys: Record<string, TranslationEntry> = {
     message: "{seconds} 秒",
     description: "A deferred restart's wait in words (w5/m356): its seconds",
   },
+  "deploys.factBuild": {
+    message: "构建",
+    description:
+      "Deploy page: label of the fact naming the Build Source build ID (bld-…) this deploy ran",
+  },
+  "deploys.factBuildSource": {
+    message: "构建源",
+    description:
+      "Deploy page: label of the fact naming the linked Build Source (name and bds-… ID)",
+  },
+  "deploys.buildIdLabel": {
+    message: "构建 ID",
+    description: "Deploy page: accessible field name for copying the Build ID",
+  },
+  "deploys.buildIdCopied": {
+    message: "已复制构建 ID",
+    description: "Deploy page: toast shown after copying the Build ID",
+  },
+  "deploys.buildIdCopyFailed": {
+    message: "无法复制构建 ID",
+    description: "Deploy page: toast shown when copying the Build ID fails",
+  },
+  "deploys.buildSourceIdLabel": {
+    message: "构建源 ID",
+    description:
+      "Deploy page: accessible field name for copying the Build Source ID",
+  },
+  "deploys.buildSourceIdCopied": {
+    message: "已复制构建源 ID",
+    description: "Deploy page: toast shown after copying the Build Source ID",
+  },
+  "deploys.buildSourceIdCopyFailed": {
+    message: "无法复制构建源 ID",
+    description:
+      "Deploy page: toast shown when copying the Build Source ID fails",
+  },
 };
 
 export default zhDeploys;

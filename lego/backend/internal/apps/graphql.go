@@ -799,13 +799,32 @@ func gqlCreateRequest(args map[string]any) (CreateRequest, error) {
 	if err != nil {
 		return CreateRequest{}, err
 	}
+	svcType := gqlutil.Str(args, "type")
+	docker := dockerDetails{
+		runtime:       gqlutil.Str(args, "runtime"),
+		builder:       gqlutil.Str(args, "builder"),
+		image:         gqlutil.Str(args, "image"),
+		startCommand:  gqlutil.Str(args, "startCommand"),
+		command:       gqlutil.Str(args, "command"),
+		dockerCommand: gqlutil.Str(args, "dockerCommand"),
+		dockerContext: gqlutil.Str(args, "dockerContext"),
+	}
+	if err := docker.conflict(); err != nil {
+		return CreateRequest{}, err
+	}
+	startCommand, resolvedCommand, _ := docker.resolve()
+	command := gqlutil.Str(args, "command")
+	if svcType == appv1alpha1.TypeCronJob {
+		command = resolvedCommand
+	}
 	return CreateRequest{
+		BuildSourceID:           gqlutil.Str(args, "buildSourceId"),
 		OwnerID:                 gqlutil.Str(args, "ownerId"),
 		EnvironmentID:           gqlutil.Str(args, "environmentId"),
 		Name:                    args["name"].(string),
-		Type:                    gqlutil.Str(args, "type"),
+		Type:                    svcType,
 		Schedule:                gqlutil.Str(args, "schedule"),
-		Command:                 gqlutil.Str(args, "command"),
+		Command:                 command,
 		Repo:                    gqlutil.Str(args, "repo"),
 		Image:                   gqlutil.Str(args, "image"),
 		RegistryCredentialID:    gqlutil.StrPtr(args, "registryCredentialId"),
@@ -814,7 +833,7 @@ func gqlCreateRequest(args map[string]any) (CreateRequest, error) {
 		BuildFilter:             gqlBuildFilterInput(args, "buildFilter"),
 		Runtime:                 gqlutil.Str(args, "runtime"),
 		BuildCommand:            gqlutil.Str(args, "buildCommand"),
-		StartCommand:            gqlutil.Str(args, "startCommand"),
+		StartCommand:            startCommand,
 		DockerfilePath:          gqlutil.Str(args, "dockerfilePath"),
 		DockerContext:           gqlutil.Str(args, "dockerContext"),
 		Builder:                 gqlutil.Str(args, "builder"),
@@ -836,6 +855,7 @@ func gqlCreateRequest(args map[string]any) (CreateRequest, error) {
 		MaintenanceMode:         gqlMaintenanceModeInput(args, "maintenanceMode"),
 		IPAllowList:             allowList,
 		DryRun:                  gqlutil.Bool(args, "dryRun"),
+		startIsDockerCommand:    docker.startIsDockerCommand(),
 	}, nil
 }
 
@@ -1549,6 +1569,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"command":              gqlutil.Arg(graphql.String), // overrides the image's entrypoint for a cron_job
 				"repo":                 gqlutil.Arg(graphql.String),
 				"image":                gqlutil.Arg(graphql.String),
+				"buildSourceId":        gqlutil.Arg(graphql.String),
 				"registryCredentialId": gqlutil.Arg(graphql.String),
 				"branch":               gqlutil.Arg(graphql.String),
 				"rootDir":              gqlutil.Arg(graphql.String),       // subdirectory of repo to build from (monorepo support)
@@ -1556,6 +1577,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"runtime":              gqlutil.Arg(graphql.String),       // Render runtime: native language | docker | image
 				"buildCommand":         gqlutil.Arg(graphql.String),
 				"startCommand":         gqlutil.Arg(graphql.String),
+				"dockerCommand":        gqlutil.Arg(graphql.String),
 				// dockerfilePath is Render's Dockerfile Path, relative to rootDir; docker runtime only.
 				"dockerfilePath": gqlutil.Arg(graphql.String),
 				// dockerContext is Render's Docker Build Context Directory,
@@ -1605,7 +1627,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				if err != nil {
 					return nil, err
 				}
-				return s.Create(p.Context, req)
+				app, err := s.Create(p.Context, req)
+				if err != nil {
+					return nil, err
+				}
+				return s.linkedBuildView(p.Context, app, map[string]*appv1alpha1.App{}), nil
 			},
 		},
 		// deleteService: delete a service (the delete half of the lifecycle).

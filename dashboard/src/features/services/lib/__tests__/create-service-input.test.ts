@@ -793,3 +793,146 @@ describe("createFormErrors", () => {
     ).toBe(true);
   });
 });
+
+describe("Build Source service creation (w2/m612 t003)", () => {
+  const nativeGitSource = {
+    id: "bds-native",
+    name: "Native Mono",
+    source: "https://github.com/acme/mono",
+    kind: "git" as const,
+    branch: "main",
+    region: "oregon",
+    nativeRuntime: "node" as const,
+  };
+  const dockerGitSource = {
+    id: "bds-docker",
+    name: "Docker Mono",
+    source: "https://github.com/acme/docker",
+    kind: "git" as const,
+    branch: "main",
+    region: "frankfurt",
+    nativeRuntime: null,
+  };
+  const imageSource = {
+    id: "bds-image",
+    name: "Prebuilt Image",
+    source: "ghcr.io/acme/api:1",
+    kind: "image" as const,
+    branch: null,
+    region: null,
+    nativeRuntime: null,
+  };
+
+  it("emits buildSourceId, region, and startCommand for a native git Build Source while omitting source-owned fields", () => {
+    const f = form({
+      tab: "build-source",
+      buildSourceId: nativeGitSource.id,
+      selectedBuildSource: nativeGitSource,
+      buildSourceStartCommand: "node api.js",
+      rootDir: "apps/api",
+      dockerfilePath: "Dockerfile",
+      registryCredentialId: "rc-1",
+    });
+    expect(isSubmittable(f)).toBe(true);
+    const input = buildCreateServiceInput(f);
+    expect(input).toMatchObject({
+      buildSourceId: "bds-native",
+      region: "oregon",
+      startCommand: "node api.js",
+      autoDeploy: true,
+    });
+    expect(input.repo).toBeUndefined();
+    expect(input.branch).toBeUndefined();
+    expect(input.image).toBeUndefined();
+    expect(input.runtime).toBeUndefined();
+    expect(input.buildCommand).toBeUndefined();
+    expect(input.dockerCommand).toBeUndefined();
+    expect(input.rootDir).toBeUndefined();
+    expect(input.dockerfilePath).toBeUndefined();
+    expect(input.registryCredentialId).toBeUndefined();
+
+    // Missing startCommand blocks submit on native Build Source.
+    expect(isSubmittable({ ...f, buildSourceStartCommand: "  " })).toBe(false);
+  });
+
+  it("emits dockerCommand (never startCommand) for Docker/image Build Sources and allows blank port/command", () => {
+    const dockerForm = form({
+      tab: "build-source",
+      buildSourceId: dockerGitSource.id,
+      selectedBuildSource: dockerGitSource,
+      buildSourceDockerCommand: "./serve --port 8080",
+      port: null,
+    });
+    expect(isSubmittable(dockerForm)).toBe(true);
+    const dockerIn = buildCreateServiceInput(dockerForm);
+    expect(dockerIn).toMatchObject({
+      buildSourceId: "bds-docker",
+      region: "frankfurt",
+      dockerCommand: "./serve --port 8080",
+    });
+    expect(dockerIn.startCommand).toBeUndefined();
+    expect(dockerIn.port).toBeUndefined();
+
+    const imgForm = form({
+      tab: "build-source",
+      buildSourceId: imageSource.id,
+      selectedBuildSource: imageSource,
+      buildSourceDockerCommand: "",
+      port: null,
+    });
+    expect(isSubmittable(imgForm)).toBe(true);
+    const imgIn = buildCreateServiceInput(imgForm);
+    expect(imgIn.buildSourceId).toBe("bds-image");
+    expect(imgIn.region).toBeUndefined();
+    expect(imgIn.dockerCommand).toBeUndefined();
+    expect(imgIn.startCommand).toBeUndefined();
+  });
+
+  it("maps cron commands cleanly: command for native Build Source, dockerCommand for Docker/image Build Source", () => {
+    const nativeCron = form({
+      serviceType: "cron_job",
+      tab: "build-source",
+      schedule: "*/5 * * * *",
+      buildSourceId: nativeGitSource.id,
+      selectedBuildSource: nativeGitSource,
+      command: "node job.js",
+    });
+    expect(isSubmittable(nativeCron)).toBe(true);
+    expect(isSubmittable({ ...nativeCron, command: "" })).toBe(false);
+    expect(buildCreateServiceInput(nativeCron)).toMatchObject({
+      buildSourceId: "bds-native",
+      command: "node job.js",
+      dockerCommand: undefined,
+      startCommand: undefined,
+    });
+
+    const imgCron = form({
+      serviceType: "cron_job",
+      tab: "build-source",
+      schedule: "0 * * * *",
+      buildSourceId: imageSource.id,
+      selectedBuildSource: imageSource,
+      command: "date",
+    });
+    expect(isSubmittable(imgCron)).toBe(true);
+    expect(isSubmittable({ ...imgCron, command: "" })).toBe(true);
+    expect(buildCreateServiceInput(imgCron)).toMatchObject({
+      buildSourceId: "bds-image",
+      dockerCommand: "date",
+      command: undefined,
+      startCommand: undefined,
+    });
+  });
+
+  it("never emits buildSourceId for a static_site", () => {
+    const f = form({
+      serviceType: "static_site",
+      tab: "build-source",
+      buildSourceId: dockerGitSource.id,
+      selectedBuildSource: dockerGitSource,
+      publishPath: "dist",
+    });
+    expect(isSubmittable(f)).toBe(false);
+    expect(buildCreateServiceInput(f).buildSourceId).toBeUndefined();
+  });
+});

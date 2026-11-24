@@ -4,6 +4,7 @@ import { repoNameSlug, gitUrlSlug, imageSlug } from "@/common/lib/utils/slug";
 import { useServiceNameAvailability } from "@/features/services/hooks/use-service-name-availability";
 import { useResourceSlug } from "@/features/services/hooks/use-resource-slug";
 import type { RepoView } from "@/features/services/hooks/use-repos";
+import type { BuildSourceOption } from "@/features/services/hooks/use-build-sources";
 import type { SourceTab } from "@/features/services/components/service-source-picker";
 
 /**
@@ -19,12 +20,14 @@ export function useServiceNameDraft({
   selectedRepo,
   gitUrl,
   image,
+  selectedBuildSource = null,
   onRepoDefaultBranch,
 }: {
   tab: SourceTab;
   selectedRepo: RepoView | null;
   gitUrl: string;
   image: string;
+  selectedBuildSource?: BuildSourceOption | null;
   /**
    * Called with the selected repo's default branch, for the form's branch
    * field. It runs during render, so it may only set the caller's own state.
@@ -40,7 +43,14 @@ export function useServiceNameDraft({
   // `value !== ""`), so selecting a new source after clearing re-enables fill.
   // Adjusted during render, like the swap below, so no commit shows a source
   // with the previous source's name.
-  const fillInputs = { tab, selectedRepo, gitUrl, image, nameEdited };
+  const fillInputs = {
+    tab,
+    selectedRepo,
+    gitUrl,
+    image,
+    selectedBuildSource,
+    nameEdited,
+  };
   const [filledFor, setFilledFor] = useState<typeof fillInputs | null>(null);
   const fillInputsChanged =
     filledFor === null ||
@@ -48,6 +58,7 @@ export function useServiceNameDraft({
     filledFor.selectedRepo !== selectedRepo ||
     filledFor.gitUrl !== gitUrl ||
     filledFor.image !== image ||
+    filledFor.selectedBuildSource !== selectedBuildSource ||
     filledFor.nameEdited !== nameEdited;
   if (fillInputsChanged) {
     setFilledFor(fillInputs);
@@ -61,6 +72,8 @@ export function useServiceNameDraft({
       } else if (tab === "image" && image) {
         const slug = imageSlug(image);
         if (slug) setName(slug);
+      } else if (tab === "build-source" && selectedBuildSource) {
+        setName(selectedBuildSource.name);
       }
     }
   }

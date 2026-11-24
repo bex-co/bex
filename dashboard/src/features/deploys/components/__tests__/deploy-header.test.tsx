@@ -324,4 +324,38 @@ describe("DeployHeader", () => {
       await i18n.changeLanguage("en");
     }
   });
+
+  // w2/m612 t005: linked-service deploy headers show buildId and Build Source provenance.
+  it("shows copyable buildId and Build Source provenance for linked-service deploys", () => {
+    render(
+      <DeployHeader
+        deploy={deploy({
+          buildId: "bld-abc12345",
+          commitId: "deadbeef1234",
+          commitMessage: "feat: build source rollout",
+        })}
+        repo="https://github.com/acme/mono"
+        buildSourceId="bds-mono001"
+        buildSourceName="Monorepo Build"
+      />,
+    );
+    const buildFact = screen.getByTestId("deploy-build-id");
+    expect(buildFact).toHaveTextContent("bld-abc12345");
+    expect(
+      screen.getByRole("button", { name: "Copy Build ID" }),
+    ).toBeInTheDocument();
+
+    const sourceFact = screen.getByTestId("deploy-build-source");
+    expect(sourceFact).toHaveTextContent("Monorepo Build");
+    expect(sourceFact).toHaveTextContent("bds-mono001");
+    expect(
+      screen.getByRole("button", { name: "Copy Build Source ID" }),
+    ).toBeInTheDocument();
+  });
+
+  it("omits Build and Build Source facts for non-linked deploys", () => {
+    render(<DeployHeader deploy={deploy({ buildId: "" })} />);
+    expect(screen.queryByTestId("deploy-build-id")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("deploy-build-source")).not.toBeInTheDocument();
+  });
 });

@@ -224,6 +224,18 @@ func dockerfileBuildOnly(fields ...string) wireRule {
 // not read one.
 const notReadDockerCommand = "a native runtime or buildpacks take the command elsewhere, so Render's docker command is inert there, and a call Render accepts keeps its native commands"
 
+// dockerCommandWireRule is the shared flat-argument dockerCommand rule for
+// GraphQL createService and the MCP create tools.
+var dockerCommandWireRule = wireRule{want: func(s createShape) wireOutcome {
+	if !s.readsDockerCommand() {
+		return wireOutcome{inert: notReadDockerCommand}
+	}
+	if s.cron {
+		return wireOutcome{fields: []string{"StartCommand", "Command"}}
+	}
+	return wireOutcome{fields: []string{"StartCommand"}}
+}}
+
 // gqlCreateRules is what each createService argument does: GraphQL maps every
 // argument as given and leaves the build rules to the core.
 var gqlCreateRules = map[string]wireRule{
@@ -235,6 +247,7 @@ var gqlCreateRules = map[string]wireRule{
 	"command":                          to("Command"),
 	"repo":                             to("Repo"),
 	"image":                            to("Image"),
+	"buildSourceId":                    to("BuildSourceID"),
 	"registryCredentialId":             to("RegistryCredentialID"),
 	"branch":                           to("Branch"),
 	"rootDir":                          to("RootDir"),
@@ -243,6 +256,7 @@ var gqlCreateRules = map[string]wireRule{
 	"runtime":                          to("Runtime"),
 	"buildCommand":                     to("BuildCommand"),
 	"startCommand":                     to("StartCommand"),
+	"dockerCommand":                    dockerCommandWireRule,
 	"dockerfilePath":                   to("DockerfilePath"),
 	"dockerContext":                    to("DockerContext"),
 	"builder":                          to("Builder"),
@@ -286,6 +300,7 @@ var mcpCreateRules = map[string]wireRule{
 	"command":                  to("Command"),
 	"repo":                     to("Repo"),
 	"image":                    to("Image"),
+	"buildSourceId":            to("BuildSourceID"),
 	"registryCredentialId":     to("RegistryCredentialID"),
 	"branch":                   to("Branch"),
 	"rootDir":                  to("RootDir"),
@@ -301,17 +316,9 @@ var mcpCreateRules = map[string]wireRule{
 		}
 		return wireOutcome{fields: []string{"StartCommand"}}
 	}},
-	"dockerfilePath": dockerfileBuildOnly("DockerfilePath"),
-	"dockerContext":  dockerfileBuildOnly("DockerContext"),
-	"dockerCommand": {want: func(s createShape) wireOutcome {
-		if !s.readsDockerCommand() {
-			return wireOutcome{inert: notReadDockerCommand}
-		}
-		if s.cron {
-			return wireOutcome{fields: []string{"StartCommand", "Command"}}
-		}
-		return wireOutcome{fields: []string{"StartCommand"}}
-	}},
+	"dockerfilePath":  dockerfileBuildOnly("DockerfilePath"),
+	"dockerContext":   dockerfileBuildOnly("DockerContext"),
+	"dockerCommand":   dockerCommandWireRule,
 	"builder":         to("Builder"),
 	"plan":            to("Plan"),
 	"region":          to("Region"),

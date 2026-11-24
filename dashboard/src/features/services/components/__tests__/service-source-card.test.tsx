@@ -1183,4 +1183,26 @@ describe("ServiceSourceCard — build sources", () => {
       ),
     );
   });
+
+  it("displays linked Build Source name, kind badge, copyable ID, and Builds from source (w2/m612 t005)", () => {
+    render(
+      <ServiceSourceCard
+        serviceId="srv-linked"
+        serviceType="web_service"
+        repo={null}
+        branch={null}
+        imagePath={null}
+        registryCredentialId={null}
+        buildSourceId="bds-mono"
+        startCommand="node server.js"
+      />,
+    );
+    expect(screen.getByText("Mono")).toBeInTheDocument();
+    expect(screen.getByText("Git repository")).toBeInTheDocument();
+    expect(screen.getByText("bds-mono")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Copy Build Source ID" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("github.com · acme / mono")).toBeInTheDocument();
+  });
 });

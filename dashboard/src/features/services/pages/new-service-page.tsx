@@ -7,10 +7,19 @@ import { PageFrame } from "@/common/components/page-frame";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
+import { Label } from "@/common/components/ui/label";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import { Switch } from "@/common/components/ui/switch";
-import { SelectItem } from "@/common/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/common/components/ui/select";
 import {
   CREATE_INPUT_CLASS,
+  CREATE_SELECT_CLASS,
   CREATE_SWITCH_CLASS,
   CreateActionBar,
   CreateAdvanced,
@@ -21,6 +30,11 @@ import {
   CreateTextField,
   PlanSummary,
 } from "@/common/components/create-form";
+import { cn } from "@/common/lib/utils/utils";
+import {
+  buildSourceDisplayLabel,
+  type BuildSourceOption,
+} from "@/features/services/hooks/use-build-sources";
 import {
   CREATE_PLAN_ROWS,
   ComputePlanList,
@@ -102,6 +116,8 @@ export function NewServicePage({
     set,
     setTab,
     setServiceType,
+    selectBuildSource,
+    buildSources,
     build,
     name,
     instanceTypes,
@@ -165,8 +181,11 @@ export function NewServicePage({
         : nativeCommandsMissing(form, shape)
           ? {
               reason: t("services.createBlockedCommands"),
-              fieldId:
-                form.buildCommand.trim() === ""
+              fieldId: shape.isNativeBuildSource
+                ? shape.isCronType
+                  ? "svc-command"
+                  : "svc-build-source-start-command"
+                : form.buildCommand.trim() === ""
                   ? "svc-build-command"
                   : shape.isCronType
                     ? "svc-command"
@@ -281,6 +300,18 @@ export function NewServicePage({
                         // The Port row below explains the image's port.
                         showPortHint: false,
                       }
+                }
+                buildSource={
+                  shape.isStaticType ? undefined : (
+                    <BuildSourceCreatePicker
+                      sources={buildSources.sources}
+                      loading={buildSources.loading}
+                      failed={buildSources.error !== undefined}
+                      value={form.buildSourceId ?? ""}
+                      selected={form.selectedBuildSource ?? null}
+                      onValueChange={selectBuildSource}
+                    />
+                  )
                 }
               />
             )}
@@ -449,6 +480,19 @@ export function NewServicePage({
                 </>
               ) : null}
 
+              {shape.isNativeBuildSource && !shape.isCronType ? (
+                <CreateTextField
+                  id="svc-build-source-start-command"
+                  label={t("services.createFieldStartCommand")}
+                  mono
+                  value={form.buildSourceStartCommand ?? ""}
+                  onChange={(buildSourceStartCommand) =>
+                    set({ buildSourceStartCommand })
+                  }
+                  description={t("services.sourceBuildSourceStartHint")}
+                />
+              ) : null}
+
               {shape.isCronType ? (
                 <>
                   <CreateTextField
@@ -476,14 +520,20 @@ export function NewServicePage({
                   <CreateTextField
                     id="svc-command"
                     label={t("services.createFieldStartCommand")}
-                    // A native build needs it; an image or Dockerfile has its
-                    // own default command.
-                    optional={!shape.isNativeBuild}
+                    // A native build (git or native Build Source) needs it; an
+                    // image or Dockerfile has its own default command.
+                    optional={
+                      !(shape.isNativeBuild || shape.isNativeBuildSource)
+                    }
                     mono
                     value={form.command}
                     onChange={(command) => set({ command })}
                     placeholder={t("services.createFieldCommandPlaceholder")}
-                    description={t("services.createFieldCommandHint")}
+                    description={t(
+                      shape.isNativeBuildSource
+                        ? "services.sourceBuildSourceStartHint"
+                        : "services.createFieldCommandHint",
+                    )}
                   />
                 </>
               ) : null}
@@ -671,11 +721,32 @@ export function NewServicePage({
                   />
                 ) : null}
 
-                {shape.isGitSource ? (
+                {shape.showBuildSourceDockerCommand ? (
+                  <CreateTextField
+                    id="svc-build-source-docker-command"
+                    label={t("services.createFieldDockerCommand")}
+                    optional
+                    mono
+                    value={form.buildSourceDockerCommand ?? ""}
+                    onChange={(buildSourceDockerCommand) =>
+                      set({ buildSourceDockerCommand })
+                    }
+                    placeholder={t("services.imageCommandPlaceholder")}
+                    description={t(
+                      "services.createFieldDockerCommandDescription",
+                    )}
+                  />
+                ) : null}
+
+                {shape.isGitSource || shape.isBuildSource ? (
                   <CreateField
                     label={t("services.createFieldAutoDeploy")}
                     htmlFor="svc-autodeploy"
-                    description={t("services.createFieldAutoDeployHint")}
+                    description={t(
+                      shape.isBuildSource
+                        ? "services.createBuildSourceAutoDeployHint"
+                        : "services.createFieldAutoDeployHint",
+                    )}
                   >
                     <Switch
                       className={CREATE_SWITCH_CLASS}
@@ -737,5 +808,105 @@ export function NewServicePage({
         </CreateForm>
       </PageFrame>
     </DashboardLayout>
+  );
+}
+
+/**
+ * Build Source selector inside `/services/new`'s `ServiceSourcePicker`
+ * (`build-source` tab, w2/m612 t003). Shows workspace Build Sources with kind
+ * and repo/image info, plus a region-match notice for git-backed sources.
+ */
+function BuildSourceCreatePicker({
+  sources,
+  loading,
+  failed,
+  value,
+  selected,
+  onValueChange,
+}: {
+  sources: BuildSourceOption[];
+  loading: boolean;
+  failed: boolean;
+  value: string;
+  selected: BuildSourceOption | null;
+  onValueChange: (id: string) => void;
+}) {
+  const { t } = useTranslations();
+  if (loading && sources.length === 0) {
+    return (
+      <div className="space-y-2" aria-busy="true">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className={cn(CREATE_INPUT_CLASS, "w-full rounded-md")} />
+      </div>
+    );
+  }
+  if (sources.length === 0) {
+    return (
+      <p
+        role={failed ? "alert" : undefined}
+        className="rounded-lg border p-4 text-sm text-muted-foreground"
+      >
+        {t(
+          failed
+            ? "services.sourceBuildSourceLoadError"
+            : "services.sourceBuildSourceEmpty",
+        )}
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      <div className="space-y-2">
+        <Label htmlFor="svc-build-source">
+          {t("services.sourceBuildSourceLabel")}
+        </Label>
+        <Select value={value} onValueChange={onValueChange}>
+          <SelectTrigger id="svc-build-source" className={CREATE_SELECT_CLASS}>
+            <SelectValue
+              placeholder={t("services.sourceBuildSourcePlaceholder")}
+            />
+          </SelectTrigger>
+          <SelectContent>
+            {sources.map((source) => (
+              <SelectItem key={source.id} value={source.id}>
+                <span>{source.name}</span>
+                {source.source ? (
+                  <span className="ml-2 font-mono text-xs text-muted-foreground">
+                    {buildSourceDisplayLabel(source)}
+                  </span>
+                ) : null}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {selected ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          <span>
+            {t(
+              selected.kind === "git"
+                ? "services.buildSourceKindGit"
+                : "services.buildSourceKindImage",
+            )}
+          </span>
+          {selected.source ? (
+            <span className="font-mono break-all">
+              {buildSourceDisplayLabel(selected)}
+            </span>
+          ) : null}
+          <span className="font-mono">{selected.id}</span>
+        </div>
+      ) : null}
+      {selected?.kind === "git" && selected.region ? (
+        <p
+          className="text-xs text-muted-foreground"
+          data-testid="build-source-region-notice"
+        >
+          {t("services.createBuildSourceRegionNotice", {
+            region: selected.region,
+          })}
+        </p>
+      ) : null}
+    </div>
   );
 }

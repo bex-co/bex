@@ -75,10 +75,19 @@ const linkedSourceState: {
     nativeRuntime: "node" | null;
   } | null;
 } = { source: null };
-vi.mock("@/features/services/hooks/use-build-sources", () => ({
-  useBuildSources: () => ({ sources: [], loading: false }),
-  useBuildSource: () => ({ source: linkedSourceState.source, loading: false }),
-}));
+vi.mock(
+  "@/features/services/hooks/use-build-sources",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@/features/services/hooks/use-build-sources")
+    >()),
+    useBuildSources: () => ({ sources: [], loading: false }),
+    useBuildSource: () => ({
+      source: linkedSourceState.source,
+      loading: false,
+    }),
+  }),
+);
 vi.mock("@/features/services/hooks/use-link-build-source", () => ({
   useLinkBuildSource: () => ({ linkBuildSource: vi.fn(), busy: false }),
 }));

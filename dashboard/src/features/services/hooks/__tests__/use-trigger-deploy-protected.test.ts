@@ -76,4 +76,32 @@ describe("useTriggerDeploy protected-environment retry", () => {
     expect(triggerDeploy).toHaveBeenCalledTimes(1);
     expect(toastError).not.toHaveBeenCalled();
   });
+
+  it("retries a buildId deploy with the server's confirmation phrase (w2/m612)", async () => {
+    triggerDeploy
+      .mockRejectedValueOnce(REFUSAL)
+      .mockResolvedValueOnce({ data: { triggerDeploy: { id: "dep-bld-2" } } });
+    ask.mockResolvedValue("sudo repoint service web");
+    const { result } = renderHook(() => useTriggerDeploy());
+
+    let id: string | null = null;
+    await act(async () => {
+      id = await result.current.trigger("srv-1", { buildId: "bld-42" });
+    });
+
+    expect(id).toBe("dep-bld-2");
+    expect(ask).toHaveBeenCalledWith("sudo repoint service web", "web");
+    expect(triggerDeploy).toHaveBeenNthCalledWith(2, {
+      variables: {
+        serviceId: "srv-1",
+        commitId: undefined,
+        buildId: "bld-42",
+        deployMode: undefined,
+        clearCache: undefined,
+        disableAutoDeploy: undefined,
+        confirm: "sudo repoint service web",
+      },
+    });
+    expect(toastError).not.toHaveBeenCalled();
+  });
 });

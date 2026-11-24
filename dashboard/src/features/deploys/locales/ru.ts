@@ -1043,6 +1043,42 @@ const ruDeploys: Record<string, TranslationEntry> = {
     message: "{seconds} с",
     description: "A deferred restart's wait in words (w5/m356): its seconds",
   },
+  "deploys.factBuild": {
+    message: "Сборка",
+    description:
+      "Deploy page: label of the fact naming the Build Source build ID (bld-…) this deploy ran",
+  },
+  "deploys.factBuildSource": {
+    message: "Источник сборки",
+    description:
+      "Deploy page: label of the fact naming the linked Build Source (name and bds-… ID)",
+  },
+  "deploys.buildIdLabel": {
+    message: "ID сборки",
+    description: "Deploy page: accessible field name for copying the Build ID",
+  },
+  "deploys.buildIdCopied": {
+    message: "ID сборки скопирован",
+    description: "Deploy page: toast shown after copying the Build ID",
+  },
+  "deploys.buildIdCopyFailed": {
+    message: "Не удалось скопировать ID сборки",
+    description: "Deploy page: toast shown when copying the Build ID fails",
+  },
+  "deploys.buildSourceIdLabel": {
+    message: "ID источника сборки",
+    description:
+      "Deploy page: accessible field name for copying the Build Source ID",
+  },
+  "deploys.buildSourceIdCopied": {
+    message: "ID источника сборки скопирован",
+    description: "Deploy page: toast shown after copying the Build Source ID",
+  },
+  "deploys.buildSourceIdCopyFailed": {
+    message: "Не удалось скопировать ID источника сборки",
+    description:
+      "Deploy page: toast shown when copying the Build Source ID fails",
+  },
 };
 
 export default ruDeploys;

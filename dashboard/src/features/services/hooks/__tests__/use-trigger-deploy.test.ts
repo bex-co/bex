@@ -111,6 +111,27 @@ describe("useTriggerDeploy", () => {
     });
   });
 
+  it("passes buildId through to the triggerDeploy mutation variables (w2/m612)", async () => {
+    const triggerDeploy = vi.fn().mockResolvedValue({
+      data: { triggerDeploy: { id: "dep-bld-1" } },
+    });
+    mockUseMutation.mockReturnValue([triggerDeploy, { loading: false }]);
+
+    const { result } = renderHook(() => useTriggerDeploy());
+    let id: string | null = null;
+    await act(async () => {
+      id = await result.current.trigger("web", { buildId: "bld-abc123" });
+    });
+
+    expect(id).toBe("dep-bld-1");
+    expect(triggerDeploy).toHaveBeenCalledWith({
+      variables: {
+        serviceId: "web",
+        buildId: "bld-abc123",
+      },
+    });
+  });
+
   it("restarts through restartServer, not a bare triggerDeploy that would build the branch head (w1/m148)", async () => {
     const triggerDeploy = vi.fn();
     const restartServer = vi.fn().mockResolvedValue({

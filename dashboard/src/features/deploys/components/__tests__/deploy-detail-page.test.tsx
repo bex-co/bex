@@ -57,8 +57,18 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
   Link: (await import("@/test/mocks/router-link")).PlainLink,
 }));
 
+const serverState: {
+  service: { id: string; repo?: string | null; buildSourceId?: string | null; autoDeploy?: boolean | null } | undefined;
+} = { service: undefined };
+const buildSourceState: {
+  source: { id: string; name: string; kind: "git" | "image"; source: string; nativeRuntime: null } | null;
+} = { source: null };
+
 vi.mock("@/features/services/hooks/use-server", () => ({
-  useServer: () => ({ service: undefined, loading: false, error: undefined }),
+  useServer: () => ({ service: serverState.service, loading: false, error: undefined }),
+}));
+vi.mock("@/features/services/hooks/use-build-sources", () => ({
+  useBuildSource: () => ({ source: buildSourceState.source, loading: false }),
 }));
 vi.mock("../../hooks/use-deploy", () => ({
   useDeploy: () => deployState,
@@ -72,8 +82,25 @@ vi.mock("../../hooks/use-canceled-step-end", async (importOriginal) => ({
   useCanceledStepEnd: () => ({ status: "none" }),
 }));
 vi.mock("../deploy-header", () => ({
-  DeployHeader: ({ actions }: { actions?: ReactNode }) => (
-    <div data-testid="deploy-header">{actions}</div>
+  DeployHeader: ({
+    actions,
+    repo,
+    buildSourceId,
+    buildSourceName,
+  }: {
+    actions?: ReactNode;
+    repo?: string | null;
+    buildSourceId?: string | null;
+    buildSourceName?: string | null;
+  }) => (
+    <div
+      data-testid="deploy-header"
+      data-repo={repo ?? ""}
+      data-build-source-id={buildSourceId ?? ""}
+      data-build-source-name={buildSourceName ?? ""}
+    >
+      {actions}
+    </div>
   ),
 }));
 vi.mock("../deploy-actions", () => ({
@@ -113,6 +140,8 @@ vi.mock("../deploy-log-panel", async () => {
 });
 
 beforeEach(() => {
+  serverState.service = undefined;
+  buildSourceState.source = null;
   deployState.deploy = {
     ...deployState.deploy,
     id: "dep-1",
@@ -292,5 +321,26 @@ describe("DeployDetailPage", () => {
     expect(screen.getByRole("link", { name: "Deploys" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(deployState.refetch).toHaveBeenCalled();
+  });
+
+  it("forwards linked Build Source provenance and git repo to DeployHeader (w2/m612)", () => {
+    serverState.service = {
+      id: "srv-1",
+      repo: "",
+      buildSourceId: "bds-mono001",
+      autoDeploy: true,
+    };
+    buildSourceState.source = {
+      id: "bds-mono001",
+      name: "Monorepo",
+      kind: "git",
+      source: "https://github.com/acme/mono",
+      nativeRuntime: null,
+    };
+    render(<DeployDetailPage serviceId="srv-1" deployId="dep-1" />);
+    const header = screen.getByTestId("deploy-header");
+    expect(header).toHaveAttribute("data-build-source-id", "bds-mono001");
+    expect(header).toHaveAttribute("data-build-source-name", "Monorepo");
+    expect(header).toHaveAttribute("data-repo", "https://github.com/acme/mono");
   });
 });

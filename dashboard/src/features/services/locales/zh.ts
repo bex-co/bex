@@ -6351,6 +6351,99 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Create-wizard action bar: Deploy is held while the port is out of range",
   },
+  "services.createBuildSourceRegionNotice": {
+    message: "关联到此 Git 构建源的服务将在 {region} 创建，以与该构建源的区域保持一致。",
+    description:
+      "Create service wizard: notice explaining that a git Build Source determines the new service's region; {region} is the Render region name",
+  },
+  "services.createBuildSourceAutoDeployHint": {
+    message: "每当所关联构建源的新构建成功时，自动部署此服务。",
+    description:
+      "Create service wizard: Auto-Deploy toggle description when creating from a Build Source",
+  },
+  "services.buildSourceKindGit": {
+    message: "Git 仓库",
+    description: "Badge or label for a git-backed Build Source",
+  },
+  "services.buildSourceKindImage": {
+    message: "容器镜像",
+    description: "Badge or label for an image-backed Build Source",
+  },
+  "services.sourceBuildSourceIdLabel": {
+    message: "构建源 ID",
+    description: "Accessible field name for copying a Build Source ID",
+  },
+  "services.sourceBuildSourceIdCopied": {
+    message: "已复制构建源 ID",
+    description: "Toast shown after copying a Build Source ID",
+  },
+  "services.sourceBuildSourceIdCopyFailed": {
+    message: "无法复制构建源 ID",
+    description: "Toast shown when copying a Build Source ID fails",
+  },
+  "services.deployMenuLatestBuild": {
+    message: "部署最新构建",
+    description:
+      "Manual Deploy dropdown item for a Build-Source-linked service: deploy the latest succeeded build from the Build Source",
+  },
+  "services.deployMenuSpecificBuild": {
+    message: "部署指定构建…",
+    description:
+      "Manual Deploy dropdown item for a Build-Source-linked service: pick a specific succeeded build (bld-…) to deploy",
+  },
+  "services.deployBuildTitle": {
+    message: "部署指定构建",
+    description: "Title of the dialog to pick a specific Build Source build",
+  },
+  "services.deployBuildBody": {
+    message: "从所关联的构建源中选择一次成功的构建，并部署到此服务。",
+    description:
+      "Description in the dialog to pick a specific Build Source build",
+  },
+  "services.deployBuildConfirm": {
+    message: "部署构建",
+    description: "Confirm button label in the deploy-a-specific-build dialog",
+  },
+  "services.deployBuildListLabel": {
+    message: "所关联构建源的构建列表",
+    description:
+      "Accessible label for the build list inside the deploy-a-specific-build dialog",
+  },
+  "services.deployBuildEmpty": {
+    message: "此构建源还没有任何构建。请先在构建源上触发一次构建。",
+    description:
+      "Empty state in the deploy-a-specific-build dialog when no builds exist",
+  },
+  "services.deployBuildLoadError": {
+    message: "无法加载此构建源的构建列表。",
+    description:
+      "Error message in the deploy-a-specific-build dialog when fetching builds fails",
+  },
+  "services.deployBuildNoSucceeded": {
+    message: "目前还没有可供部署的成功构建。",
+    description:
+      "Notice in the deploy-a-specific-build dialog when builds exist but none succeeded",
+  },
+  "services.buildStatusCreated": {
+    message: "排队中",
+    description: "Build Source build status badge: created/queued",
+  },
+  "services.buildStatusInProgress": {
+    message: "构建中",
+    description: "Build Source build status badge: in_progress",
+  },
+  "services.buildStatusSucceeded": {
+    message: "已成功",
+    description: "Build Source build status badge: succeeded",
+  },
+  "services.buildStatusFailed": {
+    message: "失败",
+    description: "Build Source build status badge: failed",
+  },
+  "services.buildStatusCanceled": {
+    message: "已取消",
+    description: "Build Source build status badge: canceled",
+  },
 };
 
 export default zhServices;

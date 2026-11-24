@@ -1013,6 +1013,42 @@ const koDeploys: Record<string, TranslationEntry> = {
     message: "{seconds}초",
     description: "A deferred restart's wait in words (w5/m356): its seconds",
   },
+  "deploys.factBuild": {
+    message: "빌드",
+    description:
+      "Deploy page: label of the fact naming the Build Source build ID (bld-…) this deploy ran",
+  },
+  "deploys.factBuildSource": {
+    message: "빌드 소스",
+    description:
+      "Deploy page: label of the fact naming the linked Build Source (name and bds-… ID)",
+  },
+  "deploys.buildIdLabel": {
+    message: "빌드 ID",
+    description: "Deploy page: accessible field name for copying the Build ID",
+  },
+  "deploys.buildIdCopied": {
+    message: "빌드 ID를 복사했습니다",
+    description: "Deploy page: toast shown after copying the Build ID",
+  },
+  "deploys.buildIdCopyFailed": {
+    message: "빌드 ID를 복사하지 못했습니다",
+    description: "Deploy page: toast shown when copying the Build ID fails",
+  },
+  "deploys.buildSourceIdLabel": {
+    message: "빌드 소스 ID",
+    description:
+      "Deploy page: accessible field name for copying the Build Source ID",
+  },
+  "deploys.buildSourceIdCopied": {
+    message: "빌드 소스 ID를 복사했습니다",
+    description: "Deploy page: toast shown after copying the Build Source ID",
+  },
+  "deploys.buildSourceIdCopyFailed": {
+    message: "빌드 소스 ID를 복사하지 못했습니다",
+    description:
+      "Deploy page: toast shown when copying the Build Source ID fails",
+  },
 };
 
 export default koDeploys;

@@ -6609,6 +6609,103 @@ const ptServices: Record<string, TranslationEntry> = {
     description:
       "Create-wizard action bar: Deploy is held while the port is out of range",
   },
+  "services.createBuildSourceRegionNotice": {
+    message:
+      "Os serviços vinculados a esta origem de build Git são criados em {region} para corresponder à origem de build.",
+    description:
+      "Create service wizard: notice explaining that a git Build Source determines the new service's region; {region} is the Render region name",
+  },
+  "services.createBuildSourceAutoDeployHint": {
+    message:
+      "Faz deploy deste serviço automaticamente sempre que uma nova compilação da origem de build vinculada for concluída com sucesso.",
+    description:
+      "Create service wizard: Auto-Deploy toggle description when creating from a Build Source",
+  },
+  "services.buildSourceKindGit": {
+    message: "Repositório Git",
+    description: "Badge or label for a git-backed Build Source",
+  },
+  "services.buildSourceKindImage": {
+    message: "Imagem de contêiner",
+    description: "Badge or label for an image-backed Build Source",
+  },
+  "services.sourceBuildSourceIdLabel": {
+    message: "ID da origem de build",
+    description: "Accessible field name for copying a Build Source ID",
+  },
+  "services.sourceBuildSourceIdCopied": {
+    message: "ID da origem de build copiado",
+    description: "Toast shown after copying a Build Source ID",
+  },
+  "services.sourceBuildSourceIdCopyFailed": {
+    message: "Não foi possível copiar o ID da origem de build",
+    description: "Toast shown when copying a Build Source ID fails",
+  },
+  "services.deployMenuLatestBuild": {
+    message: "Fazer deploy do último build",
+    description:
+      "Manual Deploy dropdown item for a Build-Source-linked service: deploy the latest succeeded build from the Build Source",
+  },
+  "services.deployMenuSpecificBuild": {
+    message: "Fazer deploy de um build específico…",
+    description:
+      "Manual Deploy dropdown item for a Build-Source-linked service: pick a specific succeeded build (bld-…) to deploy",
+  },
+  "services.deployBuildTitle": {
+    message: "Fazer deploy de um build específico",
+    description: "Title of the dialog to pick a specific Build Source build",
+  },
+  "services.deployBuildBody": {
+    message:
+      "Escolha um build bem-sucedido da origem de build vinculada para fazer deploy neste serviço.",
+    description:
+      "Description in the dialog to pick a specific Build Source build",
+  },
+  "services.deployBuildConfirm": {
+    message: "Fazer deploy do build",
+    description: "Confirm button label in the deploy-a-specific-build dialog",
+  },
+  "services.deployBuildListLabel": {
+    message: "Builds da origem de build vinculada",
+    description:
+      "Accessible label for the build list inside the deploy-a-specific-build dialog",
+  },
+  "services.deployBuildEmpty": {
+    message:
+      "Esta origem de build ainda não tem builds. Dispare primeiro um build na origem de build.",
+    description:
+      "Empty state in the deploy-a-specific-build dialog when no builds exist",
+  },
+  "services.deployBuildLoadError": {
+    message: "Não foi possível carregar os builds desta origem de build.",
+    description:
+      "Error message in the deploy-a-specific-build dialog when fetching builds fails",
+  },
+  "services.deployBuildNoSucceeded": {
+    message: "Ainda não há builds bem-sucedidos prontos para deploy.",
+    description:
+      "Notice in the deploy-a-specific-build dialog when builds exist but none succeeded",
+  },
+  "services.buildStatusCreated": {
+    message: "Na fila",
+    description: "Build Source build status badge: created/queued",
+  },
+  "services.buildStatusInProgress": {
+    message: "Compilando",
+    description: "Build Source build status badge: in_progress",
+  },
+  "services.buildStatusSucceeded": {
+    message: "Concluído",
+    description: "Build Source build status badge: succeeded",
+  },
+  "services.buildStatusFailed": {
+    message: "Falhou",
+    description: "Build Source build status badge: failed",
+  },
+  "services.buildStatusCanceled": {
+    message: "Cancelado",
+    description: "Build Source build status badge: canceled",
+  },
 };
 
 export default ptServices;

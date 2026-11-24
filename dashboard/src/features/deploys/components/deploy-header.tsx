@@ -1,6 +1,7 @@
 import {
   CalendarDays,
   GitCommitHorizontal,
+  Layers,
   Package,
   Terminal,
   Timer,
@@ -52,6 +53,10 @@ export interface DeployHeaderProps {
   /** The service's repo, which links the commit to its diff; none for an
    *  image-backed service. */
   repo?: string | null;
+  /** Linked Build Source id (`bds-…`) when the service builds from a Build Source. */
+  buildSourceId?: string | null;
+  /** Human-readable Build Source name when loaded. */
+  buildSourceName?: string | null;
 }
 
 /**
@@ -63,7 +68,13 @@ export interface DeployHeaderProps {
  * status words and icon come from the mappings the Deploys list and Events
  * tab use, so the surfaces cannot drift on what a status looks like.
  */
-export function DeployHeader({ deploy, actions, repo }: DeployHeaderProps) {
+export function DeployHeader({
+  deploy,
+  actions,
+  repo,
+  buildSourceId,
+  buildSourceName,
+}: DeployHeaderProps) {
   const { t } = useTranslations();
   const titleId = useId();
   // Absolute deploy times are the viewer's local timezone, deferred past
@@ -192,6 +203,49 @@ export function DeployHeader({ deploy, actions, repo }: DeployHeaderProps) {
                 · {commitCreatedAt}
               </span>
             ) : null}
+          </DeployFact>
+        ) : null}
+        {deploy.buildId ? (
+          <DeployFact icon={<Layers />} label={t("deploys.factBuild")}>
+            <span
+              className="inline-flex min-w-0 flex-wrap items-center gap-1 font-mono"
+              data-testid="deploy-build-id"
+            >
+              <span className="break-all">{deploy.buildId}</span>
+              <CopyButton
+                value={deploy.buildId}
+                label={t("common.copyField", {
+                  field: t("deploys.buildIdLabel"),
+                })}
+                successText={t("deploys.buildIdCopied")}
+                errorText={t("deploys.buildIdCopyFailed")}
+              />
+            </span>
+          </DeployFact>
+        ) : null}
+        {buildSourceId ? (
+          <DeployFact icon={<Layers />} label={t("deploys.factBuildSource")}>
+            <span
+              className="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5"
+              data-testid="deploy-build-source"
+            >
+              {buildSourceName ? (
+                <span className="font-medium break-words">
+                  {buildSourceName}
+                </span>
+              ) : null}
+              <span className="inline-flex min-w-0 items-center gap-1 font-mono text-xs text-muted-foreground">
+                <span className="break-all">{buildSourceId}</span>
+                <CopyButton
+                  value={buildSourceId}
+                  label={t("common.copyField", {
+                    field: t("deploys.buildSourceIdLabel"),
+                  })}
+                  successText={t("deploys.buildSourceIdCopied")}
+                  errorText={t("deploys.buildSourceIdCopyFailed")}
+                />
+              </span>
+            </span>
           </DeployFact>
         ) : null}
         {preDeploy ? (

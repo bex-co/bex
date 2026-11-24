@@ -6481,6 +6481,103 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Create-wizard action bar: Deploy is held while the port is out of range",
   },
+  "services.createBuildSourceRegionNotice": {
+    message:
+      "이 Git 빌드 소스에 연결된 서비스는 빌드 소스와 일치하도록 {region} 리전에 생성됩니다.",
+    description:
+      "Create service wizard: notice explaining that a git Build Source determines the new service's region; {region} is the Render region name",
+  },
+  "services.createBuildSourceAutoDeployHint": {
+    message:
+      "연결된 빌드 소스의 새 빌드가 성공할 때마다 이 서비스를 자동으로 배포합니다.",
+    description:
+      "Create service wizard: Auto-Deploy toggle description when creating from a Build Source",
+  },
+  "services.buildSourceKindGit": {
+    message: "Git 저장소",
+    description: "Badge or label for a git-backed Build Source",
+  },
+  "services.buildSourceKindImage": {
+    message: "컨테이너 이미지",
+    description: "Badge or label for an image-backed Build Source",
+  },
+  "services.sourceBuildSourceIdLabel": {
+    message: "빌드 소스 ID",
+    description: "Accessible field name for copying a Build Source ID",
+  },
+  "services.sourceBuildSourceIdCopied": {
+    message: "빌드 소스 ID를 복사했습니다",
+    description: "Toast shown after copying a Build Source ID",
+  },
+  "services.sourceBuildSourceIdCopyFailed": {
+    message: "빌드 소스 ID를 복사하지 못했습니다",
+    description: "Toast shown when copying a Build Source ID fails",
+  },
+  "services.deployMenuLatestBuild": {
+    message: "최신 빌드 배포",
+    description:
+      "Manual Deploy dropdown item for a Build-Source-linked service: deploy the latest succeeded build from the Build Source",
+  },
+  "services.deployMenuSpecificBuild": {
+    message: "특정 빌드 배포…",
+    description:
+      "Manual Deploy dropdown item for a Build-Source-linked service: pick a specific succeeded build (bld-…) to deploy",
+  },
+  "services.deployBuildTitle": {
+    message: "특정 빌드 배포",
+    description: "Title of the dialog to pick a specific Build Source build",
+  },
+  "services.deployBuildBody": {
+    message:
+      "연결된 빌드 소스에서 성공한 빌드를 선택해 이 서비스에 배포하세요.",
+    description:
+      "Description in the dialog to pick a specific Build Source build",
+  },
+  "services.deployBuildConfirm": {
+    message: "빌드 배포",
+    description: "Confirm button label in the deploy-a-specific-build dialog",
+  },
+  "services.deployBuildListLabel": {
+    message: "연결된 빌드 소스의 빌드 목록",
+    description:
+      "Accessible label for the build list inside the deploy-a-specific-build dialog",
+  },
+  "services.deployBuildEmpty": {
+    message:
+      "이 빌드 소스에는 아직 빌드가 없습니다. 먼저 빌드 소스에서 빌드를 실행하세요.",
+    description:
+      "Empty state in the deploy-a-specific-build dialog when no builds exist",
+  },
+  "services.deployBuildLoadError": {
+    message: "이 빌드 소스의 빌드 목록을 불러오지 못했습니다.",
+    description:
+      "Error message in the deploy-a-specific-build dialog when fetching builds fails",
+  },
+  "services.deployBuildNoSucceeded": {
+    message: "아직 배포할 수 있는 성공한 빌드가 없습니다.",
+    description:
+      "Notice in the deploy-a-specific-build dialog when builds exist but none succeeded",
+  },
+  "services.buildStatusCreated": {
+    message: "대기 중",
+    description: "Build Source build status badge: created/queued",
+  },
+  "services.buildStatusInProgress": {
+    message: "빌드 중",
+    description: "Build Source build status badge: in_progress",
+  },
+  "services.buildStatusSucceeded": {
+    message: "성공",
+    description: "Build Source build status badge: succeeded",
+  },
+  "services.buildStatusFailed": {
+    message: "실패",
+    description: "Build Source build status badge: failed",
+  },
+  "services.buildStatusCanceled": {
+    message: "취소됨",
+    description: "Build Source build status badge: canceled",
+  },
 };
 
 export default koServices;

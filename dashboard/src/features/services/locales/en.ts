@@ -6513,6 +6513,103 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Create-wizard action bar: Deploy is held while the port is out of range",
   },
+  "services.createBuildSourceRegionNotice": {
+    message:
+      "Services linked to this git Build Source are created in {region} to match the Build Source.",
+    description:
+      "Create service wizard: notice explaining that a git Build Source determines the new service's region; {region} is the Render region name",
+  },
+  "services.createBuildSourceAutoDeployHint": {
+    message:
+      "Automatically deploy this service whenever a new build of the linked Build Source succeeds.",
+    description:
+      "Create service wizard: Auto-Deploy toggle description when creating from a Build Source",
+  },
+  "services.buildSourceKindGit": {
+    message: "Git repository",
+    description: "Badge or label for a git-backed Build Source",
+  },
+  "services.buildSourceKindImage": {
+    message: "Container image",
+    description: "Badge or label for an image-backed Build Source",
+  },
+  "services.sourceBuildSourceIdLabel": {
+    message: "Build Source ID",
+    description: "Accessible field name for copying a Build Source ID",
+  },
+  "services.sourceBuildSourceIdCopied": {
+    message: "Build Source ID copied",
+    description: "Toast shown after copying a Build Source ID",
+  },
+  "services.sourceBuildSourceIdCopyFailed": {
+    message: "Couldn't copy the Build Source ID",
+    description: "Toast shown when copying a Build Source ID fails",
+  },
+  "services.deployMenuLatestBuild": {
+    message: "Deploy latest build",
+    description:
+      "Manual Deploy dropdown item for a Build-Source-linked service: deploy the latest succeeded build from the Build Source",
+  },
+  "services.deployMenuSpecificBuild": {
+    message: "Deploy a specific build…",
+    description:
+      "Manual Deploy dropdown item for a Build-Source-linked service: pick a specific succeeded build (bld-…) to deploy",
+  },
+  "services.deployBuildTitle": {
+    message: "Deploy a specific build",
+    description: "Title of the dialog to pick a specific Build Source build",
+  },
+  "services.deployBuildBody": {
+    message:
+      "Choose a succeeded build from the linked Build Source to deploy to this service.",
+    description:
+      "Description in the dialog to pick a specific Build Source build",
+  },
+  "services.deployBuildConfirm": {
+    message: "Deploy build",
+    description: "Confirm button label in the deploy-a-specific-build dialog",
+  },
+  "services.deployBuildListLabel": {
+    message: "Builds from the linked Build Source",
+    description:
+      "Accessible label for the build list inside the deploy-a-specific-build dialog",
+  },
+  "services.deployBuildEmpty": {
+    message:
+      "This Build Source has no builds yet. Trigger a build on the Build Source first.",
+    description:
+      "Empty state in the deploy-a-specific-build dialog when no builds exist",
+  },
+  "services.deployBuildLoadError": {
+    message: "Couldn't load builds for this Build Source.",
+    description:
+      "Error message in the deploy-a-specific-build dialog when fetching builds fails",
+  },
+  "services.deployBuildNoSucceeded": {
+    message: "No succeeded builds are ready to deploy yet.",
+    description:
+      "Notice in the deploy-a-specific-build dialog when builds exist but none succeeded",
+  },
+  "services.buildStatusCreated": {
+    message: "Queued",
+    description: "Build Source build status badge: created/queued",
+  },
+  "services.buildStatusInProgress": {
+    message: "Building",
+    description: "Build Source build status badge: in_progress",
+  },
+  "services.buildStatusSucceeded": {
+    message: "Succeeded",
+    description: "Build Source build status badge: succeeded",
+  },
+  "services.buildStatusFailed": {
+    message: "Failed",
+    description: "Build Source build status badge: failed",
+  },
+  "services.buildStatusCanceled": {
+    message: "Canceled",
+    description: "Build Source build status badge: canceled",
+  },
 };
 
 export default enServices;

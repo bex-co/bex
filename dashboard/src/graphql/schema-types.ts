@@ -1308,8 +1308,10 @@ export type Build = {
   buildSourceId: Maybe<Scalars['String']['output']>;
   createdAt: Maybe<Scalars['String']['output']>;
   cursor: Maybe<Scalars['String']['output']>;
+  deploys: Maybe<Array<Maybe<BuildDeployRef>>>;
   id: Maybe<Scalars['String']['output']>;
   image: Maybe<BuildImage>;
+  skippedServices: Maybe<Array<Maybe<SkippedBuildService>>>;
   updatedAt: Maybe<Scalars['String']['output']>;
 };
 
@@ -1324,6 +1326,17 @@ export type BuildDeployEndReason = {
 export type BuildDeployEndReasonId = {
   __typename: 'BuildDeployEndReasonId';
   id: Maybe<Scalars['String']['output']>;
+};
+
+export type BuildDeployRef = {
+  __typename: 'BuildDeployRef';
+  deployId: Maybe<Scalars['String']['output']>;
+  serviceId: Maybe<Scalars['String']['output']>;
+};
+
+export type BuildDeployScopeInput = {
+  serviceIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  serviceScope: Scalars['String']['input'];
 };
 
 export type BuildFilter = {
@@ -2593,6 +2606,7 @@ export type Mutation = {
   steerAgentSession: Maybe<AgentSession>;
   suspendDatabase: Maybe<Database>;
   suspendKeyValue: Maybe<KeyValue>;
+  suspendSandbox: Scalars['Boolean']['output'];
   suspendService: Maybe<Service>;
   syncBlueprint: Maybe<SyncBlueprintResult>;
   /** Make the calling workspace admin the automation's creator. */
@@ -3031,8 +3045,10 @@ export type MutationCreateServiceArgs = {
   branch?: InputMaybe<Scalars['String']['input']>;
   buildCommand?: InputMaybe<Scalars['String']['input']>;
   buildFilter?: InputMaybe<BuildFilterInput>;
+  buildSourceId?: InputMaybe<Scalars['String']['input']>;
   builder?: InputMaybe<Scalars['String']['input']>;
   command?: InputMaybe<Scalars['String']['input']>;
+  dockerCommand?: InputMaybe<Scalars['String']['input']>;
   dockerContext?: InputMaybe<Scalars['String']['input']>;
   dockerfilePath?: InputMaybe<Scalars['String']['input']>;
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
@@ -4166,6 +4182,12 @@ export type MutationSuspendKeyValueArgs = {
 };
 
 
+export type MutationSuspendSandboxArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationSuspendServiceArgs = {
   confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
@@ -4198,6 +4220,7 @@ export type MutationTerminateSandboxArgs = {
 export type MutationTriggerBuildArgs = {
   buildSourceId: Scalars['String']['input'];
   clearCache?: InputMaybe<Scalars['String']['input']>;
+  deploy?: InputMaybe<BuildDeployScopeInput>;
 };
 
 
@@ -5543,6 +5566,7 @@ export type QueryLogLabelValuesArgs = {
   build?: InputMaybe<Array<Scalars['String']['input']>>;
   direction?: InputMaybe<Scalars['String']['input']>;
   endTime?: InputMaybe<Scalars['String']['input']>;
+  environment?: InputMaybe<Scalars['String']['input']>;
   filterDocument?: InputMaybe<Scalars['JSONObject']['input']>;
   host?: InputMaybe<Array<Scalars['String']['input']>>;
   instance?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -5551,6 +5575,7 @@ export type QueryLogLabelValuesArgs = {
   method?: InputMaybe<Array<Scalars['String']['input']>>;
   path?: InputMaybe<Array<Scalars['String']['input']>>;
   project?: InputMaybe<Scalars['String']['input']>;
+  region?: InputMaybe<Scalars['String']['input']>;
   resource?: InputMaybe<Scalars['String']['input']>;
   startTime?: InputMaybe<Scalars['String']['input']>;
   statusCode?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -5570,6 +5595,7 @@ export type QueryLogsArgs = {
   deployId?: InputMaybe<Scalars['String']['input']>;
   direction?: InputMaybe<Scalars['String']['input']>;
   endTime?: InputMaybe<Scalars['String']['input']>;
+  environment?: InputMaybe<Scalars['String']['input']>;
   filterDocument?: InputMaybe<Scalars['JSONObject']['input']>;
   host?: InputMaybe<Array<Scalars['String']['input']>>;
   instance?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -5578,6 +5604,7 @@ export type QueryLogsArgs = {
   method?: InputMaybe<Array<Scalars['String']['input']>>;
   path?: InputMaybe<Array<Scalars['String']['input']>>;
   project?: InputMaybe<Scalars['String']['input']>;
+  region?: InputMaybe<Scalars['String']['input']>;
   resource?: InputMaybe<Scalars['String']['input']>;
   startTime?: InputMaybe<Scalars['String']['input']>;
   statusCode?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -6558,6 +6585,12 @@ export type ShellSession = {
   expiresAt: Maybe<Scalars['String']['output']>;
   ticket: Maybe<Scalars['String']['output']>;
   url: Maybe<Scalars['String']['output']>;
+};
+
+export type SkippedBuildService = {
+  __typename: 'SkippedBuildService';
+  reason: Maybe<Scalars['String']['output']>;
+  serviceId: Maybe<Scalars['String']['output']>;
 };
 
 export type StaticHeader = {

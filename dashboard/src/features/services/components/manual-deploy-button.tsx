@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown, GitCommitHorizontal, Package, TriangleAlert } from "lucide-react";
+import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import {
   DropdownMenu,
@@ -8,9 +9,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { TextField } from "@/common/components/text-field";
+import { useNow } from "@/common/hooks/use-now";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { formatTimeAgo } from "@/common/lib/format";
+import { cn } from "@/common/lib/utils/utils";
+import {
+  useBuildSourceBuilds,
+  type BuildSourceBuildView,
+} from "@/features/services/hooks/use-build-sources";
 import { useTriggerDeploy } from "@/features/services/hooks/use-trigger-deploy";
 import { serviceBaseForType } from "@/features/services/lib/service-base";
 import { isCron } from "@/features/services/lib/service-type";
@@ -67,31 +76,36 @@ export function ManualDeployButton({
   const { deploying, trigger, restart } = useTriggerDeploy();
   const navigate = useNavigate();
   const [storedDialog, setDialog] = useState<{
-    kind: "restart" | "commit";
+    kind: "restart" | "commit" | "build";
     binding: ActionConfirmBinding;
     commitId: string;
+    buildId: string;
   } | null>(null);
   const [checking, setChecking] = useState(false);
   const dialog =
     storedDialog?.binding ===
-    (storedDialog?.kind === "commit"
-      ? commitConfirm.pending
-      : actionConfirm.pending)
+    (storedDialog?.kind === "restart"
+      ? actionConfirm.pending
+      : commitConfirm.pending)
       ? storedDialog
       : null;
   const commitId = dialog?.kind === "commit" ? dialog.commitId : "";
+  const selectedBuildId = dialog?.kind === "build" ? dialog.buildId : "";
   const base = serviceBaseForType(service.type);
   const busy = checking || deploying || pending;
-  const repoBacked = !!service.repo;
+  const buildSourceBacked = !!service.buildSourceId;
+  const repoBacked = !buildSourceBacked && !!service.repo;
   // Render: a specific commit is "Not supported for cron jobs".
   const canDeployCommit = repoBacked && !isCron(service);
   const sha = commitId.trim();
   const shaValid = COMMIT_SHA.test(sha);
   const shaError = sha !== "" && !shaValid;
 
-  const deployLabel = repoBacked
-    ? t("services.deployMenuLatestCommit")
-    : t("services.deployMenuLatestImage");
+  const deployLabel = buildSourceBacked
+    ? t("services.deployMenuLatestBuild")
+    : repoBacked
+      ? t("services.deployMenuLatestCommit")
+      : t("services.deployMenuLatestImage");
 
   const decision =
     deployActions.status === "ready"
@@ -127,11 +141,12 @@ export function ManualDeployButton({
     });
   }
 
-  function openDialog(kind: "restart" | "commit") {
-    if (busy || (kind === "commit" ? commitReason : permissionReason)) return;
-    const confirmation = kind === "commit" ? commitConfirm : actionConfirm;
+  function openDialog(kind: "restart" | "commit" | "build") {
+    const needsCreate = kind === "commit" || kind === "build";
+    if (busy || (needsCreate ? commitReason : permissionReason)) return;
+    const confirmation = needsCreate ? commitConfirm : actionConfirm;
     const binding = confirmation.openConfirm("deploy");
-    if (binding) setDialog({ kind, binding, commitId: "" });
+    if (binding) setDialog({ kind, binding, commitId: "", buildId: "" });
   }
 
   function closeDialog() {
@@ -189,6 +204,14 @@ export function ManualDeployButton({
     );
   }
 
+  async function handleDeployBuild() {
+    if (commitBlocked || !selectedBuildId || dialog?.kind !== "build") return;
+    const { binding } = dialog;
+    await runDeploy(commitConfirm, binding, () =>
+      trigger(service.id, { buildId: selectedBuildId }),
+    );
+  }
+
   return (
     <>
       <DropdownMenu>
@@ -206,6 +229,15 @@ export function ManualDeployButton({
           >
             {deployLabel}
           </PermissionMenuItem>
+          {buildSourceBacked && (
+            <PermissionMenuItem
+              disabled={busy}
+              permissionReason={commitReason}
+              onSelect={() => openDialog("build")}
+            >
+              {t("services.deployMenuSpecificBuild")}
+            </PermissionMenuItem>
+          )}
           {canDeployCommit && (
             <PermissionMenuItem
               disabled={busy}
@@ -288,6 +320,202 @@ export function ManualDeployButton({
         />
         <ConfirmGateStatus reason={commitBlocked} />
       </ConfirmDialog>
+
+      <ConfirmDialog
+        open={dialog?.kind === "build"}
+        onOpenChange={(open) => !open && closeDialog()}
+        title={t("services.deployBuildTitle")}
+        description={t("services.deployBuildBody")}
+        cancelLabel={t("services.confirmCancel")}
+        confirmLabel={t("services.deployBuildConfirm")}
+        destructive={false}
+        pending={busy}
+        closeOnConfirm={false}
+        confirmDisabled={!selectedBuildId || !!commitBlocked}
+        onConfirm={() => void handleDeployBuild()}
+      >
+        {dialog?.kind === "build" && service.buildSourceId ? (
+          <SpecificBuildPicker
+            buildSourceId={service.buildSourceId}
+            selectedBuildId={selectedBuildId}
+            onSelect={(buildId) => {
+              if (dialog) setDialog({ ...dialog, buildId });
+            }}
+          />
+        ) : null}
+        <ConfirmGateStatus reason={commitBlocked} />
+      </ConfirmDialog>
     </>
+  );
+}
+
+const BUILD_STATUS_KEY: Record<string, string> = {
+  created: "services.buildStatusCreated",
+  in_progress: "services.buildStatusInProgress",
+  succeeded: "services.buildStatusSucceeded",
+  failed: "services.buildStatusFailed",
+  canceled: "services.buildStatusCanceled",
+};
+
+function buildStatusVariant(
+  status: string,
+): "default" | "secondary" | "destructive" | "outline" {
+  switch (status) {
+    case "succeeded":
+      return "default";
+    case "failed":
+      return "destructive";
+    case "in_progress":
+    case "created":
+      return "secondary";
+    default:
+      return "outline";
+  }
+}
+
+function SpecificBuildPicker({
+  buildSourceId,
+  selectedBuildId,
+  onSelect,
+}: {
+  buildSourceId: string;
+  selectedBuildId: string;
+  onSelect: (buildId: string) => void;
+}) {
+  const { t, i18n } = useTranslations();
+  const now = useNow();
+  const justNow = t("common.justNow");
+  const { builds, loading, error, refetch } = useBuildSourceBuilds(
+    buildSourceId,
+    true,
+  );
+
+  if (loading) {
+    return (
+      <div className="space-y-2" aria-busy="true" data-testid="build-picker-loading">
+        <Skeleton className="h-14 w-full rounded-md" />
+        <Skeleton className="h-14 w-full rounded-md" />
+        <Skeleton className="h-14 w-full rounded-md" />
+      </div>
+    );
+  }
+
+  if (error && builds.length === 0) {
+    return (
+      <div
+        role="alert"
+        className="flex flex-col items-center gap-2 rounded-lg border p-4 text-center text-sm"
+      >
+        <TriangleAlert className="size-4 text-destructive" aria-hidden="true" />
+        <p className="text-muted-foreground">
+          {t("services.deployBuildLoadError")}
+        </p>
+        <Button type="button" variant="outline" size="sm" onClick={refetch}>
+          {t("common.tryAgain")}
+        </Button>
+      </div>
+    );
+  }
+
+  if (builds.length === 0) {
+    return (
+      <p className="rounded-lg border p-4 text-center text-sm text-muted-foreground">
+        {t("services.deployBuildEmpty")}
+      </p>
+    );
+  }
+
+  const hasSucceeded = builds.some((b) => b.succeeded);
+
+  return (
+    <div className="space-y-2">
+      {!hasSucceeded ? (
+        <p className="text-xs text-muted-foreground">
+          {t("services.deployBuildNoSucceeded")}
+        </p>
+      ) : null}
+      <div
+        role="group"
+        aria-label={t("services.deployBuildListLabel")}
+        className="max-h-64 divide-y overflow-y-auto rounded-lg border"
+      >
+        {builds.map((b) => (
+          <BuildPickerRow
+            key={b.id}
+            build={b}
+            selected={b.id === selectedBuildId}
+            ago={formatTimeAgo(b.createdAt, {
+              now,
+              language: i18n.language,
+              justNow,
+            })}
+            onSelect={() => onSelect(b.id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BuildPickerRow({
+  build,
+  selected,
+  ago,
+  onSelect,
+}: {
+  build: BuildSourceBuildView;
+  selected: boolean;
+  ago: string | null;
+  onSelect: () => void;
+}) {
+  const { t } = useTranslations();
+  const statusKey =
+    BUILD_STATUS_KEY[build.status] ?? "services.buildStatusCreated";
+  const refText = build.commitId
+    ? build.commitId.slice(0, 7)
+    : build.imageRef ?? null;
+
+  return (
+    <button
+      type="button"
+      disabled={!build.succeeded}
+      aria-pressed={build.succeeded ? selected : undefined}
+      onClick={onSelect}
+      className={cn(
+        "flex w-full items-start gap-2.5 px-3 py-2.5 text-left text-sm transition-colors",
+        build.succeeded
+          ? "hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
+          : "cursor-not-allowed opacity-60",
+        selected &&
+          "bg-primary/5 shadow-[inset_2px_0_0_var(--primary)] hover:bg-primary/10 dark:bg-primary/15",
+      )}
+    >
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="font-mono text-xs font-medium break-all">
+            {build.id}
+          </span>
+          <Badge variant={buildStatusVariant(build.status)} className="text-[11px]">
+            {t(statusKey as Parameters<typeof t>[0])}
+          </Badge>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+          {refText ? (
+            <span className="inline-flex min-w-0 items-center gap-1 font-mono">
+              {build.commitId ? (
+                <GitCommitHorizontal className="size-3 shrink-0" aria-hidden="true" />
+              ) : (
+                <Package className="size-3 shrink-0" aria-hidden="true" />
+              )}
+              <span className="truncate">{refText}</span>
+            </span>
+          ) : null}
+          {ago ? <span>{ago}</span> : null}
+        </div>
+      </div>
+      {selected ? (
+        <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+      ) : null}
+    </button>
   );
 }

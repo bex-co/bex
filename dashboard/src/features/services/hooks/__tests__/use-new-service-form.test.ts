@@ -12,6 +12,30 @@ vi.mock("@/features/services/hooks/use-instance-types", () => ({
   useInstanceTypes: () => instanceTypesState,
 }));
 
+const buildSourcesMock: {
+  sources: Array<{
+    id: string;
+    name: string;
+    source: string;
+    kind: "git" | "image";
+    branch?: string | null;
+    region?: string | null;
+    nativeRuntime: "node" | null;
+  }>;
+  loading: boolean;
+  error: Error | undefined;
+} = {
+  sources: [],
+  loading: false,
+  error: undefined,
+};
+vi.mock("@/features/services/hooks/use-build-sources", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/features/services/hooks/use-build-sources")
+  >()),
+  useBuildSources: () => buildSourcesMock,
+}));
+
 vi.mock("@/features/services/hooks/use-service-name-draft", () => ({
   useServiceNameDraft: () => ({
     name: "service",
@@ -297,5 +321,32 @@ describe("useNewServiceForm Public Git Branch draft", () => {
     act(() => result.current.set({ gitUrl: "https://github.com/acme/other" }));
     act(() => result.current.setTab("git"));
     expect(result.current.form.branch).toBe("");
+  });
+});
+
+describe("useNewServiceForm Build Source selection (w2/m612)", () => {
+  beforeEach(() => {
+    buildSourcesMock.sources = [
+      {
+        id: "bds-node",
+        name: "Mono Node",
+        source: "https://github.com/acme/mono",
+        kind: "git",
+        branch: "main",
+        region: "oregon",
+        nativeRuntime: "node",
+      },
+    ];
+  });
+
+  it("prefills native start command on Build Source select and resets tab when switching to static_site", () => {
+    const { result } = renderHook(() => useNewServiceForm({}));
+    act(() => result.current.setTab("build-source"));
+    act(() => result.current.selectBuildSource("bds-node"));
+    expect(result.current.form.selectedBuildSource?.id).toBe("bds-node");
+    expect(result.current.form.buildSourceStartCommand).toBe("npm start");
+
+    act(() => result.current.setServiceType("static_site"));
+    expect(result.current.form.tab).toBe("github");
   });
 });

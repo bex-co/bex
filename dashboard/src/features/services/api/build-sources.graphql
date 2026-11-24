@@ -4,7 +4,9 @@ fragment BuildSourceFields on BuildSource {
   name
   git {
     repoUrl
+    branch
     runtime
+    region
   }
   image {
     imageUrl
@@ -23,6 +25,36 @@ query BuildSources($ownerId: String, $cursor: String) {
 query BuildSource($id: String!) {
   buildSource(id: $id) {
     ...BuildSourceFields
+  }
+}
+
+# Builds produced by a Build Source (w2/m612 t004): powers the linked-service
+# Manual Deploy "Deploy a specific build…" picker.
+query BuildSourceBuilds(
+  $buildSourceId: String!
+  $cursor: String
+  $limit: Int
+) {
+  builds(buildSourceId: $buildSourceId, cursor: $cursor, limit: $limit) {
+    id
+    buildSourceId
+    cursor
+    createdAt
+    updatedAt
+    buildRun {
+      id
+      status
+      buildStartedAt
+      buildFinishedAt
+      runtime
+      commitId
+      commitUrl
+    }
+    image {
+      sha
+      ref
+      imageUrl
+    }
   }
 }
 

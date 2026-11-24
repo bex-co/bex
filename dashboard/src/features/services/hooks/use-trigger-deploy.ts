@@ -21,6 +21,8 @@ const REFETCH_DEPLOYS = {
 export interface TriggerOptions {
   /** Pin the build to a specific Git ref instead of Branch HEAD. Repo-backed only. */
   commitId?: string;
+  /** Deploy a specific succeeded build (`bld-…`) from the linked Build Source. */
+  buildId?: string;
   /**
    * "deploy_only" skips the build step — valid only for image-backed services.
    * Repo-backed services reject this with an error (bex has no cached build
@@ -107,6 +109,7 @@ export function useTriggerDeploy(): UseTriggerDeployResult {
           variables: {
             serviceId,
             commitId: opts?.commitId,
+            buildId: opts?.buildId,
             deployMode: opts?.deployMode,
             clearCache: opts?.clearCache,
             disableAutoDeploy: opts?.disableAutoDeploy,
