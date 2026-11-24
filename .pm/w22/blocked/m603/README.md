@@ -97,3 +97,16 @@ Mutation spot-check (2026-11-23). Each mutation was applied alone and reverted; 
 **t008: simplify.**
 - Applied: the not-found test compares messages directly. The dashboard's conditional "Sandbox Groups" filter pill and its URL kind are removed, because the ready state no longer matched its skeleton.
 - Kept: the 404 check reads the workspace's groups once more before the move, which one query costs. The GraphQL and MCP verbs also compute and discard the environment view `ChangeResources` builds for REST. Neither is on a hot path.
+
+## Parked (2026-11-23)
+
+Every task except t010 is done and shipped. The routes are in `4248da08fc` and the dashboard in `b8b8da8e29`.
+
+**Gate:** pin must carry `b8b8da8e29`. Nothing is needed from the user. Then t010 runs the DoD's client checks on production rather than on a `dev-N` stack, because the local CAPD cluster was unreachable on 2026-11-23: its load balancer port answered plain HTTP, and `bash scripts/dev-env.sh 10 status` reported no StorageClass. All of it happens in `bex-canary`, as the QA user (`bash scripts/qa-login.sh`), on a group the run creates and deletes, in two environments it creates and deletes:
+
+1. **SDK:** unmodified Render SDK v1.10.0 (TypeScript, and Python where it runs) calls `setGroupEnvironment(g, A)`, `(g, B)` and `(g, null)`. `getGroup` must read A, B and `null`.
+2. **REST:** the same three steps with `curl`; the add answers 201.
+3. **CLI:** v2.38.0 built from source (`09b7802aa379`) runs `sandbox-groups environment set <group> <environment>` by id and by name, then `environment remove`.
+4. **Dashboard:** on the project page, the group appears in its environment's card, moves with bulk Move, and leaves with Manage resources, at desktop and 390 px.
+
+Record the runs here. Then close: move t010 to `done/`, and this directory to `w22/done/m603/`.
