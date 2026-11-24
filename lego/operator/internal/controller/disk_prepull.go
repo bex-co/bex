@@ -194,6 +194,11 @@ func prePullPolicy(template *corev1.PodTemplateSpec, image string) corev1.PullPo
 			return c.ImagePullPolicy
 		}
 	}
+	for _, v := range template.Spec.Volumes {
+		if v.Image != nil && v.Image.Reference == image && v.Image.PullPolicy != "" {
+			return v.Image.PullPolicy
+		}
+	}
 	return tenantImagePullPolicy
 }
 
@@ -214,12 +219,19 @@ func newTemplateImages(stored, projected *corev1.PodSpec) []string {
 	return slices.DeleteFunc(podImages(projected), func(image string) bool { return slices.Contains(running, image) })
 }
 
-// podImages is every image spec runs, once each, sorted.
+// podImages is every image spec runs or mounts, once each, sorted. The
+// kubelet pulls an image volume's image as it pulls a container's, before the
+// pod's containers start (the health-probe helper's, w6/m624).
 func podImages(spec *corev1.PodSpec) []string {
 	containers := slices.Concat(spec.InitContainers, spec.Containers)
-	images := make([]string, 0, len(containers))
+	images := make([]string, 0, len(containers)+len(spec.Volumes))
 	for _, c := range containers {
 		images = append(images, c.Image)
+	}
+	for _, v := range spec.Volumes {
+		if v.Image != nil {
+			images = append(images, v.Image.Reference)
+		}
 	}
 	slices.Sort(images)
 	return slices.Compact(images)

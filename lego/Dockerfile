@@ -82,6 +82,13 @@ COPY --from=builder /workspace/listener-reader /listener-reader
 COPY --from=builder /workspace/edge-cache /edge-cache
 COPY --from=builder /workspace/backup-encrypt /backup-encrypt
 COPY --from=builder /workspace/health-probe /health-probe
+# The same helper in a directory of its own: where the cluster serves image
+# volumes, a tenant pod mounts this directory of bex's image read-only at
+# /bex-health (subPath bex-health), so it sees the helper and nothing else of
+# the image (w6/m624). containerd mounts only a directory subPath from an image
+# volume. /health-probe stays for the bex-health-probe-install init container,
+# whose own volume shadows /bex-health.
+COPY --from=builder /workspace/health-probe /bex-health/health-probe
 COPY --from=builder /workspace/native-resolve /native-resolve
 COPY --from=builder /workspace/native-init /native-init
 COPY --from=builder /workspace/disk-snapshot /disk-snapshot

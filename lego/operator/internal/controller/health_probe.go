@@ -35,11 +35,13 @@ import (
 // to stop it: a health path that answers 302 never became Ready. A service
 // with a Health Check Path therefore probes by exec of bex's own static
 // health-probe binary (internal/healthprobe), which makes one request, follows
-// nothing and exits 0 for 2xx/3xx. An init container copies the binary out of
-// bex's image into a shared volume, so it works for any tenant image, shell-less
-// and distroless ones included. A service with no path keeps the TCP probe,
-// except a first web image release still discovering its HTTP port, which
-// checks any open port with the same helper (w4/m350).
+// nothing and exits 0 for 2xx/3xx. The binary comes from bex's own image, so it
+// works for any tenant image, shell-less and distroless ones included: an
+// init container copies it into a shared volume, or, where the cluster serves
+// image volumes, the app container mounts it straight out of bex's image
+// (healthProbeImageVolume). A service with no path keeps the TCP probe, except
+// a first web image release still discovering its HTTP port, which checks any
+// open port with the same helper (w4/m350).
 const (
 	healthProbeVolumeName = "bex-health"
 	healthProbeMountPath  = "/bex-health"
@@ -47,6 +49,10 @@ const (
 	healthProbeInitName   = "bex-health-probe-install"
 	// healthProbeVolumeBytes bounds the shared volume; the binary is ~5 MiB.
 	healthProbeVolumeBytes = 32 << 20
+	// healthProbeImageDir is the directory of bex's image that holds the
+	// helper alone (lego/Dockerfile), relative to the image root an image
+	// volume mounts. containerd mounts only a directory subPath from one.
+	healthProbeImageDir = "bex-health"
 )
 
 // healthProbeExecHandler is healthCheckHandler's exec form for an HTTP check.
@@ -208,6 +214,31 @@ func healthProbeVolume() corev1.Volume {
 	}}
 }
 
+// healthProbeImageVolume is the helper's volume on a cluster that serves image
+// volumes (BEX_HEALTH_PROBE_IMAGE_VOLUME, w6/m624): bex's image itself, which
+// the kubelet pulls like a container image and mounts read-only before it
+// starts the app. With no init container to wait for, the kubelet starts the
+// app in the pass that starts the pod. The installer's exit was noticed only
+// on the next relist, up to a second later, which a disk service under
+// Recreate paid as downtime on every deploy and restart (w6/176).
+func healthProbeImageVolume(image string) corev1.Volume {
+	return corev1.Volume{Name: healthProbeVolumeName, VolumeSource: corev1.VolumeSource{
+		Image: &corev1.ImageVolumeSource{Reference: image, PullPolicy: corev1.PullIfNotPresent},
+	}}
+}
+
+// healthProbeMount is the app container's read-only mount of the helper at
+// healthProbeMountPath: the installer's volume, or the directory of bex's
+// image that holds the helper alone, so the rest of bex's image stays out of
+// the container. Either way the probes exec the same healthProbeBinary.
+func healthProbeMount(imageVolume bool) corev1.VolumeMount {
+	mount := corev1.VolumeMount{Name: healthProbeVolumeName, MountPath: healthProbeMountPath, ReadOnly: true}
+	if imageVolume {
+		mount.SubPath = healthProbeImageDir
+	}
+	return mount
+}
+
 // storedHealthProbeInstaller is the health-probe install container a stored
 // pod spec carries, nil when it probes another way.
 func storedHealthProbeInstaller(spec corev1.PodSpec) *corev1.Container {
@@ -219,11 +250,25 @@ func storedHealthProbeInstaller(spec corev1.PodSpec) *corev1.Container {
 	return nil
 }
 
-// storedHealthProbeImage is the image of the health-probe install container a
-// stored pod spec carries, "" when it probes another way.
+// storedHealthProbeImageVolume is the image volume a stored pod spec mounts
+// the helper from, nil when it installs it or probes another way.
+func storedHealthProbeImageVolume(spec corev1.PodSpec) *corev1.ImageVolumeSource {
+	for i := range spec.Volumes {
+		if spec.Volumes[i].Name == healthProbeVolumeName {
+			return spec.Volumes[i].Image
+		}
+	}
+	return nil
+}
+
+// storedHealthProbeImage is the image a stored pod spec takes the helper
+// from, its installer's or its image volume's, "" when it probes another way.
 func storedHealthProbeImage(spec corev1.PodSpec) string {
 	if c := storedHealthProbeInstaller(spec); c != nil {
 		return c.Image
+	}
+	if v := storedHealthProbeImageVolume(spec); v != nil {
+		return v.Reference
 	}
 	return ""
 }

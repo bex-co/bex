@@ -781,6 +781,7 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 		provenance := r.imageProvenance(ctx, app, params.image)
 		params.platform.gitCommit, announces = provenance.Commit, provenance.NativeInitAnnounces
 		params.healthProbeImage = r.BackupHelperImage
+		params.healthProbeImageVolume = r.HealthProbeImageVolume
 		// The node the disk's volume is on, which a rolling pass prefers.
 		params.diskNode = r.diskNode(ctx, runtime)
 		if params.diskMove, err = r.earlierDiskMove(ctx, runtime); err != nil {

@@ -214,6 +214,11 @@ type deploymentParams struct {
 	// changes (applyDeploymentSpec); nil gives it the app container's CPU
 	// (healthProbeInstallResources).
 	healthProbeInstall *corev1.ResourceRequirements
+	// healthProbeImageVolume mounts the helper from an image volume of
+	// healthProbeImage instead of installing it with an init container
+	// (BEX_HEALTH_PROBE_IMAGE_VOLUME, healthProbeImageVolume). A stored
+	// template keeps its own form while nothing else about it changes.
+	healthProbeImageVolume bool
 	// keptHealthPath is the HTTP path a template stored before w8/406 still
 	// probes on a private service, kept while nothing else about the template
 	// changes (applyDeploymentSpec); "" for none.
@@ -510,8 +515,7 @@ func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) co
 			case httpPath != "":
 				handler = healthProbeExecHandler(httpPath, p.port, probeHost)
 			}
-			container.VolumeMounts = append(container.VolumeMounts,
-				corev1.VolumeMount{Name: healthProbeVolumeName, MountPath: healthProbeMountPath, ReadOnly: true})
+			container.VolumeMounts = append(container.VolumeMounts, healthProbeMount(p.healthProbeImageVolume))
 		}
 		startupPeriod := cmp.Or(p.startupPeriod, startupPeriodFor(app))
 		container.StartupProbe = &corev1.Probe{
@@ -831,6 +835,15 @@ func keepStoredTemplate(dep *appsv1.Deployment, app *appv1alpha1.App, p deployme
 	}
 	installStale := keptInstall != nil &&
 		!apiequality.Semantic.DeepEqual(*keptInstall, healthProbeInstallResources(resourcesForTier(app.Spec.Tier)))
+	// So is how the helper reaches the app (w6/m624): a template that
+	// installs it keeps its installer, and one that mounts it from an
+	// image volume keeps the volume, until the next roll. Turning
+	// BEX_HEALTH_PROBE_IMAGE_VOLUME on or off rolls no service.
+	keptImageVolume := p.healthProbeImageVolume
+	if keptProbeImage != "" {
+		keptImageVolume = storedHealthProbeImageVolume(stored.Spec) != nil
+	}
+	imageVolumeStale := keptImageVolume != p.healthProbeImageVolume
 	// So is a private service's TCP check (w8/406): a release that
 	// still probes its stored path keeps that probe until the next roll.
 	keptPath := storedIneffectiveHealthPath(stored.Spec, app)
@@ -867,7 +880,7 @@ func keepStoredTemplate(dep *appsv1.Deployment, app *appv1alpha1.App, p deployme
 	// deploy, restart or config change, not on a scale.
 	keptSpread := storedSpread(stored.Spec)
 	spreadStale := keptSpread != p.spread
-	if drainStale || periodStale || probeStale || installStale || pathStale || cacheStale || startupStale || nodeStale || moveStale || spreadStale {
+	if drainStale || periodStale || probeStale || installStale || imageVolumeStale || pathStale || cacheStale || startupStale || nodeStale || moveStale || spreadStale {
 		// Keep whatever the stored template carries when nothing else
 		// about it changes; any other change adopts the current values.
 		unchanged := dep.DeepCopy()
@@ -878,6 +891,7 @@ func keepStoredTemplate(dep *appsv1.Deployment, app *appv1alpha1.App, p deployme
 		kept.diskMove = keptMove
 		kept.healthProbeImage = keptProbeImage
 		kept.healthProbeInstall = keptInstall
+		kept.healthProbeImageVolume = keptImageVolume
 		kept.keptHealthPath = keptPath
 		kept.drainCheck = keptDrainCheck
 		kept.livenessGrace = keptLivenessGrace
@@ -993,12 +1007,16 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	withManagedOIDCPod(&dep.Spec.Template, app, p.managedOIDC)
 	dep.Spec.Template.Spec.InitContainers = nil
 	if p.usesHealthProbeBinary(app) {
-		install := healthProbeInstallResources(container.Resources)
-		if p.healthProbeInstall != nil {
-			install = *p.healthProbeInstall
+		if p.healthProbeImageVolume {
+			dep.Spec.Template.Spec.Volumes = append(dep.Spec.Template.Spec.Volumes, healthProbeImageVolume(p.healthProbeImage))
+		} else {
+			install := healthProbeInstallResources(container.Resources)
+			if p.healthProbeInstall != nil {
+				install = *p.healthProbeInstall
+			}
+			dep.Spec.Template.Spec.Volumes = append(dep.Spec.Template.Spec.Volumes, healthProbeVolume())
+			dep.Spec.Template.Spec.InitContainers = []corev1.Container{healthProbeInstallContainer(p.healthProbeImage, install)}
 		}
-		dep.Spec.Template.Spec.Volumes = append(dep.Spec.Template.Spec.Volumes, healthProbeVolume())
-		dep.Spec.Template.Spec.InitContainers = []corev1.Container{healthProbeInstallContainer(p.healthProbeImage, install)}
 	}
 	projectKeptEdgeCache(&dep.Spec.Template, p.storedCache)
 	dep.Spec.Template.Spec.ImagePullSecrets = p.pullSecrets

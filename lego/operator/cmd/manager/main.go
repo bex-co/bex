@@ -465,6 +465,8 @@ func setupAppReconciler(
 		MaintenancePort:       activatorPort,
 		DiskStorageClass:      os.Getenv("BEX_DISK_STORAGE_CLASS"),
 		BackupHelperImage:     backupHelperImage(uncachedClient),
+		// On only where kube-apiserver and every App node's kubelet have ImageVolume.
+		HealthProbeImageVolume: os.Getenv("BEX_HEALTH_PROBE_IMAGE_VOLUME") == "true",
 		// Nightly persistent-disk snapshots (ADR082 D5). Every field must be
 		// present or no snapshot is taken: a disk snapshot is a full copy of a
 		// tenant filesystem leaving the cluster, so a half-configured store

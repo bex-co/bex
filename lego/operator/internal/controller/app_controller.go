@@ -459,6 +459,12 @@ type AppReconciler struct {
 	// its /disk-snapshot entrypoint). Resolved from the operator's own Pod so
 	// the Job always matches the digest the operator was rolled out with.
 	BackupHelperImage string
+	// HealthProbeImageVolume mounts the health-probe helper from an image
+	// volume of BackupHelperImage instead of installing it with an init
+	// container (BEX_HEALTH_PROBE_IMAGE_VOLUME, w6/m624). On only where the
+	// API server and every kubelet that runs an App have ImageVolume: an API
+	// server without it drops the volume's source, and the pods are Invalid.
+	HealthProbeImageVolume bool
 	// StaticStore is the object-store target for static_site publishing
 	// (BEX_STATIC_S3_ENDPOINT/BUCKET + BEX_STATIC_PUBLISH_S3_SECRET).
 	// Unconfigured => static_site Apps are rejected with a clear status, the way
