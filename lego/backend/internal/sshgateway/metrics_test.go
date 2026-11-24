@@ -48,6 +48,7 @@ func TestMetricsUseOnlyBoundedPrivacySafeLabels(t *testing.T) {
 	}
 	want := []string{
 		"bex_ssh_gateway_active_channels",
+		"bex_ssh_gateway_active_sandbox_streams",
 		"bex_ssh_gateway_active_sessions",
 		"bex_ssh_gateway_authentications_total",
 		"bex_ssh_gateway_channel_reauthorizations_total",
@@ -70,7 +71,7 @@ func TestMetricsUseOnlyBoundedPrivacySafeLabels(t *testing.T) {
 		got = append(got, family.GetName())
 		for _, metric := range family.Metric {
 			for _, label := range metric.Label {
-				if label.GetName() != "result" && label.GetName() != "scope" && label.GetName() != "cause" && label.GetName() != "outcome" {
+				if label.GetName() != "result" && label.GetName() != "scope" && label.GetName() != "cause" && label.GetName() != "outcome" && label.GetName() != "pool" {
 					t.Fatalf("metric %s has privacy-unsafe/unbounded label %q", family.GetName(), label.GetName())
 				}
 			}

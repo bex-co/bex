@@ -29,6 +29,7 @@ type Metrics struct {
 	handshakes                 *prometheus.CounterVec
 	authentications            *prometheus.CounterVec
 	activeSessions             prometheus.Gauge
+	activeSandboxStreams       *prometheus.GaugeVec
 	sessions                   *prometheus.CounterVec
 	durations                  *prometheus.HistogramVec
 	limitRejections            *prometheus.CounterVec
@@ -71,8 +72,14 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 		}, []string{"result"}),
 		activeSessions: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "active_sessions",
-			Help: "Authenticated SSH connections currently held by the gateway.",
+			Help: "Native SSH connections, web shells and agent attach streams currently held by the gateway: how close it is to BEX_SSH_MAX_SESSIONS.",
 		}),
+		// w22/m623: sandbox exec and file streams hold SandboxStreamLimits, not
+		// the session limiter, so they have a gauge of their own.
+		activeSandboxStreams: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: "bex", Subsystem: "ssh_gateway", Name: "active_sandbox_streams",
+			Help: "Sandbox exec and file streams currently held by the gateway, by pool: caller (BEX_SANDBOX_MAX_STREAMS) or platform, bex-api's own (BEX_SANDBOX_MAX_PLATFORM_STREAMS).",
+		}, []string{"pool"}),
 		sessions: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "sessions_total",
 			Help: "SSH connections completed by bounded result.",
@@ -84,7 +91,7 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 		}, []string{"result"}),
 		limitRejections: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "limit_rejections_total",
-			Help: "Authenticated SSH connections rejected by the configured session limit.",
+			Help: "Connections and streams refused by a concurrency limit, by scope: global and identity (BEX_SSH_MAX_SESSIONS[_PER_IDENTITY]), sandbox_global and sandbox_identity (BEX_SANDBOX_MAX_STREAMS[_PER_IDENTITY]), sandbox_platform_global and sandbox_platform_identity (BEX_SANDBOX_MAX_PLATFORM_STREAMS[_PER_KEY]), channel_*, listener_* and archive_index_*.",
 		}, []string{"scope"}),
 		channels: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "channels_total",
@@ -152,7 +159,10 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 			Help: "Exec output writes forwarded unbuffered because the process-wide drain budget was spent.",
 		}),
 	}
-	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths, m.sessionWakes, m.twoFactor, m.gitUpstream, m.modelUsage, m.egressConns, m.egressBytes, m.sandboxBrokerRequests, m.sandboxBrokerOverlaps, m.sandboxBrokerLookupSeconds, m.sandboxBrokerCache, m.drainBuffered, m.drainFallbacks)
+	for _, pool := range []string{sandboxPoolCaller, sandboxPoolPlatform} {
+		m.activeSandboxStreams.WithLabelValues(pool)
+	}
+	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.activeSandboxStreams, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths, m.sessionWakes, m.twoFactor, m.gitUpstream, m.modelUsage, m.egressConns, m.egressBytes, m.sandboxBrokerRequests, m.sandboxBrokerOverlaps, m.sandboxBrokerLookupSeconds, m.sandboxBrokerCache, m.drainBuffered, m.drainFallbacks)
 	return m
 }
 
@@ -182,8 +192,29 @@ func (m *Metrics) SessionStarted() {
 func (m *Metrics) SessionEnded(result string, elapsed time.Duration) {
 	if m != nil {
 		m.activeSessions.Dec()
-		m.sessions.WithLabelValues(result).Inc()
-		m.durations.WithLabelValues(result).Observe(elapsed.Seconds())
+		m.sessionCompleted(result, elapsed)
+	}
+}
+
+func (m *Metrics) sessionCompleted(result string, elapsed time.Duration) {
+	m.sessions.WithLabelValues(result).Inc()
+	m.durations.WithLabelValues(result).Observe(elapsed.Seconds())
+}
+
+// sandboxStreamStarted and sandboxStreamEnded bracket one sandbox exec or file
+// stream's slot in pool (SandboxStreamLimits.Admit). The stream counts in
+// sessions_total and session_duration_seconds as before, and in the sandbox
+// gauge, not active_sessions.
+func (m *Metrics) sandboxStreamStarted(pool string) {
+	if m != nil {
+		m.activeSandboxStreams.WithLabelValues(pool).Inc()
+	}
+}
+
+func (m *Metrics) sandboxStreamEnded(pool, result string, elapsed time.Duration) {
+	if m != nil {
+		m.activeSandboxStreams.WithLabelValues(pool).Dec()
+		m.sessionCompleted(result, elapsed)
 	}
 }
 

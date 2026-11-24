@@ -51,20 +51,28 @@ var errStateUnknown = core.NewUnavailableError(CodeSandboxStateUnknown,
 	"the sandbox runtime reports a state bex does not know; retry shortly",
 	map[string]any{"retryAfterSeconds": unreachableRetryAfterSeconds})
 
-// errExecSessionLimit is the gateway's per-caller concurrent exec cap. Every
-// Completer read shares one system subject, so a burst of reads can meet it.
-var errExecSessionLimit = fmt.Errorf("%w: too many concurrent exec sessions", core.ErrBadRequest)
+// errStreamLimit is the gateway refusing a sandbox command or file transfer
+// because its concurrent streams are at their bound (w22/m623). It is Render's
+// over-limit answer, a 429 with Retry-After, which the Render SDK raises as
+// RateLimitError and the pinned CLI prints with its wait. Its code is the rate
+// classes' own, so an MCP tool error reads "rate_limited: …" for either. A
+// Completer read, whose platform pool bounds one system subject, reads it as
+// transient. The wait is a second: a slot frees as soon as any held stream
+// ends.
+var errStreamLimit = core.NewTooManyRequestsError(mcpRateLimitedCode,
+	"too many sandbox commands and file transfers are running at once; retry in 1 second",
+	map[string]any{"retryAfterSeconds": 1})
 
 // Transient reports whether a session read's err says only that the sandbox
 // could not be read right now: it is unreachable (its node is not ready, the
 // gateway is restarting, a stream broke), its runtime reports a state bex does
-// not know, the lifecycle server is not answering, too many execs ran at once,
+// not know, the lifecycle server is not answering, too many streams ran at once,
 // or the read timed out. It is false for a gone sandbox (core.ErrNotFound) and
 // for the platform being unable to read sandboxes at all.
 func Transient(err error) bool {
 	return hasCode(err, CodeSandboxUnreachable) || hasCode(err, CodeSandboxStateUnknown) ||
 		hasCode(err, CodeSandboxRuntimeUnavailable) ||
-		errors.Is(err, errExecSessionLimit) || errors.Is(err, context.DeadlineExceeded)
+		errors.Is(err, errStreamLimit) || errors.Is(err, context.DeadlineExceeded)
 }
 
 // StateUnknown reports a session read refused because the sandbox's state

@@ -77,8 +77,8 @@ func TestAKeysExecEndsWhenItsGrantNarrows(t *testing.T) {
 			exec := heldExec{started: make(chan struct{}, 1)}
 			gateway := httptest.NewServer((&sandboxsse.Server{
 				Secret: secret, Executor: exec,
-				Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
-				Limits:  sshgateway.NewSessionLimiter(100, 5), SessionTimeout: time.Minute,
+				Metrics:        sshgateway.NewMetrics(prometheus.NewRegistry()),
+				SessionTimeout: time.Minute,
 				Revalidator: &sshgateway.ExecRevalidator{
 					Base:      &core.Base{Authz: allowEverything{}},
 					KeyGrants: &sshgateway.KeyGrantGate{Asker: grants.Client(t)},

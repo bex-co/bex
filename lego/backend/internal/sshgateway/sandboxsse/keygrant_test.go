@@ -78,7 +78,6 @@ func startGrantExec(t *testing.T, grants *gatewaytest.KeyGrants, subject, keyAct
 		Secret:   secret,
 		Executor: exec,
 		Metrics:  sshgateway.NewMetrics(prometheus.NewRegistry()),
-		Limits:   sshgateway.NewSessionLimiter(100, 5),
 		Nonces:   &sshgateway.NonceGuard{},
 		Revalidator: &sshgateway.ExecRevalidator{
 			Base:      &core.Base{Authz: relChecker{allow: map[string]bool{"user:" + subject + "|" + core.RelCanCreate: true}}},

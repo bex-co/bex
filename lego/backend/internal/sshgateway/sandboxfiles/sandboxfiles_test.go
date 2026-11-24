@@ -36,6 +36,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"testing/iotest"
@@ -1290,5 +1291,71 @@ func TestUploadPublishesWithTheChosenMode(t *testing.T) {
 				t.Fatalf("status %d, published with mode %q; want 204 and %q", w.Code, mode, tc.want)
 			}
 		})
+	}
+}
+
+// w22/m623: one caller's concurrent transfers are held only to the sandbox
+// stream pool, never to the SSH session limiter's 5 per identity. At the
+// pool's edge the gateway answers 429, and an agent session's platform copy
+// keeps a pool of its own.
+func TestOneCallerHoldsMoreThanFiveTransfers(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	started, release := make(chan struct{}, 16), make(chan struct{})
+	s := serverFor(func(ctx context.Context, _ []string, _ io.Reader, _ io.Writer) (int, error) {
+		started <- struct{}{}
+		select {
+		case <-release:
+		case <-ctx.Done():
+		}
+		return 0, nil
+	})
+	s.Metrics = sshgateway.NewMetrics(registry)
+	s.Limits = sshgateway.NewSandboxStreamLimits(8, 0, 1, 0)
+	s.TransferTimeout = time.Minute
+	handler := s.Handler()
+	var held sync.WaitGroup
+	defer held.Wait()
+	defer close(release)
+	for i := range 8 {
+		method := http.MethodGet
+		if i%2 == 0 {
+			method = http.MethodPut
+		}
+		r := requestFor(t, method, []byte("data"))
+		held.Go(func() { handler.ServeHTTP(httptest.NewRecorder(), r) })
+		select {
+		case <-started:
+		case <-time.After(5 * time.Second):
+			t.Fatalf("transfer %d of one caller never reached the executor", i+1)
+		}
+	}
+	refused := httptest.NewRecorder()
+	handler.ServeHTTP(refused, requestFor(t, http.MethodGet, nil))
+	if refused.Code != http.StatusTooManyRequests {
+		t.Fatalf("a transfer past the pool = %d, want 429", refused.Code)
+	}
+	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_limit_rejections_total", map[string]string{"scope": "sandbox_global"}); got != 1 {
+		t.Fatalf("limit_rejections_total{sandbox_global} = %v, want 1", got)
+	}
+	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_active_sandbox_streams", map[string]string{"pool": "caller"}); got != 8 {
+		t.Fatalf("active_sandbox_streams{caller} = %v, want 8", got)
+	}
+	token, err := files.Mint(testSecret, files.Claims{Subject: sandboxexec.SystemSubject, Workspace: "tea-a", SandboxID: "os-a", Namespace: "tea-a-sandbox",
+		AgentSessionID: "ags-a", Operation: files.OperationUpload, Path: files.AgentAttachmentsPath,
+		IssuedAt: time.Now().Unix(), ExpiresAt: time.Now().Add(time.Minute).Unix()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	platform := httptest.NewRequest(http.MethodPut, "http://gateway"+files.GatewayPath, bytes.NewReader(archive(t)))
+	platform.Header.Set(files.TicketHeader, token)
+	platform.Header.Set("Content-Type", "application/x-tar")
+	held.Go(func() { handler.ServeHTTP(httptest.NewRecorder(), platform) })
+	select {
+	case <-started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("an agent session's copy queued behind a full caller pool")
+	}
+	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_active_sandbox_streams", map[string]string{"pool": "platform"}); got != 1 {
+		t.Fatalf("active_sandbox_streams{platform} = %v, want 1", got)
 	}
 }

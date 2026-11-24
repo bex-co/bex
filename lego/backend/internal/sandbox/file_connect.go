@@ -296,10 +296,19 @@ func (s *Service) ConnectFileHandler() http.Handler {
 				}
 			},
 			ModifyResponse: func(res *http.Response) error {
+				// The gateway's concurrency refusal is the exec stream's
+				// answer, not its plain JSON passed through (w22/m623).
+				if res.StatusCode == http.StatusTooManyRequests {
+					return errStreamLimit
+				}
 				res.Body = transferEnd(res, endRecord)
 				return nil
 			},
 			ErrorHandler: func(w http.ResponseWriter, _ *http.Request, err error) {
+				if errors.Is(err, errStreamLimit) {
+					core.WriteErr(w, err)
+					return
+				}
 				core.WriteErrStatus(w, http.StatusServiceUnavailable, fileGatewayFailure(err))
 			},
 			FlushInterval: -1,

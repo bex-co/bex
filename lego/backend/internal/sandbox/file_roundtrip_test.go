@@ -164,7 +164,6 @@ func newFileRoundtripFixture(t *testing.T) *fileRoundtripFixture {
 	gateway := httptest.NewServer((&filegateway.Server{
 		Secret: secret, Executor: f.executor,
 		Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
-		Limits:  sshgateway.NewSessionLimiter(10, 5),
 		Nonces:  &sshgateway.NonceGuard{Store: nonces},
 	}).Handler())
 	t.Cleanup(gateway.Close)

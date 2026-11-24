@@ -134,8 +134,7 @@ func TestSandboxExecTerminalTargetCarriesItsExit(t *testing.T) {
 func newSandboxExecGateway(exec sshgateway.Executor, secret []byte) *Server {
 	return &Server{
 		Executor: exec, Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
-		Secret: secret, Limits: sshgateway.NewSessionLimiter(100, 5),
-		SessionTimeout: time.Minute,
+		Secret: secret, SessionTimeout: time.Minute,
 	}
 }
 
@@ -232,17 +231,17 @@ func (e *gateExecutor) Execute(ctx context.Context, _ apps.SSHInstanceTarget, _ 
 	}
 }
 
-// w1/m76/t005: sandboxsse holds a shared-limiter slot, so it must report the
-// slot to bex_ssh_gateway_active_sessions exactly as nativessh/webshell do —
-// incremented while the exec stream holds the slot, decremented on release.
-func TestSandboxExecSessionGaugeBracketsSharedLimiterSlot(t *testing.T) {
+// A stream's slot is reported on the sandbox gauge for its pool, held while
+// the exec runs and freed when it ends, never on active_sessions: that gauge
+// says how close native SSH, the web shell and agent attach are to
+// BEX_SSH_MAX_SESSIONS, which sandbox streams no longer spend (w22/m623).
+func TestSandboxExecGaugeBracketsItsStreamSlot(t *testing.T) {
 	secret := []byte("exec-secret")
 	registry := prometheus.NewRegistry()
 	exec := &gateExecutor{started: make(chan struct{}), release: make(chan struct{})}
 	gw := &Server{
 		Secret: secret, Executor: exec,
 		Metrics:        sshgateway.NewMetrics(registry),
-		Limits:         sshgateway.NewSessionLimiter(100, 5),
 		SessionTimeout: time.Minute,
 	}
 	srv := httptest.NewServer(gw.Handler())
@@ -271,15 +270,18 @@ func TestSandboxExecSessionGaugeBracketsSharedLimiterSlot(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("exec stream never started")
 	}
-	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_active_sessions", nil); got != 1 {
-		t.Fatalf("active_sessions while slot held = %v, want 1", got)
+	if got := sandboxStreams(t, registry, "caller"); got != 1 {
+		t.Fatalf("active_sandbox_streams{caller} while slot held = %v, want 1", got)
+	}
+	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_active_sessions", nil); got != 0 {
+		t.Fatalf("active_sessions while a sandbox stream runs = %v, want 0", got)
 	}
 	close(exec.release)
 	if resp := <-respCh; resp == nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("exec response = %+v, want 200", resp)
 	}
-	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_active_sessions", nil); got != 0 {
-		t.Fatalf("active_sessions after release = %v, want 0", got)
+	if got := sandboxStreams(t, registry, "caller"); got != 0 {
+		t.Fatalf("active_sandbox_streams{caller} after release = %v, want 0", got)
 	}
 	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_sessions_total", map[string]string{"result": "completed"}); got != 1 {
 		t.Fatalf("sessions_total{completed} = %v, want 1", got)
@@ -289,16 +291,23 @@ func TestSandboxExecSessionGaugeBracketsSharedLimiterSlot(t *testing.T) {
 	}
 }
 
-// A refused acquire never touched the gauge or the sessions counter: the gauge
-// mirrors the limiter's occupancy, and a shed exchange holds no slot.
+func sandboxStreams(t *testing.T, registry *prometheus.Registry, pool string) float64 {
+	t.Helper()
+	return gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_active_sandbox_streams", map[string]string{"pool": pool})
+}
+
+// A refused stream never touched the gauge or the sessions counter: the gauge
+// mirrors the pool's occupancy, and a shed exchange holds no slot. It is a
+// 429, which bex-api answers with its own 429 and Retry-After.
 func TestSandboxExecLimitRejectionLeavesGaugeUntouched(t *testing.T) {
 	secret := []byte("exec-secret")
 	registry := prometheus.NewRegistry()
-	limits := sshgateway.NewSessionLimiter(100, 1)
-	if ok, _ := limits.Acquire("id-a"); !ok {
-		t.Fatal("failed to seed limiter")
+	limits := sshgateway.NewSandboxStreamLimits(1, 0, 0, 0)
+	end, ok := limits.Admit(nil, "id-b", false)
+	if !ok {
+		t.Fatal("failed to seed the pool")
 	}
-	defer limits.Release("id-a")
+	defer end("closed")
 	gw := &Server{
 		Secret: secret, Executor: &echoExecutor{},
 		Metrics:        sshgateway.NewMetrics(registry),
@@ -322,16 +331,16 @@ func TestSandboxExecLimitRejectionLeavesGaugeUntouched(t *testing.T) {
 	if resp.StatusCode != http.StatusTooManyRequests {
 		t.Fatalf("status = %d, want 429", resp.StatusCode)
 	}
-	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_active_sessions", nil); got != 0 {
-		t.Fatalf("active_sessions after shed = %v, want 0", got)
+	if got := sandboxStreams(t, registry, "caller"); got != 0 {
+		t.Fatalf("active_sandbox_streams{caller} after shed = %v, want 0", got)
 	}
 	for _, result := range []string{"closed", "completed", "failed", "revoked"} {
 		if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_sessions_total", map[string]string{"result": result}); got != 0 {
 			t.Fatalf("sessions_total{%s} = %v, want 0 (no slot was held)", result, got)
 		}
 	}
-	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_limit_rejections_total", map[string]string{"scope": "identity"}); got != 1 {
-		t.Fatalf("limit_rejections_total{identity} = %v, want 1", got)
+	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_limit_rejections_total", map[string]string{"scope": "sandbox_global"}); got != 1 {
+		t.Fatalf("limit_rejections_total{sandbox_global} = %v, want 1", got)
 	}
 }
 
@@ -347,7 +356,6 @@ func TestSandboxExecRevokedStreamCountsOnce(t *testing.T) {
 	gw := &Server{
 		Secret: secret, Executor: exec,
 		Metrics:            sshgateway.NewMetrics(registry),
-		Limits:             sshgateway.NewSessionLimiter(100, 5),
 		Nonces:             &sshgateway.NonceGuard{},
 		Revalidator:        flip,
 		SessionTimeout:     time.Minute,
@@ -380,8 +388,8 @@ func TestSandboxExecRevokedStreamCountsOnce(t *testing.T) {
 	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_sessions_total", map[string]string{"result": "revoked"}); got != 1 {
 		t.Fatalf("sessions_total{revoked} = %v, want 1", got)
 	}
-	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_active_sessions", nil); got != 0 {
-		t.Fatalf("active_sessions after revocation = %v, want 0", got)
+	if got := sandboxStreams(t, registry, "caller"); got != 0 {
+		t.Fatalf("active_sandbox_streams{caller} after revocation = %v, want 0", got)
 	}
 }
 
@@ -489,5 +497,87 @@ func TestSandboxExecKeepsCharactersSplitAcrossWrites(t *testing.T) {
 	// encoding/json replaces each byte of an invalid sequence, as before.
 	if got["stdout"] != "ok\uFFFD then \uFFFD\uFFFD" {
 		t.Fatalf("invalid bytes = %q, want each byte replaced", got["stdout"])
+	}
+}
+
+// holdExecutor holds every exec open until release is closed.
+type holdExecutor struct{ release chan struct{} }
+
+func (e *holdExecutor) Execute(ctx context.Context, _ apps.SSHInstanceTarget, _ []string, _ bool, _ remotecommand.TerminalSizeQueue, _ io.Reader, _, _ io.Writer) (int, error) {
+	select {
+	case <-e.release:
+		return 0, nil
+	case <-ctx.Done():
+		return 0, ctx.Err()
+	}
+}
+
+// openExec redeems a fresh ticket for subject and returns once the gateway
+// answered: on 200 the stream holds its slot until the executor lets go.
+func openExec(t *testing.T, url string, secret []byte, subject string) *http.Response {
+	t.Helper()
+	tok, err := sandboxexec.Mint(secret, sandboxexec.Claims{
+		Subject: subject, SandboxID: "os-1", Namespace: "tea-a-sandbox",
+		Command: []string{"sleep", "60"}, ExpiresAt: time.Now().Add(time.Minute).Unix(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, _ := http.NewRequest(http.MethodPost, url, nil)
+	req.Header.Set(sandboxexec.TicketHeader, tok)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = resp.Body.Close() })
+	return resp
+}
+
+// w22/m623: one caller's concurrent commands are held only to the sandbox
+// pool, never to the SSH session limiter's 5 per identity, so a client that
+// runs Render's 1,000 execs a minute in parallel meets Render's rate first.
+// At the pool's edge the gateway answers 429, and bex-api's own streams keep
+// a pool of their own that a full caller pool does not refuse.
+func TestOneCallerHoldsMoreThanFiveExecStreams(t *testing.T) {
+	secret := []byte("exec-secret")
+	registry := prometheus.NewRegistry()
+	exec := &holdExecutor{release: make(chan struct{})}
+	gw := &Server{
+		Secret: secret, Executor: exec,
+		Metrics:        sshgateway.NewMetrics(registry),
+		Limits:         sshgateway.NewSandboxStreamLimits(8, 0, 2, 0),
+		SessionTimeout: time.Minute,
+	}
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+	defer close(exec.release)
+
+	for i := range 8 {
+		if resp := openExec(t, srv.URL, secret, "id-a"); resp.StatusCode != http.StatusOK {
+			t.Fatalf("stream %d of one caller = %d, want 200", i+1, resp.StatusCode)
+		}
+	}
+	if got := sandboxStreams(t, registry, "caller"); got != 8 {
+		t.Fatalf("active_sandbox_streams{caller} = %v, want 8", got)
+	}
+	if resp := openExec(t, srv.URL, secret, "id-a"); resp.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("a stream past the pool = %d, want 429", resp.StatusCode)
+	}
+	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_limit_rejections_total", map[string]string{"scope": "sandbox_global"}); got != 1 {
+		t.Fatalf("limit_rejections_total{sandbox_global} = %v, want 1", got)
+	}
+	for _, subject := range []string{sandboxexec.SystemSubject, sandboxexec.ProbeSubjectPrefix + "tea-a"} {
+		if resp := openExec(t, srv.URL, secret, subject); resp.StatusCode != http.StatusOK {
+			t.Fatalf("bex-api's own stream (%s) behind a full caller pool = %d, want 200", subject, resp.StatusCode)
+		}
+	}
+	if got := sandboxStreams(t, registry, "platform"); got != 2 {
+		t.Fatalf("active_sandbox_streams{platform} = %v, want 2", got)
+	}
+	if resp := openExec(t, srv.URL, secret, sandboxexec.SystemSubject); resp.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("a platform stream past its pool = %d, want 429", resp.StatusCode)
+	}
+	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_limit_rejections_total", map[string]string{"scope": "sandbox_platform_global"}); got != 1 {
+		t.Fatalf("limit_rejections_total{sandbox_platform_global} = %v, want 1", got)
 	}
 }

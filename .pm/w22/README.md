@@ -64,3 +64,5 @@
 - [ ] [032](032.md) — A sandbox image import Render fails with `unsupported_platform`, `missing_boot_tools` or `invalid_image` is refused at once on bex, or imports and fails only at start ← found by w22/m445 t007, 2026-11-23, from Render's SDK v1.10.0 `failureCode` vocabulary
 - [ ] [033](033.md) — Run `scripts/render-sdk-compat.sh` at SDK v1.10.0 on production ← from w22/m445 t006, 2026-11-23; the harness still pins v1.8.0, and w32/m284 handed the v1.9.0-or-later run to m445
 - [ ] [034](034.md) — bex's own release hint follows Render CLI v2.38.0's notice rules: agents get one line, JSON and YAML output get none ← found by w22/m604 t008, 2026-11-24, which turned Render's notice off in `bex`
+- [ ] [035](035.md) — Sandbox streams: the user signs off on, raises or replaces the ssh-gateway's 100 concurrent commands and transfers per replica ← from w22/m623, 2026-11-24; ADR018 lists it as a divergence awaiting sign-off
+- [ ] [036](036.md) — The ssh-gateway's pods/exec streams over WebSockets: a held stream costs a fifth of the memory SPDY's does ← from w22/m623 t001, 2026-11-24 (1.4 MiB a stream over SPDY, 0.3 MiB over WebSockets, measured on a kind node)

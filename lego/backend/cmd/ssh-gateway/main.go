@@ -201,8 +201,8 @@ func main() {
 	sshResolver := sshgateway.CompositeResolver{Apps: appService, AgentSessions: agentResolver}
 
 	registry := prometheus.NewRegistry()
-	// The metrics, session limiter, and nonce guard are each constructed ONCE
-	// and shared by every transport: the caps bound the whole process (not each
+	// The metrics, the limiters, and the nonce guard are each constructed ONCE
+	// and shared by the transports: the caps bound the whole process (not each
 	// feature), and an exec-ticket nonce cannot be redeemed once per feature.
 	metrics := sshgateway.NewMetrics(registry)
 	// The gateway's own Base carries the gate, so the one funnel hook covers
@@ -215,10 +215,7 @@ func main() {
 	// is re-asked at redemption and on every revalidation tick (w9/125).
 	keyGrants := newKeyGrantGate(os.Getenv("BEX_SANDBOX_EXEC_SECRET"),
 		env.Or("BEX_API_KEY_GRANT_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalKeyGrantPath))
-	limits := sshgateway.NewSessionLimiter(
-		intEnv("BEX_SSH_MAX_SESSIONS", 100),
-		intEnv("BEX_SSH_MAX_SESSIONS_PER_IDENTITY", 5),
-	)
+	limits, sandboxLimits := gatewayLimits()
 	// Exec-stream (channel) caps: the session limiter counts transports, but a
 	// multiplexed agent-session connection holds many pods/exec streams (codex
 	// round-8 #7). Native SSH acquires one slot per accepted session channel.
@@ -315,7 +312,7 @@ func main() {
 		Secret:   []byte(os.Getenv("BEX_SANDBOX_EXEC_SECRET")),
 		Executor: executor,
 		Metrics:  metrics,
-		Limits:   limits,
+		Limits:   sandboxLimits,
 		Nonces:   nonces,
 		// Redemption-time reauthorization + live-stream revalidation for caller
 		// exec tickets (round-13 #3): fresh can_operate on the ticket's workspace
@@ -555,7 +552,7 @@ func main() {
 			Secret:             sandbox.Secret,
 			Executor:           executor,
 			Metrics:            metrics,
-			Limits:             limits,
+			Limits:             sandboxLimits,
 			Nonces:             nonces,
 			Revalidator:        &sandboxfilegateway.ExecRevalidator{Base: base, KeyGrants: keyGrants},
 			RevalidateInterval: revalidateInterval,
@@ -966,6 +963,24 @@ func splitCSV(value string) []string {
 		}
 	}
 	return out
+}
+
+// gatewayLimits builds the session limiter that native SSH, the web shell and
+// agent attach share, and the sandbox exec and file streams' own pools
+// (w22/m623): Render documents no concurrency limit on sandbox commands, so
+// one user's commands must neither meet the 5 per identity nor take native
+// SSH's slots. ADR104 D7 records how the defaults were sized.
+func gatewayLimits() (*sshgateway.SessionLimiter, *sshgateway.SandboxStreamLimits) {
+	sandboxStreams := intEnv("BEX_SANDBOX_MAX_STREAMS", 100)
+	return sshgateway.NewSessionLimiter(
+			intEnv("BEX_SSH_MAX_SESSIONS", 100),
+			intEnv("BEX_SSH_MAX_SESSIONS_PER_IDENTITY", 5),
+		), sshgateway.NewSandboxStreamLimits(
+			sandboxStreams,
+			intEnv("BEX_SANDBOX_MAX_STREAMS_PER_IDENTITY", sandboxStreams),
+			intEnv("BEX_SANDBOX_MAX_PLATFORM_STREAMS", 32),
+			intEnv("BEX_SANDBOX_MAX_PLATFORM_STREAMS_PER_KEY", 5),
+		)
 }
 
 func intEnv(name string, fallback int) int {

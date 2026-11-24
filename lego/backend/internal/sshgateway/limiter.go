@@ -16,11 +16,15 @@ limitations under the License.
 
 package sshgateway
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 // SessionLimiter enforces the gateway-wide global and per-identity session
-// caps. One instance is shared by every transport (native SSH, Browser Web
-// Shell, sandbox exec) so the caps bound the process, not each feature.
+// caps. One instance is shared by native SSH, the Browser Web Shell and agent
+// attach so the caps bound the process, not each feature. Sandbox exec and
+// file streams hold SandboxStreamLimits instead.
 type SessionLimiter struct {
 	maxSessions    int
 	maxPerIdentity int
@@ -81,6 +85,76 @@ func releaseSlot(global *int, perIdentity map[string]int, subject string) {
 	if perIdentity[subject] == 0 {
 		delete(perIdentity, subject)
 	}
+}
+
+// The pools of SandboxStreamLimits, as bex_ssh_gateway_active_sandbox_streams
+// labels them.
+const (
+	sandboxPoolCaller   = "caller"
+	sandboxPoolPlatform = "platform"
+)
+
+// SandboxStreamLimits bounds the gateway's sandbox exec and file streams
+// apart from the SessionLimiter of native SSH, the web shell and agent attach
+// (w22/m623), so sandbox commands neither meet that limiter's 5 per identity
+// nor take its slots. Render documents no concurrency limit on commands or
+// transfers, only per-minute rates (render.com/docs/sandboxes-limits), so a
+// caller's streams are held only to what one process can carry, unless
+// BEX_SANDBOX_MAX_STREAMS_PER_IDENTITY is set lower. Streams bex-api opens
+// for itself (the agent-session Completer's reads, the command probe, an agent
+// session's file copies) take a pool of their own: callers cannot starve them,
+// and they cannot starve callers.
+type SandboxStreamLimits struct {
+	callers, platform *SessionLimiter
+}
+
+// NewSandboxStreamLimits builds both pools. Non-positive values take the
+// defaults: 100 caller streams, per identity as many as the pool holds, and
+// 32 platform streams, 5 per key (BEX_SANDBOX_MAX_STREAMS[_PER_IDENTITY],
+// BEX_SANDBOX_MAX_PLATFORM_STREAMS[_PER_KEY]).
+func NewSandboxStreamLimits(maxStreams, maxPerIdentity, maxPlatform, maxPlatformPerKey int) *SandboxStreamLimits {
+	if maxStreams <= 0 {
+		maxStreams = 100
+	}
+	if maxPerIdentity <= 0 {
+		maxPerIdentity = maxStreams
+	}
+	if maxPlatform <= 0 {
+		maxPlatform = 32
+	}
+	if maxPlatformPerKey <= 0 {
+		maxPlatformPerKey = 5
+	}
+	return &SandboxStreamLimits{
+		callers:  NewSessionLimiter(maxStreams, maxPerIdentity),
+		platform: NewSessionLimiter(maxPlatform, maxPlatformPerKey),
+	}
+}
+
+// Admit reserves a stream slot for key, from the platform pool when platform
+// is set (a ticket bex-api minted for itself), and reports the stream on m as
+// held. It returns the stream's end, which frees the slot and records how the
+// stream ended, or ok false once it has counted the refusal by scope
+// (sandbox_global, sandbox_identity, sandbox_platform_global,
+// sandbox_platform_identity).
+func (l *SandboxStreamLimits) Admit(m *Metrics, key string, platform bool) (end func(result string), ok bool) {
+	pool, limiter, scopePrefix := sandboxPoolCaller, l.callers, "sandbox_"
+	if platform {
+		pool, limiter, scopePrefix = sandboxPoolPlatform, l.platform, "sandbox_platform_"
+	}
+	if acquired, scope := limiter.Acquire(key); !acquired {
+		m.LimitRejected(scopePrefix + scope)
+		return nil, false
+	}
+	started := time.Now()
+	m.sandboxStreamStarted(pool)
+	var once sync.Once
+	return func(result string) {
+		once.Do(func() {
+			limiter.Release(key)
+			m.sandboxStreamEnded(pool, result, time.Since(started))
+		})
+	}, true
 }
 
 // ChannelLimiter bounds concurrent exec STREAMS (SSH session channels), not

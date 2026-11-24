@@ -96,7 +96,6 @@ func sessionReadFixture(t *testing.T, state string, exec sshgateway.Executor) *A
 	gateway := httptest.NewServer((&sandboxsse.Server{
 		Secret: secret, Executor: exec,
 		Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
-		Limits:  sshgateway.NewSessionLimiter(10, 5),
 	}).Handler())
 	t.Cleanup(gateway.Close)
 	return &AgentSessionLifecycle{service: &Service{

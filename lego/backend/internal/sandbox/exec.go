@@ -359,7 +359,7 @@ func (s *Service) mintAndDial(ctx context.Context, ws, sandboxID, agentSessionID
 		case http.StatusUnauthorized, http.StatusForbidden:
 			return nil, core.ErrForbidden
 		case http.StatusTooManyRequests:
-			return nil, errExecSessionLimit
+			return nil, errStreamLimit
 		default:
 			return nil, unreachable(fmt.Sprintf("the exec gateway answered %d", resp.StatusCode))
 		}

@@ -124,8 +124,8 @@ func newConnectFixture(t *testing.T, owner string, authz core.Checker) *connectF
 	executor := &contractExecutor{}
 	gateway := httptest.NewServer((&sandboxsse.Server{
 		Executor: executor, Secret: secret,
-		Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
-		Limits:  sshgateway.NewSessionLimiter(100, 5), SessionTimeout: time.Minute,
+		Metrics:        sshgateway.NewMetrics(prometheus.NewRegistry()),
+		SessionTimeout: time.Minute,
 	}).Handler())
 	t.Cleanup(gateway.Close)
 

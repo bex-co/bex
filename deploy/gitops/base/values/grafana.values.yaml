@@ -4544,8 +4544,8 @@ dashboards:
             {
              "id": 6,
              "type": "timeseries",
-             "title": "SSH gateway active sessions / channels",
-             "description": "Authenticated connections and open exec-stream channels currently held by the gateway — its saturation gauges.",
+             "title": "SSH gateway active sessions / channels / sandbox streams",
+             "description": "Authenticated connections, open exec-stream channels and sandbox exec and file streams (by pool, w22/m623) currently held by the gateway — its saturation gauges.",
              "gridPos": {
                "h": 9,
                "w": 12,
@@ -4573,6 +4573,11 @@ dashboards:
                  "refId": "B",
                  "expr": "sum(bex_ssh_gateway_active_channels)",
                  "legendFormat": "channels"
+                },
+                {
+                 "refId": "C",
+                 "expr": "sum by (pool) (bex_ssh_gateway_active_sandbox_streams)",
+                 "legendFormat": "sandbox streams ({{pool}})"
                 }
               ]
             },

@@ -69,7 +69,7 @@ type Server struct {
 	Secret             []byte
 	Executor           sshgateway.Executor
 	Metrics            *sshgateway.Metrics
-	Limits             *sshgateway.SessionLimiter
+	Limits             *sshgateway.SandboxStreamLimits
 	Nonces             *sshgateway.NonceGuard
 	Revalidator        Revalidator
 	TransferTimeout    time.Duration
@@ -86,7 +86,7 @@ func (s *Server) Handler() http.Handler {
 		s.RevalidateInterval = sshgateway.DefaultRevalidateInterval
 	}
 	if s.Limits == nil {
-		s.Limits = sshgateway.NewSessionLimiter(0, 0)
+		s.Limits = sshgateway.NewSandboxStreamLimits(0, 0, 0, 0)
 	}
 	return http.HandlerFunc(s.serve)
 }
@@ -114,17 +114,13 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusConflict, errors.New("file ticket already used"))
 		return
 	}
-	limitKey := c.LimitKey(sandboxexec.SystemSubject)
-	if acquired, scope := s.Limits.Acquire(limitKey); !acquired {
-		s.Metrics.LimitRejected(scope)
-		writeJSONError(w, http.StatusTooManyRequests, errors.New("session limit reached"))
+	end, admitted := s.Limits.Admit(s.Metrics, c.LimitKey(sandboxexec.SystemSubject), c.Subject == sandboxexec.SystemSubject)
+	if !admitted {
+		writeJSONError(w, http.StatusTooManyRequests, errors.New("sandbox stream limit reached"))
 		return
 	}
-	defer s.Limits.Release(limitKey)
-	s.Metrics.SessionStarted()
-	started := time.Now()
 	result := "closed"
-	defer func() { s.Metrics.SessionEnded(result, time.Since(started)) }()
+	defer func() { end(result) }()
 	check := func(ctx context.Context) error {
 		if s.Revalidator == nil {
 			return nil

@@ -1,19 +1,19 @@
 # w22 · m623 — One user's concurrent sandbox execs and file transfers are not held to the SSH session cap, and a concurrency refusal is a 429
 
-**Worker:** worker22 **Goal:** a user can run Render's 1,000 sandbox execs a minute: the ssh-gateway holds sandbox exec and file streams to a limiter of their own, sized so Render's per-minute classes bind first, native SSH, the web shell and agent attach keep their 5 per identity, and a refusal that remains answers 429 with `Retry-After`, never 400. **Status:** todo
+**Worker:** worker22 **Goal:** a user can run Render's 1,000 sandbox execs a minute: the ssh-gateway holds sandbox exec and file streams to a limiter of their own, sized so Render's per-minute classes bind first, native SSH, the web shell and agent attach keep their 5 per identity, and a refusal that remains answers 429 with `Retry-After`, never 400. **Status:** todo (t001–t004, t006–t008 done; t005 waits for production to run the fix)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | The gateway holds sandbox exec and file streams to a limiter of their own; native SSH, web shell and agent attach keep 5 per identity | 75m | — |
-| t002 | bex-api answers the gateway's concurrency refusal with 429 and `Retry-After` on every exec and file surface | 50m | — |
-| t003 | The gateway's production manifest sets the sandbox limiter, and the env inventory names it | 20m | t001 |
-| t004 | ADR104 D7, ADR018 and ADR035 state the sandbox stream bound, or that there is none | 30m | t001, t002 |
+| t001 | The gateway holds sandbox exec and file streams to a limiter of their own; native SSH, web shell and agent attach keep 5 per identity — **DONE** | 75m | — |
+| t002 | bex-api answers the gateway's concurrency refusal with 429 and `Retry-After` on every exec and file surface — **DONE** | 50m | — |
+| t003 | The gateway's production manifest sets the sandbox limiter, and the env inventory names it — **DONE** | 20m | t001 |
+| t004 | ADR104 D7, ADR018 and ADR035 state the sandbox stream bound, or that there is none — **DONE** | 30m | t001, t002 |
 | t005 | On production: w22/m443's gate names the fix commit, then the rate leg prints PASS | 40m | t003, t004 |
-| t006 | Render parity | 25m | t002, t004 |
-| t007 | Simplify | 20m | t006 |
-| t008 | Test coverage | 30m | t006 |
+| t006 | Render parity — **DONE** | 25m | t002, t004 |
+| t007 | Simplify — **DONE** | 20m | t006 |
+| t008 | Test coverage — **DONE** | 30m | t006 |
 | t009 | Closeout | 10m | t005, t007, t008 |
 
 ## Definition of done
@@ -41,3 +41,32 @@
 ## Progress
 
 **Triage (2026-11-24, worker22, as the w22/029 worker):** promoted. The premise holds at `3829308659` (the paths above). The work spans the gateway, bex-api, the operator's gateway manifest, three ADRs and a production leg that waits for a deploy, which is more than an hour across several tasks.
+
+**t001–t004 (2026-11-24, worker22):** sandbox exec and file streams hold `SandboxStreamLimits`, a caller pool of 100 per gateway replica with no per-identity bound below it and a platform pool of 32, 5 per key, apart from native SSH's 100 and 5. A held stream costs the gateway 1.32 to 1.39 MiB over SPDY (measured on a throwaway kind node, [t001](done/t001.md)), so the pod's memory limit went to 768Mi. bex-api answers the gateway's refusal as 429 `rate_limited` with `Retry-After: 1` on every exec and file surface. ADR104 D7 § Concurrent commands and transfers, ADR018's new row (a divergence awaiting sign-off) and ADR035 say so. Filed: w22/035 (the user's sign-off on the 100) and w22/036 (WebSocket exec streams, 0.28 to 0.30 MiB each).
+
+**t006 Render parity (2026-11-24):** each surface's answer to the gateway's concurrency refusal, from `internal/sandbox/stream_limit_test.go`:
+
+| Surface | Status | Code | Message | Wait |
+| --- | --- | --- | --- | --- |
+| Run-token redeem (`render sandboxes exec`, both SDKs) | 429 | `rate_limited` | too many sandbox commands and file transfers are running at once; retry in 1 second | `Retry-After: 1` |
+| Single-step `POST /v1/sandboxes/{id}/exec` | 429 | `rate_limited` | the same | `Retry-After: 1` |
+| File redeem, upload and download (`sandboxes files`, the SDKs' copy) | 429 | `rate_limited` | the same | `Retry-After: 1` |
+| SSE `error` event after a resume wait | 429 (`status`) | `rate_limited` | the same | in the message |
+| MCP `sandbox_exec` | tool error | `rate_limited:` prefix | the same | in the message |
+
+The code is kept on these routes: none of the three redeem paths nor `POST …/exec` is an operation of Render's pinned OpenAPI, whose `errorCode` vocabulary would drop it. The pinned CLI (render-oss/cli at the v2.38.0 pin, `pkg/sandbox/repo.go` `errFromStreamResponse` and `pkg/sandbox/sse.go`) prints `received response code 429: <message>` for a redeem or transfer and `sandbox exec stream error status 429: <message>` for the event, so the wait reaches the user; before it printed `received response code 400: too many concurrent exec sessions`. The SDK v1.10.0 contract (`internal/sandbox/testdata/sdk-v1.10.0-contract.json`, `generic`) raises a 429 on a connect-token mint, exec stream or file transfer as Python's `RateLimitError`, where the 400 was `ClientError`; TypeScript's is a `ClientError` with status 429, as for Render's own 429. GraphQL runs no sandbox command (its sandbox exec fields are `sandboxExecutions` and `sandboxExecution`, reads), and `dashboard/src` calls no exec, run-token or file-token route, so neither changes. Render documents no concurrency limit, so the remaining bound is the ADR018 divergence (w22/035); no other drift.
+
+**t008 Test coverage (2026-11-24):** each mutation, and the test that caught it:
+
+| Mutation | Caught by |
+| --- | --- |
+| A sandbox server handed the SSH session limiter | does not compile: `Limits` is a `*SandboxStreamLimits` |
+| `Admit` ignores `platform` (bex-api's streams in the caller pool) | `TestSandboxStreamPools`, `TestOneCallerHoldsMoreThanFiveExecStreams` |
+| The per-identity default back to 5 | `TestSandboxStreamPools`, `TestOneCallerHoldsMoreThanFiveExecStreams` |
+| A stream's end not idempotent (an unbalanced release) | `TestSandboxStreamPools` ("an end called twice freed two platform slots") |
+| The platform pool's refusals counted as `sandbox_*` | `TestSandboxStreamPools`, `TestOneCallerHoldsMoreThanFiveExecStreams` |
+| `errStreamLimit` back to a 400 `ErrBadRequest` | all five tests of `stream_limit_test.go` |
+| The file proxy's 429 rewrite dropped | `TestFileStreamLimitIsA429OnREST` |
+| `Transient` no longer reads the refusal | `TestStreamLimitIsTransientForASessionRead` |
+
+`TestSandboxStreamPools` also holds that a release on one pool never frees a slot on the other, in both directions, and `TestSandboxStreamsDoNotSpendSSHSessionSlots` that sandbox streams leave the session limiter's 100 slots whole.

@@ -52,11 +52,13 @@ spec:
           imagePullPolicy: Always
           command: ["/ssh-gateway"]
           env:
-            # Ramps the GC before the 512Mi cgroup limit below: live exec drain
+            # Ramps the GC before the 768Mi cgroup limit below: live exec drain
             # buffers (128Mi) and archive indexes (64Mi) let GOGC=100 alone grow
-            # the heap near it (w32/025).
+            # the heap near it (w32/025), and every held exec stream keeps about
+            # 1.4 MiB of heap over SPDY (w22/m623): 100 SSH sessions and 132
+            # sandbox streams at their bounds hold about 535 MiB live.
             - name: GOMEMLIMIT
-              value: 450MiB
+              value: 700MiB
             - name: BEX_SSH_ADDR
               value: ":2222"
             - name: BEX_SSH_METRICS_ADDR
@@ -92,9 +94,26 @@ spec:
             # A service shell has no time limit, as on Render (w6/174).
             - name: BEX_SSH_SESSION_TIMEOUT
               value: 4h
+            # Native SSH, the web shell and agent attach. Sandbox exec and file
+            # streams no longer count here (w22/m623).
             - name: BEX_SSH_MAX_SESSIONS
               value: "100"
             - name: BEX_SSH_MAX_SESSIONS_PER_IDENTITY
+              value: "5"
+            # Sandbox exec and file streams per replica (w22/m623, ADR104 D7 §
+            # Concurrent commands and transfers). Render documents no
+            # concurrency limit on commands or transfers, only per-minute rates,
+            # so a caller has no bound of its own below the pool, which is what
+            # the process carries at about 1.4 MiB a stream. bex-api's own
+            # streams (the agent-session Completer, the command probe, an agent
+            # session's file copies) take a pool of their own, 5 per key.
+            - name: BEX_SANDBOX_MAX_STREAMS
+              value: "100"
+            - name: BEX_SANDBOX_MAX_STREAMS_PER_IDENTITY
+              value: "100"
+            - name: BEX_SANDBOX_MAX_PLATFORM_STREAMS
+              value: "32"
+            - name: BEX_SANDBOX_MAX_PLATFORM_STREAMS_PER_KEY
               value: "5"
             # How long a terminating gateway keeps its open SSH, Shell and agent
             # sessions after its listeners closed (w6/m482): Render gives
@@ -281,8 +300,10 @@ spec:
               memory: 64Mi
             limits:
               cpu: 500m
-              # 128Mi of it is the exec drain buffer (BEX_SSH_DRAIN_BUFFER_TOTAL, w6/099).
-              memory: 512Mi
+              # 128Mi of it is the exec drain buffer (BEX_SSH_DRAIN_BUFFER_TOTAL,
+              # w6/099), and 256Mi was added for the sandbox stream pools
+              # (w22/m623).
+              memory: 768Mi
           volumeMounts:
             - name: host-key
               mountPath: /var/run/bex-ssh-host-key

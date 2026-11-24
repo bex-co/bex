@@ -43,9 +43,9 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 )
 
-// Server is the sandbox-exec SSE handler. Share Limits and Nonces (and
-// Metrics) with the other gateway transports so session caps and exec-ticket
-// single-use hold process-wide, not per feature.
+// Server is the sandbox-exec SSE handler. Share Limits with the sandbox file
+// server, and Nonces (and Metrics) with every gateway transport, so the
+// stream bounds and exec-ticket single-use hold process-wide, not per feature.
 type Server struct {
 	// Secret must equal bex-api's BEX_SANDBOX_EXEC_SECRET so the gateway can
 	// verify the exec tickets bex-api mints after authorizing can_operate on a
@@ -55,7 +55,7 @@ type Server struct {
 
 	Executor    sshgateway.Executor
 	Metrics     *sshgateway.Metrics
-	Limits      *sshgateway.SessionLimiter
+	Limits      *sshgateway.SandboxStreamLimits
 	Nonces      *sshgateway.NonceGuard
 	Revalidator sshgateway.Revalidator
 
@@ -83,7 +83,7 @@ func (s *Server) defaults() {
 		s.KeepAlive = keepAliveInterval
 	}
 	if s.Limits == nil {
-		s.Limits = sshgateway.NewSessionLimiter(0, 0)
+		s.Limits = sshgateway.NewSandboxStreamLimits(0, 0, 0, 0)
 	}
 	if s.Nonces == nil {
 		s.Nonces = &sshgateway.NonceGuard{}
@@ -122,20 +122,15 @@ func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Cap the number of concurrent exec streams per caller, like the shell path.
-	if acquired, scope := s.Limits.Acquire(claims.Subject); !acquired {
-		s.Metrics.LimitRejected(scope)
-		http.Error(w, "session limit reached", http.StatusTooManyRequests)
+	// The sandbox stream bound (w22/m623), not the SSH session limiter: bex-api
+	// answers this 429 with its own 429 and Retry-After.
+	end, admitted := s.Limits.Admit(s.Metrics, claims.Subject, sandboxexec.PlatformSubject(claims.Subject))
+	if !admitted {
+		http.Error(w, "sandbox stream limit reached", http.StatusTooManyRequests)
 		return
 	}
-	defer s.Limits.Release(claims.Subject)
-	// The active-sessions gauge brackets the shared limiter slot exactly — the
-	// gauge answers "how close is the process to BEX_SSH_MAX_SESSIONS?", so every
-	// holder of the shared limiter reports, like nativessh/webshell (w1/m76/t005).
-	started := time.Now()
-	s.Metrics.SessionStarted()
 	result := "closed"
-	defer func() { s.Metrics.SessionEnded(result, time.Since(started)) }()
+	defer func() { end(result) }()
 
 	// Redemption-time reauthorization (round-13 #3): the ticket froze bex-api's
 	// mint-time decision; re-run it here as the ticket's subject so a revocation
