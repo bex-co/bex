@@ -27,6 +27,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 	"unicode/utf8"
 
@@ -628,6 +629,43 @@ func TestSSHWakeEndsWhenAccessIsRevokedMeanwhile(t *testing.T) {
 		t.Fatalf("stderr = %q, want the generic refusal", shell.stderr.String())
 	}
 	g.waitForWake(t, "abandoned")
+}
+
+// A held channel says every 30 s that the sandbox is still starting, so a
+// slow start never looks hung, and says nothing more once the wait ends
+// (ADR054 D9). Production's starts settle in seconds, before the first
+// line is due (w10/m597 t006), so only this test sees it.
+func TestAHeldChannelSaysEvery30SecondsThatItStillWaits(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		w := &sandboxWait{session: "ags-held", done: make(chan struct{})}
+		var stderr syncBuffer
+		result := make(chan error, 1)
+		go func() { result <- w.await(context.Background(), &stderr) }()
+
+		starting := "bex: starting the sandbox of agent session ags-held. This connection continues once it is up.\n"
+		time.Sleep(29 * time.Second)
+		synctest.Wait()
+		if got := stderr.String(); got != starting {
+			t.Fatalf("stderr after 29 s = %q, want only %q", got, starting)
+		}
+
+		time.Sleep(32 * time.Second)
+		synctest.Wait()
+		want := starting + "bex: still starting the sandbox (30s).\nbex: still starting the sandbox (1m0s).\n"
+		if got := stderr.String(); got != want {
+			t.Fatalf("stderr after 61 s = %q, want %q", got, want)
+		}
+
+		close(w.done)
+		if err := <-result; err != nil {
+			t.Fatalf("await = %v, want nil once the sandbox is up", err)
+		}
+		time.Sleep(time.Minute)
+		synctest.Wait()
+		if got := stderr.String(); got != want {
+			t.Fatalf("stderr after the wait ended = %q, want no more lines", got)
+		}
+	})
 }
 
 // bex-api's refusal message reaches the client's terminal, so it is one

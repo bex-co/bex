@@ -1,6 +1,6 @@
 # w10 · m597 — `ssh ags-…@ssh.bex.co` into a session whose sandbox closed wakes it and opens the shell, as SSH into a sleeping Devin session does
 
-**Worker:** worker10 **Goal:** a member who runs a session's copied `ssh` command after its sandbox closed gets a shell, not a banner telling them to come back. The gateway asks bex-api to start the sandbox as the key's owner (the same `Service.Resume` the dashboard's Connect > Start the sandbox calls, ADR054 D8), says so while it starts, and opens the shell once it is up. A caller who may view the session but not start it keeps w10/043's banner, with the reason when admission refused. **Status:** blocked (t001–t005, t008, t009 done; t006 waits for production to run `0b80058275`)
+**Worker:** worker10 **Goal:** a member who runs a session's copied `ssh` command after its sandbox closed gets a shell, not a banner telling them to come back. The gateway asks bex-api to start the sandbox as the key's owner (the same `Service.Resume` the dashboard's Connect > Start the sandbox calls, ADR054 D8), says so while it starts, and opens the shell once it is up. A caller who may view the session but not start it keeps w10/043's banner, with the reason when admission refused. **Status:** done
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | Gateway: admit a wakeable login, hold its channels while the start settles with progress on stderr, then open the shell; refusals keep the banner — **DONE** | 2h | t002 |
 | [t004](done/t004.md) | Surfaces: what a closed session offers for SSH (`sshAddress`, the dashboard's Connect menu), per t001 — **DONE** | 1h | t001 |
 | [t005](done/t005.md) | Security review of the wake verb and the held login, in the gateway-verb review chain — **DONE** | 1h | t002, t003 |
-| [t006](t006.md) | Live check: plain `ssh` into a closed session in `tian-personal` on production, session deleted afterwards | 45m | t003, t004, t005 |
-| [t007](t007.md) | Render parity (Devin) | 30m | t006 |
+| [t006](done/t006.md) | Live check: plain `ssh` into a closed session in `tian-personal` on production, session deleted afterwards — **DONE** | 45m | t003, t004, t005 |
+| [t007](done/t007.md) | Render parity (Devin) — **DONE** | 30m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 20m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
-| [t010](t010.md) | Closeout | 10m | t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t009 |
 
 Total: **10 tasks, about 8h45m**.
 
@@ -42,6 +42,54 @@ Decided 2026-11-23 against `9fdf7e0a11`; every choice follows Devin's "SSHing in
 
 The code shipped in `9f5f70e8e0` and `0b80058275`. t006's live check needs production to run them: **pin must carry `0b80058275`**. Then, in `tian-personal`, one short repo-less session at a time (the sandbox node is near capacity, w9/m349): let its turn end, wait past the 5-minute idle close until it reads `completed` with no sandbox and no `sshAddress` change (it now keeps the address), run `ssh ags-…@ssh.bex.co` on a real pty with the account's registered key, see the starting line and then a shell in the sandbox, run `uname -a`, exit, read `bex_ssh_gateway_session_wakes_total{result="opened"}` and the session's phase after the settle, check the Connect menu at 1280 px and 390 px, delete the session, and revoke only keys the check created. t007's Devin walk follows on the same run, then t010.
 
+## Unblocked (2026-11-23)
+
+- **Source:** verified evidence, `/loopx w10`. The gate was ``pin must carry `0b80058275` ``.
+- **Finding:** the newest pin on `origin/main` is `eb52a59622` (`chore(deploy): pin platform images to f46c44d9ddb1`), and `git merge-base --is-ancestor` shows `f46c44d9ddb1` carries `9f5f70e8e0`, `0b80058275` and `a46ff006cd`. Production (`hetzner-prod`, read 2026-11-24T00:19Z) runs that pin: `bex-api` and `bex-ssh-gateway` on `bex-operator@sha256:3c16403a…`, the dashboard on `bex-dashboard@sha256:a37ac43b…`, and bex-api's `BEX_AGENT_SESSION_IMAGE` is `bex-agent-sandbox@sha256:d0f86b91…`. These match the pin's `deploy/gitops/base/bex.yaml`, `dashboard.yaml` and `lego/operator/config/api/deployment.yaml`, and every pod's `imageID` matches too. The gateway sets no `BEX_AGENT_SESSION_WAKE_API_URL`, so it uses the default `http://bex-api.bex-system.svc:8091/v1/agent-session-wake`.
+- **Remaining gates:** none. Next: t006's live check as the Parked section describes it, then t007's Devin walk and t010.
+
+## Live check (t006, production, 2026-11-24 00:25–00:41Z)
+
+- **Build.** Pin `f46c44d9ddb1`, as the Unblocked section reads it.
+- **Session.** `POST /v1/agent-sessions` in `tian-personal` with no repository (`claude` on `deepseek/deepseek-v4.1-flash-1017`, template `agent`, `maxSpendUSD` 1) started `ags-dc2diopnpn2c73ckv6kg` (disposable). The call used a QA API key minted for the check. Its turn ended at 00:25:29Z. At 00:30:30Z the idle close left it `completed` with no `sandboxId` and no Pod in the workspace's sandbox namespace. `sshAddress` still read `ags-dc2diopnpn2c73ckv6kg@ssh.bex.co`.
+- **Plain `ssh` (DoD 1, 6).** `ssh -tt` ran on a real local pty (40×120) with the account's own registered key; no key was added.
+  - 2.3 s after connecting, stderr said `bex: starting the sandbox of agent session ags-dc2diopnpn2c73ckv6kg. This connection continues once it is up.`
+  - bex-api logged `the editor's start settled, the sandbox is up` at 00:33:52Z.
+  - At 8.1 s the prompt appeared in the new sandbox. `uname -a` printed `Linux 598d67a9-…-0 4.19.0-gvisor … x86_64`, `id -u` printed 10001 and `pwd` printed `/workspace`. `exit` returned 0.
+- **No progress line.** The start took about 5 s, under the 30 s at which `bex: still starting the sandbox (30s).` is due, so no progress line printed. Nothing tested that line, so this run added `TestAHeldChannelSaysEvery30SecondsThatItStillWaits` (`nativessh/wake_test.go`, `testing/synctest`). It reads the starting line alone at 29 s, the `(30s)` and `(1m0s)` lines at 61 s, and nothing after the wait ends. A 60 s interval or a removed progress case fails it.
+- **The tty.** A second `ssh`, into the now-live sandbox, had a tty: `test -t 0` and `test -t 1` held and `stty size` read `40 120`. `tty` prints "not a tty" in gVisor either way. A held channel carries its `pty-req` into the shell it runs after the wait (`serveSession`, `nativessh/session.go`).
+- **`sftp` (DoD 1, Zed's upload channel).** After the next idle close (00:39:29Z), `sftp -b` (`pwd`, `ls -a`) printed the same starting line at 2 s. At 9 s it printed `Remote working directory: /home/bex` and the listing, from a third sandbox.
+- **Metrics.** `bex_ssh_gateway_session_wakes_total{result="opened"}` went from absent to 1 on each of the two gateway pods, one per wake, with no other result. `authentications_total` gained only `accepted`. Read with `kubectl port-forward` to each pod's `:9090`.
+- **Surfaces.** Four reads agreed on the closed session: REST `GET /v1/agent-sessions/{id}`, GraphQL `agentSession { phase sandboxId sshAddress }`, and MCP `get_agent_session` on `/mcp` and on `/mcp/cloud-agents`. All read `completed`, no sandbox and `sshAddress` `ags-dc2diopnpn2c73ckv6kg@ssh.bex.co`. They agreed while the sandbox was up too.
+- **Connect menu.** On the closed session, at 1280 px and at 390 px:
+  - It offers Open in Zed (`zed://ssh/ags-dc2diopnpn2c73ckv6kg@ssh.bex.co/workspace`), the `ssh` command with Copy, and the hint "A sandbox that closed starts when you connect." There is no Start the sandbox button.
+  - At 390 px the menu is 304 px wide inside the viewport, and the page does not scroll sideways. The command is cut with an ellipsis; its full text is in `title` and Copy copies it.
+  - The spinner of a `resuming` session was not seen live, because the start settled in 5 s. `open-in-zed.test.tsx` covers it.
+  - Filed from the walk: below 640 px the trigger has no accessible name ([w10/055](../../055.md)), and at 390 px the steering composer's text box is 44 px wide ([w10/056](../../056.md)).
+- **Not provoked live.** DoD 2 (refusals) and DoD 3 (a start that ends without a sandbox) need a second account or a failed start. `wake_test.go` and `ssh_wake_pg_test.go` cover them (t003, t009).
+- **`MintCredential`.** No denied credential mint showed in bex-api or gateway logs around the create or either wake.
+- **Cleanup.** The session was canceled and deleted, and `GET` answers `404 AGENT_SESSION_NOT_FOUND`. The sandbox namespace has no Pod. The QA API key was revoked and the QA sign-in logged out (`ok logged-out`). No SSH key was added or removed, and no OAuth grant or consent session was touched.
+- **Reproduce.**
+  1. Sign in with `bash scripts/qa-login.sh --serve` and mint a key with `scripts/qa-mcp.py mint-key --owner-id <tian-personal>`.
+  2. Create the session as above, and wait until `GET /v1/agent-sessions/{id}` shows no `sandboxId`.
+  3. Run `ssh -tt -i <the account's key> -o IdentitiesOnly=yes ags-…@ssh.bex.co` in a terminal. Then cancel and delete the session, revoke the key and run `qa-login.sh --logout`.
+
+## Devin walk (t007, 2026-11-23)
+
+Devin's [2026 release notes](https://docs.devin.ai/release-notes/2026) were re-read on 2026-11-23.
+
+| Surface | bex on production (pin `f46c44d9ddb1`) | Devin | Verdict |
+| --- | --- | --- | --- |
+| Plain `ssh` | Wakes a closed session, says so on stderr, and opens the shell at 8 s | "SSHing into a session whose machine has gone to sleep now wakes the machine and completes the request instead of showing 'not running'" (2026-09-25) | Same |
+| `sftp` (Zed's upload) | Waits for the same wake, then serves | The same SSH traffic | Same |
+| Zed (`zed://`) | The same SSH login. The wake answers inside Zed's 17 s authentication, and the probe and upload channels wait (t001) | An editor that connects over SSH | Same. Zed itself was not launched; the exec and `sftp` channels it uses were |
+| Progress while it starts | A starting line, then a line every 30 s (test) | "the 'Wake Devin up' button on a sleeping preview now shows live progress" (2026-09-25) | Same |
+| `sshAddress` on REST, GraphQL and both MCP endpoints | Present on a closed session; the four reads agree | SSH is offered into a sleeping session | Same |
+| Dashboard Connect menu | `zed://` and `ssh` right away with a hint; no Start the sandbox | No wake step before SSH | Same |
+| Files | The session's attachments; needs no sandbox, so it opens on a closed session | "The Files tab can now be opened while Devin is asleep" (2026-10-05) | Same |
+| Terminal | None on an agent session (the Web Shell serves services only) | "opening Files or Terminal wakes Devin" (2026-10-05) | Drift that predates m597: [w10/057](../../057.md) |
+| CLI `bex agent ssh`, `bex edit` | Read `sshAddress`, so the gateway wakes the session | — | w6/169 already tracks the CLI |
+
 ## Definition of done
 
 1. **A closed session wakes.** `ssh ags-…@ssh.bex.co` into a `completed` or `failed`, unarchived session whose sandbox closed, by a caller who may operate it and holds a fresh `can_create`, starts its sandbox through `Service.Resume`. The client is told on stderr that the sandbox is starting, and the shell opens in the started sandbox once the session settles. Zed's and `sftp`'s channels on such a connection wait for the same settle. A login that finds the sandbox already starting (`resuming`) waits for it instead of being told to come back.
@@ -53,7 +101,7 @@ The code shipped in `9f5f70e8e0` and `0b80058275`. t006's live check needs produ
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w10/049](../../done/049.md), filed by w10/043's Devin check on 2026-11-23 and promoted by `/loopx w10` on 2026-11-23.
+- **Source:** inbox note [w10/049](../049.md), filed by w10/043's Devin check on 2026-11-23 and promoted by `/loopx w10` on 2026-11-23.
 - **Triage evidence (2026-11-23, `9fdf7e0a11`):**
   - **The premise holds.** `SSHResolver.ResolveSSHSession` returns `errNoSandboxToOpen` for any session `openableSandbox` turns down (`lego/backend/internal/agentsessions/ssh.go:76-78`), and the gateway prints it as an auth banner counted `rejected_no_sandbox` (`lego/backend/internal/sshgateway/nativessh/server.go:217`, `toldRefusal` `:899`). Nothing on the SSH path starts a sandbox.
   - **The start already exists.** `Service.Resume` (`lego/backend/internal/agentsessions/editor.go:54`) needs `can_operate` and a fresh `can_create`, admits a fresh sandbox like a turn (`admitDispatch`), moves the session to `resuming` and starts the sandbox in the background (`runEditorStart`). The Completer settles it back to `completed`/`failed` with the sandbox, and a start with no sandbox converges within `editorStartBound` (16 minutes). ADR054 D8 (w6/m564) records it for Open in Zed and the dashboard's Connect > Start the sandbox.
