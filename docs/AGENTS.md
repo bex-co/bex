@@ -128,6 +128,7 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 - [ADR037-openbao-rekey-runbook.md](ADR037-openbao-rekey-runbook.md) — OpenBao root-token / Shamir rekey
 - [ADR022-tenant-isolation.md](ADR022-tenant-isolation.md) — east-west NetworkPolicy (superseded by ADR043 for boundary)
 - [ADR043-tenant-namespace-isolation.md](ADR043-tenant-namespace-isolation.md) — `workspace = namespace` isolation
+- [ADR125-stable-tenant-egress.md](ADR125-stable-tenant-egress.md) — proposed (2026-11-23, `w21/m616`): tenant egress to public destinations leaves from two published Hetzner Floating IPv4s through Cilium's egress gateway on the platform pool, as Render's fixed regional set does; an `egress-gateway` controller switches to the standby address and re-homes the lost one, and connections through a lost gateway are reset. Needs kube-proxy replacement, BPF masquerading and the public NIC in Cilium's `devices` (D9); waits for the user's go-ahead on the spend
 - [ADR074-workspace-scoped-artifact-identity.md](ADR074-workspace-scoped-artifact-identity.md) — workspace-scoped Zot repos + S3 prefixes (`W/A`)
 
 ### Deploy-from-chat, workflows, evals

@@ -1,12 +1,12 @@
 # w21 · m616 — A service's outbound IPs are a fixed, published set, as on Render: tenant egress leaves through Floating IPs, not through whichever node the instance runs on
 
-**Worker:** worker21 **Goal:** an external allowlist built from `outboundIps` keeps admitting a service after the tenant pool adds, removes or replaces nodes, as a Render allowlist keeps admitting its region's ranges. **Status:** todo
+**Worker:** worker21 **Goal:** an external allowlist built from `outboundIps` keeps admitting a service after the tenant pool adds, removes or replaces nodes, as a Render allowlist keeps admitting its region's ranges. **Status:** todo (t001 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Correct ADR018's Service outbound IPs row and the 2025-09-24 changelog disposition; write the stable-egress ADR | 45m | — |
+| [t001](done/t001.md) | Correct ADR018's Service outbound IPs row and the 2025-09-24 changelog disposition; write the stable-egress ADR — **DONE** | 45m | — |
 | [t002](t002.md) | Terraform two Hetzner Floating IPv4s in the tenant location and turn on Cilium's egress gateway | 1h | t001 |
 | [t003](t003.md) | Egress gateway policy for tenant workloads, with the free-plan SMTP deny and the egress meter still correct | 1h | t002 |
 | [t004](t004.md) | Failover: a lost gateway node's Floating IP moves to a standby, and affected TCP connections are reset | 1h30 | t003 |
