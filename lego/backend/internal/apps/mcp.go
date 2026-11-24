@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"k8s.io/utils/ptr"
@@ -589,9 +590,10 @@ type staticHeaderArg struct {
 
 // createStaticSiteArgs is create_static_site's input — Render's MCP tool name.
 // A static site builds a repo and serves its publishPath output from the
-// object-store origin (no running container). publishPath is required; routes and
+// object-store origin (no running container). Omitted or blank publishPath
+// defaults to "public" (matching Render's MCP and REST, w5/201); routes and
 // headers are the optional edge rules. autoDeploy + buildCommand match Render's
-// upstream args (w2/m91); publishPath stays required (genuine divergence).
+// upstream args (w2/m91).
 type createStaticSiteArgs struct {
 	EnvironmentID      string                  `json:"environmentId,omitempty" jsonschema:"an environment id (evm-...) in the target workspace; assignment also joins its project"`
 	Name               string                  `json:"name" jsonschema:"the static site name (a DNS label, 1-30 chars)"`
@@ -600,7 +602,7 @@ type createStaticSiteArgs struct {
 	Branch             string                  `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default: the repository's default branch)"`
 	RootDir            string                  `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
 	BuildCommand       string                  `json:"buildCommand,omitempty" jsonschema:"command used to build the static site (e.g. npm run build)"`
-	PublishPath        string                  `json:"publishPath" jsonschema:"the built output directory to serve as the site root, e.g. dist, build, or public"`
+	PublishPath        string                  `json:"publishPath,omitempty" jsonschema:"the built output directory to serve as the site root, e.g. dist, build, or public (defaults to public when omitted or blank)"`
 	EnvVars            []envVarInput           `json:"envVars,omitempty" jsonschema:"literal (non-secret) build-time environment variables"`
 	SecretFiles        []secretFileInput       `json:"secretFiles,omitempty" jsonschema:"secret files available to the static-site build from first boot"`
 	AutoDeploy         string                  `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
@@ -633,6 +635,10 @@ func (a createStaticSiteArgs) createRequest(ctx context.Context) (CreateRequest,
 }
 
 func (a createStaticSiteArgs) toCreateRequest() CreateRequest {
+	publishPath := a.PublishPath
+	if strings.TrimSpace(publishPath) == "" {
+		publishPath = "public"
+	}
 	return CreateRequest{
 		EnvironmentID: a.EnvironmentID,
 		Name:          a.Name,
@@ -642,7 +648,7 @@ func (a createStaticSiteArgs) toCreateRequest() CreateRequest {
 		Branch:        a.Branch,
 		RootDir:       a.RootDir,
 		BuildCommand:  a.BuildCommand,
-		PublishPath:   a.PublishPath,
+		PublishPath:   publishPath,
 		SecretFiles:   toSecretFiles(a.SecretFiles),
 		AutoDeploy:    parseYesNo(a.AutoDeploy),
 		Hosts:         a.Domains,

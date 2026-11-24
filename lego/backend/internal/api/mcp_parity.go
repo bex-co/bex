@@ -94,10 +94,9 @@ var mcpAcceptedDivergences = map[string]string{
 	// Render region is accepted and normalized to BEX_REGION, so they now take
 	// it and are no longer divergent.
 
-	// bex requires publishPath because a static site with no publish directory
-	// has nothing to serve; upstream defaults it. autoDeploy/buildCommand were
-	// repaired in w2/m91.
-	"create_static_site": "`publishPath` is genuinely required in bex (no default publish dir); autoDeploy/buildCommand wired in w2/m91",
+	// create_static_site defaults omitted/blank publishPath to "public" since
+	// w5/201, matching Render's MCP and REST (autoDeploy/buildCommand were
+	// repaired in w2/m91), so it is now a Superset and no longer divergent.
 
 	// list_services takes Render's includePreviews since w4/660; bex has no
 	// preview services (.pm/DO_NOT_DO.md), so either value lists the same.

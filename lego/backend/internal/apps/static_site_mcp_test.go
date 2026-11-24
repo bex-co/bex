@@ -65,3 +65,64 @@ func TestMCPCreateStaticSiteAutoDeployBuildCommand(t *testing.T) {
 		t.Errorf("spec.AutoDeploy = false, want true")
 	}
 }
+
+// TestMCPCreateStaticSiteDefaultPublishPath covers w5/201: omitting or leaving
+// publishPath blank on MCP create_static_site defaults it to "public" (matching
+// Render's MCP and REST), while an explicit publishPath is preserved.
+func TestMCPCreateStaticSiteDefaultPublishPath(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		args        map[string]any
+		wantPublish string
+	}{
+		{
+			name: "omitted",
+			args: map[string]any{
+				"name":         "site-default-pub",
+				"repo":         "https://github.com/acme/site",
+				"buildCommand": "npm run build",
+			},
+			wantPublish: "public",
+		},
+		{
+			name: "blank",
+			args: map[string]any{
+				"name":         "site-blank-pub",
+				"repo":         "https://github.com/acme/site",
+				"buildCommand": "npm run build",
+				"publishPath":  "   ",
+			},
+			wantPublish: "public",
+		},
+		{
+			name: "explicit",
+			args: map[string]any{
+				"name":         "site-explicit-pub",
+				"repo":         "https://github.com/acme/site",
+				"buildCommand": "npm run build",
+				"publishPath":  "dist",
+			},
+			wantPublish: "dist",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, cl := newService(nil)
+			call, cleanup := appsMCPClient(t, svc)
+			defer cleanup()
+
+			got := call("create_static_site", tc.args)
+			details, _ := got["serviceDetails"].(map[string]any)
+			if details["publishPath"] != tc.wantPublish {
+				t.Fatalf("serviceDetails.publishPath = %v, want %q (details=%v)", details["publishPath"], tc.wantPublish, details)
+			}
+			crName, _ := got["immutableName"].(string)
+			if crName == "" {
+				crName, _ = tc.args["name"].(string)
+			}
+			a := getApp(t, cl, crName)
+			if a.Spec.PublishPath != tc.wantPublish {
+				t.Errorf("spec.PublishPath = %q, want %q", a.Spec.PublishPath, tc.wantPublish)
+			}
+		})
+	}
+}

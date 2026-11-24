@@ -18,6 +18,8 @@ package api
 
 import (
 	"context"
+	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 
@@ -229,5 +231,101 @@ func TestMCPComposedInputSchemaValidation(t *testing.T) {
 	}
 	if len(list.Items) != 2 {
 		t.Errorf("apps after dry-run/refused calls = %d, want 2 seeded fixtures", len(list.Items))
+	}
+}
+
+// TestMCPCreateStaticSiteDefaultPublishPathComposed covers w5/201 end-to-end
+// through Server.MCPServer(): tools/list omits publishPath from required,
+// omitting publishPath defaults to "public", and an explicit value is kept.
+func TestMCPCreateStaticSiteDefaultPublishPathComposed(t *testing.T) {
+	cl := fakeClient()
+	base := &core.Base{Client: cl, Namespace: "default"}
+	srv := NewServer(base, Deps{})
+	cs := mcpSessionAs(t, srv, "user-1")
+
+	toolsRes, err := cs.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("ListTools: %v", err)
+	}
+	var found bool
+	for _, tool := range toolsRes.Tools {
+		if tool.Name != "create_static_site" {
+			continue
+		}
+		found = true
+		raw, err := json.Marshal(tool.InputSchema)
+		if err != nil {
+			t.Fatalf("marshal input schema: %v", err)
+		}
+		var sch struct {
+			Required []string `json:"required"`
+		}
+		if err := json.Unmarshal(raw, &sch); err != nil {
+			t.Fatalf("unmarshal input schema: %v", err)
+		}
+		if slices.Contains(sch.Required, "publishPath") {
+			t.Fatalf("create_static_site input schema still marks publishPath required: %v", sch.Required)
+		}
+	}
+	if !found {
+		t.Fatal("create_static_site not found in tools/list")
+	}
+
+	for _, tc := range []struct {
+		name        string
+		args        map[string]any
+		wantPublish string
+	}{
+		{
+			name: "omitted",
+			args: map[string]any{
+				"name":         "composed-static-default",
+				"repo":         "https://github.com/acme/site",
+				"buildCommand": "npm run build",
+			},
+			wantPublish: "public",
+		},
+		{
+			name: "explicit",
+			args: map[string]any{
+				"name":         "composed-static-dist",
+				"repo":         "https://github.com/acme/site",
+				"buildCommand": "npm run build",
+				"publishPath":  "dist",
+			},
+			wantPublish: "dist",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{
+				Name:      "create_static_site",
+				Arguments: tc.args,
+			})
+			if err != nil {
+				t.Fatalf("protocol error: %v", err)
+			}
+			var sb strings.Builder
+			for _, c := range res.Content {
+				if tc, ok := c.(*mcp.TextContent); ok {
+					sb.WriteString(tc.Text)
+				}
+			}
+			if res.IsError {
+				t.Fatalf("create_static_site failed: %s", sb.String())
+			}
+			var env struct {
+				Service struct {
+					ServiceDetails struct {
+						PublishPath string `json:"publishPath"`
+					} `json:"serviceDetails"`
+				} `json:"service"`
+			}
+			if err := json.Unmarshal([]byte(sb.String()), &env); err != nil {
+				t.Fatalf("decode response %q: %v", sb.String(), err)
+			}
+			if env.Service.ServiceDetails.PublishPath != tc.wantPublish {
+				t.Errorf("serviceDetails.publishPath = %q, want %q", env.Service.ServiceDetails.PublishPath, tc.wantPublish)
+			}
+		})
 	}
 }
