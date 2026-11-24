@@ -1926,6 +1926,12 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "A-record fallback under an apex domain's DNS instructions, shown with the resolved edge addresses (w4/378)",
   },
+  "services.domainDnsCaaHint": {
+    message:
+      "도메인에 CAA 레코드가 있다면 bex의 인증 기관인 Let's Encrypt(letsencrypt.org)와 Google Trust Services(pki.goog)에 대한 레코드를 추가하세요. 와일드카드 도메인에는 각각에 대한 issuewild 레코드도 필요합니다.",
+    description:
+      "Under every custom domain's DNS records: the CAA values bex's two certificate authorities need, as Render's custom-domains page names its own (w21/m618; the bex-domains CLI skill says the same)",
+  },
   "services.domainDnsApexGuidance": {
     message:
       "루트(apex) 도메인에는 일반 CNAME을 사용할 수 없습니다. {zone} 영역에 이 ALIAS/ANAME(또는 CNAME 플래트닝) 레코드를 만드세요(@는 영역의 루트를 의미합니다). 제공업체가 둘 다 지원하지 않으면 대상이 가리키는 IP 주소로 @에 대한 A 레코드를 만드세요. 레코드가 확인되면 도메인 확인과 TLS가 자동으로 진행되며, bex가 www ↔ 루트 리디렉션도 설정해 줍니다.",

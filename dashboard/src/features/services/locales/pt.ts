@@ -1948,6 +1948,12 @@ const ptServices: Record<string, TranslationEntry> = {
     description:
       "A-record fallback under an apex domain's DNS instructions, shown with the resolved edge addresses (w4/378)",
   },
+  "services.domainDnsCaaHint": {
+    message:
+      "Se o seu domínio tiver registros CAA, adicione registros para as autoridades certificadoras do bex: Let's Encrypt (letsencrypt.org) e Google Trust Services (pki.goog). Um domínio curinga também precisa de um registro issuewild para cada uma.",
+    description:
+      "Under every custom domain's DNS records: the CAA values bex's two certificate authorities need, as Render's custom-domains page names its own (w21/m618; the bex-domains CLI skill says the same)",
+  },
   "services.domainDnsApexGuidance": {
     message:
       "Domínios apex não podem usar um CNAME simples — crie este registro ALIAS/ANAME (ou de CNAME flattening) na zona {zone} (@ significa o apex da zona). Se o seu provedor não oferecer nenhum dos dois, crie um registro A para @ usando os endereços IP para os quais o Destino é resolvido. A verificação e o TLS acontecem automaticamente assim que ele for resolvido, e o bex configura o redirecionamento www ↔ apex para você.",

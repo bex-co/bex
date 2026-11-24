@@ -1941,6 +1941,12 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "A-record fallback under an apex domain's DNS instructions, shown with the resolved edge addresses (w4/378)",
   },
+  "services.domainDnsCaaHint": {
+    message:
+      "ドメインに CAA レコードがある場合は、bex の認証局である Let's Encrypt（letsencrypt.org）と Google Trust Services（pki.goog）のレコードを追加してください。ワイルドカードドメインには、それぞれの issuewild レコードも必要です。",
+    description:
+      "Under every custom domain's DNS records: the CAA values bex's two certificate authorities need, as Render's custom-domains page names its own (w21/m618; the bex-domains CLI skill says the same)",
+  },
   "services.domainDnsApexGuidance": {
     message:
       "Apex ドメインでは通常の CNAME は使えません。{zone} ゾーンに、この ALIAS/ANAME（または CNAME フラットニング）レコードを作成してください（@ はゾーンの apex を意味します）。プロバイダーがどちらにも対応していない場合は、ターゲットが解決される IP アドレスを使って @ に A レコードを作成してください。名前解決できるようになると、検証と TLS は自動的に行われ、bex が www ↔ apex のリダイレクトも設定します。",

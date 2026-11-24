@@ -45,6 +45,14 @@ rules:
   - patch
   - watch
 - apiGroups:
+  - acme.cert-manager.io
+  resources:
+  - challenges
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - app.bex.co
   resources:
   - apps

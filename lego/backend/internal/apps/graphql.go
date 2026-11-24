@@ -898,7 +898,8 @@ var customDomainGQLType = graphql.NewObject(graphql.ObjectConfig{
 			return d.RedirectForName
 		})},
 		// certificateReason is a bex extension (no Render field): cert-manager's own
-		// explanation of a stalled TLS issuance, null once the certificate is issued.
+		// explanation of a stalled TLS issuance (a CAA refusal in plain words),
+		// null once the certificate is issued.
 		"certificateReason": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any {
 			if d.CertificateReason == "" {
 				return nil

@@ -358,6 +358,17 @@ describe("CustomDomainsSection", () => {
     ).not.toBeInTheDocument();
   });
 
+  // w21/m618: the CAA values both of bex's CAs need, as Render's
+  // custom-domains page and the bex-domains CLI skill give them.
+  it("names the CAA values for both certificate authorities", () => {
+    mockUseCustomDomains.mockReturnValue(domainsResult([pendingDomain]));
+    render(<CustomDomainsSection serviceId="web" />);
+    const hint = screen.getByText(/If your domain has CAA records/);
+    expect(hint).toHaveTextContent("letsencrypt.org");
+    expect(hint).toHaveTextContent("pki.goog");
+    expect(hint).toHaveTextContent("issuewild");
+  });
+
   it("shows apex guidance for an apex domain", () => {
     mockUseCustomDomains.mockReturnValue(
       domainsResult([

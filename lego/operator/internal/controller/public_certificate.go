@@ -40,6 +40,26 @@ import (
 // A failure left over from a previous generation (an older name set) is
 // ignored, as certificateReady ignores a stale Ready.
 func certificateIssuance(cert *unstructured.Unstructured) (reason, message string) {
+	message, failed := certificateFailedAttempt(cert)
+	switch {
+	case !failed:
+		return appv1alpha1.ReasonPublicCertificateIssuing, "waiting for the publicly trusted certificate to be issued"
+	case acmeRateLimited(message):
+		return appv1alpha1.ReasonPublicCertificateRateLimited, message
+	}
+	return appv1alpha1.ReasonPublicCertificateIssuanceFailed, message
+}
+
+// acmeRateLimited reports whether a failed attempt's text carries the ACME
+// `rateLimited` problem.
+func acmeRateLimited(text string) bool {
+	return strings.Contains(text, "rateLimited")
+}
+
+// certificateFailedAttempt is the message of the Certificate's Issuing=False/
+// Failed condition, which cert-manager writes when an attempt fails, for the
+// Certificate's current generation.
+func certificateFailedAttempt(cert *unstructured.Unstructured) (message string, failed bool) {
 	conditions, _, _ := unstructured.NestedSlice(cert.Object, "status", "conditions")
 	for _, raw := range conditions {
 		c, ok := raw.(map[string]any)
@@ -50,12 +70,9 @@ func certificateIssuance(cert *unstructured.Unstructured) (reason, message strin
 			continue
 		}
 		message, _ = c["message"].(string)
-		if strings.Contains(message, "rateLimited") {
-			return appv1alpha1.ReasonPublicCertificateRateLimited, message
-		}
-		return appv1alpha1.ReasonPublicCertificateIssuanceFailed, message
+		return message, true
 	}
-	return appv1alpha1.ReasonPublicCertificateIssuing, "waiting for the publicly trusted certificate to be issued"
+	return "", false
 }
 
 // setKeyValuePublicCertificate reports a public Key Value's certificate as

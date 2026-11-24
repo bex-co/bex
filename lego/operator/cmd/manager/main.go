@@ -454,6 +454,7 @@ func setupAppReconciler(
 		BaseDomain:            baseDomain,
 		ClusterIssuer:         env.Or("BEX_CLUSTER_ISSUER", "letsencrypt-staging"),
 		WildcardClusterIssuer: env.Or("BEX_WILDCARD_CLUSTER_ISSUER", ""),
+		SecondClusterIssuer:   os.Getenv("BEX_SECOND_CLUSTER_ISSUER"),
 		HTTPSRedirect:         os.Getenv("BEX_HTTPS_REDIRECT") != "false",
 		ActivatorService:      env.Or("BEX_ACTIVATOR_SERVICE", ""),
 		ActivatorNamespace:    env.Or("POD_NAMESPACE", "bex-system"),

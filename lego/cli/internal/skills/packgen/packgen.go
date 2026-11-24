@@ -56,15 +56,18 @@ var fileOverrides = map[string]string{
 
 // filePatches correct, after the rewrite, guidance where bex deliberately
 // differs from Render (ADR018): bex rejects wildcard custom domains and
-// issues certificates only from Let's Encrypt (ADR005), and offers no
-// preview environments (.pm/DO_NOT_DO.md).
+// offers no preview environments (.pm/DO_NOT_DO.md). Upstream's CAA records
+// for Let's Encrypt and Google Trust Services stay: bex issues from both, as
+// Render does (ADR005 § Two certificate authorities, w21/m618).
 var filePatches = map[string][]rule{
 	"render-domains/SKILL.md": {
 		r(`(?s)## Wildcard Domains\n.*?\n## CAA Records`, "## Wildcard Domains\n\n"+
 			"bex does not support wildcard custom domains (`*.example.com`). Add each subdomain as its own custom domain.\n\n## CAA Records"),
 		r(`- Setting up a \*\*wildcard domain\*\* \(`+"`"+`\*\.example\.com`+"`"+`\)\n`, ""),
-		r(`\nexample\.com IN CAA 0 issue "pki\.goog; cansignhttpexchanges=yes"\nexample\.com IN CAA 0 issuewild "pki\.goog; cansignhttpexchanges=yes"`, ""),
 		r(`\| Cloudflare proxy \+ wildcard without root domain \|[^\n]*\n`, ""),
+		// bex names a CAA refusal and the values to add (w21/m618).
+		r(`Without these, TLS certificate issuance fails silently\.`,
+			"Without these, no certificate is issued, and the domain's `certificateReason` names the records to add."),
 	},
 	"render-cli/SKILL.md": {
 		// The CI example's Deploy step is upstream's, with the name rules

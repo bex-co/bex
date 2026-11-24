@@ -1889,6 +1889,12 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "A-record fallback under an apex domain's DNS instructions, shown with the resolved edge addresses (w4/378)",
   },
+  "services.domainDnsCaaHint": {
+    message:
+      "如果你的域名配置了 CAA 记录，请为 bex 的证书颁发机构添加记录：Let's Encrypt（letsencrypt.org）和 Google Trust Services（pki.goog）。通配符域名还需要为每个机构各添加一条 issuewild 记录。",
+    description:
+      "Under every custom domain's DNS records: the CAA values bex's two certificate authorities need, as Render's custom-domains page names its own (w21/m618; the bex-domains CLI skill says the same)",
+  },
   "services.domainDnsApexGuidance": {
     message:
       "顶级域名无法使用普通 CNAME —— 请在 {zone} 区域创建此 ALIAS/ANAME（或 CNAME flattening）记录（@ 表示区域 apex）。若服务商都不支持，可为 @ 创建 A 记录，填入「目标」当前解析到的 IP 地址。记录生效后，验证与 TLS 证书会自动完成，bex 也会为你配置 www ↔ 顶级域名之间的重定向。",

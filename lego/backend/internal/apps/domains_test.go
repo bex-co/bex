@@ -2573,11 +2573,84 @@ func TestCertificateReasonSurfaceParity(t *testing.T) {
 		acmeObject(acmeChallengeGVK, "default", "chal",
 			map[string]any{"dnsName": "blockeden.xyz"},
 			map[string]any{"reason": reason}))
+	assertCertificateReasonOnEverySurface(t, svc, "web", "blockeden.xyz", reason)
+}
 
+// w21/m618: a CA's CAA refusal reads in plain words naming the two values to
+// add, identically on REST, GraphQL and MCP, whether it reached the Challenge
+// (refused at validation) or the Certificate (refused at finalize).
+func TestCertificateReasonNamesTheCAAValues(t *testing.T) {
+	for name, obj := range map[string]func(app *appv1alpha1.App) client.Object{
+		"refused at validation": func(*appv1alpha1.App) client.Object {
+			return acmeObject(acmeChallengeGVK, "default", "chal",
+				map[string]any{"dnsName": "shop.example.com", "issuerRef": map[string]any{"name": "google-trust-services"}},
+				map[string]any{"state": "invalid", "reason": "CAA record for shop.example.com prevents issuance"})
+		},
+		"refused at finalize": func(app *appv1alpha1.App) client.Object {
+			return acmeObject(certManagerCertificateGVK, "default", app.Spec.TLSSecretNameFor(app.Name, "", "shop.example.com"),
+				map[string]any{"dnsNames": []any{"shop.example.com"}},
+				map[string]any{"conditions": []any{map[string]any{"type": "Ready", "status": "False",
+					"message": `Failed to finalize Order: 403 urn:ietf:params:acme:error:caa: CAA record for shop.example.com prevents issuance`}}})
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			app := appWithHosts("web", "shop.example.com")
+			svc := acmeService([]*appv1alpha1.App{app}, obj(app))
+			assertCertificateReasonOnEverySurface(t, svc, "web", "shop.example.com", caaRefusedReason)
+		})
+	}
+	for _, value := range []string{"CAA", "letsencrypt.org", "pki.goog"} {
+		if !strings.Contains(caaRefusedReason, value) {
+			t.Errorf("the CAA reason must name %s: %q", value, caaRefusedReason)
+		}
+	}
+}
+
+// w21/m618: once the operator moved a host to the other CA, the first CA's
+// Challenge and Order explain nothing about the attempt in flight. The reason
+// comes from the Certificate's current issuer, or from the Certificate itself.
+func TestCertificateReasonSkipsAnEarlierIssuer(t *testing.T) {
+	app := appWithHosts("web", "shop.example.com")
+	moved := acmeObject(certManagerCertificateGVK, "default", app.Spec.TLSSecretNameFor(app.Name, "", "shop.example.com"),
+		map[string]any{"dnsNames": []any{"shop.example.com"}, "issuerRef": map[string]any{"name": "google-trust-services"}},
+		map[string]any{"conditions": []any{map[string]any{"type": "Ready", "status": "False", "message": "Issuing certificate as Secret does not exist"}}})
+	refused := acmeObject(acmeChallengeGVK, "default", "chal-le",
+		map[string]any{"dnsName": "shop.example.com", "issuerRef": map[string]any{"name": "letsencrypt-prod"}},
+		map[string]any{"state": "invalid", "reason": "CAA record for shop.example.com prevents issuance"})
+	failedOrder := acmeObject(acmeOrderGVK, "default", "order-le",
+		map[string]any{"dnsNames": []any{"shop.example.com"}, "issuerRef": map[string]any{"name": "letsencrypt-prod"}},
+		map[string]any{"state": "invalid", "reason": "authorization failed"})
+
+	svc := acmeService([]*appv1alpha1.App{app}, moved, refused, failedOrder)
+	domains, err := svc.ListDomains(context.Background(), "web")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := domains[0].CertificateReason; got != "Issuing certificate as Secret does not exist" {
+		t.Errorf("CertificateReason = %q, want the Certificate's own, not the earlier CA's refusal", got)
+	}
+
+	const pending = "Waiting for HTTP-01 challenge propagation: wrong status code '404'"
+	current := acmeObject(acmeChallengeGVK, "default", "chal-gts",
+		map[string]any{"dnsName": "shop.example.com", "issuerRef": map[string]any{"name": "google-trust-services"}},
+		map[string]any{"state": "pending", "reason": pending})
+	svc = acmeService([]*appv1alpha1.App{appWithHosts("web", "shop.example.com")}, moved.DeepCopy(), refused.DeepCopy(), current)
+	if domains, err = svc.ListDomains(context.Background(), "web"); err != nil {
+		t.Fatal(err)
+	}
+	if got := domains[0].CertificateReason; got != pending {
+		t.Errorf("CertificateReason = %q, want the current issuer's Challenge %q", got, pending)
+	}
+}
+
+// assertCertificateReasonOnEverySurface reads host's certificateReason on
+// REST, GraphQL and MCP and wants each to be want.
+func assertCertificateReasonOnEverySurface(t *testing.T, svc *Service, serviceID, host, want string) {
+	t.Helper()
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/blockeden.xyz", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/"+serviceID+"/custom-domains/"+host, nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("REST get = %d: %s", rec.Code, rec.Body)
 	}
@@ -2585,8 +2658,8 @@ func TestCertificateReasonSurfaceParity(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil {
 		t.Fatal(err)
 	}
-	if rest.CertificateReason != reason {
-		t.Errorf("REST certificateReason = %q", rest.CertificateReason)
+	if rest.CertificateReason != want {
+		t.Errorf("REST certificateReason = %q, want %q", rest.CertificateReason, want)
 	}
 
 	gqlSchema, err := graphql.NewSchema(graphql.SchemaConfig{
@@ -2597,21 +2670,21 @@ func TestCertificateReasonSurfaceParity(t *testing.T) {
 		t.Fatal(err)
 	}
 	gql := graphql.Do(graphql.Params{Schema: gqlSchema, Context: context.Background(), RequestString: `{
-		customDomain(id: "web", name: "blockeden.xyz") { certificateReason }
+		customDomain(id: "` + serviceID + `", name: "` + host + `") { certificateReason }
 	}`})
 	if len(gql.Errors) != 0 {
 		t.Fatalf("GraphQL get: %v", gql.Errors)
 	}
 	gqlDomain := gql.Data.(map[string]any)["customDomain"].(map[string]any)
-	if gqlDomain["certificateReason"] != reason {
-		t.Errorf("GraphQL certificateReason = %v", gqlDomain["certificateReason"])
+	if gqlDomain["certificateReason"] != want {
+		t.Errorf("GraphQL certificateReason = %v, want %q", gqlDomain["certificateReason"], want)
 	}
 
 	call, cleanup := appsMCPClient(t, svc)
 	defer cleanup()
-	mcpDomain := call("get_custom_domain", map[string]any{"serviceId": "web", "name": "blockeden.xyz"})
-	if mcpDomain["certificateReason"] != reason {
-		t.Errorf("MCP certificateReason = %v", mcpDomain["certificateReason"])
+	mcpDomain := call("get_custom_domain", map[string]any{"serviceId": serviceID, "name": host})
+	if mcpDomain["certificateReason"] != want {
+		t.Errorf("MCP certificateReason = %v, want %q", mcpDomain["certificateReason"], want)
 	}
 }
 

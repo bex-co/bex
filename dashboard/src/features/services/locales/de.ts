@@ -1958,6 +1958,12 @@ const deServices: Record<string, TranslationEntry> = {
     description:
       "A-record fallback under an apex domain's DNS instructions, shown with the resolved edge addresses (w4/378)",
   },
+  "services.domainDnsCaaHint": {
+    message:
+      "Hat deine Domain CAA-Einträge, füge Einträge für die Zertifizierungsstellen von bex hinzu: Let's Encrypt (letsencrypt.org) und Google Trust Services (pki.goog). Eine Wildcard-Domain braucht für jede zusätzlich einen issuewild-Eintrag.",
+    description:
+      "Under every custom domain's DNS records: the CAA values bex's two certificate authorities need, as Render's custom-domains page names its own (w21/m618; the bex-domains CLI skill says the same)",
+  },
   "services.domainDnsApexGuidance": {
     message:
       "Apex-Domains können keinen einfachen CNAME verwenden — erstelle diesen ALIAS/ANAME-Eintrag (oder CNAME-Flattening-Eintrag) in der Zone {zone} (@ steht für den Zone-Apex). Wenn dein Anbieter keines von beidem unterstützt, erstelle einen A-Eintrag für @ mit den IP-Adressen, in die das Ziel aufgelöst wird. Verifizierung und TLS erfolgen automatisch, sobald er aufgelöst wird, und bex richtet die Weiterleitung www ↔ Apex für dich ein.",

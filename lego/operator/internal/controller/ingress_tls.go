@@ -91,7 +91,9 @@ func ingressTLSSecretNames(ing *networkingv1.Ingress) map[string]bool {
 // written Ingress has none, those Certificates are deleted here, once, so a
 // platform host's old Certificate stops renewing or retrying a rate-limited
 // order (w4/650). Its Secret stays until App deletion sweeps the App's TLS
-// Secrets.
+// Secrets. A dropped entry's Certificate the operator took over is deleted
+// here too, and each remaining host whose CA cannot issue it moves to the
+// other ClusterIssuer (settleCertificateIssuers).
 func (r *AppReconciler) writeAppIngress(ctx context.Context, ing *networkingv1.Ingress, mutate func() error) error {
 	taken, err := r.routerKeysElsewhere(ctx, ing)
 	if err != nil {
@@ -114,15 +116,13 @@ func (r *AppReconciler) writeAppIngress(ctx context.Context, ing *networkingv1.I
 	}); err != nil {
 		return err
 	}
-	if _, shim := ing.Annotations[certManagerClusterIssuerAnnotation]; shim || r.ClusterIssuer == "" {
-		return nil
-	}
+	_, shim := ing.Annotations[certManagerClusterIssuerAnnotation]
 	for _, name := range dropped {
-		if err := r.deleteIngressCertificate(ctx, ing, name); err != nil {
+		if err := r.deleteDroppedCertificate(ctx, ing, name, !shim && r.ClusterIssuer != ""); err != nil {
 			return err
 		}
 	}
-	return nil
+	return r.settleCertificateIssuers(ctx, ing)
 }
 
 // routerKeysElsewhere is the Traefik router key (v1alpha1.TraefikRouterKey)
@@ -176,9 +176,12 @@ func separateRouterKeys(ing *networkingv1.Ingress, taken map[string]bool) {
 	}
 }
 
-// deleteIngressCertificate deletes ingress-shim's Certificate for the Secret
-// name when ing controls it, never one another Ingress still serves.
-func (r *AppReconciler) deleteIngressCertificate(ctx context.Context, ing *networkingv1.Ingress, name string) error {
+// deleteDroppedCertificate deletes the Certificate of a TLS entry ing dropped
+// when ingress-shim will not: one the operator took over for ing's App
+// (settleCertificateIssuer), which ingress-shim never garbage-collects, and,
+// when unshimmed (ing carries no issuer), ingress-shim's own that ing
+// controls. Never one another Ingress still serves.
+func (r *AppReconciler) deleteDroppedCertificate(ctx context.Context, ing *networkingv1.Ingress, name string, unshimmed bool) error {
 	cert := &unstructured.Unstructured{}
 	cert.SetGroupVersionKind(certManagerCertificateGVK)
 	if err := r.Get(ctx, client.ObjectKey{Namespace: ing.Namespace, Name: name}, cert); err != nil {
@@ -187,7 +190,9 @@ func (r *AppReconciler) deleteIngressCertificate(ctx context.Context, ing *netwo
 		}
 		return fmt.Errorf("read Certificate %s/%s of a dropped TLS entry: %w", ing.Namespace, name, err)
 	}
-	if !metav1.IsControlledBy(cert, ing) {
+	app := metav1.GetControllerOf(ing)
+	ours := app != nil && takenOver(cert, *app)
+	if !ours && (!unshimmed || !metav1.IsControlledBy(cert, ing)) {
 		return nil
 	}
 	if err := deleteTolerantly(ctx, r.Client, cert); err != nil {

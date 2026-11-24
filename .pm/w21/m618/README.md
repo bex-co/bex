@@ -1,15 +1,15 @@
 # w21 · m618 — Certificates also issue from Google Trust Services, as on Render: a custom domain whose CAA names only `pki.goog`, or a Let's Encrypt failure, no longer leaves it without a certificate
 
-**Worker:** worker21 **Goal:** bex orders a custom domain's certificate from Let's Encrypt and, when that cannot succeed, from Google Trust Services, as Render uses both. **Status:** todo
+**Worker:** worker21 **Goal:** bex orders a custom domain's certificate from Let's Encrypt and, when that cannot succeed, from Google Trust Services, as Render uses both. **Status:** todo (t001, t003 and t004 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | ADR005: when a host's certificate is ordered from Google Trust Services | 45m | — |
+| [t001](done/t001.md) | ADR005: when a host's certificate is ordered from Google Trust Services — **DONE** | 45m | — |
 | [t002](t002.md) | ClusterIssuer for Google Trust Services from an EAB credential the user provides | 45m | t001 |
-| [t003](t003.md) | The operator moves a failing host to Google Trust Services; bex-api names a CAA refusal in plain words | 1h30 | t001 |
-| [t004](t004.md) | The dashboard's DNS instructions carry the CAA hint the CLI skill already gives | 30m | t001 |
+| [t003](done/t003.md) | The operator moves a failing host to Google Trust Services; bex-api names a CAA refusal in plain words — **DONE** | 1h30 | t001 |
+| [t004](done/t004.md) | The dashboard's DNS instructions carry the CAA hint the CLI skill already gives — **DONE** | 30m | t001 |
 | [t005](t005.md) | Production: a disposable domain whose CAA allows only `pki.goog` gets a certificate, and an ordinary one still gets Let's Encrypt's | 45m | t002, t003 |
 | [t006](t006.md) | Render parity | 30m | t005 |
 | [t007](t007.md) | Simplify | 20m | t006 |

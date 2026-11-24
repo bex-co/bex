@@ -427,10 +427,15 @@ type AppReconciler struct {
 	// DNS-01 through each domain's delegated _acme-challenge CNAME (w4/m326).
 	// Empty: a wildcard routes with no certificate of its own.
 	WildcardClusterIssuer string
-	HTTPSRedirect         bool   // redirect every tenant host's plain HTTP to HTTPS (httpsRedirectSpec); BEX_HTTPS_REDIRECT=false turns it off
-	ActivatorService      string // k8s Service name of the wake activator; empty => auto-sleep disabled
-	ActivatorNamespace    string // namespace of the wake activator Service (default bex-system)
-	ActivatorPort         int    // activator listen port (default 8888)
+	// SecondClusterIssuer (BEX_SECOND_CLUSTER_ISSUER, Google Trust Services
+	// in production) issues a host's certificate when ClusterIssuer's CA
+	// cannot (settleCertificateIssuers, w21/m618). Empty: every host stays on
+	// ClusterIssuer and nothing extra is read.
+	SecondClusterIssuer string
+	HTTPSRedirect       bool   // redirect every tenant host's plain HTTP to HTTPS (httpsRedirectSpec); BEX_HTTPS_REDIRECT=false turns it off
+	ActivatorService    string // k8s Service name of the wake activator; empty => auto-sleep disabled
+	ActivatorNamespace  string // namespace of the wake activator Service (default bex-system)
+	ActivatorPort       int    // activator listen port (default 8888)
 	// ActivityReader observes a free web service's served traffic (Traefik
 	// requests and WebSocket egress) so an awake service is not put to sleep
 	// while it is being used (w1/m151). nil (no BEX_PROM_URL) => the

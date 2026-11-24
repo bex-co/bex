@@ -426,6 +426,11 @@ function DnsRecordFields({ domain }: { domain: CustomDomainView }) {
           ))}
         </>
       ) : null}
+      {/* The CAA values bex's two CAs need (w21/m618), as Render's page and
+          the bex-domains CLI skill give them. */}
+      <p className="text-muted-foreground text-sm">
+        {t("services.domainDnsCaaHint")}
+      </p>
     </div>
   );
 }

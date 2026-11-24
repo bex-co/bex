@@ -82,9 +82,11 @@ If your domain has `CAA` records, add entries for bex's certificate authorities:
 ```
 example.com IN CAA 0 issue "letsencrypt.org"
 example.com IN CAA 0 issuewild "letsencrypt.org"
+example.com IN CAA 0 issue "pki.goog; cansignhttpexchanges=yes"
+example.com IN CAA 0 issuewild "pki.goog; cansignhttpexchanges=yes"
 ```
 
-Without these, TLS certificate issuance fails silently.
+Without these, no certificate is issued, and the domain's `certificateReason` names the records to add.
 
 ## Disabling the `onbex.co` Subdomain
 

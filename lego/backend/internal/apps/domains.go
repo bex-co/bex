@@ -364,7 +364,8 @@ type DomainView struct {
 	RedirectForName   string // canonical host for an auto-paired sibling; empty when served directly
 	// CertificateReason explains why TLS issuance has not completed, in
 	// cert-manager's own words (e.g. `Waiting for HTTP-01 challenge propagation:
-	// wrong status code '404'`). Populated ONLY while CertificateStatus is
+	// wrong status code '404'`), except a CAA refusal, which names the values to
+	// add (caaRefusedReason). Populated ONLY while CertificateStatus is
 	// "pending" — an issued certificate has nothing to explain — and empty
 	// whenever the ACME objects are unreadable, so it is a hint, never a status.
 	CertificateReason string
@@ -638,20 +639,56 @@ var (
 //
 // Precedence runs most-specific first: the Challenge names the actual failing
 // exchange, the Order names a failed authorization once the challenge is gone,
-// and the Certificate's Ready condition is the generic fallback.
+// and the Certificate's Ready condition is the generic fallback. A Challenge or
+// Order made for another issuer than the one the Certificate names now is an
+// earlier CA's, from before the operator moved the host (ADR005 § Two
+// certificate authorities), and explains nothing about this attempt.
+//
+// A CA's CAA refusal is replaced by caaRefusedReason, which says what to add.
 //
 // EVERY failure — cert-manager not installed, no RBAC, a read error — yields an
 // empty string, never an error. The reason is a hint layered on top of the
 // authoritative Secret-based status (domainCertificateReady); a cluster without
 // it must degrade to exactly today's behavior rather than fail the domain read.
 func domainCertificateReason(ctx context.Context, cl client.Client, app *appv1alpha1.App, baseDomain, host string) string {
-	if reason := acmeChallengeReason(ctx, cl, app.Namespace, host); reason != "" {
-		return reason
+	cert := &unstructured.Unstructured{}
+	cert.SetGroupVersionKind(certManagerCertificateGVK)
+	// The Certificate's name is known exactly — cert-manager's ingress-shim
+	// names it after the Ingress tls[].secretName, which is tlsSecretForHost,
+	// and the operator keeps that name when it moves the host — so this is a
+	// Get, not a filtered List like the two ACME kinds (whose objects carry
+	// generated names and must be matched on their dnsName).
+	var issuer string
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Spec.TLSSecretNameFor(app.Name, baseDomain, host)}, cert); err != nil {
+		cert = nil
+	} else {
+		issuer, _, _ = unstructured.NestedString(cert.Object, "spec", "issuerRef", "name")
 	}
-	if reason := acmeOrderReason(ctx, cl, app.Namespace, host); reason != "" {
-		return reason
+	reason := acmeChallengeReason(ctx, cl, app.Namespace, host, issuer)
+	if reason == "" {
+		reason = acmeOrderReason(ctx, cl, app.Namespace, host, issuer)
 	}
-	return certificateReadyReason(ctx, cl, app.Namespace, app.Spec.TLSSecretNameFor(app.Name, baseDomain, host))
+	if reason == "" {
+		reason = certificateReadyReason(cert)
+	}
+	if appv1alpha1.CertificateRefusedOnCAA(reason) {
+		return caaRefusedReason
+	}
+	return reason
+}
+
+// caaRefusedReason is a CAA refusal in plain words (w21/m618): the two CAs bex
+// issues from, as Render's custom-domains page names its own, Let's Encrypt
+// (letsencrypt.org) and Google Trust Services (pki.goog). Once one of them may
+// issue, the operator moves the host to it.
+const caaRefusedReason = "The domain's CAA records do not allow bex's certificate authorities to issue its certificate. " +
+	`Add CAA "issue" records for letsencrypt.org and pki.goog (and "issuewild" records for a wildcard domain), or remove the CAA records.`
+
+// sameIssuer reports whether an ACME object made for objectIssuer belongs to
+// the Certificate's current issuer. An unknown name on either side matches.
+func sameIssuer(item unstructured.Unstructured, issuer string) bool {
+	objectIssuer, _, _ := unstructured.NestedString(item.Object, "spec", "issuerRef", "name")
+	return issuer == "" || objectIssuer == "" || objectIssuer == issuer
 }
 
 // listUnstructured is the shared read for all three ACME kinds. A nil result
@@ -665,10 +702,11 @@ func listUnstructured(ctx context.Context, cl client.Client, gvk schema.GroupVer
 	return list.Items
 }
 
-// acmeChallengeReason returns the reason on the Challenge solving exactly host.
-// Challenges carry generated names but name their host in spec.dnsName, so the
-// match is on that field rather than on a derived object name.
-func acmeChallengeReason(ctx context.Context, cl client.Client, namespace, host string) string {
+// acmeChallengeReason returns the reason on the Challenge issuer made for
+// exactly host. Challenges carry generated names but name their host in
+// spec.dnsName, so the match is on that field rather than on a derived object
+// name.
+func acmeChallengeReason(ctx context.Context, cl client.Client, namespace, host, issuer string) string {
 	// A wildcard's Challenge names its base and is marked wildcard (w4/m326),
 	// so it is never confused with the base's own.
 	name, wildcard := wildcardBase(host)
@@ -678,7 +716,7 @@ func acmeChallengeReason(ctx context.Context, cl client.Client, namespace, host 
 	for _, item := range listUnstructured(ctx, cl, acmeChallengeGVK, namespace) {
 		dnsName, _, _ := unstructured.NestedString(item.Object, "spec", "dnsName")
 		isWildcard, _, _ := unstructured.NestedBool(item.Object, "spec", "wildcard")
-		if !strings.EqualFold(dnsName, name) || isWildcard != wildcard {
+		if !strings.EqualFold(dnsName, name) || isWildcard != wildcard || !sameIssuer(item, issuer) {
 			continue
 		}
 		if reason, _, _ := unstructured.NestedString(item.Object, "status", "reason"); reason != "" {
@@ -688,14 +726,15 @@ func acmeChallengeReason(ctx context.Context, cl client.Client, namespace, host 
 	return ""
 }
 
-// acmeOrderReason returns the reason on a FAILED Order covering host. A valid
-// or still-pending Order is not a diagnosis — only a terminal failure explains
-// an absent certificate — and cert-manager garbage-collects the Challenge once
-// an Order fails, which is exactly when this fallback matters.
-func acmeOrderReason(ctx context.Context, cl client.Client, namespace, host string) string {
+// acmeOrderReason returns the reason on a FAILED Order issuer made covering
+// host. A valid or still-pending Order is not a diagnosis — only a terminal
+// failure explains an absent certificate — and cert-manager garbage-collects
+// the Challenge once an Order fails, which is exactly when this fallback
+// matters.
+func acmeOrderReason(ctx context.Context, cl client.Client, namespace, host, issuer string) string {
 	for _, item := range listUnstructured(ctx, cl, acmeOrderGVK, namespace) {
 		dnsNames, _, _ := unstructured.NestedStringSlice(item.Object, "spec", "dnsNames")
-		if !slices.ContainsFunc(dnsNames, func(n string) bool { return strings.EqualFold(n, host) }) {
+		if !slices.ContainsFunc(dnsNames, func(n string) bool { return strings.EqualFold(n, host) }) || !sameIssuer(item, issuer) {
 			continue
 		}
 		state, _, _ := unstructured.NestedString(item.Object, "status", "state")
@@ -713,15 +752,10 @@ func acmeOrderReason(ctx context.Context, cl client.Client, namespace, host stri
 // certificateReadyReason returns the message on the Certificate's Ready
 // condition while it is not True — the generic fallback when neither a
 // Challenge nor a failed Order is present (issuer misconfiguration, rate
-// limiting, a CertificateRequest that never became an Order).
-func certificateReadyReason(ctx context.Context, cl client.Client, namespace, name string) string {
-	// The Certificate's name is known exactly — cert-manager's ingress-shim names
-	// it after the Ingress tls[].secretName, which is tlsSecretForHost — so this
-	// is a Get, not a filtered List like the two ACME kinds above (whose objects
-	// carry generated names and must be matched on their dnsName).
-	cert := &unstructured.Unstructured{}
-	cert.SetGroupVersionKind(certManagerCertificateGVK)
-	if err := cl.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, cert); err != nil {
+// limiting, a CertificateRequest that never became an Order). A nil cert (none
+// read) has nothing to say.
+func certificateReadyReason(cert *unstructured.Unstructured) string {
+	if cert == nil {
 		return ""
 	}
 	conditions, _, _ := unstructured.NestedSlice(cert.Object, "status", "conditions")

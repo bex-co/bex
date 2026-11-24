@@ -1939,6 +1939,12 @@ const ruServices: Record<string, TranslationEntry> = {
     description:
       "A-record fallback under an apex domain's DNS instructions, shown with the resolved edge addresses (w4/378)",
   },
+  "services.domainDnsCaaHint": {
+    message:
+      "Если у вашего домена есть CAA-записи, добавьте записи для центров сертификации bex: Let's Encrypt (letsencrypt.org) и Google Trust Services (pki.goog). Для wildcard-домена также нужна запись issuewild для каждого из них.",
+    description:
+      "Under every custom domain's DNS records: the CAA values bex's two certificate authorities need, as Render's custom-domains page names its own (w21/m618; the bex-domains CLI skill says the same)",
+  },
   "services.domainDnsApexGuidance": {
     message:
       "Корневые домены не могут использовать обычный CNAME — создайте эту запись ALIAS/ANAME (или CNAME flattening) в зоне {zone} (@ означает корень зоны). Если ваш провайдер не поддерживает ни то, ни другое, создайте A-запись для @ с IP-адресами, в которые разрешается Target. Проверка и TLS произойдут автоматически, как только запись начнёт разрешаться, а редирект www ↔ корневой домен bex настроит за вас.",
