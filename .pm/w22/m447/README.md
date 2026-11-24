@@ -1,13 +1,13 @@
 # w22 · m447 — The default sandbox image runs Render's three official agent templates
 
-**Worker:** worker22 **Goal:** a sandbox created with no image runs the executor install scripts of Render's three first-party agent templates (Claude Managed Agents, Cursor Cloud Agents, OpenAI Agents API) unchanged, under each template's own network allow-list, and the installed executor starts. ADR104's open question 5 (what the default image must contain) is answered from that evidence. **Status:** todo
+**Worker:** worker22 **Goal:** a sandbox created with no image runs the executor install scripts of Render's three first-party agent templates (Claude Managed Agents, Cursor Cloud Agents, OpenAI Agents API) unchanged, under each template's own network allow-list, and the installed executor starts. ADR104's open question 5 (what the default image must contain) is answered from that evidence. **Status:** todo (t001, t002 done)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                                         | est | depends_on       |
 | ---- | --------------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Read the three templates' install scripts and launch policies, list everything they assume of the image, and run each in today's image        | 50m | —                |
-| t002 | Design record in ADR104 D2: the new base image, what it carries and why, and open question 5 answered with the limits of the evidence         | 30m | t001             |
+| t001 | Read the three templates' install scripts and launch policies, list everything they assume of the image, and run each in today's image — **DONE** | 50m | —                |
+| t002 | Design record in ADR104 D2: the new base image, what it carries and why, and open question 5 answered with the limits of the evidence — **DONE** | 30m | t001             |
 | t003 | Move the `base` template to the new image, digest-pinned, with its entrypoint and `/bin/bash` kept working                                    | 60m | t002             |
 | t004 | Re-prove what depended on the old image: name resolution under an allow-list, the file gateway's scripts, and the isolation matrix's probes   | 75m | t003             |
 | t005 | Sandboxes created before the change: they keep their image across suspend and resume, stated in the docs and pinned by a test                 | 30m | t003             |
@@ -25,6 +25,35 @@
 - A sandbox created before the change still resumes and runs commands.
 - ADR104 D2 names the image and its digest, lists what it carries, and open question 5 is closed with the evidence and what stays unverified. ADR018's sandbox rows agree.
 - No model or agent-platform account was needed: the check ends when the executor is installed and starts.
+
+## Template requirements (t001, measured 2026-11-23)
+
+The three templates, cloned at `render-examples/cursor-cloud-agent-sandbox` `f7bdb349875`, `render-examples/claude-managed-agents-sandbox` `b4b182bd0f7` and `render-examples/openai-agents-api-sandbox` `2f391c75e73`. Each creates a sandbox with no image and no plan, uploads `scripts/install-executor.sh` to `/tmp/install-executor.sh` and runs it with its own command: Cursor `mkdir -p /workspace/output && chmod 0700 /tmp/install-executor.sh && /tmp/install-executor.sh`, Claude `bash /tmp/install-executor.sh`, OpenAI `chmod 0700 /tmp/install-executor.sh && /bin/bash /tmp/install-executor.sh`. All three run as root (they write `/workspace`, npm's global prefix and, for Claude, may mount devpts) and need no account to install.
+
+| Requirement | Needed by | Today's image (`bash:5.3`, Alpine 3.24, musl, busybox) |
+| --- | --- | --- |
+| `#!/usr/bin/env bash`, `/bin/bash`, `bash` on PATH | all three | present (`/bin/bash` linked by the entrypoint) |
+| `curl` (download; Cursor's readiness probe `curl -fsS http://127.0.0.1:8080/readyz`) | Cursor, Claude | **missing**: first failure of both, `curl: command not found`, exit 127 |
+| GNU `sha256sum --check -` | Cursor, Claude | **busybox has no `--check`**: second failure of both, exit 1 |
+| glibc ≥ 2.28 (x64) / ≥ 2.34 (arm64) and libstdc++ (`GLIBCXX_3.4.22`) | Cursor: its agent bundles a dynamically linked Node (`/lib64/ld-linux-x86-64.so.2`, `/lib/ld-linux-aarch64.so.1`) and glibc `.node` addons | **musl**: third failure, `…/node: cannot execute: required file not found`, exit 127 |
+| Node.js and `npm` on PATH (`npm view`, `npm install --global`) | OpenAI | **missing**: first failure, `npm: command not found`, exit 127 |
+| GNU `find -P … -printf '%P\0'` (collecting `/workspace/output`) | Cursor, OpenAI | **busybox rejects `-printf`** |
+| `find -print0 \| base64 -w0`, `tar -xzf` (`--strip-components`), `mktemp`, `uname`, `ln`, `install -d -m`, `grep`, `mount -t devpts` (only when `/dev/pts` is not mounted) | Claude; Cursor | present (busybox) |
+| linux `x64`/`amd64` or `arm64` | all three (both are pinned with checksums) | either |
+
+The executors: Cursor agent `2026.10.19-6bbf2c4` (Node bundle, glibc, both architectures), `ant` 2.1.0 (static Go), `@openai/codex` 0.163.0 (static musl, x64 `static-pie`). Downloaded archives matched every checksum the scripts pin.
+
+Launch policies (network policy `allow-list`, every rule `https`; no plan, so `1c-2g`):
+
+| Template | Install hosts | Runtime hosts | Env and timeout |
+| --- | --- | --- | --- |
+| Cursor | `downloads.cursor.com` | `api2.cursor.sh`, `api2direct.cursor.sh`, `agent-stores.s3.us-east-1.amazonaws.com`, `cloud-agent-artifacts.s3.us-east-1.amazonaws.com`, `cursor.com` | `HOME=/tmp/cursor-home`, its own `PATH`, `CURSOR_DISABLE_AUTO_UPDATE=1`, worker id and pool; the caller's timeout |
+| Claude | `github.com`, `release-assets.githubusercontent.com`, `objects.githubusercontent.com` | `api.anthropic.com` | `ANTHROPIC_ENVIRONMENT_ID`, `ANTHROPIC_ENVIRONMENT_KEY`; `min(86400, max(300, run + 120))` s |
+| OpenAI | `registry.npmjs.org` | `api.openai.com`, `codex-cloud-environments.chatgpt.com` | `CODEX_API_KEY`; `min(86400, run + 120)` s |
+
+**Adding `curl` to the Alpine image is not enough.** Run in a container of the pinned `bash:5.3` digest with bex's entrypoint, `HOME` and exec wrapper (linux/arm64, 2026-11-23), working around each failure by hand: with `curl` added, Cursor and Claude stop at `sha256sum --check`; with GNU coreutils added as well, Claude installs and `ant --version` prints `ant version 2.1.0`, and Cursor's agent cannot start on musl; with Alpine's `nodejs` and `npm`, OpenAI installs and prints `codex-cli 0.163.0`. So the image needs glibc, GNU coreutils and findutils, and Node with npm.
+
+The same three runs on the new image (`deploy/sandbox-base/`, built locally from the same base digest) exit 0 on linux/arm64 and on linux/amd64 (emulated): `Cursor Agent CLI: 2026.10.19-6bbf2c4`, `ant version 2.1.0`, `installed codex-cli 0.163.0`. How to reproduce: clone the three repositories outside this one, start the image with `/bin/sh -c` and the base entrypoint (`lego/backend/cmd/api/main.go`), copy the script to `/tmp/install-executor.sh` and run the template's command above through the exec wrapper (`lego/backend/internal/sandbox/exec.go`). This machine's container network could not reach Cloudflare or Fastly hosts, so the containers reached them through a forward proxy on the host; the scripts ran unchanged.
 
 ## Source + Goal linkage
 
