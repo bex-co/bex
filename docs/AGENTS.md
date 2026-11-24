@@ -25,7 +25,7 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 ### API, parity, Blueprint
 
 - [ADR006-bex-api.md](ADR006-bex-api.md) — REST/GraphQL/MCP: one core, thin adapters, Render compat
-- [ADR018-render-parity.md](ADR018-render-parity.md) — parity ledger (capability × surface)
+- [ADR018-render-parity.md](ADR018-render-parity.md) — parity ledger (capability × surface); sections too large for one file under the 1 MiB blob limit live in [ADR018/](ADR018/) (Services & lifecycle: [services-lifecycle.md](ADR018/services-lifecycle.md)), each keeping its heading in ADR018 as a pointer
 - [cli-compatibility-checklist.md](cli-compatibility-checklist.md) — Render CLI compat matrix
 - [terraform-compatibility-checklist.md](terraform-compatibility-checklist.md) — Render Terraform provider compat, graded by its own acceptance suite re-recorded against bex (`scripts/terraform-provider-verify.sh`, w9/m474)
 - [ADR049-render-yaml-parity.md](ADR049-render-yaml-parity.md) — `render.yaml` canonical Blueprint contract
