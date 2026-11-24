@@ -18,10 +18,16 @@ package controller
 
 import (
 	"cmp"
+	"context"
+	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -37,7 +43,9 @@ import (
 // Adopted 2026-11-23 (w21/m584): pg-operand-image.yml run 45254127793 gated
 // each digest on arm64 and natively on amd64, with TimescaleDB held out of
 // the allowlist. The rollback is this map emptied, which returns every major
-// to cnpgExportImages and its upstream projection (one more restart).
+// to cnpgExportImages and its upstream projection (one more restart). A
+// re-adoption after it moves each cluster as the first adoption should have,
+// with no pod deleted by hand (holdConnectionPreload).
 var bexOperandImages = map[string]string{
 	"13": "ghcr.io/bex-co/bex-operator:13.22-postgres-6c11b6b0f678b9db48bcba9fc3c2c8891e073c11@sha256:95f569d5374831da375b3238a36399b9724dbe8a084b694c1ef15bb679a04e1f",
 	"14": "ghcr.io/bex-co/bex-operator:14.25-postgres-6c11b6b0f678b9db48bcba9fc3c2c8891e073c11@sha256:da5906d9eae2658f5505bbf9bf18cf0dd953d8d677395d674176259b13a433d5",
@@ -48,6 +56,77 @@ var bexOperandImages = map[string]string{
 }
 
 const postgresDisabled = "false"
+
+// bexOperandRepository is where pg-operand-image.yml publishes every bex
+// operand, tagged <major>.<minor>-postgres-<commit>. The same repository also
+// holds the operator and bex's CloudNativePG build, under other tags.
+const bexOperandRepository = "ghcr.io/bex-co/bex-operator:"
+
+// connectionPreload is the one operand setting a running server applies to
+// each new connection after a reload, with no restart: it loads pgextwlist
+// into every backend.
+const connectionPreload = "local_preload_libraries"
+
+// operandPreloadRequeue polls a Cluster whose connection preload is held
+// while its instances roll onto a bex operand, about the pace of that roll.
+const operandPreloadRequeue = 10 * time.Second
+
+// carriesPgextwlist reports whether a postgres image is a bex operand, which
+// ships pgextwlist in $libdir/plugins: the adopted digest, or an earlier one
+// that a cluster still runs while it rolls onto a newer one. CloudNativePG's
+// upstream images have no pgextwlist.
+func carriesPgextwlist(image string) bool {
+	tag, ok := strings.CutPrefix(image, bexOperandRepository)
+	return ok && strings.Contains(tag, "-postgres-")
+}
+
+// holdConnectionPreload removes local_preload_libraries from a Cluster spec
+// while any instance of the Cluster still runs an image without pgextwlist,
+// and reports whether it did (w21/125, ADR092 D4). PostgreSQL applies the
+// setting at the next connection without a restart, so CloudNativePG's reload
+// of a spec that moved onto a bex operand and named pgextwlist in one update
+// made the instance still on the upstream image refuse every new backend, its
+// instance manager's status probe included, and CloudNativePG then never
+// rolled the Pod. Everything else the operand adds is a placeholder until its
+// library loads, or waits for a restart, and the roll onto the new image is
+// that restart. So a Cluster moves onto the operand with one restart, and the
+// preload follows by reload once no instance runs another image. A Cluster
+// with no instance Pods (new, or hibernated) keeps it, because CloudNativePG
+// creates each Pod from the Cluster's current image. A finished Pod runs
+// nothing and is not counted.
+func (r *DatabaseReconciler) holdConnectionPreload(ctx context.Context, cluster *unstructured.Unstructured, spec map[string]any) (bool, error) {
+	postgresql, _ := spec["postgresql"].(map[string]any)
+	parameters, _ := postgresql["parameters"].(map[string]any)
+	if _, set := parameters[connectionPreload]; !set {
+		return false, nil
+	}
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods, client.InNamespace(cluster.GetNamespace()), client.MatchingLabels{
+		cnpgClusterLabel: cluster.GetName(), cnpgPodRoleLabel: cnpgPodRoleInstance,
+	}); err != nil {
+		return false, fmt.Errorf("list CloudNativePG instances of %s: %w", cluster.GetName(), err)
+	}
+	for i := range pods.Items {
+		pod := &pods.Items[i]
+		if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+			continue
+		}
+		if c := postgresContainer(pod); c == nil || !carriesPgextwlist(c.Image) {
+			delete(parameters, connectionPreload)
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// preloadRequeue is how soon to look again at a Cluster whose connection
+// preload holdConnectionPreload held: nothing watches its Pods.
+func preloadRequeue(held bool) time.Duration {
+	if held {
+		return operandPreloadRequeue
+	}
+	return 0
+}
 
 // pgExtensionAllowlist is the extwlist.extensions value per major: the
 // non-trusted extensions a database owner may CREATE EXTENSION, as Render
@@ -189,8 +268,9 @@ func unversionedOperandImage(running string, creating bool) (image, major string
 func pgExtensionParameters(p clusterParams) map[string]any {
 	parameters := map[string]any{
 		// local_preload_libraries loads pgextwlist into every session from
-		// $libdir/plugins.
-		"local_preload_libraries":             "pgextwlist",
+		// $libdir/plugins. The reconcile holds it back while an instance
+		// still runs an image without it (holdConnectionPreload).
+		connectionPreload:                     "pgextwlist",
 		"extwlist.extensions":                 strings.Join(pgExtensionAllowlist[p.version], ","),
 		"extwlist.restrict_to_database_owner": "on",
 		// The image's after-create grants that let the owner use what an

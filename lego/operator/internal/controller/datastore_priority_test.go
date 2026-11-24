@@ -270,7 +270,7 @@ func clusterReconcileHarness(t *testing.T, db *appv1alpha1.Database) (client.Cli
 		if err := cl.Get(ctx, key, cluster); err != nil && !apierrors.IsNotFound(err) {
 			t.Fatal(err)
 		}
-		if err := r.reconcileCluster(ctx, db, cluster, p); err != nil {
+		if _, err := r.reconcileCluster(ctx, db, cluster, p); err != nil {
 			t.Fatal(err)
 		}
 		live := &unstructured.Unstructured{}

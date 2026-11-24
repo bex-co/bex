@@ -225,12 +225,13 @@ func (r *DatabaseReconciler) reconcileReadReplicas(ctx context.Context, db *appv
 		// A public database's replicas serve the primary's one certificate.
 		digests := map[string]string{}
 		for _, replica := range db.Spec.ReadReplicas {
-			cluster, ready, err := r.reconcileReadReplicaCluster(ctx, db, replica.Name, src)
+			cluster, ready, preloadHeld, err := r.reconcileReadReplicaCluster(ctx, db, replica.Name, src)
 			if err != nil {
 				return state, fmt.Errorf("read replica %q: %w", replica.Name, err)
 			}
 			clusters[cluster.GetName()] = true
 			state.ready = state.ready && ready
+			state.requeue = soonerRequeue(state.requeue, preloadRequeue(preloadHeld))
 			if r.ReadReplicaSyncReader != nil {
 				syncState, req := evaluateReadReplicaSync(
 					ctx, db.Name, replica.Name,
@@ -303,9 +304,11 @@ func readReplicaStatusesStale(db *appv1alpha1.Database, provisioned bool) bool {
 // up, and an upgrade in flight never reaches the replicas. Once the primary
 // runs a major the replica was not cloned at, the replica is deleted and
 // cloned again on a later pass. Hibernation and restarts follow the
-// Database's at all times.
-func (r *DatabaseReconciler) reconcileReadReplicaCluster(ctx context.Context, db *appv1alpha1.Database, replica string, src readReplicaSource) (*unstructured.Unstructured, bool, error) {
-	cluster := &unstructured.Unstructured{}
+// Database's at all times. The primary's connection preload reaches a replica
+// only once the replica's own instance runs a bex operand: preloadHeld
+// reports that it waits (holdConnectionPreload).
+func (r *DatabaseReconciler) reconcileReadReplicaCluster(ctx context.Context, db *appv1alpha1.Database, replica string, src readReplicaSource) (cluster *unstructured.Unstructured, ready, preloadHeld bool, err error) {
+	cluster = &unstructured.Unstructured{}
 	cluster.SetGroupVersionKind(cnpgClusterGVK)
 	cluster.SetName(appv1alpha1.ReadReplicaClusterName(db.Name, replica))
 	cluster.SetNamespace(db.Namespace)
@@ -313,32 +316,34 @@ func (r *DatabaseReconciler) reconcileReadReplicaCluster(ctx context.Context, db
 	if err := r.Get(ctx, client.ObjectKeyFromObject(cluster), cluster); apierrors.IsNotFound(err) {
 		exists = false
 	} else if err != nil {
-		return cluster, false, err
+		return cluster, false, false, err
 	}
 	switch {
 	case exists && !cluster.GetDeletionTimestamp().IsZero():
-		return cluster, false, nil
+		return cluster, false, false, nil
 	case exists && src.settled && cluster.GetAnnotations()[annotationReplicaMajor] != src.major:
-		return cluster, false, deleteTolerantly(ctx, r.Client, cluster)
+		return cluster, false, false, deleteTolerantly(ctx, r.Client, cluster)
 	case !exists && !src.settled:
-		return cluster, false, nil
+		return cluster, false, false, nil
 	}
 	// The cluster is loaded already, so write it directly rather than through
 	// CreateOrUpdate, which would read it again.
 	live := cluster.DeepCopy()
 	if src.settled {
 		spec := readReplicaClusterSpec(db, replica, src.spec, readReplicaPublicNames(db, r.DBDomain, replica))
+		if preloadHeld, err = r.holdConnectionPreload(ctx, cluster, spec); err != nil {
+			return cluster, false, false, err
+		}
 		if err := projectUnstructuredSpec(cluster, spec); err != nil {
-			return cluster, false, err
+			return cluster, false, false, err
 		}
 		cluster.SetAnnotations(withEntry(cluster.GetAnnotations(), annotationReplicaMajor, src.major))
 	}
 	setLifecycleAnnotations(cluster, db.Spec.Suspended, db.Spec.RestartedAt)
 	cluster.SetLabels(withEntry(cluster.GetLabels(), labelReadReplicaOf, db.Name))
 	if err := controllerutil.SetControllerReference(db, cluster, r.Scheme); err != nil {
-		return cluster, false, err
+		return cluster, false, false, err
 	}
-	var err error
 	switch {
 	case !exists:
 		err = r.Create(ctx, cluster)
@@ -346,10 +351,10 @@ func (r *DatabaseReconciler) reconcileReadReplicaCluster(ctx context.Context, db
 		err = r.Update(ctx, cluster)
 	}
 	if err != nil {
-		return cluster, false, err
+		return cluster, false, false, err
 	}
-	ready, _, _ := unstructured.NestedInt64(cluster.Object, "status", "readyInstances")
-	return cluster, ready > 0, nil
+	instances, _, _ := unstructured.NestedInt64(cluster.Object, "status", "readyInstances")
+	return cluster, instances > 0, preloadHeld, nil
 }
 
 // withEntry is m with key set to value, allocating m when it is nil.

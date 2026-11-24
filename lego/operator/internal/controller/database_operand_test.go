@@ -206,6 +206,22 @@ func TestBexOperandImagesArePinnedPerMajor(t *testing.T) {
 		if !strings.Contains(image, ":"+v+".") || !strings.Contains(image, "@sha256:") {
 			t.Errorf("bexOperandImages[%q] = %q, want <repo>:%s.<patch>-…@sha256:…", v, image, v)
 		}
+		// The connection preload waits for an instance on an image this
+		// recognizes (holdConnectionPreload), so an adopted digest it did not
+		// would hold pgextwlist back for good.
+		if !carriesPgextwlist(image) {
+			t.Errorf("bexOperandImages[%q] = %q is not recognized as carrying pgextwlist", v, image)
+		}
+	}
+	for v, image := range cnpgExportImages {
+		if carriesPgextwlist(image) {
+			t.Errorf("upstream cnpgExportImages[%q] = %q is taken for a bex operand", v, image)
+		}
+	}
+	for _, image := range []string{"", "ghcr.io/cloudnative-pg/postgresql:18.4-system-trixie", qualificationCNPGImage, "ghcr.io/bex-co/bex-operator:6c11b6b0f678"} {
+		if carriesPgextwlist(image) {
+			t.Errorf("%q is taken for a bex operand", image)
+		}
 	}
 }
 

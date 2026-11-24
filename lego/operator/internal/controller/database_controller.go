@@ -1048,7 +1048,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if publicTLS.wired {
 		serverTLSSecret, serverCASecret = databasePublicTLSName(&db), databasePublicCAName(&db)
 	}
-	if err := r.reconcileCluster(ctx, &db, cluster, clusterParams{
+	preloadHeld, err := r.reconcileCluster(ctx, &db, cluster, clusterParams{
 		name: db.Name, plan: plan, storageGB: storageGB, version: db.Spec.Version, runningVersion: db.Status.CurrentVersion,
 		dbname: dbname, owner: owner, store: backups.store, namespace: db.Namespace,
 		backupServerName: backups.targetServerName,
@@ -1060,7 +1060,8 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		serverTLSSecret:    serverTLSSecret,
 		serverCASecret:     serverCASecret,
 		logicalReplication: db.Spec.LogicalReplication,
-	}); err != nil {
+	})
+	if err != nil {
 		return r.dbFail(ctx, &db, appv1alpha1.ReasonClusterFailed, err)
 	}
 	tlsRequeue, err := r.settlePublicTLS(ctx, &db, cluster, publicTLS)
@@ -1111,7 +1112,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	applyReadReplicaSyncStatus(&db, replicas.sync)
 
 	if db.Spec.Suspended {
-		return r.settleSuspended(ctx, &db, soonerRequeue(exportRequeue, tlsRequeue))
+		return r.settleSuspended(ctx, &db, soonerRequeue(exportRequeue, tlsRequeue, preloadRequeue(preloadHeld)))
 	}
 
 	// The primary and any HA standby. Read the accepted intent so readiness
@@ -1119,7 +1120,8 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// instance is in replicas.ready.
 	desiredInstances, _, _ := unstructured.NestedInt64(cluster.Object, "spec", "instances")
 
-	requeue := soonerRequeue(exportRequeue, diskRequeue, tlsRequeue, r.walArchiveStallRequeue(backups.enabled), replicas.requeue)
+	requeue := soonerRequeue(exportRequeue, diskRequeue, tlsRequeue, r.walArchiveStallRequeue(backups.enabled), replicas.requeue,
+		preloadRequeue(preloadHeld))
 	if connectionSecret == "" {
 		// Nothing watches Secrets: poll for the rotation's source Secrets.
 		requeue = soonerRequeue(requeue, defaultCredentialRequeue)
@@ -1193,8 +1195,10 @@ func (r *DatabaseReconciler) prepareBackups(ctx context.Context, db *appv1alpha1
 
 // reconcileCluster projects the Database onto its CNPG Cluster (same name, same
 // namespace). The caller owns cluster because the readiness gate reads it back.
-func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alpha1.Database, cluster *unstructured.Unstructured, params clusterParams) error {
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, cluster, func() error {
+// preloadHeld reports that the Cluster's connection preload waits for its
+// instances to run a bex operand (holdConnectionPreload).
+func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alpha1.Database, cluster *unstructured.Unstructured, params clusterParams) (preloadHeld bool, err error) {
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, cluster, func() error {
 		params.creating = cluster.GetResourceVersion() == ""
 		params.currentImage, _, _ = unstructured.NestedString(cluster.Object, "spec", "imageName")
 		params.holdLogicalWorkers = holdsRecoveredSubscriptions(db, cluster, params.creating)
@@ -1207,6 +1211,11 @@ func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alph
 				spec["postgresql"] = configuration
 			}
 		}
+		held, err := r.holdConnectionPreload(ctx, cluster, spec)
+		if err != nil {
+			return err
+		}
+		preloadHeld = held
 		if !clusterPodsRoll(cluster, spec, db.Spec.Suspended, db.Spec.RestartedAt) {
 			if !carriesDatastorePriority(cluster) {
 				delete(spec, "priorityClassName")
@@ -1235,7 +1244,7 @@ func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alph
 		setLifecycleAnnotations(cluster, db.Spec.Suspended, db.Spec.RestartedAt)
 		return controllerutil.SetControllerReference(db, cluster, r.Scheme)
 	})
-	return err
+	return preloadHeld, err
 }
 
 // keepRecoveryApplication keeps the application database and owner a live
@@ -1285,8 +1294,9 @@ func unobservedOperandPostgresql(cluster *unstructured.Unstructured) (map[string
 	if err != nil {
 		return nil, err
 	}
+	// Not local_preload_libraries: a projection whose instances had not yet
+	// rolled onto the operand held it back (holdConnectionPreload).
 	if parameters["extwlist.custom_path"] != "/usr/share/bex/extwlist" ||
-		parameters["local_preload_libraries"] != "pgextwlist" ||
 		parameters["timescaledb.license"] != "apache" || !slices.Contains(preload, "timescaledb") {
 		return nil, nil
 	}
@@ -1937,12 +1947,19 @@ func clusterResources(cluster *unstructured.Unstructured) (corev1.ResourceRequir
 // Cluster's own keys are compared: a live instance also carries an
 // ephemeral-storage request and limit the Cluster never sets.
 func postgresResourcesMatch(pod *corev1.Pod, want corev1.ResourceRequirements) bool {
-	for _, c := range pod.Spec.Containers {
-		if c.Name == "postgres" {
-			return sameQuantities(c.Resources.Requests, want.Requests) && sameQuantities(c.Resources.Limits, want.Limits)
+	c := postgresContainer(pod)
+	return c != nil && sameQuantities(c.Resources.Requests, want.Requests) && sameQuantities(c.Resources.Limits, want.Limits)
+}
+
+// postgresContainer is a CloudNativePG instance Pod's postgres container, or
+// nil when it has none.
+func postgresContainer(pod *corev1.Pod) *corev1.Container {
+	for i := range pod.Spec.Containers {
+		if pod.Spec.Containers[i].Name == "postgres" {
+			return &pod.Spec.Containers[i]
 		}
 	}
-	return false
+	return nil
 }
 
 func sameQuantities(have, want corev1.ResourceList) bool {

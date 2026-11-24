@@ -57,7 +57,7 @@ func reconcileRecoveredCluster(t *testing.T, r *DatabaseReconciler, db *appv1alp
 	cluster.SetGroupVersionKind(cnpgClusterGVK)
 	cluster.SetName(db.Name)
 	cluster.SetNamespace(db.Namespace)
-	if err := r.reconcileCluster(context.Background(), db, cluster, p); err != nil {
+	if _, err := r.reconcileCluster(context.Background(), db, cluster, p); err != nil {
 		t.Fatal(err)
 	}
 	live := &unstructured.Unstructured{}
