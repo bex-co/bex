@@ -1,6 +1,6 @@
 # w6 · m640 — Background workers, cron jobs and pre-deploy jobs receive no private network traffic, as on Render
 
-**Worker:** worker6 **Goal:** the pods of background workers, cron runs, pre-deploy and one-off jobs refuse connections from the workspace's other services, as Render's private network does, while they still send private traffic and platform access (SSH, metrics, logs) keeps working. **Status:** todo (t001–t003 and t007 done)
+**Worker:** worker6 **Goal:** the pods of background workers, cron runs, pre-deploy and one-off jobs refuse connections from the workspace's other services, as Render's private network does, while they still send private traffic and platform access (SSH, metrics, logs) keeps working. **Status:** blocked (t001–t003 and t007 done in `8a53318532`; t004 waits for a production pin carrying it)
 
 ## Tasks (in order)
 
@@ -27,7 +27,7 @@
 - **Source:** `/pm-brainstorm one aspect of render parity to w6` 2026-11-25 (service networking: the private network and WebSockets, at `fe4d53addd`), item 2, filed by `/pmx them to w6`. `allow-same-namespace` (`sameNamespaceNetworkPolicy`, `lego/backend/internal/store/namespaces.go`) lets every pod of an environment reach every other on any port, and only free-plan pods are refused (`deny-free-plan-private-ingress`, w8/m130). A worker also has a reachable headless `<slug>-discovery` Service (`renderenv.HasDiscoveryService`, w6/m148). bex's own code states the rule: `ReceivesPrivateTraffic` in `lego/types/v1alpha1/app_types.go`, and `build_datastore_reach.go`'s "Workers, cron jobs, static sites and free web services receive none, as on Render". But only build reach and Blueprint checks use it, not the network.
 - **Render:** background workers, cron jobs and workflows "can _send_ private network requests, but they can't _receive_ them" (render.com/docs/private-network, read 2026-11-25); background workers "don't receive any incoming network traffic" (render.com/docs/background-workers).
 - **Recommendation, not a user decision:** keep a worker's `RENDER_DISCOVERY_SERVICE` and `<slug>-discovery` name. render.com/docs/environment-variables describes the variable as the way to discover all running instances of a scaled service, and the private-network page names only web and private services as receivers. Under ADR008 Render parity first the network follows the private-network page; whether Render sets the variable on a worker at all is unverified and stays open in ADR018.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)); tenant isolation ([ADR022](../../../docs/ADR022-tenant-isolation.md)).
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)); tenant isolation ([ADR022](../../../../docs/ADR022-tenant-isolation.md)).
 - **Expected outcome:** a worker's debug, metrics or admin port is no longer open to the rest of its workspace, and bex's network does what its code and ADRs say.
 - **Why now:** the rule is written in bex's code but not enforced in the network, and ADR018 has no row for it.
 - **Render parity:** included: tenant-visible network behavior.
