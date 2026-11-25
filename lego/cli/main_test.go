@@ -1326,11 +1326,39 @@ func TestBexLoginReportsBexReleaseNotRenderCLI(t *testing.T) {
 // --workspace, a typed-id read — while a command that consumes the active
 // workspace still refuses (w8/064).
 func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
-	const teamID, dbID = "tea-12345678901234567890", "dpg-12345678901234567890"
+	const (
+		teamID = "tea-12345678901234567890"
+		dbID   = "dpg-12345678901234567890"
+		kvID   = "red-12345678901234567890"
+		srvID  = "srv-12345678901234567890"
+		sbgID  = "sbg-12345678901234567890"
+		sbbID  = "sbb-12345678901234567890"
+		crdID  = "crd-12345678901234567890"
+		exsID  = "exs-12345678901234567890"
+		agsID  = "ags-12345678901234567890"
+		sbxID  = "sbx-12345678901234567890"
+		snpID  = "snp-12345678901234567890"
+		evmID  = "evm-12345678901234567890"
+		autID  = "aut-12345678901234567890"
+		sklID  = "skl-12345678901234567890"
+		secID  = "sec-12345678901234567890"
+		objID  = "obj-12345678901234567890"
+		bktID  = "bkt-12345678901234567890"
+	)
 	var mu sync.Mutex
-	var nameLookups, sentOwners []string
+	var nameLookups, sentOwners, leakedOwners []string
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		if owner := r.URL.Query().Get("ownerId"); owner == "stale-ws" || owner == "dup-ws" {
+			mu.Lock()
+			leakedOwners = append(leakedOwners, r.Method+" "+r.URL.RequestURI())
+			mu.Unlock()
+		}
+		if strings.Contains(r.URL.Path, "/stale-ws/") || strings.Contains(r.URL.Path, "/dup-ws/") {
+			mu.Lock()
+			leakedOwners = append(leakedOwners, r.Method+" "+r.URL.RequestURI())
+			mu.Unlock()
+		}
 		switch r.URL.Path {
 		case "/v1/owners":
 			name := r.URL.Query().Get("name")
@@ -1353,6 +1381,19 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 			_, _ = w.Write([]byte(`{"id":"usr-12345678901234567890","email":"qa@example.test","name":"qa"}`))
 		case "/v1/postgres/" + dbID:
 			_, _ = w.Write([]byte(`{"id":"` + dbID + `","name":"db","plan":"free","version":"18","status":"available","databaseName":"d","databaseUser":"u","ipAllowList":[],"readReplicas":[],"suspended":"not_suspended"}`))
+		case "/v1/key-value/" + kvID:
+			_, _ = w.Write([]byte(`{"id":"` + kvID + `","name":"kv","plan":"free","status":"available","ipAllowList":[],"suspended":"not_suspended"}`))
+		case "/v1/sandbox-groups/" + sbgID:
+			_, _ = w.Write([]byte(`{"id":"` + sbgID + `","name":"extra","isDefault":false}`))
+		case "/v1/sandbox-groups/" + sbgID + "/builds/" + sbbID:
+			_, _ = w.Write([]byte(`{"id":"` + sbbID + `","name":"img","status":"succeeded","sandboxGroupId":"` + sbgID + `"}`))
+		case "/v1/sandbox-groups/" + sbgID + "/credentials/" + crdID:
+			_, _ = w.Write([]byte(`{"id":"` + crdID + `","domain":"api.example.com","enabled":true,"injection":{"type":"header","name":"Authorization"}}`))
+		case "/v1/agent-sessions/" + agsID:
+			_, _ = w.Write([]byte(`{"id":"` + agsID + `","ownerId":"` + teamID + `","state":"completed","turns":1}`))
+		case "/v1/blueprints/" + exsID + "/plan":
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"message":"blueprint not found"}`))
 		case "/v1/blueprints/validate":
 			owner := r.FormValue("ownerId")
 			mu.Lock()
@@ -1534,12 +1575,31 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 	}
 
 	for _, workspace := range []string{"stale-ws", "dup-ws"} {
-		// A typed-id read tries the name but is not blocked by it.
-		if code, stderr := run(workspace, "pg", "get", "-o", "json", dbID); code != 0 {
-			t.Errorf("BEX_WORKSPACE=%s bex pg get -o json %s exited %d: %s", workspace, dbID, code, stderr)
+		// Direct-ID commands whose API route does not read config.WorkspaceID()
+		// try the name once but are not blocked by an unresolvable one (w8/064, w32/117).
+		for _, args := range [][]string{
+			{"pg", "get", "-o", "json", dbID},
+			{"kv", "get", "-o", "json", kvID},
+			{"deploys", "list", srvID, "-o", "json"},
+			{"sandbox-groups", "delete", sbgID, "-o", "json"},
+			{"sandbox-groups", "images", "get", sbbID, "--group", sbgID, "-o", "json"},
+			{"sandbox-groups", "builds", "get", sbbID, "--group", sbgID, "-o", "json"},
+			{"sandbox-groups", "credentials", "get", crdID, "--group", sbgID, "-o", "json"},
+			{"agent", "get", agsID, "-o", "json"},
+		} {
+			if code, stderr := run(workspace, args...); code != 0 {
+				t.Errorf("BEX_WORKSPACE=%s bex %v exited %d: %s", workspace, args, code, stderr)
+			}
+			if n := lookups(); n != 1 {
+				t.Errorf("BEX_WORKSPACE=%s direct-id %v made %d name lookups, want it to try once", workspace, args, n)
+			}
+		}
+		// `ea blueprints plan <exs-id>` also addresses the blueprint directly without ownerId.
+		if code, stderr := run(workspace, "ea", "blueprints", "plan", exsID, "-o", "json"); code == 0 || strings.Contains(stderr, "BEX_WORKSPACE") {
+			t.Errorf("BEX_WORKSPACE=%s bex ea blueprints plan %s = %d %q, want direct blueprint error (not BEX_WORKSPACE)", workspace, exsID, code, stderr)
 		}
 		if n := lookups(); n != 1 {
-			t.Errorf("BEX_WORKSPACE=%s typed-id read made %d name lookups, want it to try once", workspace, n)
+			t.Errorf("BEX_WORKSPACE=%s ea blueprints plan made %d name lookups, want 1", workspace, n)
 		}
 	}
 
@@ -1588,8 +1648,10 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 
 	// Consumers still refuse an unresolvable name rather than guess, including
 	// commands that superficially resemble exempted ones (`ea objects --local`,
-	// remote `workflows`, `s3` without both env keys, and workspace-scoped `s3`
-	// management commands even when S3 env keys are set).
+	// remote `workflows`, `s3` without both env keys, workspace-scoped `s3`
+	// management commands even when S3 env keys are set) and typed-ID commands
+	// that still read the active workspace as ownerId (w32/117).
+	objectOut := filepath.Join(t.TempDir(), "downloaded.bin")
 	for _, tc := range []struct {
 		args     []string
 		extraEnv []string
@@ -1604,6 +1666,30 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 		{args: []string{"s3", "public", "photos", "status", "-o", "json"}, extraEnv: s3KeyEnv},
 		{args: []string{"s3", "info", "photos", "-o", "json"}, extraEnv: s3KeyEnv},
 		{args: []string{"s3", "info", "s3://photos", "-o", "json"}, extraEnv: s3KeyEnv},
+		// Typed-ID commands that still pass config.WorkspaceID() as ownerId (w32/117).
+		{args: []string{"sandboxes", "stop", sbxID, "--confirm", "-o", "json"}},
+		{args: []string{"sandboxes", "exec", sbxID, "--", "true"}},
+		{args: []string{"sandboxes", "snapshots", "create", sbxID, "--kind", "filesystem", "-o", "json"}},
+		{args: []string{"sandboxes", "snapshots", "get", snpID, "-o", "json"}},
+		{args: []string{"sandboxes", "snapshots", "get", snpID, "--group", sbgID, "-o", "json"}},
+		{args: []string{"sandboxes", "snapshots", "delete", snpID, "--confirm", "-o", "json"}},
+		{args: []string{"sandboxes", "snapshots", "delete", snpID, "--group", sbgID, "--confirm", "-o", "json"}},
+		{args: []string{"sandbox-groups", "images", "get", sbbID, "-o", "json"}},
+		{args: []string{"sandbox-groups", "images", "delete", sbbID, "--confirm", "-o", "json"}},
+		{args: []string{"sandbox-groups", "builds", "get", sbbID, "-o", "json"}},
+		{args: []string{"sandbox-groups", "credentials", "get", crdID, "-o", "json"}},
+		{args: []string{"sandbox-groups", "environment", "set", sbgID, evmID, "-o", "json"}},
+		{args: []string{"pg", "get", dbID, "--project", "proj", "-o", "json"}},
+		{args: []string{"pg", "get", dbID, "--environment", "prod", "-o", "json"}},
+		{args: []string{"kv", "get", kvID, "--project", "proj", "-o", "json"}},
+		{args: []string{"kv", "get", kvID, "--environment", "prod", "-o", "json"}},
+		{args: []string{"agent", "automations", "get", autID, "-o", "json"}},
+		{args: []string{"agent", "skills", "get", sklID, "-o", "json"}},
+		{args: []string{"agent", "secrets", "delete", secID, "--confirm", "-o", "json"}},
+		{args: []string{"ea", "objects", "get", objID, "--file", objectOut, "--region", "frankfurt", "-o", "json"}},
+		{args: []string{"s3", "info", bktID, "-o", "json"}},
+		{args: []string{"s3", "public", bktID, "status", "-o", "json"}},
+		{args: []string{"s3", "keys", "revoke", bktID, "--confirm", "-o", "json"}},
 	} {
 		code, stderr := runWithEnv("stale-ws", tc.extraEnv, tc.args...)
 		if code != 1 || !strings.Contains(stderr, `no workspace named "stale-ws"`) {
@@ -1612,6 +1698,9 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 		if n := lookups(); n != 1 {
 			t.Errorf("stale bex %v made %d name lookups, want 1", tc.args, n)
 		}
+	}
+	if leaked := drain(&leakedOwners); len(leaked) != 0 {
+		t.Errorf("unresolved BEX_WORKSPACE leaked into API requests: %v", leaked)
 	}
 	if code, stderr := run("dup-ws", "services", "-o", "json"); code != 1 || !strings.Contains(stderr, `several workspaces are named "dup-ws"`) {
 		t.Errorf("ambiguous services = %d %q, want the ambiguity refusal", code, stderr)
