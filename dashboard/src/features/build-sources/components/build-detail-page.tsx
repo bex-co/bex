@@ -38,6 +38,7 @@ import { useServices } from "@/features/services/hooks/use-services";
 import { repoCommitUrl } from "@/features/services/lib/repo";
 import { BuildLogPanel } from "@/features/build-sources/components/build-log-panel";
 import { BuildStatusBadge } from "@/features/build-sources/components/build-source-builds-tab";
+import { LogsGate } from "@/features/capabilities/components/logs-gate";
 import { useBuildSourceDetailContext } from "@/features/build-sources/components/build-source-detail-context";
 import { BuildDetailRouteSkeleton } from "@/features/build-sources/components/build-source-skeletons";
 import { useBuildSourceBuild } from "@/features/build-sources/hooks/use-build-source-builds";
@@ -319,19 +320,23 @@ export function BuildDetailPage({
         </CardContent>
       </Card>
 
-      {/* Historical + live SSE build logs */}
+      {/* Historical + live SSE build logs. A Viewer reads the build but not
+          its logs (w9/145): the role's reason stands in for the panel, and
+          neither its reads nor its live tail start. */}
       {isGit ? (
-        <BuildLogPanel
-          key={build.id}
-          buildSourceId={buildSourceId}
-          buildId={build.id}
-          title={`${buildSource.name} · ${build.id}`}
-          startTime={startedAt}
-          endTime={endTime}
-          startedAt={startedAt}
-          followBuild={active}
-          createEventSource={createEventSource}
-        />
+        <LogsGate>
+          <BuildLogPanel
+            key={build.id}
+            buildSourceId={buildSourceId}
+            buildId={build.id}
+            title={`${buildSource.name} · ${build.id}`}
+            startTime={startedAt}
+            endTime={endTime}
+            startedAt={startedAt}
+            followBuild={active}
+            createEventSource={createEventSource}
+          />
+        </LogsGate>
       ) : (
         <Card data-region="build-logs" className="py-6">
           <CardContent className="px-4 text-center">

@@ -8,7 +8,7 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import { mockCapabilities } from "@/test/mocks/capabilities";
+import { LOGS_REASON, mockCapabilities } from "@/test/mocks/capabilities";
 import type {
   BuildSourceBuildView,
   BuildSourceView,
@@ -36,7 +36,10 @@ const singleBuildState = vi.hoisted(() => ({
 }));
 
 const buildLogsCalls = vi.hoisted(() => [] as Array<Record<string, unknown>>);
-const capabilitiesState = vi.hoisted(() => ({ canCreate: true }));
+const capabilitiesState = vi.hoisted(() => ({
+  canCreate: true,
+  canViewLogs: true,
+}));
 
 vi.mock("@/features/build-sources/hooks/use-build-source-builds", () => ({
   useBuildSourceBuilds: () => buildsListState,
@@ -78,7 +81,10 @@ vi.mock("@/features/services/hooks/use-services", () => ({
 }));
 vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
   useCapabilities: () =>
-    mockCapabilities({ canCreate: capabilitiesState.canCreate }),
+    mockCapabilities({
+      canCreate: capabilitiesState.canCreate,
+      canViewLogs: capabilitiesState.canViewLogs,
+    }),
 }));
 
 const GIT_SOURCE: BuildSourceView = {
@@ -189,6 +195,7 @@ beforeEach(() => {
   singleBuildState.notFound = false;
   buildLogsCalls.length = 0;
   capabilitiesState.canCreate = true;
+  capabilitiesState.canViewLogs = true;
 });
 
 describe("BuildSourceBuildsTab & BuildDetailPage (w2/m614/t003-t004)", () => {
@@ -231,6 +238,22 @@ describe("BuildSourceBuildsTab & BuildDetailPage (w2/m614/t003-t004)", () => {
       buildId: "bld-1",
       followBuild: false,
     });
+  });
+
+  it("shows the role reason instead of the log panel to a member without can_view_logs", async () => {
+    capabilitiesState.canViewLogs = false;
+    singleBuildState.build = BUILD_ROW;
+    renderWithContext(
+      <BuildDetailPage buildSourceId="bds-git-1" buildId="bld-1" />,
+    );
+
+    // The build itself reads through can_view, so its facts still render;
+    // only the logs stand replaced by the role's reason (w9/145).
+    expect(
+      await screen.findByRole("heading", { name: "bld-1" }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText(LOGS_REASON)).toBeInTheDocument();
+    expect(buildLogsCalls).toHaveLength(0);
   });
 
   it("shows image-build-logs notice instead of querying logs for image sources", async () => {
