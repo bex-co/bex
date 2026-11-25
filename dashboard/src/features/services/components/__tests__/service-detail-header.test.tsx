@@ -19,6 +19,7 @@ import type { InstanceTypeView } from "@/features/services/hooks/use-instance-ty
 import type { LatestDeploySummary } from "@/features/deploys/hooks/use-latest-deploy";
 import { mockAllowedResourceActions } from "@/test/mocks/resource-actions";
 import { useShellGate } from "@/features/services/hooks/use-shell-gate";
+import { hydrateAcrossBoundary } from "@/test/hydration";
 
 // The instance-type chip and the Manual Deploy button both go through Apollo;
 // stub them at the hook boundary (the pattern every other panel's test uses) so
@@ -161,7 +162,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
 }
 
 // The header links to the plan tab, so it needs a router around it.
-function renderHeader(
+function headerRouter(
   service: ServiceView,
   props: Partial<{
     pending: null | "restart";
@@ -182,12 +183,18 @@ function renderHeader(
       />
     ),
   });
-  const router = createRouter({
+  return createRouter({
     routeTree: rootRoute.addChildren([indexRoute]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
     context: { client: {} as never, session: null },
   });
-  return render(<RouterProvider router={router} />);
+}
+
+function renderHeader(
+  service: ServiceView,
+  props: Parameters<typeof headerRouter>[1] = {},
+) {
+  return render(<RouterProvider router={headerRouter(service, props)} />);
 }
 
 describe("ServiceDetailHeader", () => {
@@ -877,6 +884,29 @@ describe("ServiceDetailHeader", () => {
       vi.useRealTimers();
       clock.mockRestore();
     }
+  });
+
+  // w3/m555: the date sits in a <p>, and its placeholder was a <div>, which
+  // the HTML parser moves out of a paragraph. Every production load of a cron
+  // job with a successful run then threw React #418.
+  it("hydrates a cron job's last successful run without a mismatch", async () => {
+    const router = headerRouter(
+      svc({
+        type: "cron_job",
+        url: null,
+        schedule: "0 9 * * *",
+        command: "./job",
+        lastSuccessfulRunAt: "2026-11-21T09:00:00Z",
+      }),
+    );
+    await router.load();
+    const now = Date.parse("2026-11-25T14:30:00Z");
+    const probe = hydrateAcrossBoundary(<RouterProvider router={router} />, {
+      serverNow: now,
+      clientNow: now,
+    });
+    expect(probe.html).toContain('data-header-item="cron-last-run"');
+    expect(probe.recovered).toEqual([]);
   });
 
   it("says a cron job has no successful runs yet", async () => {
@@ -1575,5 +1605,73 @@ describe("ServiceDetailHeaderSkeleton for a cron job", () => {
   it("keeps every other type's two action slots", () => {
     const { container } = render(<ServiceDetailHeaderSkeleton />);
     expect(actionSlots(container)).toBe(2);
+  });
+});
+
+// w3/m555 production walk: at 390 a service's ready name row ("Service", its
+// status, "Latest deploy <status>", its plan) wraps onto a second line, and a
+// frame that drew no latest deploy fit on one, 30px short of the ready band.
+// The frame reserves the ready row's labels in their own words.
+describe("ServiceDetailHeaderSkeleton name row", () => {
+  it("reserves the ready row's labels, the latest deploy's included", async () => {
+    renderHeader(svc(), {
+      latestDeploy: { id: "dep-1", status: "live" } as LatestDeploySummary,
+    });
+    const ready = await screen.findByRole("link", {
+      name: "Latest deploy: Live",
+    });
+    expect(ready).toHaveTextContent("Latest deploy");
+
+    const { container } = render(<ServiceDetailHeaderSkeleton />);
+    const slot = container.querySelector(
+      '[data-skeleton-item="latest-deploy"]',
+    )!;
+    expect(slot).toHaveTextContent("Latest deploy");
+    // Laid out as the ready link is: the label, then a badge-sized bar.
+    expect(slot).toHaveClass("flex", "items-center", "gap-1.5");
+    expect(slot.parentElement).toHaveTextContent(/^Service\s*Latest deploy$/);
+  });
+
+  it("lays the cached name out at the ready heading's size", async () => {
+    renderHeader(svc({ name: "nightly-report" }));
+    const heading = await screen.findByRole("heading", {
+      name: "nightly-report",
+    });
+    const { container } = render(
+      <ServiceDetailHeaderSkeleton name="nightly-report" />,
+    );
+    const reserved = within(container as HTMLElement).getByText(
+      "nightly-report",
+    );
+    expect(reserved).toHaveClass("invisible");
+    const slot = reserved.parentElement!;
+    for (const size of ["text-xl", "font-semibold", "truncate"]) {
+      expect(heading).toHaveClass(size);
+      expect(slot).toHaveClass(size);
+    }
+  });
+});
+
+// w3/m555 production walk: at 390 "Runs <command> at 09:00 AM UTC" broke "AM
+// UTC" onto a second line beside Details while the command still had room
+// to truncate, 20px taller than its one-line frame. The command now gives up
+// its width first; the words never shrink, and take a line of their own only
+// when even four characters of the command leave them no room.
+describe("cron facts line", () => {
+  it("truncates the command before the schedule's words wrap", async () => {
+    renderHeader(
+      svc({
+        type: "cron_job",
+        url: null,
+        schedule: "0 9 * * *",
+        command: "node -e \"console.log('m555 run ok')\"",
+      }),
+    );
+    const words = await screen.findByText("at 09:00 AM UTC");
+    const line = words.closest('[data-header-item="cron-runs"]')!;
+    expect(line).toHaveClass("flex", "flex-wrap");
+    expect(words).toHaveClass("shrink-0", "max-w-full");
+    const command = within(line as HTMLElement).getByText(/console\.log/);
+    expect(command).toHaveClass("basis-0", "grow", "max-w-max", "truncate");
   });
 });

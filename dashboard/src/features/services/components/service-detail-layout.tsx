@@ -15,6 +15,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useServer } from "@/features/services/hooks/use-server";
 import { serviceTabLabelKey } from "@/features/services/components/service-nav";
 import {
+  useCachedServiceName,
   useCachedServiceSource,
   useCachedServiceType,
 } from "@/features/services/hooks/use-cached-service-type";
@@ -236,11 +237,14 @@ export function ServiceDetailLayout({
 /**
  * The header's frame, with the repository and registry-credential items the
  * cache says the ready header will draw, so its wrapping row ends on the same
- * line (w3/094).
+ * line (w3/094), and the cached name, so its first row does too (w3/m555).
  */
 function PendingServiceHeader({ serviceId }: { serviceId: string }) {
   return (
-    <ServiceDetailHeaderSkeleton source={useCachedServiceSource(serviceId)} />
+    <ServiceDetailHeaderSkeleton
+      source={useCachedServiceSource(serviceId)}
+      name={useCachedServiceName(serviceId)}
+    />
   );
 }
 

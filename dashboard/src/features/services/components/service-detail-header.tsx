@@ -241,7 +241,9 @@ export function ServiceDetailHeader({
               ) : null}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2 max-md:[&_button]:min-h-11 md:max-lg:col-start-2 md:max-lg:row-start-1">
+          {/* Hidden while empty (a suspended cron job's): wrapped onto a line
+              of its own, an empty slot still adds the row gap (w3/m555). */}
+          <div className="flex shrink-0 items-center gap-2 empty:hidden max-md:[&_button]:min-h-11 md:max-lg:col-start-2 md:max-lg:row-start-1">
             {isCron(service) ? (
               // Render's cron header: Trigger Run while it runs and nothing
               // while suspended, where the notice below offers Resume. Its
@@ -519,6 +521,11 @@ function RepoLabel({ repo }: { repo: string }) {
 const DOCKER_CMD = "CMD";
 const DEFAULT_DOCKERFILE = "Dockerfile";
 
+/** What a cron job runs, in its facts line: laid out from no width, it grows
+ *  to its own and truncates to fit, down to four characters, so the schedule's
+ *  words beside it keep their line (w3/m555). */
+const COMMAND_CLASS = "min-w-[4ch] max-w-max grow basis-0 truncate";
+
 /**
  * A cron job's two fact lines, as Render's header has them (w3/m555): "Runs
  * <command> <schedule in words>", then "Last successful run <date>" or "No
@@ -544,7 +551,7 @@ function CronRunFacts({ service }: { service: ServiceView }) {
   let what: ReactNode;
   if (command) {
     what = (
-      <code title={command} className={cn(codeClass, "min-w-[4ch] truncate")}>
+      <code title={command} className={cn(codeClass, COMMAND_CLASS)}>
         {command}
       </code>
     );
@@ -555,7 +562,7 @@ function CronRunFacts({ service }: { service: ServiceView }) {
       dockerfile: `${SLOT}dockerfile${SLOT}`,
     }).split(SLOT);
     what = (
-      <span className="min-w-[4ch] truncate">
+      <span className={COMMAND_CLASS}>
         {parts.map((part, i) =>
           i % 2 === 0 ? (
             part
@@ -575,16 +582,20 @@ function CronRunFacts({ service }: { service: ServiceView }) {
     <>
       {/* The spaces between the items are the sentence's, for whoever reads
           its text; the flex gap is what draws them. A long command truncates
-          before the schedule's words do. */}
+          before the schedule's words wrap: they never shrink, and move to a
+          line of their own only when even the truncated command leaves them
+          no room (w3/m555). */}
       <p
         data-header-item="cron-runs"
-        className="text-muted-foreground flex min-w-0 items-baseline gap-x-1.5 max-sm:self-center lg:basis-full"
+        className="text-muted-foreground flex min-w-0 flex-wrap items-baseline gap-x-1.5 max-sm:self-center sm:basis-full"
       >
         <span className="shrink-0">{t("services.headerRuns")}</span> {what}{" "}
         {words ? (
-          <span className="min-w-0">{words}</span>
+          <span className="max-w-full shrink-0">{words}</span>
         ) : schedule ? (
-          <code className={cn(codeClass, "min-w-0 truncate")}>{schedule}</code>
+          <code className={cn(codeClass, "max-w-full shrink-0 truncate")}>
+            {schedule}
+          </code>
         ) : null}
       </p>
       <p
@@ -1048,8 +1059,11 @@ const GIT_SOURCE: CachedServiceSource = {
  */
 export function ServiceDetailHeaderSkeleton({
   source,
+  name,
 }: {
   source?: CachedServiceSource | null;
+  /** The cached name, laid out invisibly at the ready heading's size. */
+  name?: string | null;
 }) {
   const { t } = useTranslations();
   const { repository, registryCredential, cron, suspended } =
@@ -1064,17 +1078,37 @@ export function ServiceDetailHeaderSkeleton({
         <Skeleton className="h-4 w-24" />
         <div className="flex flex-wrap items-center justify-between gap-3 md:max-lg:grid md:max-lg:grid-cols-[minmax(0,1fr)_auto] md:max-lg:gap-y-2 lg:flex-nowrap lg:items-start">
           <div className="flex min-w-0 flex-wrap items-center gap-2 md:max-lg:contents">
-            {/* Sized as a typical ready row ("Service", a status, a plan),
-                so at 390 it fits one line where the ready one does instead
-                of wrapping the plan onto a second (w3/m555). */}
-            <Skeleton className="h-7 w-48 max-w-[50vw] max-sm:w-36" />
-            <div className="contents sm:flex sm:items-center sm:gap-2 md:max-lg:col-span-2 md:max-lg:row-start-2">
-              <Skeleton className="h-4 w-12" />
+            {/* The ready row's items in their own words where the frame
+                knows them, the name and the latest deploy's included (a
+                service has one from its first deploy), so the row wraps
+                where the ready one does (w3/m555). */}
+            {name ? (
+              <span className="relative min-w-0 truncate text-xl font-semibold">
+                <ReservedText>{name}</ReservedText>
+              </span>
+            ) : (
+              <Skeleton className="h-7 w-48 max-w-[50vw] max-sm:w-36" />
+            )}
+            <div className="contents sm:flex sm:min-w-0 sm:flex-wrap sm:items-center sm:gap-2 md:max-lg:col-span-2 md:max-lg:row-start-2">
+              <span className="relative text-xs font-medium">
+                <ReservedText>{t("services.headerServicePhase")}</ReservedText>
+              </span>
               <Skeleton className="h-[22px] w-16 rounded-full" />
+              <span
+                data-skeleton-item="latest-deploy"
+                className="flex items-center gap-1.5"
+              >
+                <span className="relative text-xs font-medium">
+                  <ReservedText>
+                    {t("services.headerLatestDeploy")}
+                  </ReservedText>
+                </span>
+                <Skeleton className="h-[22px] w-10 rounded-full" />
+              </span>
               <Skeleton className="h-[22px] w-14 rounded-full" />
             </div>
           </div>
-          <div className="flex items-center gap-2 md:max-lg:col-start-2 md:max-lg:row-start-1">
+          <div className="flex items-center gap-2 empty:hidden md:max-lg:col-start-2 md:max-lg:row-start-1">
             {cron ? (
               suspended ? null : (
                 <Skeleton
@@ -1123,7 +1157,7 @@ export function ServiceDetailHeaderSkeleton({
             <>
               <div
                 data-skeleton-item="cron-runs"
-                className="flex h-5 min-w-0 items-center lg:basis-full"
+                className="flex h-5 min-w-0 items-center sm:basis-full"
               >
                 <Skeleton className="h-4 w-64 max-w-full" />
               </div>

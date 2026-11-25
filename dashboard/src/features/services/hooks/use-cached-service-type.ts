@@ -42,6 +42,15 @@ export function useCachedServiceType(serviceId: string): string | null {
   return useCachedService(serviceId)?.type ?? null;
 }
 
+/**
+ * The service's name from the cache, which the header's loading frame lays
+ * out invisibly so its first row wraps where the ready one does (w3/m555).
+ * Null while no cached read has named it.
+ */
+export function useCachedServiceName(serviceId: string): string | null {
+  return useCachedService(serviceId)?.name ?? null;
+}
+
 /** The source facts the service header draws beside its Service ID. */
 export interface CachedServiceSource {
   /** It builds from a repository: the header shows the repository and branch. */

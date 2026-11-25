@@ -38,6 +38,7 @@ vi.mock("sonner", () => ({
 vi.mock("@/features/services/hooks/use-cached-service-type", () => ({
   useCachedServiceType: () => null,
   useCachedServiceSource: () => null,
+  useCachedServiceName: () => null,
 }));
 vi.mock("@/features/services/hooks/use-services", () => ({
   useServices: () => ({

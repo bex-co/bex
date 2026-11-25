@@ -30,6 +30,7 @@ vi.mock("@/features/services/hooks/use-server", () => ({
 vi.mock("@/features/services/hooks/use-cached-service-type", () => ({
   useCachedServiceType: () => null,
   useCachedServiceSource: () => null,
+  useCachedServiceName: () => null,
 }));
 // The shared topbar's service switcher reads sibling services and project /
 // environment context over Apollo; stub those at the hook boundary so this

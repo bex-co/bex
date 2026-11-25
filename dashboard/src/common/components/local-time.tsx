@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@/common/lib/utils/utils";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import { SkeletonSpan } from "@/common/components/ui/skeleton";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatDateTime, formatDateLong } from "@/common/lib/format";
@@ -48,10 +48,19 @@ function LocalTime({
   const parsed = value && !Number.isNaN(Date.parse(value)) ? value : null;
   if (!parsed) return <>{fallback}</>;
 
+  // The bar is phrasing content, as the `<time>`/`<span>` around it must
+  // hold: a `<div>` there is moved out of an enclosing `<p>` by the HTML
+  // parser, and the server's markup then fails to hydrate (React #418, the
+  // cron header's "Last successful run", w3/m555).
   const content = !hydrated ? (
-    <Skeleton
-      className={cn("inline-block h-4 align-[-0.2em]", placeholderClassName)}
-    />
+    <span
+      className={cn(
+        "relative inline-block h-4 align-[-0.2em]",
+        placeholderClassName,
+      )}
+    >
+      <SkeletonSpan />
+    </span>
   ) : (
     (format(parsed, i18n.language) ?? fallback)
   );

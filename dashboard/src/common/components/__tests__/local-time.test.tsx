@@ -69,6 +69,21 @@ describe("LocalDateTime", () => {
     expect(afterHydrate).toBe("—");
   });
 
+  // w3/m555: a cron job's header says "Last successful run <date>" in a <p>.
+  // The placeholder was a <div>, which the HTML parser moves out of a <p>, so
+  // every production load of a cron job with a successful run threw React
+  // #418. The placeholder must be phrasing content.
+  it("hydrates inside a paragraph with no #418", () => {
+    const { html, afterHydrate, recovered } = ssrThenHydrate(
+      <p>
+        Last successful run <LocalDateTime value={INSTANT} as="span" />
+      </p>,
+    );
+    expect(recovered).toHaveLength(0);
+    expect(afterHydrate).toBe(`Last successful run ${formatDateTime(INSTANT)}`);
+    expect(html).not.toMatch(/<div/);
+  });
+
   it("renders a span (not a nested time) when as='span'", () => {
     const html = renderToString(
       <time dateTime={INSTANT}>

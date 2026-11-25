@@ -7,6 +7,7 @@ import { ServerDocument, ServicesDocument } from "@/graphql/definitions";
 import { WorkspaceContext } from "@/features/workspaces/context/context";
 import type { WorkspaceContextValue } from "@/features/workspaces/context/context";
 import {
+  useCachedServiceName,
   useCachedServiceSource,
   useCachedServiceType,
 } from "@/features/services/hooks/use-cached-service-type";
@@ -82,6 +83,22 @@ describe("useCachedServiceType (w4/m196)", () => {
       (cache) => writeServer(cache, "srv-a", "web_service"),
       useCachedServiceType,
     );
+    expect(read("srv-other")).toBeNull();
+  });
+});
+
+// w3/m555: the header's loading frame lays the name out invisibly, so its
+// first row wraps where the ready one does.
+describe("useCachedServiceName (w3/m555)", () => {
+  it("reads the name from the cached services list, else null", () => {
+    const read = setup(
+      (cache) =>
+        writeServices(cache, [
+          { id: "srv-a", type: "cron_job", name: "nightly" },
+        ]),
+      useCachedServiceName,
+    );
+    expect(read("srv-a")).toBe("nightly");
     expect(read("srv-other")).toBeNull();
   });
 });
