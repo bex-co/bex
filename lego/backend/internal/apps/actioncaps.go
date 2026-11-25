@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -29,7 +30,8 @@ import (
 // tri-state permission (core.CanDecision — the exact relation the verb gates
 // on, pinned by api/roleladder_test.go) plus the bounded precondition its
 // execute path would enforce, computed by the same predicate the verb calls
-// (appProtected, RequireBillingMutation, pendingCronRun). Suspend and resume
+// (appProtected, RequireBillingMutation, requireFreeHoursAvailable,
+// requireBandwidthAvailable, pendingCronRun). Suspend and resume
 // are restricted verbs, so on a protected member they read as
 // requireUnprotected's own fresh workspace-manage check (core.RestrictedDecision,
 // w4/m578). So does shell, the permission CreateShellSession and native SSH
@@ -84,6 +86,21 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 		return compute()
 	}
 	suspendPre, resumePre := core.LifecyclePreconditions(a.Spec.Suspended, isProtected, resume, billing)
+	if resume.Allowed() && resumePre == "" {
+		// The allowance gates Resume enforces after dunning, in the same
+		// order: a service the monthly Free instance hours or the included
+		// bandwidth suspended reports why, so the button is disabled with
+		// the reason instead of failing after the click.
+		if ferr := s.requireFreeHoursAvailable(a); ferr != nil {
+			resumePre = core.PrecondFreeHoursExhausted
+		} else if berr := s.requireBandwidthAvailable(ctx, a); berr != nil {
+			if errors.Is(berr, core.ErrBillingUnavailable) {
+				resumePre = core.PrecondUnavailable
+			} else {
+				resumePre = core.PrecondBandwidthExhausted
+			}
+		}
+	}
 	create := s.CanDecisionOn(ctx, core.RelCanCreate, workspace)
 	remove, _ := core.RestrictedDecision("delete", create, protected, admin)
 	out := []core.ActionDecision{

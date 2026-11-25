@@ -113,6 +113,16 @@ const ptCapabilities: Record<string, TranslationEntry> = {
       "O plano gratuito expirou, por isso este recurso permanece suspenso. Mude para um plano pago para retomá-lo.",
     description: "Blocked reason for expired precondition",
   },
+  "capabilities.blockedFreeHoursExhausted": {
+    message:
+      "Este workspace usou suas horas de instância gratuitas do mês, por isso este serviço permanece suspenso. Serviços gratuitos são retomados no próximo mês, ou mude para um plano pago para executá-lo agora.",
+    description: "Blocked reason for free_hours_exhausted precondition",
+  },
+  "capabilities.blockedBandwidthExhausted": {
+    message:
+      "Este workspace usou a largura de banda incluída do mês, por isso este serviço permanece suspenso. Os serviços são retomados no próximo mês, ou adicione um método de pagamento para executá-los agora.",
+    description: "Blocked reason for bandwidth_exhausted precondition",
+  },
   "capabilities.blockedUnavailable": {
     message:
       "O servidor não conseguiu confirmar esta ação no momento. Tente novamente.",

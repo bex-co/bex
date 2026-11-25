@@ -110,6 +110,16 @@ const koCapabilities: Record<string, TranslationEntry> = {
       "무료 플랜이 만료되어 이 리소스는 일시 중단된 상태로 유지됩니다. 다시 시작하려면 유료 플랜으로 업그레이드하세요.",
     description: "Blocked reason for expired precondition",
   },
+  "capabilities.blockedFreeHoursExhausted": {
+    message:
+      "이번 달 무료 인스턴스 시간을 모두 사용했으므로 이 서비스는 일시 중단된 상태로 유지됩니다. 무료 서비스는 다음 달에 재개되며, 지금 실행하려면 유료 플랜으로 업그레이드하세요.",
+    description: "Blocked reason for free_hours_exhausted precondition",
+  },
+  "capabilities.blockedBandwidthExhausted": {
+    message:
+      "이번 달 플랜에 포함된 대역폭을 모두 사용했으므로 이 서비스는 일시 중단된 상태로 유지됩니다. 서비스는 다음 달에 재개되며, 지금 실행하려면 결제 수단을 추가하세요.",
+    description: "Blocked reason for bandwidth_exhausted precondition",
+  },
   "capabilities.blockedUnavailable": {
     message: "서버가 지금 이 작업을 확인하지 못했습니다. 다시 시도하세요.",
     description: "Blocked reason for unavailable precondition",

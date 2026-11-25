@@ -46,6 +46,10 @@ export const RESOURCE_PRECONDITIONS = [
   "billing_blocked",
   // The free plan expired: the resource stays suspended until upgraded.
   "expired",
+  // The monthly allowance ran out: Free instance hours, or included
+  // outbound bandwidth without a payment method.
+  "free_hours_exhausted",
+  "bandwidth_exhausted",
   "unavailable",
 ] as const;
 
@@ -236,6 +240,10 @@ export function blockedReasonKey(
       return "capabilities.blockedBillingBlocked";
     case "expired":
       return "capabilities.blockedExpired";
+    case "free_hours_exhausted":
+      return "capabilities.blockedFreeHoursExhausted";
+    case "bandwidth_exhausted":
+      return "capabilities.blockedBandwidthExhausted";
     case "unavailable":
       return "capabilities.blockedUnavailable";
     case "":

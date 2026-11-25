@@ -113,6 +113,16 @@ const deCapabilities: Record<string, TranslationEntry> = {
       "Der kostenlose Plan ist abgelaufen, daher bleibt diese Ressource pausiert. Wechsle zu einem kostenpflichtigen Plan, um sie fortzusetzen.",
     description: "Blocked reason for expired precondition",
   },
+  "capabilities.blockedFreeHoursExhausted": {
+    message:
+      "Dieser Workspace hat seine monatlichen kostenlosen Instanzstunden aufgebraucht, daher bleibt dieser Service pausiert. Kostenlose Services werden nächsten Monat fortgesetzt, oder wechsle zu einem kostenpflichtigen Plan, um ihn jetzt auszuführen.",
+    description: "Blocked reason for free_hours_exhausted precondition",
+  },
+  "capabilities.blockedBandwidthExhausted": {
+    message:
+      "Dieser Workspace hat seine monatlich enthaltene Bandbreite aufgebraucht, daher bleibt dieser Service pausiert. Services werden nächsten Monat fortgesetzt, oder hinterlege eine Zahlungsmethode, um sie jetzt auszuführen.",
+    description: "Blocked reason for bandwidth_exhausted precondition",
+  },
   "capabilities.blockedUnavailable": {
     message:
       "Der Server konnte diese Aktion gerade nicht bestätigen. Versuche es erneut.",

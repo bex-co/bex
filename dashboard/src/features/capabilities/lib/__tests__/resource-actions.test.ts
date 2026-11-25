@@ -208,6 +208,27 @@ describe("not_suspended (w4/132)", () => {
     expect(blockedReasonKey("expired")).toBe("capabilities.blockedExpired");
   });
 
+  it("keeps allowance preconditions known: a suspended resume blocks with its own reason", () => {
+    for (const precondition of [
+      "free_hours_exhausted",
+      "bandwidth_exhausted",
+    ] as const) {
+      const state = toResourceSnapshot("tea-1", "srv-1", [
+        { action: "resume", outcome: "allowed", reason: null, precondition },
+      ]);
+      expect(state.decisions.resume?.precondition).toBe(precondition);
+      expect(
+        gateAction({ outcome: "allowed", reason: "", precondition }, "ready"),
+      ).toMatchObject({ kind: "blocked", precondition });
+    }
+    expect(blockedReasonKey("free_hours_exhausted")).toBe(
+      "capabilities.blockedFreeHoursExhausted",
+    );
+    expect(blockedReasonKey("bandwidth_exhausted")).toBe(
+      "capabilities.blockedBandwidthExhausted",
+    );
+  });
+
   it("blocks the control with its own reason, never the suspended one", () => {
     const gate = gateAction(
       { outcome: "allowed", reason: "", precondition: "not_suspended" },

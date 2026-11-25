@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -579,4 +580,107 @@ func TestActionCapabilities_AContributorTogglesNoMaintenanceMode(t *testing.T) {
 			t.Errorf("a Contributor's %s = %+v, want allowed", id, a)
 		}
 	}
+}
+
+// TestActionCapabilities_ResumeNamesAllowanceSuspension: a suspended service
+// the monthly Free instance hours or the included bandwidth holds projects the
+// allowance gate Resume enforces, in the verb's order, so the button is
+// disabled with the reason instead of failing after the click. The projection
+// and the verb agree in every cell below.
+func TestActionCapabilities_ResumeNamesAllowanceSuspension(t *testing.T) {
+	month := FreeHoursMonth(time.Now())
+	ctx := ctxAs("developer-1")
+
+	suspended := func(annotate map[string]string, servedTier string) *appv1alpha1.App {
+		a := managedApp("web", "srv-1")
+		a.Spec.Type, a.Spec.Tier = appv1alpha1.TypeWebService, "free"
+		a.Spec.Suspended = true
+		a.Annotations = annotate
+		a.Status.ServedTier = servedTier
+		return a
+	}
+
+	resumeDecision := func(t *testing.T, svc *Service) core.ActionDecision {
+		t.Helper()
+		acts, err := svc.ActionCapabilities(ctx, "web")
+		if err != nil {
+			t.Fatalf("ActionCapabilities: %v", err)
+		}
+		return actionByID(t, acts, core.ActionResume)
+	}
+
+	t.Run("free hours this month", func(t *testing.T) {
+		svc, _ := newService(&recordingStore{}, suspended(map[string]string{core.AnnotFreeHoursSuspended: month}, ""))
+		asNonAdmin(svc)
+		if got := resumeDecision(t, svc); got.Outcome != core.DecisionAllowed || got.Precondition != core.PrecondFreeHoursExhausted {
+			t.Fatalf("resume = %+v, want allowed/free_hours_exhausted", got)
+		}
+		var coded *core.CodedError
+		if _, err := svc.Resume(ctx, "web"); !errors.As(err, &coded) || coded.Code != FreeHoursErrorCode {
+			t.Fatalf("Resume = %v, want %s as the projection says", err, FreeHoursErrorCode)
+		}
+	})
+
+	t.Run("bandwidth without a payment method", func(t *testing.T) {
+		svc, _ := newService(&recordingStore{}, suspended(map[string]string{core.AnnotBandwidthSuspended: month}, ""))
+		asNonAdmin(svc)
+		svc.Payment = &rejectingPaymentGate{}
+		if got := resumeDecision(t, svc); got.Outcome != core.DecisionAllowed || got.Precondition != core.PrecondBandwidthExhausted {
+			t.Fatalf("resume = %+v, want allowed/bandwidth_exhausted", got)
+		}
+		var coded *core.CodedError
+		if _, err := svc.Resume(ctx, "web"); !errors.As(err, &coded) || coded.Code != BandwidthErrorCode {
+			t.Fatalf("Resume = %v, want %s as the projection says", err, BandwidthErrorCode)
+		}
+	})
+
+	t.Run("bandwidth with a payment method", func(t *testing.T) {
+		svc, _ := newService(&recordingStore{}, suspended(map[string]string{core.AnnotBandwidthSuspended: month}, ""))
+		asNonAdmin(svc)
+		svc.Payment = &acceptingPaymentGate{}
+		if got := resumeDecision(t, svc); got.Outcome != core.DecisionAllowed || got.Precondition != "" {
+			t.Fatalf("resume = %+v, want ready", got)
+		}
+		if _, err := svc.Resume(ctx, "web"); err != nil {
+			t.Fatalf("Resume with a card = %v, want success as the projection says", err)
+		}
+	})
+
+	t.Run("paid running tier", func(t *testing.T) {
+		svc, _ := newService(&recordingStore{}, suspended(map[string]string{core.AnnotFreeHoursSuspended: month}, "starter"))
+		asNonAdmin(svc)
+		if got := resumeDecision(t, svc); got.Outcome != core.DecisionAllowed || got.Precondition != "" {
+			t.Fatalf("resume = %+v, want ready", got)
+		}
+		if _, err := svc.Resume(ctx, "web"); err != nil {
+			t.Fatalf("Resume on a paid tier = %v, want success as the projection says", err)
+		}
+	})
+
+	t.Run("stale month", func(t *testing.T) {
+		svc, _ := newService(&recordingStore{}, suspended(map[string]string{
+			core.AnnotFreeHoursSuspended: "2020-01",
+			core.AnnotBandwidthSuspended: "2020-01",
+		}, ""))
+		asNonAdmin(svc)
+		svc.Payment = &rejectingPaymentGate{}
+		if got := resumeDecision(t, svc); got.Outcome != core.DecisionAllowed || got.Precondition != "" {
+			t.Fatalf("resume = %+v, want ready", got)
+		}
+		if _, err := svc.Resume(ctx, "web"); err != nil {
+			t.Fatalf("Resume of a stale suspension = %v, want success as the projection says", err)
+		}
+	})
+
+	t.Run("failed billing read", func(t *testing.T) {
+		svc, _ := newService(&recordingStore{}, suspended(map[string]string{core.AnnotBandwidthSuspended: month}, ""))
+		asNonAdmin(svc)
+		svc.Payment = erroringPaymentGate{}
+		if got := resumeDecision(t, svc); got.Outcome != core.DecisionAllowed || got.Precondition != core.PrecondUnavailable {
+			t.Fatalf("resume = %+v, want allowed/unavailable", got)
+		}
+		if _, err := svc.Resume(ctx, "web"); !errors.Is(err, core.ErrBillingUnavailable) {
+			t.Fatalf("Resume on a failed billing read = %v, want ErrBillingUnavailable", err)
+		}
+	})
 }
