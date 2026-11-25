@@ -27,7 +27,11 @@ import {
   LIVE_TAIL,
   type LogRange,
 } from "../../lib/log-range";
-import { setupVirtualGeometry } from "@/test/virtual-geometry";
+import {
+  scrollViewport,
+  scrollViewportToBottom,
+  setupVirtualGeometry,
+} from "@/test/virtual-geometry";
 import {
   explorerThemeClasses,
   LOG_THEME_CASES,
@@ -1457,19 +1461,16 @@ describe("LogViewer row menu and new-log buttons (w3/m528)", () => {
     const { container, rerender } = render(
       <LogViewer resource="web" range={LIVE_TAIL} />,
     );
+    // From the newest line, where the list opens, to the top.
     const scrollAway = () =>
       act(() => {
         const el = viewport(container);
-        Object.defineProperty(el, "scrollHeight", {
-          configurable: true,
-          value: 5000,
+        scrollViewportToBottom(el, 5000);
+        scrollViewport(el, {
+          scrollTop: 0,
+          scrollHeight: 5000,
+          clientHeight: 520,
         });
-        Object.defineProperty(el, "clientHeight", {
-          configurable: true,
-          value: 520,
-        });
-        el.scrollTop = 0;
-        el.dispatchEvent(new Event("scroll"));
       });
     scrollAway();
     liveState.lines = lines(60, 75);

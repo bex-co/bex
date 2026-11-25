@@ -12,6 +12,7 @@ import { LogLineList, type LogLineListHandle } from "../log-line-list";
 import type { LogLine } from "../../types";
 import {
   scrollViewport,
+  scrollViewportToBottom,
   setupVirtualGeometry,
   VIRTUAL_VIEWPORT_HEIGHT,
 } from "@/test/virtual-geometry";
@@ -472,10 +473,8 @@ describe("LogLineList handle (w3/m509)", () => {
       <LogLineList lines={buffer(1000)} handleRef={handle} />,
     );
     const viewport = viewportOf(container);
-    act(() => {
-      viewport.scrollTop = 4000;
-      handle.current!.jump("top");
-    });
+    act(() => scrollViewportToBottom(viewport, 24_000));
+    act(() => handle.current!.jump("top"));
     expect(viewport.scrollTop).toBe(0);
     act(() =>
       scrollViewport(viewport, {

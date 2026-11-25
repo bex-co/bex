@@ -9,6 +9,7 @@ import { heldLinesCount } from "../../lib/log-rows";
 import type { LogLine } from "../../types";
 import {
   scrollViewport,
+  scrollViewportToBottom,
   setupVirtualGeometry,
   VIRTUAL_VIEWPORT_HEIGHT,
 } from "@/test/virtual-geometry";
@@ -45,8 +46,9 @@ function viewportOf(container: HTMLElement): HTMLElement {
   return container.querySelector<HTMLElement>("[data-log-viewport]")!;
 }
 
-/** Scroll a list of `rows` rows to its top: away from the newest line. */
+/** Scroll a list of `rows` rows from its newest line to its top. */
 function scrollAway(viewport: HTMLElement, rows: number) {
+  act(() => scrollViewportToBottom(viewport, rows * 24 + 24));
   act(() =>
     scrollViewport(viewport, {
       scrollTop: 0,
@@ -227,6 +229,76 @@ describe("held lines while scrolled away from a live tail (w3/m528 t003)", () =>
     rerender(<LogLineList lines={range(70, 73)} holdWhileAway />);
     expect(heldButton(/new logs/)).toBeNull();
     expect(screen.getByText("line 72")).toBeInTheDocument();
+    await settle();
+  });
+});
+
+describe("a live tail's pin through a growth the reader did not scroll (w3/102)", () => {
+  setupVirtualGeometry();
+
+  const height = 60 * 24 + 24;
+  const newest = height - VIRTUAL_VIEWPORT_HEIGHT;
+  const scrollTo = (viewport: HTMLElement, scrollTop: number, grown = 0) =>
+    act(() =>
+      scrollViewport(viewport, {
+        scrollTop,
+        scrollHeight: height + grown,
+        clientHeight: VIRTUAL_VIEWPORT_HEIGHT,
+      }),
+    );
+
+  it("stays at the newest line when the rows under a pinned reader measure taller", async () => {
+    const handle = createRef<LogLineListHandle>();
+    const list = (to: number) => (
+      <LogLineList
+        lines={range(0, to)}
+        holdWhileAway
+        handleRef={handle}
+        showTimestamps={false}
+      />
+    );
+    const { container, rerender } = render(list(60));
+    const viewport = viewportOf(container);
+    const follow = vi.fn();
+    viewport.scrollTo = follow;
+    // The pin's scroll reaches the newest line.
+    scrollTo(viewport, newest);
+    // On a phone the opening replay's rows measure up to three times their
+    // estimate: before the write's own scroll event arrives, the list has
+    // grown 900 px under the reader. That event, and the virtualizer's
+    // compensation for a row above the panel, read far from the newest
+    // line, yet the reader scrolled nowhere.
+    scrollTo(viewport, newest, 900);
+    scrollTo(viewport, newest + 300, 900);
+    expect(
+      screen.queryByRole("button", { name: "Return to Bottom" }),
+    ).toBeNull();
+    // The list follows its newest line down.
+    expect(follow).toHaveBeenCalledWith(
+      expect.objectContaining({ top: newest + 900 }),
+    );
+    // So the tail's lines keep joining the list instead of being held.
+    rerender(list(75));
+    expect(heldButton(/new logs/)).toBeNull();
+    expect(handle.current!.text()).toContain("line 74");
+    await settle();
+  });
+
+  it("still releases the pin and holds the tail once the reader scrolls toward older lines (w3/m528)", async () => {
+    const list = (to: number) => (
+      <LogLineList lines={range(0, to)} holdWhileAway showTimestamps={false} />
+    );
+    const { container, rerender } = render(list(60));
+    const viewport = viewportOf(container);
+    scrollTo(viewport, newest);
+    scrollTo(viewport, newest, 900);
+    // A step up the list, even a short one past the pin's slack, leaves.
+    scrollTo(viewport, newest - 30, 900);
+    expect(
+      screen.getByRole("button", { name: "Return to Bottom" }),
+    ).toBeInTheDocument();
+    rerender(list(75));
+    expect(heldButton("15+ new logs")).toBeInTheDocument();
     await settle();
   });
 });

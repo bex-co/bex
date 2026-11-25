@@ -107,6 +107,23 @@ export function scrollViewport(
   viewport.dispatchEvent(new Event("scroll"));
 }
 
+/**
+ * Scroll the viewport to the bottom of `scrollHeight`, the newest line of an
+ * ascending log list. A browser opens the list there; jsdom has no layout to
+ * scroll it to, and the list leaves its newest line only on a scroll toward
+ * the older lines (w3/102), so a test of a reader scrolling away starts here.
+ */
+export function scrollViewportToBottom(
+  viewport: HTMLElement,
+  scrollHeight: number,
+): void {
+  scrollViewport(viewport, {
+    scrollTop: scrollHeight - VIEWPORT_HEIGHT,
+    scrollHeight,
+    clientHeight: VIEWPORT_HEIGHT,
+  });
+}
+
 interface ScrollGeometry {
   scrollTop: number;
   scrollHeight: number;

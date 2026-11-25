@@ -325,9 +325,17 @@ export function LogLineList({
   const keysHintId = useId();
   const viewportRef = useRef<HTMLDivElement>(null);
   const descending = order === "desc";
-  // Pinned: the reader is at the newest line, the bottom ascending and the
-  // top descending. A View in context link opens on its marked line instead.
-  const [pinned, setPinned] = useState(() => !markedKey);
+  // Pinned: the list keeps the reader at its newest line, the bottom
+  // ascending and the top descending. A View in context link opens on its
+  // marked line instead.
+  const [pinned, setPinnedState] = useState(() => !markedKey);
+  // The pin as the last decision left it, ahead of the render that shows it:
+  // a scroll event read before that render follows only a pinned list.
+  const pinnedNow = useRef(pinned);
+  const setPinned = useCallback((value: boolean) => {
+    pinnedNow.current = value;
+    setPinnedState(value);
+  }, []);
   // Held lines (w3/m528): the hold lives here, not in each explorer, because
   // only the list knows when the reader is away; the explorers say whether
   // their lines are a live tail's. Captured from the lines shown in the
@@ -461,12 +469,32 @@ export function LogLineList({
     },
     [virtualizer],
   );
-  // Recompute the pin from the scroll position; releasing it while the user
-  // reads away from the newest line, restoring it the moment they return.
+  // Where the list was when the pin was last read: a scroll's direction.
+  const lastScrollTop = useRef(0);
+  // Read the pin from the scroll position: reaching the newest line restores
+  // it, and only a scroll toward the older lines releases it. A list also
+  // leaves its newest line by growing under a pinned reader: a live tail's
+  // opening replay lands in pages, and on a phone its rows measure up to
+  // three times their estimate. The scroll event that follows reads as far
+  // from the newest line, but the reader went nowhere: releasing there held
+  // the tail behind New logs mid-history (w3/102). A pinned list follows its
+  // newest line there instead.
   const recordPin = useCallback(
-    (el: HTMLElement) =>
-      setPinned((descending ? el.scrollTop : fromBottom(el)) <= PIN_THRESHOLD),
-    [descending],
+    (el: HTMLElement) => {
+      const top = el.scrollTop;
+      const towardOlder = descending
+        ? top > lastScrollTop.current
+        : top < lastScrollTop.current;
+      lastScrollTop.current = top;
+      if ((descending ? top : fromBottom(el)) <= PIN_THRESHOLD) {
+        setPinned(true);
+      } else if (towardOlder) {
+        setPinned(false);
+      } else if (pinnedNow.current) {
+        scrollToNewest();
+      }
+    },
+    [descending, setPinned, scrollToNewest],
   );
 
   // Put a row back at the top, its offset clamped to the row's current height
@@ -496,7 +524,12 @@ export function LogLineList({
       // panel's right edge through this, with no render (see LogRow).
       el.style.setProperty("--log-scroll-left", `${el.scrollLeft}px`);
     }
-    if (!el || settling.current) return;
+    if (!el) return;
+    if (settling.current) {
+      // A reflow's re-placing is no reader's scroll either.
+      lastScrollTop.current = el.scrollTop;
+      return;
+    }
     recordAnchor(el);
     recordPin(el);
     // Near the oldest edge — the top ascending, the bottom descending —
@@ -658,7 +691,7 @@ export function LogLineList({
           resourceLabels ? (id) => resourceLabels.get(id)?.name : undefined,
         ),
     }),
-    [rows, descending, endSettling, scrollToEdge, resourceLabels],
+    [rows, descending, endSettling, scrollToEdge, setPinned, resourceLabels],
   );
 
   // A descending list ends at its oldest loaded line, so it says the log ends

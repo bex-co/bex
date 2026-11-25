@@ -2,7 +2,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import { LogLineList } from "../log-line-list";
 import type { LogLine } from "../../types";
-import { scrollViewport, setupVirtualGeometry } from "@/test/virtual-geometry";
+import {
+  scrollViewport,
+  scrollViewportToBottom,
+  setupVirtualGeometry,
+} from "@/test/virtual-geometry";
 
 /**
  * w4/m228 (a896): toggling wrap or timestamps changes row heights without
@@ -115,8 +119,12 @@ function rowAtTop(): { row: number; offset: number } {
   throw new Error("no rendered row at the top");
 }
 
-/** A reader scroll, then the browser's remeasure, until the window settles. */
+/**
+ * A reader scroll up from the newest line, then the browser's remeasure,
+ * until the window settles.
+ */
 async function scrollTo(scrollTop: number) {
+  act(() => scrollViewportToBottom(viewport(), 100_000));
   for (let pass = 0; pass < 3; pass += 1) {
     act(() =>
       scrollViewport(viewport(), {

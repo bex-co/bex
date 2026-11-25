@@ -196,6 +196,12 @@ const HOLD_OPS = new Set(
   (process.env.LOCAL_BEX_HOLD_OPS ?? "").split(",").filter(Boolean),
 );
 const HOLD_MS = Number(process.env.LOCAL_BEX_HOLD_MS) || 60_000;
+// LOCAL_BEX_TAIL_REPLAY=<lines> gives the live tail bex-api's opening replay
+// (w3/102): a subscribe carrying `startTime` first sends that many lines,
+// spread evenly from it to now, then the live lines. A request tail (no live
+// request lines here) sends only the replay. Unset, the tail sends live
+// lines only.
+const TAIL_REPLAY = Number(process.env.LOCAL_BEX_TAIL_REPLAY) || 0;
 
 // API keys are empty by default but create/revoke are interactive so the
 // account-settings mint-once flow can be browser-verified offline. The stored
@@ -1661,6 +1667,25 @@ function renderLog(entry, seq, resource) {
       { name: "resource", value: resource },
       { name: "instance", value: entry.instance },
       { name: "level", value: levelMatch ? levelMatch[1] : "info" },
+    ],
+  };
+}
+
+// A replayed request line, labelled as bex-api's request lines are.
+function requestLog(iso, i, resource) {
+  const path = ["/api/orders", "/api/cart/items", "/assets/app.css"][i % 3];
+  const statusCode = ["200", "304", "404", "500"][i % 4];
+  return {
+    id: `request-${iso}-${i}`,
+    message: `GET ${path} ${statusCode} ${(i % 90) + 3}ms "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)"`,
+    timestamp: iso,
+    labels: [
+      { name: "type", value: "request" },
+      { name: "resource", value: resource },
+      { name: "method", value: "GET" },
+      { name: "statusCode", value: statusCode },
+      { name: "host", value: `${resource}.onbex.co` },
+      { name: "path", value: path },
     ],
   };
 }
@@ -4140,20 +4165,53 @@ const server = createServer((req, res) => {
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
     });
-    // Request logs have no backend on bex — hold the stream open, emit nothing.
-    if (type && type !== "app" && type !== "application") return;
+    // Request lines come only in a replay; any other type gets nothing.
+    const request = type === "request";
+    if (type && type !== "app" && type !== "application" && !request) return;
     const text = (url.searchParams.get("text") || "").toLowerCase();
-    let seq = 0;
-    const timer = setInterval(() => {
-      const entry = line(new Date().toISOString(), seq, resource);
-      if (!text || entry.message.toLowerCase().includes(text)) {
-        res.write(
-          `data: ${JSON.stringify(renderLog(entry, seq, resource))}\n\n`,
-        );
+    // A project view's lines each name one of its resources, as bex-api's do.
+    const project = PROJECTS.find(
+      (p) => p.id === url.searchParams.get("project"),
+    );
+    const source = project?.serviceIds[0] ?? resource;
+    const startTime = Date.parse(url.searchParams.get("startTime") ?? "");
+    const replay = [];
+    if (TAIL_REPLAY > 0 && !Number.isNaN(startTime)) {
+      const step = (Date.now() - startTime) / TAIL_REPLAY;
+      for (let i = 0; i < TAIL_REPLAY; i++) {
+        const iso = new Date(startTime + i * step).toISOString();
+        const frame = request
+          ? requestLog(iso, i, source)
+          : renderLog(line(iso, i, source), `replay-${i}`, source);
+        if (!text || frame.message.toLowerCase().includes(text)) {
+          replay.push(`data: ${JSON.stringify(frame)}\n\n`);
+        }
       }
-      seq++;
-    }, 1500);
-    req.on("close", () => clearInterval(timer));
+    }
+    // The replay arrives as bex-api's does, oldest first in pages, after the
+    // history read: 100 lines every 100 ms from half a second on.
+    const pages = [];
+    for (let i = 0; i < replay.length; i += 100) {
+      pages.push(
+        setTimeout(() => res.write(replay.slice(i, i + 100).join("")), 500 + i),
+      );
+    }
+    let seq = 0;
+    const timer = request
+      ? undefined
+      : setInterval(() => {
+          const entry = line(new Date().toISOString(), seq, source);
+          if (!text || entry.message.toLowerCase().includes(text)) {
+            res.write(
+              `data: ${JSON.stringify(renderLog(entry, seq, source))}\n\n`,
+            );
+          }
+          seq++;
+        }, 1500);
+    req.on("close", () => {
+      clearInterval(timer);
+      pages.forEach(clearTimeout);
+    });
     return;
   }
 

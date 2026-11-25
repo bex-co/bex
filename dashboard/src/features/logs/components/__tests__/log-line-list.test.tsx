@@ -6,6 +6,7 @@ import { needsAnsiParse, parseAnsi } from "../../lib/ansi";
 import type { LogLine } from "../../types";
 import {
   scrollViewport,
+  scrollViewportToBottom,
   setupVirtualGeometry,
   VIRTUAL_VIEWPORT_HEIGHT,
 } from "@/test/virtual-geometry";
@@ -211,6 +212,7 @@ describe("LogLineList follow / pin (w9/m83)", () => {
     const { container } = render(<LogLineList lines={buffer(1000)} />);
     const viewport = viewportOf(container);
 
+    scrollViewportToBottom(viewport, 5000);
     scrollViewport(viewport, {
       scrollTop: 0,
       scrollHeight: 5000,
@@ -233,6 +235,7 @@ describe("LogLineList follow / pin (w9/m83)", () => {
     const { container } = render(<LogLineList lines={buffer(1000)} />);
     const viewport = viewportOf(container);
 
+    scrollViewportToBottom(viewport, 5000);
     scrollViewport(viewport, {
       scrollTop: 0,
       scrollHeight: 5000,
@@ -259,6 +262,7 @@ describe("LogLineList follow / pin (w9/m83)", () => {
     const { container } = render(<LogLineList lines={buffer(1000)} />);
     const viewport = viewportOf(container);
 
+    scrollViewportToBottom(viewport, 5000);
     scrollViewport(viewport, {
       scrollTop: 0,
       scrollHeight: 5000,
@@ -325,6 +329,7 @@ describe("LogLineList reader anchor during refresh", () => {
     const rows = buffer(140);
     const { container, rerender } = render(<LogLineList lines={rows} />);
     const viewport = viewportOf(container);
+    act(() => scrollViewportToBottom(viewport, 140 * 24 + 24));
     act(() =>
       scrollViewport(viewport, {
         scrollTop: 12 + 50 * 24 + 7,
