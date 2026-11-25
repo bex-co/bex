@@ -8,6 +8,7 @@ import {
   trackEvent,
   trackPageView,
 } from "../telemetry";
+import { CREATE_TYPE_ITEMS } from "@/common/components/dashboard-layout/create-type-items";
 
 afterEach(() => {
   delete window.gtag;
@@ -107,6 +108,28 @@ describe("contentGroup", () => {
     expect(contentGroup("/services/$serviceId/logs")).toBe("services");
     expect(contentGroup("/auth/login")).toBe("auth");
     expect(contentGroup("/")).toBe("home");
+  });
+
+  // The create pages moved to Render's URLs (/web/new …, /new/redis) and stay
+  // in the section they reported under before.
+  it("keeps each create page in its section", () => {
+    for (const path of [
+      "/web/new",
+      "/pserv/new",
+      "/worker/new",
+      "/cron/new",
+      "/static/new",
+    ]) {
+      expect(contentGroup(path)).toBe("services");
+    }
+    expect(contentGroup("/new/database")).toBe("databases");
+    expect(contentGroup("/new/redis")).toBe("keyvalue");
+    expect(contentGroup("/blueprint/new")).toBe("blueprints");
+    expect(contentGroup("/new/workspace")).toBe("new");
+    // A create type added to the New menu needs its section here too.
+    for (const item of CREATE_TYPE_ITEMS) {
+      expect(contentGroup(item.to)).not.toBe(item.to.split("/")[1]);
+    }
   });
 });
 

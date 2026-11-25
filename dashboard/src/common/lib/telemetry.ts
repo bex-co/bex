@@ -120,9 +120,26 @@ export function pageReferrer(referrer: string, origin: string): string {
   }
 }
 
+/**
+ * The create pages Render puts outside their section's path, reported in that
+ * section, so a section's content group keeps its create page across the move
+ * to Render's URLs (the service creates were `/services/new`, Key Value's
+ * `/keyvalue/new`, the Blueprint's `/blueprints/new`).
+ */
+const CREATE_PAGE_GROUPS: Record<string, string> = {
+  "/web/new": "services",
+  "/pserv/new": "services",
+  "/worker/new": "services",
+  "/cron/new": "services",
+  "/static/new": "services",
+  "/new/database": "databases",
+  "/new/redis": "keyvalue",
+  "/blueprint/new": "blueprints",
+};
+
 /** The first path segment of a route template, GA4's `content_group`. */
 export function contentGroup(template: string): string {
-  return template.split("/")[1] || "home";
+  return CREATE_PAGE_GROUPS[template] ?? (template.split("/")[1] || "home");
 }
 
 /**
