@@ -217,4 +217,4 @@ Every point of the definition of done holds on production pin `f797f525f5df` (pi
 6. **Focus and settings link.** Opening the Credentials menu put focus on "Connect another account" every time (walks 1 and 2). The composer's "GitHub settings" link lands on `/settings#integrations` (walk 2).
 7. **t010's matrix** records a pass in every cell on the production pins that carry these commits (t010 § Final matrix).
 
-Follow-up: [w1/146](../../146.md). An expired connect state after GitHub has installed the App should say that the account is waiting in the chooser.
+Follow-up: [w3/126](../../../w3/126.md). An expired connect state after GitHub has installed the App should say that the account is waiting in the chooser.
