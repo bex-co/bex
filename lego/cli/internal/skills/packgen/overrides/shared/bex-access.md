@@ -20,7 +20,9 @@ Using the documentation-retrieval workflow in the root `SKILL.md`, retrieve and 
 
 After installing, updating, or reconfiguring an MCP integration, reload the client as required and verify the connection with a read-only operation such as listing services.
 
-Most MCP operations and bex CLI commands that access resources are scoped to an active workspace. Check the selected workspace before reading or changing resources. If no workspace is selected—or if the intended workspace is ambiguous—list the available workspaces and have the user identify the correct one. Do not silently switch workspace context or infer it from a resource name. Commands for authentication, help, CLI configuration, and workspace discovery or selection do not require an already selected workspace.
+bex resource operations are workspace-scoped. With MCP, call `list_workspaces()` when needed to establish the intended workspace, then pass its confirmed `workspaceId` on every related resource call: every bex MCP tool that reads or changes a workspace's resources accepts it. Reuse the workspace already confirmed in the conversation. bex has no session-based workspace selection: a call without `workspaceId` runs in the account's default workspace, which may not be the intended one.
+
+For CLI operations, check the active workspace before reading or changing resources. If the intended workspace is ambiguous, list the available workspaces and have the user identify the correct one. Do not silently switch workspace context or infer it from a resource name. Commands for authentication, help, CLI configuration, and workspace discovery or selection do not require an already selected workspace.
 
 For interactive CLI use, authenticate with `bex login` (a device login in the browser). For automation, use a securely stored API key in `BEX_API_KEY`; it takes precedence over a saved CLI login. Verify CLI access and the active workspace with read-only commands before operating on resources:
 

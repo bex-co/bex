@@ -45,6 +45,14 @@ func TestRewrite(t *testing.T) {
 		{"When Render CLI v2.7.0 or later is available, validate the finished file:", "When the bex CLI is available, validate the finished file:"},
 		{"1. `render blueprints validate` (CLI v2.7.0+).", "1. `bex blueprints validate`."},
 		{"Requires Heroku CLI v10.8.1+ and image ghcr.io/org/app:v1.2.3", "Requires Heroku CLI v10.8.1+ and image ghcr.io/org/app:v1.2.3"},
+		// #81's Blueprint-operation floors (w4/m630).
+		{"compatibility: Render CLI v2.7.0+ for validation; v2.35.0+ for public-alpha Blueprint operations. Inspect installed help.",
+			"compatibility: bex CLI for validation and public-alpha Blueprint operations. Inspect installed help."},
+		{"The CLI introduced create, plan, approve, and update in v2.35.0 under `render ea blueprints`.",
+			"The CLI offers create, plan, approve, and update under `bex ea blueprints`."},
+		// Render's MCP source is not bex's tool contract (w4/m630).
+		{"inspect the current [MCP tool definitions](https://github.com/render-oss/render-mcp-server/blob/main/pkg/blueprint/tools.go) and",
+			"inspect the current MCP tool definitions (`tools/list` on https://api.bex.co/mcp) and"},
 	} {
 		if got := rewriteText(tc.in); got != tc.want {
 			t.Errorf("rewriteText(%q) = %q, want %q", tc.in, got, tc.want)
@@ -212,5 +220,37 @@ func TestDisksSkillPlacesARootDirectorysDisk(t *testing.T) {
 	}
 	if !strings.Contains(string(pack), disksRootDirectory) {
 		t.Error("the checked-in bex-disks skill lacks the generated root-directory placement")
+	}
+}
+
+// upstreamApproval is the sentence of render-oss/skills' shared Blueprint
+// reference that bex's approvalSyncID patch extends.
+const upstreamApproval = "Approval targets the Blueprint's newest saved sync, not a caller-specified sync ID. A failed attempt can leave an older plan.\n"
+
+// Every copy of the shared Blueprint reference names bex's optional syncId
+// guard on approve_blueprint (w5/m384) beside upstream's newest-sync rule, and
+// the checked-in pack carries it (w4/m630).
+func TestBlueprintReferenceNamesTheSyncIDGuard(t *testing.T) {
+	const guard = "optional `syncId` (a bex extension)"
+	for _, skill := range []string{"render-deploy", "render-blueprints", "render-migrate-from-heroku"} {
+		path := skill + "/references/blueprints.md"
+		newPath, out, keep, err := Rewrite(path, []byte(upstreamApproval))
+		if err != nil || !keep {
+			t.Fatalf("Rewrite(%s) = %v, %v", path, keep, err)
+		}
+		if !strings.Contains(string(out), "newest saved sync, not a caller-specified sync ID. bex's `approve_blueprint` also accepts") ||
+			!strings.Contains(string(out), guard) {
+			t.Errorf("%s does not name the syncId guard after the newest-sync rule:\n%s", path, out)
+		}
+		pack, err := os.ReadFile("../pack/skills/" + newPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(pack), guard) {
+			t.Errorf("the checked-in %s lacks the syncId guard", newPath)
+		}
+	}
+	if _, _, _, err := Rewrite("render-deploy/references/blueprints.md", []byte("Approval applies the newest sync.\n")); err == nil {
+		t.Error("the syncId patch passed on text without upstream's approval sentence")
 	}
 }

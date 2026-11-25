@@ -22,7 +22,7 @@ services:
       - key: DJANGO_SETTINGS_MODULE
         value: config.settings.production
       - key: DJANGO_SECRET_KEY
-        sync: false  # User provides in Dashboard
+        sync: false  # Supply at Blueprint approval
       - key: DATABASE_URL
         fromDatabase:
           name: postgres

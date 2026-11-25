@@ -27,7 +27,7 @@ services:
           type: keyvalue
           property: connectionString
       - key: SECRET_KEY
-        sync: false  # User provides in Dashboard
+        sync: false  # Supply at Blueprint approval
 
   - type: keyvalue
     name: redis

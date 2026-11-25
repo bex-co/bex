@@ -2,17 +2,17 @@
 name: bex-cli
 description: >-
   Installs and uses the bex CLI for deploys, logs, SSH, psql, Blueprint
-  validation, and automation. Use when the user needs to run bex CLI
+  planning, approval, validation, and automation. Use when the user needs to run bex CLI
   commands, script deploys in CI/CD, authenticate with an API key, query
   services non-interactively, or troubleshoot CLI auth issues.
   Trigger terms: bex CLI, bex login, bex deploys, bex logs,
-  bex ssh, bex psql, bex blueprints validate, bex skills,
+  bex ssh, bex psql, bex blueprints validate, bex ea blueprints, bex skills,
   BEX_API_KEY, non-interactive, CI/CD deploy.
 license: MIT
-compatibility: bex CLI (Homebrew, Linux/macOS, direct download)
+compatibility: bex CLI for validation and public-alpha Blueprint operations. Inspect installed help for current capabilities.
 metadata:
   author: bex
-  version: "1.0.0"
+  version: "1.1.0"
   category: operations
 ---
 
@@ -28,7 +28,7 @@ Before installing, authenticating, selecting a workspace, or running commands, r
 - **Tailing logs** in real time
 - **Opening psql** to a bex Postgres database
 - **SSHing** into a running service or launching an ephemeral shell
-- **Validating** a `render.yaml` Blueprint
+- **Validating, planning, and approving** a Blueprint
 - **Scripting** bex operations in CI/CD pipelines
 - **Installing** agent skills for AI coding tools
 
@@ -58,6 +58,10 @@ bex psql db-xxx -c "SELECT NOW();" -o json
 # CSV output via psql passthrough
 bex psql db-xxx -c "SELECT id, email FROM users;" -o text -- --csv
 ```
+
+### Blueprint deployment
+
+Use **bex-deploy** for the full remote-source, plan-review, approval, and workload-verification flow. Inspect `bex ea blueprints --help` for public-alpha create/plan/approve/update commands; if unavailable, upgrade the CLI or use available MCP Blueprint tools. Local validation remains `bex blueprints validate <file>`. Creation and planning do not apply resource changes, and approval does not wait for deployments to finish. Never chain approval after planning without inspecting its outcome and obtaining authorization for the reviewed plan.
 
 ## CI/CD Example (GitHub Actions)
 
@@ -108,7 +112,7 @@ Override the configuration directory with `BEX_CLI_CONFIG_DIR`. `BEX_CLI_CONFIG_
 
 ## Related Skills
 
-- **bex-deploy** — End-to-end deploy flows, MCP operations, Dashboard deeplinks
+- **bex-deploy** — End-to-end deployments, Blueprint planning and approval through MCP or CLI
 - **bex-blueprints** — `render.yaml` authoring and validation
 - **bex-postgres** — Database connections, `bex psql` usage
 - **bex-debug** — Using `bex logs` and `bex ssh` for troubleshooting

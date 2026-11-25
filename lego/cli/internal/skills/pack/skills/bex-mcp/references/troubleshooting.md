@@ -57,15 +57,17 @@ Use the current client-specific setup instructions fetched through [bex-access.m
 
 ## Workspace Issues
 
-### "No workspace selected"
+### Wrong workspace
 
-**Fix:** Follow the workspace-selection workflow in [bex-access.md](bex-access.md).
+**Cause:** A call without `workspaceId` runs in the account's default workspace; bex has no session-based workspace selection.
+
+**Fix:** Follow the workspace workflow in [bex-access.md](bex-access.md): confirm the workspace with `list_workspaces()` and pass its ID as `workspaceId`.
 
 ### Operations return empty results
 
-**Cause:** Active workspace has no services, or wrong workspace is selected.
+**Cause:** The workspace has no services, or the call ran in another workspace (no `workspaceId`, or the wrong one).
 
-**Fix:** Call `get_selected_workspace()` to inspect the active workspace and `list_workspaces()` to find the intended one. Verify credential access before concluding that no resources exist.
+**Fix:** Call `list_workspaces()` to find the intended workspace and pass its ID as `workspaceId` on the call. Verify credential access before concluding that no resources exist.
 
 ## MCP vs CLI Fallback
 

@@ -39,6 +39,10 @@ var userDirecting = regexp.MustCompile(`mcp\.render\.com|dashboard\.render\.com|
 // reads as "your bex v0.x is too old" to an agent (w8/233).
 var renderVersionFloor = regexp.MustCompile(`\bv2\.\d+\.\d+`)
 
+// sessionWorkspace matches Render's session workspace-selection tools, which
+// bex removed in w1/m55: every bex MCP tool takes workspaceId (w4/m630).
+var sessionWorkspace = regexp.MustCompile(`\b(get_)?select(ed)?_workspace\b`)
+
 // tokenExchange matches the client_credentials recipe the pack carried while
 // a bex API key could not be sent as a bearer. A key is now one string in
 // BEX_API_KEY, as RENDER_API_KEY is for Render (w7/m426).
@@ -65,6 +69,9 @@ func TestPackOperatesBexOnly(t *testing.T) {
 			}
 			if m := renderVersionFloor.FindString(line); m != "" {
 				t.Errorf("%s:%d: Render CLI version floor %q in the bex pack", rel, n+1, m)
+			}
+			if m := sessionWorkspace.FindString(line); m != "" {
+				t.Errorf("%s:%d: session workspace tool %q, which bex does not serve; pass workspaceId", rel, n+1, m)
 			}
 			if m := tokenExchange.FindString(line); m != "" {
 				t.Errorf("%s:%d: token-exchange step %q; an API key is sent as the bearer", rel, n+1, m)

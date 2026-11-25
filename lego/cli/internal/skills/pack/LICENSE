@@ -1,4 +1,4 @@
-This pack is derived from https://github.com/render-oss/skills at commit 33801b5 (MIT License, reproduced below), rewritten to operate bex.
+This pack is derived from https://github.com/render-oss/skills at commit 841f4e3 (MIT License, reproduced below), rewritten to operate bex.
 Regenerate it with lego/cli/hack/sync-skills.sh.
 
 MIT License

@@ -66,6 +66,25 @@ jobs:
       - name: Every Render changelog entry has a disposition
         run: scripts/render-changelog-drift.sh
 
+  # render-oss/skills (w4/m630). `bex skills install` ships a pack derived
+  # from it at packgen.UpstreamCommit, and nothing watched it: the pin fell
+  # behind Render's Blueprint plan-and-approve rewrite of the deploy skill.
+  # Fails while upstream has an unreviewed commit to a skill bex ships.
+  render-skills:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
+      - name: The skills pack follows render-oss/skills
+        run: scripts/render-skills-drift.sh
+
   # Render's own example Blueprints (w33/001). Each must validate, or fail only
   # for a refusal TestRenderExamplesCorpus lists as deliberate or as a filed
   # gap; anything else is a new class to triage. Nothing ran this opt-in test

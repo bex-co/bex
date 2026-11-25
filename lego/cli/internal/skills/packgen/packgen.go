@@ -33,7 +33,7 @@ import (
 )
 
 // UpstreamCommit is the render-oss/skills commit the pack is derived from.
-const UpstreamCommit = "33801b5"
+const UpstreamCommit = "841f4e3"
 
 // droppedSkills are bex non-goals: Render Workflows, and sandbox groups and
 // the Render sandbox SDK (bex offers only the `sandboxes` subset).
@@ -97,10 +97,22 @@ var filePatches = map[string][]rule{
 		// runs in it, on Render and on bex alike (w6/m558).
 		r(`(?m)^Fetch the current disk documentation`, disksRootDirectory+"\n\nFetch the current disk documentation"),
 	},
+	"render-deploy/references/blueprints.md":              approvalSyncID,
+	"render-blueprints/references/blueprints.md":          approvalSyncID,
+	"render-migrate-from-heroku/references/blueprints.md": approvalSyncID,
 	"render-migrate-from-heroku/references/service-mapping.md": {
 		r(`- \*\*Heroku Pipelines\*\* → [^\n]*`, "- **Heroku Pipelines** → separate bex services or projects per stage, promoted manually (bex has no preview environments)"),
 		r(`- \*\*Review Apps\*\* → [^\n]*`, "- **Review Apps** → no bex equivalent (bex has no pull request previews)"),
 	},
+}
+
+// approvalSyncID names bex's optional approve_blueprint syncId (w5/m384) in
+// upstream's shared Blueprint lifecycle: approval still applies the newest
+// plan, as on Render, and the reviewed plan's id only guards it.
+var approvalSyncID = []rule{
+	r(`Approval targets the Blueprint's newest saved sync, not a caller-specified sync ID\.`,
+		"${0} bex's `approve_blueprint` also accepts the reviewed plan's `sync.id` as an optional `syncId` (a bex extension): "+
+			"pass it, and bex refuses the approval when a newer plan has replaced the one the user reviewed."),
 }
 
 // postgresLogicalReplication is the pack's Logical Replication section.
@@ -149,6 +161,10 @@ var endpointRules = []rule{
 	r(`https://render\.com/(pricing|docs/compute-plans(\.md)?)(#[a-z0-9-]+)?`, "https://bex.co/pricing"),
 	r(`\[contact Render( support)?\]\(https://render\.com/contact\)`, "[contact bex support](https://bex.co)"),
 	r(`- https://status\.render\.com`, "- the service's **Events** in the bex dashboard; report a suspected platform-wide issue to bex support (https://bex.co)"),
+	// Render's MCP server source is Render's tool contract; bex's is the
+	// tools/list its own server answers, which carries workspaceId and bex's
+	// extensions.
+	r(`\[([^\]]+)\]\(https://github\.com/render-oss/render-mcp-server[^)]*\)`, "$1 (`tools/list` on https://api.bex.co/mcp)"),
 }
 
 // nameRules run next, in order, with keepAsIs protected.
@@ -176,6 +192,8 @@ var nameRules = []rule{
 	r(`When bex CLI v\d+\.\d+\.\d+ or later is available`, "When the bex CLI is available"),
 	r(`(bex CLI\s+)v\d+\.\d+\.\d+\+ `, "$1"),
 	r(` \(CLI v\d+\.\d+\.\d+\+\)`, ""),
+	r(`; v\d+\.\d+\.\d+\+ for ([^.;]+)`, " and $1"),
+	r(`(The CLI) introduced ([^.]+?) in v\d+\.\d+\.\d+ `, "$1 offers $2 "),
 }
 
 // keepAsIs protects names that must survive the identity rules.

@@ -22,4 +22,4 @@ services:
       - key: LOG_LEVEL
         value: info
       - key: API_KEY
-        sync: false  # User provides in Dashboard
+        sync: false  # Supply at Blueprint approval

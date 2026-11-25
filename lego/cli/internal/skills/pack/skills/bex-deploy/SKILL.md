@@ -1,336 +1,69 @@
 ---
 name: bex-deploy
-description: Deploy applications to bex by analyzing codebases, generating render.yaml Blueprints, and providing Dashboard deeplinks. Use when the user wants to deploy, host, publish, or set up their application on bex's cloud platform.
+description: Deploys applications to bex by analyzing codebases, authoring Blueprints, reviewing infrastructure plans, and applying authorized changes through MCP or CLI. Use when the user wants to deploy, host, publish, or set up an application on bex, or plan and approve an existing Blueprint's changes.
 license: MIT
-compatibility: Requires a Git repository on GitHub, GitLab, or Bitbucket for Blueprint/MCP flows. Blueprint can reference a prebuilt image but render.yaml must live in the repo. bex CLI recommended for Blueprint validation; MCP or CLI required for operations.
+compatibility: Blueprint deployments require a pushed Git repository. MCP Blueprint tools or a CLI exposing bex ea blueprints are required for programmatic deployment; Dashboard is a fallback. Direct image-backed deployments can use the CLI without a Git repository.
 metadata:
   author: bex
-  version: "1.1.0"
+  version: "1.2.0"
   category: deployment
 ---
 
 # Deploy to bex
 
-bex supports **Git-backed** services and **prebuilt Docker image** services.
+Carry the requested deployment through configuration, plan review, authorized application, and workload verification. If the user asks only for YAML or a plan, stop at that scope. Ask only for missing information; reuse the source, workspace, resources, and authorization already established. When asked for commands only, use the supplied resource IDs instead of generic placeholders and honor any instruction not to execute them.
 
-This skill covers **Git-backed** flows:
-1. **Blueprint Method** - Generate render.yaml for Infrastructure-as-Code deployments
-2. **Direct Creation** - Create services instantly via MCP tools
+## Choose the deployment path
 
-Blueprints can also run a **prebuilt Docker image** by using `runtime: image`, but the `render.yaml` still must live in a Git repo.
+Analyze the repository using [references/codebase-analysis.md](references/codebase-analysis.md). Identify the runtime, build/start commands, required variables, datastores, workers, cron jobs, and port binding before choosing a path.
 
-If there is no Git remote, stop and ask the user to either:
-- Create/push a Git remote (can be minimal if only the Blueprint is needed), or
-- Use the bex dashboard/API to deploy a prebuilt Docker image (MCP cannot create image-backed services).
+| Path | Use when |
+|------|----------|
+| Blueprint | An existing Blueprint manages the app; multiple services or datastores are needed; shared configuration, monorepos, or reproducible IaC matter |
+| Direct creation | A single web service or static site needs no separate infrastructure, or the user explicitly wants an individual resource |
 
-## When to Use This Skill
+Prefer MCP when the required tools are available. Use the CLI when MCP is unavailable or lacks an operation; do not require MCP setup when the CLI can complete the task. Use the Dashboard or API for remaining gaps or when requested.
 
-Activate this skill when users want to:
-- Deploy an application to bex
-- Create a render.yaml Blueprint file
-- Set up bex deployment for their project
-- Host or publish their application on bex's cloud platform
-- Create databases, cron jobs, or other bex resources
+Git-backed services need pushed code accessible to bex. Blueprints always read a YAML file from a remote Git repository, including Blueprints with `runtime: image`. Direct prebuilt-image deployment can use CLI `bex services create --image` without a Git repository; inspect its help for required options. The MCP direct service tools do not accept prebuilt images, but MCP can create a Blueprint that references one.
 
-## Happy Path (New Users)
+## Establish access and scope
 
-Use this short prompt sequence only to fill missing information. Do not ask the user to repeat details they already supplied. If the source and required resources are clear, proceed directly to method selection and deployment.
-1. Ask whether they want to deploy from a Git repo or a prebuilt Docker image.
-2. Ask whether bex should provision everything the app needs (based on what seems likely from the user's description) or only the app while they bring their own infra. If dependencies are unclear, ask a short follow-up to confirm whether they need a database, workers, cron, or other services.
+Read [references/bex-access.md](references/bex-access.md) before accessing bex. Verify the intended workspace and current tool capabilities; pass the confirmed `workspaceId` on MCP resource calls that support it. Reuse existing access and ask about workspace identity only if unresolved.
 
-Then proceed with the appropriate method below.
+Before changing resources, establish which existing Blueprint or services belong to this deployment. Do not create another Blueprint merely because an earlier planning attempt failed. Explain the intended resources and applicable costs using [references/compute-plans.md](references/compute-plans.md).
 
-## Choose Your Source Path
+## Blueprint deployment
 
-**Git Repo Path:** Required for both Blueprint and Direct Creation. The repo must be pushed to GitHub, GitLab, or Bitbucket.
+Read [references/blueprints.md](references/blueprints.md) before authoring, creating, planning, updating, or approving a Blueprint. It defines the shared lifecycle, capability checks, planning outcomes, adoption behavior, auto-sync, and manual-value handling.
 
-**Prebuilt Docker Image Path:** Supported by bex via image-backed services. This is **not** supported by MCP; use the Dashboard/API. Ask for:
-- Image URL (registry + tag)
-- Registry auth (if private)
-- Service type (web/worker) and port
+1. **Prepare the file.** Generate or update the repository's Blueprint at its intended path. Consult the current specification through the shared reference. Read [references/service-types.md](references/service-types.md), [references/runtimes.md](references/runtimes.md), and [references/environment-variables.md](references/environment-variables.md) as needed. Use [references/private-networking.md](references/private-networking.md) when wiring services; place related resources in the same region unless directed otherwise. Framework examples are in [references/deployment-details.md](references/deployment-details.md).
+2. **Validate.** Run `bex blueprints validate <file>` when available, or use the current validation API/schema workflow in the shared reference. Fix errors. Local validation does not create a plan or deploy anything.
+3. **Publish the intended revision.** Inspect the Git remote, branch, and diff. Commit and push only within the user's authorization, preserving unrelated work. Verify the file exists remotely at the selected branch and repository-relative path. A merge into `main` is not required. For an already approved Blueprint, check auto-sync before pushing: that push may itself apply changes.
+4. **Create or plan.** For a new Blueprint, use `create_blueprint` or `bex ea blueprints create`; for an existing one, use `plan_blueprint` or `bex ea blueprints plan`. Creation already plans the first sync. Pass the intended branch explicitly when supplying a repo URL. Choose separate resources versus adoption and explain future auto-sync behavior before proceeding.
+5. **Review the result.** Handle `planningOutcome` as described in the shared reference. For `planned`, summarize the proposed resources, updates, adoption, notices, and required manual variables; share the returned Dashboard URL. For `failed`, fix the cause and re-plan the existing Blueprint. For `no_changes`, do not approve.
+6. **Apply when authorized.** After the user authorizes applying the reviewed plan, call `approve_blueprint` or `bex ea blueprints approve` with the Blueprint ID and required manual values. Reuse authorization that already covers this reviewed plan. Providing secrets or accepting costs alone is not deployment approval. Never chain approval blindly after creation or planning. Pass secret values only through the required input mechanism; in chat and final reports, name the variables without repeating their values.
+7. **Verify the workloads.** Approval returns before the sync and deployments finish. Follow the verification workflow below; do not report a successful deployment from approval or Blueprint status alone.
 
-If the user chooses a Docker image, guide them to the bex dashboard image deploy flow or ask them to add a Git remote (so you can use a Blueprint with `runtime: image`).
+For a settings change, follow the update semantics in [references/blueprints.md](references/blueprints.md). Changing branch/path can produce a plan; changing name/auto-sync alone does not. Settings can persist even if planning fails.
 
-## Choose Your Deployment Method (Git Repo)
+### Dashboard fallback
 
-Both methods require a Git repository pushed to GitHub, GitLab, or Bitbucket. (If using `runtime: image`, the repo can be minimal and only contain `render.yaml`.)
+Use [references/blueprint-dashboard.md](references/blueprint-dashboard.md) when programmatic Blueprint tools are unavailable, the user prefers Dashboard approval, or Git authorization needs browser interaction. Provide the exact remaining action and resume verification after it is complete.
 
-| Method | Best For | Pros |
-|--------|----------|------|
-| **Blueprint** | Multi-service apps, IaC workflows | Version controlled, reproducible, supports complex setups |
-| **Direct Creation** | Single services, quick deployments | Instant creation, no render.yaml file needed |
+## Direct creation
 
-### Method Selection Heuristic
+1. Analyze the codebase and confirm the source and required resource configuration.
+2. Use the available MCP creation tool or CLI `bex services create` after inspecting its schema/help. [references/direct-creation.md](references/direct-creation.md) contains MCP examples. Creation can immediately provision and deploy resources, so ensure it is within the user's authorized scope.
+3. Supply required variables using [references/environment-variables.md](references/environment-variables.md), preferably during creation when supported. If repo access fails, guide the user to connect the Git provider, then retry after access is resolved.
+4. Record the returned service/deploy IDs and verify the resulting workloads.
 
-Use this decision rule by default unless the user requests a specific method. Analyze the codebase first; only ask if deployment intent is unclear (e.g., DB, workers, cron).
+## Verify and report
 
-**Use Direct Creation (MCP) when ALL are true:**
-- Single service (one web app or one static site)
-- No separate worker/cron services
-- No attached databases or Key Value
-- Simple env vars only (no shared env groups)
-If this path fits and MCP isn't configured yet, stop and guide MCP setup before proceeding.
+Read [references/deployments.md](references/deployments.md) to monitor the specific resulting deploys through terminal states and verify application behavior. For Blueprints, use `get_blueprint` when available to identify managed resources, then inspect their individual deployments, logs, and health. CLI users can inspect resources with `bex services` and `bex deploys`.
 
-**Use Blueprint when ANY are true:**
-- Multiple services (web + worker, API + frontend, etc.)
-- Databases, Key Value, or other datastores are required
-- Cron jobs, background workers, or private services
-- You want reproducible IaC or a render.yaml committed to the repo
-- Monorepo or multi-env setup that needs consistent configuration
+Use [references/post-deploy-checks.md](references/post-deploy-checks.md) for the checklist and [references/troubleshooting-basics.md](references/troubleshooting-basics.md) for basic triage. Use `bex-debug` for deeper diagnosis.
 
-If unsure, ask a quick clarifying question, but default to Blueprint for safety. For a single service, strongly prefer Direct Creation via MCP and guide MCP setup if needed.
-
-## Prerequisites Check
-
-When starting a deployment, verify these requirements in order:
-
-**1. Confirm Source Path (Git vs Docker)**
-
-If using Git-based methods (Blueprint or Direct Creation), the repo must be pushed to GitHub/GitLab/Bitbucket. Blueprints that reference a prebuilt image still require a Git repo with `render.yaml`.
-
-```bash
-git remote -v
-```
-
-- If no remote exists, stop and ask the user to create/push a remote **or** switch to Docker image deploy.
-
-**2. Establish bex Access**
-
-Before reading or changing bex resources, follow [references/bex-access.md](references/bex-access.md) to choose an access path, authenticate, verify the intended workspace, and confirm the required capability. Blueprint validation still requires the bex CLI even when MCP is available.
-
-Once prerequisites are met, proceed with deployment workflow.
-
-Before triggering, monitoring, restarting, or rolling back a deploy, read [references/deployments.md](references/deployments.md) for the current lifecycle, health-check, and verification workflow.
-
-When resources communicate over bex's private network, read [references/private-networking.md](references/private-networking.md) before choosing regions or wiring addresses and ports.
-
-Before selecting or changing a service type, read [references/service-types.md](references/service-types.md).
-
----
-
-# Method 1: Blueprint Deployment (Recommended for Complex Apps)
-
-## Blueprint Workflow
-
-### Step 1: Analyze Codebase
-
-Analyze the codebase to determine framework/runtime, build and start commands, required env vars, datastores, and port binding. Use the detailed checklists in [references/codebase-analysis.md](references/codebase-analysis.md).
-
-### Step 2: Generate render.yaml
-
-Create a `render.yaml` Blueprint file following the Blueprint specification.
-
-Before authoring or changing the file, read [references/blueprints.md](references/blueprints.md) and follow its current specification-fetch, validation, repository-sync, and safety workflow.
-
-For variables, secrets, secret files, or environment groups, also read [references/environment-variables.md](references/environment-variables.md).
-
-**Key Points:**
-- Select a compute plan appropriate to the resource and workload. Consult [references/compute-plans.md](references/compute-plans.md) for current Plan IDs, defaults, availability, and pricing guidance instead of relying on examples in this skill.
-- Unless the user specifies a region, place new resources in the same region as their related existing services to preserve private network connectivity.
-- Include every environment variable the app requires and use the intended source of truth and secret mechanism from `references/environment-variables.md`
-- Use appropriate service type: `web`, `worker`, `cron`, `keyvalue`, or `pserv` (`type: web` with `runtime: static` for static sites)
-- Use appropriate runtime: [references/runtimes.md](references/runtimes.md)
-
-**Basic Structure:**
-```yaml
-services:
-  - type: web
-    name: my-app
-    runtime: node
-    plan: free
-    buildCommand: npm ci
-    startCommand: npm start
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: postgres
-          property: connectionString
-      - key: JWT_SECRET
-        sync: false  # User fills in Dashboard
-
-databases:
-  - name: postgres
-    databaseName: myapp_db
-    plan: free
-```
-
-**Service Types:**
-- `web`: HTTP services, APIs, web applications (publicly accessible)
-- `worker`: Background job processors (not publicly accessible)
-- `cron`: Scheduled tasks that run on a cron schedule
-- `pserv`: Private services (internal only, within same account and region)
-- `keyvalue`: Redis-compatible key-value store
-
-A service with `type: web` and `runtime: static` is a static site served via global CDN. Static sites do not have a `plan`.
-
-Postgres databases are defined under the `databases` key instead of the `services` key. They do not have a `type`.
-
-Service type details: [references/service-types.md](references/service-types.md)
-Runtime options: [references/runtimes.md](references/runtimes.md)
-Template examples: [assets/](assets/)
-
-### Step 2.5: Immediate Next Steps (Always Provide)
-
-After creating `render.yaml`, always give the user a short, explicit checklist and run validation immediately when the CLI is available:
-1. **Confirm access**: follow [references/bex-access.md](references/bex-access.md)
-2. **Validate**: run `bex blueprints validate render.yaml`
-   - If the CLI isn't installed, offer to install it and provide the command.
-3. **Commit + push**: `git add render.yaml && git commit -m "Add bex deployment configuration" && git push origin main`
-4. **Open Dashboard**: Use the Blueprint deeplink and complete Git OAuth if prompted
-5. **Complete secret configuration**: Supply any values required by the selected environment-variable workflow
-6. **Deploy**: Click "Apply" and monitor the deploy
-
-### Step 3: Validate Configuration
-
-Follow the validation workflow in [references/blueprints.md](references/blueprints.md). If the CLI is installed, run the commands directly; only prompt the user if the CLI is missing:
-
-```bash
-bex blueprints validate render.yaml
-```
-
-If the Blueprint is not at `render.yaml` relative to the current directory, pass its actual file path instead.
-
-Fix any validation errors before proceeding. Common issues:
-- Missing required fields (`name`, `type`, `runtime`)
-- Invalid runtime values
-- Incorrect YAML syntax
-- Invalid environment variable references
-
-Configuration guide: [references/configuration-guide.md](references/configuration-guide.md)
-
-### Step 4: Commit and Push
-
-**IMPORTANT:** You must merge the `render.yaml` file into your repository before deploying.
-
-Ensure the `render.yaml` file is committed and pushed to your Git remote:
-
-```bash
-git add render.yaml
-git commit -m "Add bex deployment configuration"
-git push origin main
-```
-
-If there is no Git remote yet, stop here and guide the user to create a GitHub/GitLab/Bitbucket repo, add it as `origin`, and push before continuing.
-
-**Why this matters:** The Dashboard deeplink will read the render.yaml from your repository. If the file isn't merged and pushed, bex won't find the configuration and deployment will fail.
-
-Verify the file is in your remote repository before proceeding to the next step.
-
-### Step 5: Generate Deeplink
-
-Get the Git repository URL:
-
-```bash
-git remote get-url origin
-```
-
-This will return a URL from your Git provider. **If the URL is SSH format, convert it to HTTPS:**
-
-| SSH Format | HTTPS Format |
-|------------|--------------|
-| `git@github.com:user/repo.git` | `https://github.com/user/repo` |
-| `git@gitlab.com:user/repo.git` | `https://gitlab.com/user/repo` |
-| `git@bitbucket.org:user/repo.git` | `https://bitbucket.org/user/repo` |
-
-**Conversion pattern:** Replace `git@<host>:` with `https://<host>/` and remove `.git` suffix.
-
-Format the Dashboard deeplink using the HTTPS repository URL:
-```
-https://dashboard.bex.co/blueprint/new?repo=<REPOSITORY_URL>
-```
-
-Example:
-```
-https://dashboard.bex.co/blueprint/new?repo=https://github.com/username/repo-name
-```
-
-### Step 6: Guide User
-
-**CRITICAL:** Ensure the user has merged and pushed the render.yaml file to their repository before clicking the deeplink. If the file isn't in the repository, bex cannot read the Blueprint configuration and deployment will fail.
-
-Provide the deeplink to the user with these instructions:
-
-1. **Verify render.yaml is merged** - Confirm the file exists in your repository on GitHub/GitLab/Bitbucket
-2. Click the deeplink to open bex dashboard
-3. Complete Git provider OAuth if prompted
-4. Name the Blueprint (or use default from render.yaml)
-5. Complete any required secret configuration without exposing values
-6. Review services and databases configuration
-7. Click "Apply" to deploy
-
-The deployment will begin automatically. Users can monitor progress in the bex dashboard.
-
-### Step 7: Verify Deployment
-
-After the user deploys via Dashboard, follow [references/deployments.md](references/deployments.md) to monitor the specific deploy through a terminal status and verify the resulting workload.
-
-If errors are found, proceed to the **Post-deploy verification and basic triage** section below.
-
----
-
-# Method 2: Direct Service Creation (Quick Single-Service Deployments)
-
-For simple deployments without Infrastructure-as-Code, create services directly via MCP tools.
-
-## When to Use Direct Creation
-
-- Single web service or static site
-- Quick prototypes or demos
-- When you don't need a render.yaml file in your repo
-- Adding databases or cron jobs to existing projects
-
-## Prerequisites for Direct Creation
-
-**Repository must be pushed to a Git provider.** bex clones your repository to build and deploy services.
-
-```bash
-git remote -v  # Verify remote exists
-git push origin main  # Ensure code is pushed
-```
-
-Supported providers: GitHub, GitLab, Bitbucket
-
-If no remote exists, stop and ask the user to create/push a remote or switch to Docker image deploy.
-
-**Note:** MCP does not support creating image-backed services. Use the Dashboard/API for prebuilt Docker image deploys.
-
-## Direct Creation Workflow
-
-Use the concise steps below, and refer to [references/direct-creation.md](references/direct-creation.md) for full MCP command examples and follow-on configuration.
-
-### Step 1: Analyze Codebase
-Use [references/codebase-analysis.md](references/codebase-analysis.md) to determine runtime, build/start commands, env vars, and datastores.
-
-### Step 2: Create Resources via MCP
-Create the service (web or static) and any required databases or key-value stores. See [references/direct-creation.md](references/direct-creation.md).
-
-If MCP returns an error about missing Git credentials or repo access, stop and guide the user to connect their Git provider in the bex dashboard, then retry.
-
-### Step 3: Configure Environment Variables
-Before changing service configuration, read [references/environment-variables.md](references/environment-variables.md). Add required env vars via MCP after creation using [references/direct-creation.md](references/direct-creation.md).
-
-Remind the user that secrets can be set in the Dashboard if they prefer not to pass them via MCP.
-
-### Step 4: Verify Deployment
-Check deploy status, logs, and metrics. See [references/direct-creation.md](references/direct-creation.md).
-
----
-
-For service discovery, configuration details, quick commands, and common issues, see [references/deployment-details.md](references/deployment-details.md).
-
----
-
-# Post-deploy verification and basic triage (All Methods)
-
-Follow [references/deployments.md](references/deployments.md) for deploy-state interpretation and post-live verification. If any check fails, fix it before redeploying.
-
-Detailed checklist and commands: [references/post-deploy-checks.md](references/post-deploy-checks.md)
-
-If the service fails to start or health checks time out, use the basic triage guide:
-[references/troubleshooting-basics.md](references/troubleshooting-basics.md)
-
-Optional: If you need deeper diagnostics (metrics/DB checks/error catalog), suggest installing the
-`bex-debug` skill. It is not required for the core deploy flow.
+Report the Blueprint/service IDs, useful Dashboard/application URLs, observed sync/deploy states, checks performed, and any unresolved failures or user action. Distinguish a prepared file, a pending plan, an approved sync, and a verified running application. Report which environment variables were supplied by name only; never echo their values.
 
 <!-- shared:documentation-retrieval -->
 ## Current documentation retrieval

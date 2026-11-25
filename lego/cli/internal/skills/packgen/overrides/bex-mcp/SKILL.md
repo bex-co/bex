@@ -12,7 +12,7 @@ license: MIT
 compatibility: bex MCP server (hosted at api.bex.co/mcp)
 metadata:
   author: bex
-  version: "1.0.0"
+  version: "1.1.0"
   category: operations
 ---
 
@@ -20,7 +20,7 @@ metadata:
 
 The bex MCP server lets AI coding tools manage bex resources directly. Its tools follow Render's MCP server, so the same tool names work. This skill covers **setup**, **authentication**, **workspace selection**, **capability discovery**, and **troubleshooting**.
 
-Action skills (bex-deploy, bex-debug, bex-monitor) use MCP tools for their workflows. If MCP is not connected, set it up using this skill first.
+Action skills (bex-deploy, bex-debug, bex-monitor) use MCP tools for their workflows. If MCP is not connected, use the bex CLI when it can complete the task, or set up MCP using this skill.
 
 Before configuring, troubleshooting, or using bex MCP, read `references/bex-access.md` for the current server, authentication, workspace, capability-discovery, and fallback workflow.
 
@@ -75,7 +75,11 @@ Follow the current OAuth or API-key configuration fetched through `references/be
 
 ### Empty results and workspace selection
 
-MCP operations run against the active workspace. If `list_services()` connects successfully but returns no services, first call `get_selected_workspace()`, then `list_workspaces()` if the wrong workspace might be selected. Also verify that the signed-in account or API key has access to the intended workspace. Do not diagnose the server URL as the primary problem when the MCP call itself succeeds.
+If `list_services()` connects successfully but returns no services, check the call's `workspaceId`. Use `list_workspaces()` if the intended workspace has not been confirmed, then pass that ID explicitly on related resource calls. bex has no session-based workspace selection: a call without `workspaceId` runs in the account's default workspace. Also verify that the signed-in account or API key has access to the intended workspace. If API-key auth is configured, check that `BEX_API_KEY` is available where the client starts. Do not diagnose the server URL as the primary problem when the MCP call itself succeeds.
+
+### Blueprint capabilities
+
+Inspect the current tools for `create_blueprint`, `plan_blueprint`, `approve_blueprint`, `update_blueprint`, and `get_blueprint`; these are public-alpha capabilities. Use **bex-deploy** for their lifecycle and approval workflow. If these tools are absent, use a capable bex CLI (`bex ea blueprints`) or the bex dashboard instead of assuming all MCP clients expose the same tool set.
 
 ## Troubleshooting
 

@@ -1,6 +1,8 @@
-# Direct Creation (MCP) Details
+# Direct Creation Details
 
 Use this reference for MCP direct-creation examples and follow-on configuration.
+
+Follow [bex-access.md](bex-access.md) to establish access and the intended workspace. Include its confirmed `workspaceId` on each MCP resource call that supports the parameter, including the examples below. If MCP is unavailable or cannot create the requested service, inspect `bex services create --help` and use the CLI. A prebuilt image can use CLI `--image`; the direct MCP service tools require a Git-backed source. A Blueprint referencing `runtime: image` is another option when its YAML lives in Git.
 
 The plan values below are examples, not a current plan catalog. Before creating a resource, use [compute-plans.md](compute-plans.md) to select an appropriate plan, then inspect the active MCP tool's schema and pass a value it accepts. Some MCP versions accept legacy plan names but not the corresponding current Plan ID.
 

@@ -22,7 +22,7 @@ services:
           name: postgres
           property: connectionString
       - key: NEXTAUTH_SECRET
-        sync: false  # User provides in Dashboard
+        sync: false  # Supply at Blueprint approval
       - key: JWT_SECRET
         generateValue: true
 

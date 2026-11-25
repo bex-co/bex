@@ -350,6 +350,10 @@ jobs:
       # or page the script cannot read all fail; the committed table is well formed.
       - name: Render changelog disposition drift unit tests
         run: bash scripts/render-changelog-drift.test.sh
+      # w4/m630: an upstream commit to a skill bex ships fails; dropped skills,
+      # the plugin manifest, hooks and CI pass; an unreadable or missing pin fails.
+      - name: render-oss/skills drift unit tests
+        run: bash scripts/render-skills-drift.test.sh
       - name: Render examples corpus fetch unit tests
         run: bash scripts/render-examples-corpus.test.sh
       - name: Verified CI download fallback unit tests
@@ -380,6 +384,7 @@ jobs:
           scripts/render-mcp-drift.sh scripts/render-mcp-drift.test.sh
           scripts/render-schema-drift.sh scripts/render-schema-drift.test.sh
           scripts/render-changelog-drift.sh scripts/render-changelog-drift.test.sh
+          scripts/render-skills-drift.sh scripts/render-skills-drift.test.sh
           scripts/render-examples-corpus.sh scripts/render-examples-corpus.test.sh
           scripts/dev-env.sh scripts/dev-env.test.sh
           scripts/sandbox-docker-spike.sh scripts/sandbox-docker-spike.test.sh

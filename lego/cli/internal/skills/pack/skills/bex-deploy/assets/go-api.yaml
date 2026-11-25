@@ -22,9 +22,9 @@ services:
           name: postgres
           property: connectionString
       - key: JWT_SECRET
-        sync: false  # User provides in Dashboard
+        sync: false  # Supply at Blueprint approval
       - key: API_KEY
-        sync: false  # User provides in Dashboard
+        sync: false  # Supply at Blueprint approval
 
 databases:
   - name: postgres

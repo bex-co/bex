@@ -1,14 +1,14 @@
 # w4 · m630 — bex's skills pack follows render-oss/skills again, and a weekly job says when it falls behind
 
-**Worker:** worker4 **Goal:** `bex skills install` installs skills derived from render-oss/skills' current main (Render's Blueprint plan → approve deploy flow over MCP and CLI), no skill sends agents to a tool bex removed, and a weekly job fails the moment upstream moves again. **Status:** todo
+**Worker:** worker4 **Goal:** `bex skills install` installs skills derived from render-oss/skills' current main (Render's Blueprint plan → approve deploy flow over MCP and CLI), no skill sends agents to a tool bex removed, and a weekly job fails the moment upstream moves again. **Status:** todo (t001–t003 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Re-derive the pack at render-oss/skills `841f4e3` | 1h | — |
-| [t002](t002.md) | Port #81 into the files bex overrides, and stop sending agents to `get_selected_workspace` | 1h | t001 |
-| [t003](t003.md) | A weekly job fails when render-oss/skills moves past the pin | 1h | t001 |
+| [t001](done/t001.md) | Re-derive the pack at render-oss/skills `841f4e3` — **DONE** | 1h | — |
+| [t002](done/t002.md) | Port #81 into the files bex overrides, and stop sending agents to `get_selected_workspace` — **DONE** | 1h | t001 |
+| [t003](done/t003.md) | A weekly job fails when render-oss/skills moves past the pin — **DONE** | 1h | t001 |
 | [t004](t004.md) | Walk a skill-driven Blueprint deploy on production with a `bex` built from main | 45m | t002, t003 |
 | [t005](t005.md) | Render parity | 25m | t004 |
 | [t006](t006.md) | Simplify | 15m | t005 |

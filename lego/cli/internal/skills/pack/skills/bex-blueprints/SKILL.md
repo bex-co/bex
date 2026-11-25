@@ -264,7 +264,7 @@ Deprecated names to avoid: `env` (use `runtime`), `redis` (use `keyvalue`), `aut
 
 ## Related Skills
 
-- **bex-deploy** — Deploy flows, Blueprint vs direct create, MCP/deeplinks
+- **bex-deploy** — Deploy flows, Blueprint planning and approval, MCP/CLI operations
 - **bex-env-vars** — Env var strategy, secrets, Dashboard vs Blueprint
 - **bex-docker** — Dockerfile-backed services and image runtime nuances
 
