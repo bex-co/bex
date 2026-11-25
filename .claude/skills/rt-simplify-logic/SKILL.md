@@ -1,5 +1,7 @@
 ---
 name: rt-simplify-logic
+metadata:
+  internal: "true"
 description: >-
   Sweeps existing code for convoluted business logic — deep nesting, boolean spaghetti, multi-responsibility functions — and simplifies it behavior-preservingly with test coverage as the safety net. Use when the user asks to run the rt-simplify-logic routine or untangle convoluted logic across the codebase; for reviewing just-changed code use /simplify instead.
 ---

@@ -1,5 +1,7 @@
 ---
 name: qa-find-bugs-mcp
+metadata:
+  internal: "true"
 description: >-
   Hunt live hosting bugs through bex's MCP server (https://api.bex.co/mcp and /mcp/cloud-agents) as a real MCP client against the pinned Render MCP contract, compare every answer with REST and GraphQL controls, trace failures into the MCP adapter or the shared service, and file researched, non-duplicate fixes through /pm. Use when asked to QA the MCP server, test the agent endpoint, or find hosting bugs from MCP journeys. Ships the filing only when explicitly authorized.
 ---

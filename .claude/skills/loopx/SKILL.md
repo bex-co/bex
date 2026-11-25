@@ -1,5 +1,7 @@
 ---
 name: loopx
+metadata:
+  internal: "true"
 description: Autonomously drain a `.pm` workstream — each open milestone or inbox note goes to a fresh-context worker that ships it, closes it as already met, parks it in `blocked/`, or deletes it as invalid; once drained, run the workstream's scheduled routines and listen for new items on origin/main (`--no-listen` exits instead). Use when the user asks to "loop", drain, or clear a whole workstream's backlog (e.g. `/loopx w1`). Sequential, not interval-based; for a timed poll use /loop.
 ---
 

@@ -1,5 +1,7 @@
 ---
 name: loop-to-meet-webby-award-bar
+metadata:
+  internal: "true"
 description: >-
   Loop one or more dashboard pages through review → redesign or polish → re-review until they meet the Webby Awards bar: capture each page at seven viewport widths (plus dark mode, zh and keyboard passes), have a fresh-context judge score it against the six Webby website criteria and a UX checklist, fix the findings in the working tree, and repeat until every criterion scores 8 or more at every width. Use when the user asks to bring a page up to Webby or award-level design quality, to review and polish a page's responsiveness and user experience in a loop, or invokes `/loop-to-meet-webby-award-bar <page or pages>`. Leaves changes uncommitted.
 ---

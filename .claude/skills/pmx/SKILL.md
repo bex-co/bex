@@ -1,5 +1,7 @@
 ---
 name: pmx
+metadata:
+  internal: "true"
 description: >-
   Materialize a /pm-brainstorm proposal onto a .pm workstream, ship the filing, then drain that workstream with /loopx. Use when the user invokes /pmx with a target workstream (e.g. `/pmx them all to w3`, `/pmx 1,3 to w5`) or says "/pm them all to wN and then /loopx wN".
 ---

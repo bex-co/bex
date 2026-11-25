@@ -1,5 +1,7 @@
 ---
 name: rt-flatten-abstractions
+metadata:
+  internal: "true"
 description: >-
   Finds over-engineered abstractions — single-implementation interfaces, pass-through layers, generics instantiated at one type, wrapper hooks that add nothing — and flattens them to direct code; module-boundary seams are left to rt-normalize-abstractions. Use when the user asks to run the rt-flatten-abstractions routine, remove over-engineering, or flatten needless indirection.
 ---

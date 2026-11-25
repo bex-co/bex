@@ -1,5 +1,7 @@
 ---
 name: mock-cluster
+metadata:
+  internal: "true"
 description: >-
   Stand up or scale the local CAPD mock cluster and deploy the bex operator into it. Use when the user asks to create, inspect, or resize the repository's local development cluster. Optional argument: scale N.
 

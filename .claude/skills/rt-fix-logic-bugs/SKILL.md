@@ -1,5 +1,7 @@
 ---
 name: rt-fix-logic-bugs
+metadata:
+  internal: "true"
 description: >-
   Picks a tricky logic unit anywhere in the repository's production code — billing and pricing math, authz and scope decisions, preview-vs-execute agreement, state machines, UI/client logic, or operational scripts — models it explicitly with invariants, truth tables, and property tests, and fixes the real bugs the model surfaces with regression tests. Use when the user asks to run the rt-fix-logic-bugs routine, hunt for logic bugs, or property-test a subsystem.
 ---

@@ -1,12 +1,20 @@
 #!/usr/bin/env bash
 # Keep Claude as the single source of truth for repository skills while exposing
 # the same skill set to Codex through relative symlinks.
+#
+# The repository is also an `npx skills add bex-co/bex` source (w4/729), which
+# must offer only the 20 bex-* product skills (plugins/claude-code/bex/skills,
+# found through .claude-plugin/marketplace.json). So every canonical skill is
+# either vendored (a skills-lock.json key, which the skills CLI already hides)
+# or declares `metadata: internal: "true"`, which hides it unless
+# INSTALL_INTERNAL_SKILLS=1 or `--skill <name>`.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 canonical_root=".claude/skills"
 bridge_root=".agents/skills"
 retired_root=".claude/commands"
+lock_file="skills-lock.json"
 fail=0
 
 if [ -e "$retired_root" ] || [ -L "$retired_root" ]; then
@@ -31,6 +39,14 @@ list_entries() {
 
 canonical_names="$(list_entries "$canonical_root")"
 bridge_names="$(list_entries "$bridge_root")"
+
+locked_names=""
+if [ -f "$lock_file" ]; then
+  if ! locked_names="$(python3 -c 'import json, sys; print("\n".join(json.load(open(sys.argv[1]))["skills"]))' "$lock_file")"; then
+    echo "FAIL: $lock_file has no readable \"skills\" object" >&2
+    exit 1
+  fi
+fi
 
 if ! diff -u \
   <(printf '%s\n' "$canonical_names") \
@@ -101,6 +117,36 @@ while IFS= read -r name; do
       echo "FAIL: $skill_file has no frontmatter description" >&2
       fail=1
     fi
+
+    if ! grep -qxF -- "$name" <<<"$locked_names" && ! awk '
+      NR == 1 {
+        if ($0 != "---") {
+          exit 1
+        }
+        next
+      }
+      $0 == "---" {
+        exit found ? 0 : 1
+      }
+      /^metadata:[[:space:]]*$/ {
+        in_metadata = 1
+        next
+      }
+      /^[^[:space:]#]/ {
+        in_metadata = 0
+      }
+      in_metadata && /^[[:space:]]+internal:[[:space:]]*"true"[[:space:]]*$/ {
+        found = 1
+      }
+      END {
+        if ($0 != "---") {
+          exit 1
+        }
+      }
+    ' "$skill_file"; then
+      echo "FAIL: $skill_file is not in $lock_file, so it must declare metadata.internal \"true\" in its frontmatter; otherwise \`npx skills add bex-co/bex\` offers it beside the bex-* product skills" >&2
+      fail=1
+    fi
   fi
 
   if [ ! -L "$bridge_path" ]; then
@@ -119,4 +165,4 @@ if [ "$fail" -ne 0 ]; then
   exit 1
 fi
 
-echo "PASS: Claude skills are canonical and Codex bridges match one-to-one"
+echo "PASS: Claude skills are canonical, Codex bridges match one-to-one, and every maintainer skill is internal"

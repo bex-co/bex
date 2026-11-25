@@ -1,5 +1,7 @@
 ---
 name: dont-code-but-answer
+metadata:
+  internal: "true"
 description: Answer-only mode. Investigate the codebase as needed to answer the user's question, but make no code or file changes. Use only when the user explicitly invokes /dont-code-but-answer or $dont-code-but-answer.
 disable-model-invocation: true
 ---

@@ -1,5 +1,7 @@
 ---
 name: ship
+metadata:
+  internal: "true"
 description: >-
   Safely bring main up to date, commit intended pending changes, and push to origin/main — resolving any rebase conflicts autonomously and stopping only when a decision genuinely needs a human. Use when the user explicitly asks to ship the current main branch or invokes the repository's ship workflow.
 

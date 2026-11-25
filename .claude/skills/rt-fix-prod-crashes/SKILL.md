@@ -1,5 +1,7 @@
 ---
 name: rt-fix-prod-crashes
+metadata:
+  internal: "true"
 description: >-
   Hunts real application crashes — first by listening to bex platform service logs for panics, crash loops, and 5xx bursts, then by fuzzing untrusted-input parsers with Go native fuzzing — and lands root-cause fixes with regression tests. Use when the user asks to run the rt-fix-prod-crashes routine, hunt panics or crashes, fuzz the platform, or investigate service crashes.
 ---

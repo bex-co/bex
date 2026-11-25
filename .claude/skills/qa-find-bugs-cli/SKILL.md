@@ -1,5 +1,7 @@
 ---
 name: qa-find-bugs-cli
+metadata:
+  internal: "true"
 description: >-
   Hunt live hosting bugs through the bex CLI against the pinned Render CLI contract, trace failures into server compatibility or the Bex launcher, and file researched, non-duplicate fixes through /pm. Use when asked to QA the CLI or find hosting bugs from terminal journeys. Ships the filing only when explicitly authorized.
 ---

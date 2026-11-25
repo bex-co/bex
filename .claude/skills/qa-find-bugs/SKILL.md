@@ -1,5 +1,7 @@
 ---
 name: qa-find-bugs
+metadata:
+  internal: "true"
 description: >-
   Drive the live product at https://dashboard.bex.co as a signed-in QA user (QA_EMAIL / QA_PASSWORD from .env or muse.env), hunt real bugs across the hosting features, research each fix down to file:line, file the non-duplicate findings to the w6 board through /pm, and /ship the scheduled milestone. Use when the user asks to QA the dashboard, try the product and find bugs, or run a live hosting bug hunt.
 ---

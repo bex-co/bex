@@ -1,5 +1,7 @@
 ---
 name: rt-normalize-abstractions
+metadata:
+  internal: "true"
 description: >-
   Audits and fixes layering violations against the workspace import DAG (operator→types←backend; cli standalone; dashboard consumes the API, never reimplements it) and adds depguard rules so violations can't return. Use when the user asks to run the rt-normalize-abstractions routine, audit module boundaries, or fix layering violations.
 ---

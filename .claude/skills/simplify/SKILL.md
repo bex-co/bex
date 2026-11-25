@@ -1,5 +1,7 @@
 ---
 name: simplify
+metadata:
+  internal: "true"
 description: >-
   Review the changed code for reuse, code quality, and efficiency, then apply the fixes. Cleanups only — it does not hunt for bugs; use /code-review for that.
 

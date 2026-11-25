@@ -1,5 +1,7 @@
 ---
 name: pm-brainstorm
+metadata:
+  internal: "true"
 description: >-
   Analyze and decompose a product topic into a text-only proposal for the repository's .pm board. Use when the user wants to pressure-test scope, size milestones, identify dependencies, or prepare exact PM board commands without writing board files.
 

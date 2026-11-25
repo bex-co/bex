@@ -1,5 +1,7 @@
 ---
 name: deploy-app
+metadata:
+  internal: "true"
 description: >-
   Deploy a bex App to the current Kubernetes cluster and verify it reaches Running. Use when the user asks to deploy a render.yaml (or legacy bex.yml) or the sample app and validate the rollout end to end. Optional argument: path to render.yaml.
 

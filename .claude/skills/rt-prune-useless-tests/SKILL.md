@@ -1,5 +1,7 @@
 ---
 name: rt-prune-useless-tests
+metadata:
+  internal: "true"
 description: >-
   Audits hollow, duplicated, and implementation-coupled tests, then deletes or strengthens them using behavioral evidence and mutation spot-checks while preserving independent contracts. Use when the user asks to run the rt-prune-useless-tests routine, prune worthless tests, or audit test quality.
 ---

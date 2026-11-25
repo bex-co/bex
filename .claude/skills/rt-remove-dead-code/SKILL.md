@@ -1,5 +1,7 @@
 ---
 name: rt-remove-dead-code
+metadata:
+  internal: "true"
 description: >-
   Deletes provably unreachable code using the repo's wired-in analyzers — whole-program deadcode for Go and knip for the dashboard — plus manual cross-language reachability checks before every deletion. Use when the user asks to run the rt-remove-dead-code routine or sweep for unreachable code.
 ---

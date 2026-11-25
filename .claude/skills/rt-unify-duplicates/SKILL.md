@@ -1,5 +1,7 @@
 ---
 name: rt-unify-duplicates
+metadata:
+  internal: "true"
 description: >-
   Finds duplicated implementations across modules and merges each into one canonical helper, respecting the workspace import DAG (operator→types←backend; cli imports no sibling); inherent two-sided duplication gets a drift-guard test instead. Use when the user asks to run the rt-unify-duplicates routine, deduplicate code, or unify parallel helpers.
 ---

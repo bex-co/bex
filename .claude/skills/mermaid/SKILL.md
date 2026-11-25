@@ -1,5 +1,7 @@
 ---
 name: mermaid
+metadata:
+  internal: "true"
 description: >-
   Create concise, syntax-verified Mermaid architecture diagrams. Use when the user asks to diagram a repository component, document, system, dependency flow, or supplied description in Mermaid.
 

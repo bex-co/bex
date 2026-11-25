@@ -104,6 +104,9 @@ jobs:
         run: python3 -B scripts/ci_test_inputs.py .github/workflows/scripts.yml
       - name: Skill layout consistency
         run: bash scripts/skill-layout-validate.sh
+      # Every maintainer skill stays out of `npx skills add bex-co/bex` (w4/729).
+      - name: Skill layout guard self-test
+        run: bash scripts/skill-layout-validate.test.sh
       # The /loopx guard is the Stop hook of every Claude Code session in this
       # checkout and the scheduler behind a drained workstream; proven against
       # temporary repositories with a real bare remote and a fake gh.

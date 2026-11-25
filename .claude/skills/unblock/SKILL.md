@@ -1,5 +1,7 @@
 ---
 name: unblock
+metadata:
+  internal: "true"
 description: >-
   Help the user understand how they can unblock a worker, discuss the needed decisions or actions in plain Chinese, record agreed outcomes through pm, and prepare a loopx handoff. Use for /unblock wN or requests to discuss how to help a blocked worker. Check current evidence as preparation; this is a user-facing conversation, not an autonomous audit or implementation run.
 ---

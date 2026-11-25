@@ -1,5 +1,7 @@
 ---
 name: release
+metadata:
+  internal: "true"
 description: Autonomously release a bex component (cli or mobile) — sync shipped main, choose the version, publish the tag, recover routine failures, and verify every distribution channel. Use when the user asks to release, publish, or bump the CLI or the mobile app. /ship lands code; /release mints versions.
 allowed-tools: Bash, Read, Glob, Grep
 ---

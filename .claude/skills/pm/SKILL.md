@@ -1,5 +1,7 @@
 ---
 name: pm
+metadata:
+  internal: "true"
 description: >-
   Inspect and maintain the repository's .pm workstreams, inbox notes, milestones, tasks, and routine lists. Use when the user asks for PM board status or requests a supported board mutation such as creating, promoting, adding, or completing work, or scheduling a routine.
 
