@@ -640,13 +640,13 @@ func retainedProbeHost(stored corev1.PodTemplateSpec, app *appv1alpha1.App) (hos
 	return "", false
 }
 
-// drainSeconds is how long a traffic-serving tenant pod keeps serving after it
-// is marked for deletion, before it gets SIGTERM (w1/m154). Deleting a pod
-// sends SIGTERM at once while its endpoint leaves Traefik (and kube-proxy) a
-// moment later, so an app that exits on SIGTERM would fail the requests still
-// routed to it. The length is Render's: the original instance keeps serving
-// its in-flight requests for 60 s after the switch (w8/180; it was 10 s,
-// w1/m154); docs/ADR004-app-deployment.md § Rollout headroom, ADR018.
+// drainSeconds is how long a tenant pod keeps running after it is marked for
+// deletion, before it gets SIGTERM (w1/m154). Deleting a pod sends SIGTERM at
+// once while its endpoint leaves Traefik (and kube-proxy) a moment later, so
+// an app that exits on SIGTERM would fail the requests still routed to it. The
+// length is Render's: the original instance keeps serving its in-flight
+// requests for 60 s after the switch (w8/180; it was 10 s, w1/m154);
+// docs/ADR004-app-deployment.md § Rollout headroom, ADR018.
 //
 // Kubernetes also runs preStop before a liveness restart, when readiness has
 // already taken the instance out of rotation, so a plain sleep pushed Render's
@@ -655,12 +655,13 @@ func retainedProbeHost(stored corev1.PodTemplateSpec, app *appv1alpha1.App) (hos
 // when it fails (healthProbeDrainHandler).
 const drainSeconds int64 = 60
 
-// drainSecondsFor is the preStop drain this App's pods should carry, or 0. A
-// worker takes no inbound traffic, so it has nothing to drain. A disk-attached
-// service rolls with Recreate, whose documented downtime a drain would only
-// lengthen.
-func drainSecondsFor(app *appv1alpha1.App, p deploymentParams) int64 {
-	if p.worker || app.Spec.Disk != nil {
+// drainSecondsFor is the preStop drain this App's pods should carry, or 0.
+// Render runs the same sequence for a background worker, which takes no
+// traffic: its original instance gets SIGTERM 60 s after the new one starts
+// (w6/178). A disk-attached service rolls with Recreate, whose documented
+// downtime a drain would only lengthen.
+func drainSecondsFor(app *appv1alpha1.App) int64 {
+	if app.Spec.Disk != nil {
 		return 0
 	}
 	return drainSeconds
@@ -787,19 +788,22 @@ func terminationGracePeriodSeconds(seconds *int32, drain int64) *int64 {
 // template carries a different drain (none, or the 10 s of before w8/180) gets
 // the current one on the pass that changes its template for any other reason —
 // a deploy, a config change, a restart — and not before. Changing it eagerly
-// would change every web and private service's template on the same operator
-// upgrade and roll them all at once, where the surge pods outrun the tenant
-// headroom and mint nodes (ADR004 § Rollout headroom). A new Deployment, or
-// one already on the current drain, always gets it. The health-checked drain
-// (w4/m353) is adopted the same way: a stored template keeps its plain sleep,
-// and a TCP-checked service its helper-free pod, until the next roll.
+// would change every service's template on the same operator upgrade and roll
+// them all at once, where the surge pods outrun the tenant headroom and mint
+// nodes (ADR004 § Rollout headroom). A new Deployment, or one already on the
+// current drain, always gets it. The health-checked drain (w4/m353) is adopted
+// the same way: a stored template keeps its plain sleep, and a TCP-checked
+// service its helper-free pod, until the next roll. So is a worker's drain
+// (w6/178): a worker stored without one keeps its template until then.
 func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymentParams) {
 	probeHost, retained := retainedProbeHost(dep.Spec.Template, app)
 	if !retained {
 		probeHost = healthProbeHost(app, p.baseDomain)
 	}
-	drain := drainSecondsFor(app, p)
-	p.drainCheck = drain > 0 && p.healthProbeImage != ""
+	drain := drainSecondsFor(app)
+	// A worker has no health check to run first, so its drain is the plain
+	// sleep and its pod carries no helper.
+	p.drainCheck = drain > 0 && !p.worker && p.healthProbeImage != ""
 	p.livenessGrace = p.drainCheck
 	p.openPortCheck = checksAnyOpenPort(dep.Spec.Template, app, p)
 	p.spread = spreadsAcrossNodes(app)

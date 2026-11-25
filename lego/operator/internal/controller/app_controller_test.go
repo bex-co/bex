@@ -342,12 +342,13 @@ var _ = Describe("App Controller", func() {
 				serviceType string
 				drain       int64
 			}{
-				// Traffic-serving pods drain before SIGTERM (w1/m154), and the
-				// grace period covers the drain so the delay still counts from
-				// SIGTERM; a worker takes no traffic and does not drain.
+				// Pods drain before SIGTERM (w1/m154), and the grace period
+				// covers the drain so the delay still counts from SIGTERM. A
+				// worker drains too: Render sends its original instance SIGTERM
+				// 60 s after the new one starts (w6/178).
 				{name: "shutdown-web", serviceType: appv1alpha1.TypeWebService, drain: drainSeconds},
 				{name: "shutdown-private", serviceType: appv1alpha1.TypePrivateService, drain: drainSeconds},
-				{name: "shutdown-worker", serviceType: appv1alpha1.TypeBackgroundWorker},
+				{name: "shutdown-worker", serviceType: appv1alpha1.TypeBackgroundWorker, drain: drainSeconds},
 			} {
 				podSpec := appPodSpec(tc.name, appv1alpha1.AppSpec{
 					Image: "traefik/whoami", Port: 3000, Type: tc.serviceType,
@@ -368,9 +369,12 @@ var _ = Describe("App Controller", func() {
 
 		It("leaves the desired grace period absent for an undrained pod with no delay and receives Kubernetes' 30-second default", func() {
 			Expect(terminationGracePeriodSeconds(nil, 0)).To(BeNil(), "the reconciler must not author a default for an undrained pod")
+			// A disk-attached service is the one that does not drain.
 			worker := appPodSpec("shutdown-default-worker", appv1alpha1.AppSpec{
-				Image: "traefik/whoami", Port: 3000, Type: appv1alpha1.TypeBackgroundWorker,
+				Image: "traefik/whoami", Port: 3000, Type: appv1alpha1.TypeBackgroundWorker, Tier: "starter",
+				Disk: &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10},
 			})
+			Expect(worker.Containers[0].Lifecycle).To(BeNil())
 			// The API server defaults PodSpec.terminationGracePeriodSeconds on
 			// storage, so the retrieved Deployment contains 30 even though the
 			// reconciler submitted nil (asserted directly above).

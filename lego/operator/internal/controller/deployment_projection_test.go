@@ -466,19 +466,25 @@ func TestTerminationGracePeriod(t *testing.T) {
 		return *got
 	}
 
+	withDisk := func(a *appv1alpha1.App) {
+		a.Spec.Disk = &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10}
+	}
+
 	t.Run("an undrained pod with no delay writes the kubernetes default explicitly", func(t *testing.T) {
 		// 30 is what the API server already stored for every App that never set
 		// maxShutdownDelaySeconds, so writing it changes no pod template and
 		// rolls nothing — it only lets the projection equal the stored object,
 		// which is what keeps a converged reconcile from PUTting (w7/m84).
-		if got := grace(project(projectionApp(), workerParams())); got != defaultTerminationGracePeriodSeconds {
-			t.Errorf("worker grace = %d; want the Kubernetes default %d", got, defaultTerminationGracePeriodSeconds)
+		if got := grace(project(projectionApp(withDisk), workerParams())); got != defaultTerminationGracePeriodSeconds {
+			t.Errorf("disk worker grace = %d; want the Kubernetes default %d", got, defaultTerminationGracePeriodSeconds)
 		}
 	})
 
-	t.Run("an undrained pod's delay is its whole grace period", func(t *testing.T) {
-		if got := grace(project(projectionApp(withDelay(45)), workerParams())); got != 45 {
-			t.Errorf("worker grace = %d; want 45", got)
+	// w6/178: Render sends a worker's original instance SIGTERM 60 s after
+	// the new one starts, so a worker drains like a web service.
+	t.Run("a worker adds the drain to the user's delay", func(t *testing.T) {
+		if got := grace(project(projectionApp(withDelay(45)), workerParams())); got != drainSeconds+45 {
+			t.Errorf("worker grace = %d; want %d + 45", got, drainSeconds)
 		}
 	})
 
@@ -502,9 +508,6 @@ func TestTerminationGracePeriod(t *testing.T) {
 	// disk) would be that much downtime. It never drains, so its grace is the
 	// default alone.
 	t.Run("a disk App keeps the default delay whatever its spec holds", func(t *testing.T) {
-		withDisk := func(a *appv1alpha1.App) {
-			a.Spec.Disk = &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10}
-		}
 		for _, p := range []deploymentParams{webParams(), workerParams()} {
 			if got := grace(project(projectionApp(withDisk, withDelay(300)), p)); got != defaultTerminationGracePeriodSeconds {
 				t.Errorf("worker=%v: disk App grace = %d; want the default %d", p.worker, got, defaultTerminationGracePeriodSeconds)
@@ -535,28 +538,50 @@ func TestTrafficServingPodsDrainBeforeSIGTERM(t *testing.T) {
 	}
 }
 
-// Workers take no traffic, and a disk-attached service's Recreate downtime is
-// documented; neither drains, and their grace period is unchanged.
-func TestWorkersAndDiskAttachedServicesDoNotDrain(t *testing.T) {
+// TestWorkersDrainBeforeSIGTERM pins w6/178: Render runs its zero-downtime
+// sequence for background workers too, and its step 4 sends SIGTERM to the
+// original instance "After 60 seconds" (render.com/docs/deploys). A worker has
+// no health check to run first, so its drain is the native sleep, and its grace
+// period covers the drain plus the shutdown delay.
+func TestWorkersDrainBeforeSIGTERM(t *testing.T) {
 	worker := webParams()
 	worker.worker = true
-	dep := project(projectionApp(), worker)
-	if lifecycle := appContainerOf(t, dep).Lifecycle; lifecycle != nil {
-		t.Errorf("worker lifecycle = %+v; want none", lifecycle)
+	app := projectionApp(func(a *appv1alpha1.App) { a.Spec.Type = appv1alpha1.TypeBackgroundWorker })
+	dep := project(app, worker)
+	lifecycle := appContainerOf(t, dep).Lifecycle
+	if lifecycle == nil || lifecycle.PreStop == nil || lifecycle.PreStop.Sleep == nil {
+		t.Fatalf("worker lifecycle = %+v; want a preStop sleep", lifecycle)
 	}
+	if lifecycle.PreStop.Sleep.Seconds != drainSeconds {
+		t.Errorf("worker drain = %ds; want %ds", lifecycle.PreStop.Sleep.Seconds, drainSeconds)
+	}
+	if lifecycle.PreStop.Exec != nil || lifecycle.PreStop.HTTPGet != nil {
+		t.Errorf("worker preStop = %+v; want only the native sleep", lifecycle.PreStop)
+	}
+	if got := dep.Spec.Template.Spec.TerminationGracePeriodSeconds; got == nil || *got != drainSeconds+defaultTerminationGracePeriodSeconds {
+		t.Errorf("worker grace = %v; want %d + %d", got, drainSeconds, defaultTerminationGracePeriodSeconds)
+	}
+}
 
+// A disk-attached service's Recreate downtime is documented, so it does not
+// drain, worker or not, and its grace period is unchanged.
+func TestDiskAttachedServicesDoNotDrain(t *testing.T) {
 	disk := projectionApp(func(a *appv1alpha1.App) {
 		a.Spec.Disk = &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10}
 	})
-	dep = project(disk, webParams())
-	if lifecycle := appContainerOf(t, dep).Lifecycle; lifecycle != nil {
-		t.Errorf("disk-attached lifecycle = %+v; want none", lifecycle)
-	}
-	if dep.Spec.Strategy.Type != appsv1.RecreateDeploymentStrategyType {
-		t.Errorf("disk-attached strategy = %q; want Recreate unchanged", dep.Spec.Strategy.Type)
-	}
-	if got := dep.Spec.Template.Spec.TerminationGracePeriodSeconds; got == nil || *got != defaultTerminationGracePeriodSeconds {
-		t.Errorf("disk-attached grace = %v; want the Kubernetes default", got)
+	worker := webParams()
+	worker.worker = true
+	for _, p := range []deploymentParams{webParams(), worker} {
+		dep := project(disk, p)
+		if lifecycle := appContainerOf(t, dep).Lifecycle; lifecycle != nil {
+			t.Errorf("worker=%v: disk-attached lifecycle = %+v; want none", p.worker, lifecycle)
+		}
+		if dep.Spec.Strategy.Type != appsv1.RecreateDeploymentStrategyType {
+			t.Errorf("worker=%v: disk-attached strategy = %q; want Recreate unchanged", p.worker, dep.Spec.Strategy.Type)
+		}
+		if got := dep.Spec.Template.Spec.TerminationGracePeriodSeconds; got == nil || *got != defaultTerminationGracePeriodSeconds {
+			t.Errorf("worker=%v: disk-attached grace = %v; want the Kubernetes default", p.worker, got)
+		}
 	}
 }
 
@@ -594,6 +619,54 @@ func TestDrainIsAdoptedOnTheNextRollNotOnUpgrade(t *testing.T) {
 	applyDeploymentSpec(again, restarted, p)
 	if !equalPodTemplate(again.Spec.Template, next.Spec.Template) {
 		t.Error("once adopted, the drained template must re-project unchanged")
+	}
+}
+
+// w6/178: a worker stored without the drain, as every worker was before,
+// keeps its template, its user's delay as its whole grace included, through an
+// operator upgrade and a scale. The next deploy, restart or settings change
+// adopts the drain. Adding it eagerly would roll every worker at once.
+func TestWorkerDrainIsAdoptedOnTheNextRollNotOnUpgrade(t *testing.T) {
+	delay := int32(45)
+	worker := func(mutate ...func(*appv1alpha1.App)) *appv1alpha1.App {
+		return projectionApp(append([]func(*appv1alpha1.App){func(a *appv1alpha1.App) {
+			a.Spec.Type = appv1alpha1.TypeBackgroundWorker
+			a.Spec.MaxShutdownDelaySeconds = &delay
+		}}, mutate...)...)
+	}
+	p := webParams()
+	p.worker = true
+	stored := project(worker(), p)
+	stored.Spec.Template.Spec.Containers[0].Lifecycle = nil
+	stored.Spec.Template.Spec.TerminationGracePeriodSeconds = new(int64(delay))
+
+	upgraded := stored.DeepCopy()
+	applyDeploymentSpec(upgraded, worker(), p)
+	if !equalPodTemplate(upgraded.Spec.Template, stored.Spec.Template) {
+		t.Fatalf("an unchanged worker's template changed on upgrade (lifecycle %+v); that would roll every worker at once",
+			appContainerOf(t, upgraded).Lifecycle)
+	}
+	scaled := stored.DeepCopy()
+	p.replicas = 3
+	applyDeploymentSpec(scaled, worker(), p)
+	if !equalPodTemplate(scaled.Spec.Template, stored.Spec.Template) {
+		t.Error("a scale must not roll the worker to adopt the drain")
+	}
+
+	restarted := worker(func(a *appv1alpha1.App) { a.Spec.RestartedAt = "2026-11-25T00:00:00Z" })
+	next := stored.DeepCopy()
+	applyDeploymentSpec(next, restarted, p)
+	if got, checked := storedDrain(next.Spec.Template.Spec); got != drainSeconds || checked {
+		t.Errorf("the next roll's drain = %ds (checked %v); want the plain %ds sleep", got, checked, drainSeconds)
+	}
+	if got := next.Spec.Template.Spec.TerminationGracePeriodSeconds; got == nil || *got != drainSeconds+int64(delay) {
+		t.Errorf("adopting roll grace = %v; want %d + %d", got, drainSeconds, delay)
+	}
+
+	again := next.DeepCopy()
+	applyDeploymentSpec(again, restarted, p)
+	if !equalPodTemplate(again.Spec.Template, next.Spec.Template) {
+		t.Error("once adopted, the drained worker template must re-project unchanged")
 	}
 }
 

@@ -119,15 +119,20 @@ func TestHealthProbeCheckArgsFollowTheProbe(t *testing.T) {
 	}
 }
 
-// Workers and disk-attached services carry no preStop with the helper either,
-// and a worker gets no installer for a drain it does not have. An operator
+// A worker has no health check, so it drains with the plain sleep (w6/178)
+// and gets no installer or helper volume, even on an operator that knows its
+// own image. A disk-attached service carries no preStop at all. An operator
 // that does not know its own image keeps the plain sleep.
 func TestHealthCheckedDrainOnlyWhereADrainApplies(t *testing.T) {
 	worker := execParams()
 	worker.worker = true
 	workerDep := project(projectionApp(), worker)
-	if c := appContainerOf(t, workerDep); c.Lifecycle != nil || len(workerDep.Spec.Template.Spec.InitContainers) != 0 {
-		t.Errorf("worker: lifecycle %+v init %v, want neither", c.Lifecycle, workerDep.Spec.Template.Spec.InitContainers)
+	c := appContainerOf(t, workerDep)
+	if c.Lifecycle == nil || c.Lifecycle.PreStop.Exec != nil || c.Lifecycle.PreStop.Sleep == nil || c.Lifecycle.PreStop.Sleep.Seconds != drainSeconds {
+		t.Errorf("worker: lifecycle %+v, want the plain 60 s sleep", c.Lifecycle)
+	}
+	if init, vols := workerDep.Spec.Template.Spec.InitContainers, workerDep.Spec.Template.Spec.Volumes; len(init) != 0 || len(vols) != 0 || len(c.VolumeMounts) != 0 {
+		t.Errorf("worker: init %v volumes %v mounts %v, want no helper", init, vols, c.VolumeMounts)
 	}
 	disk := projectionApp(func(a *appv1alpha1.App) {
 		a.Spec.Disk = &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10}
