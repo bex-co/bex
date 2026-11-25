@@ -42,7 +42,12 @@ import (
 // a service setting since w9/m619), so a Contributor sees the switch disabled
 // and a Developer on a protected member sees it disabled for the reason the
 // verb would refuse it (w4/725); its plan eligibility is the service's plan,
-// which the client already reads. Delete reads the same way, with
+// which the client already reads. Restart reads with the wired verb's guards:
+// a cron job has no restart so the row is absent there, a suspended service
+// reports suspended unless a saved paid plan waits for the deploy that lifts
+// it, an unmanaged service reports unavailable, and otherwise the billing
+// gate; store-off (RestartDeploy nil) the verb runs no guards, so the row
+// stays unconditioned. Delete reads the same way, with
 // Delete's own permission (can_create), on every type, so a Developer on a
 // protected member sees Delete disabled before typing its phrase (w4/724).
 // Read-only and non-auditing: can_view gates the projection itself; a
@@ -103,12 +108,35 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 	}
 	create := s.CanDecisionOn(ctx, core.RelCanCreate, workspace)
 	remove, _ := core.RestrictedDecision("delete", create, protected, admin)
-	out := []core.ActionDecision{
-		core.DecideAction(core.ActionRestart, operate, ""),
+	restartPre := ""
+	if operate.Allowed() && s.RestartDeploy != nil {
+		// The wired restart (deploys.Restart — what GraphQL restartServer,
+		// REST and MCP run) refuses a suspended service, an unmanaged one
+		// and a billing-blocked workspace; the projection names the first
+		// stable block in the usual state-then-dunning order, exempting the
+		// saved paid plan validateTrigger lifts past. The store-off verb
+		// runs no guards, so its row stays unconditioned.
+		switch {
+		case a.Spec.Suspended && !core.DeployLiftsFreeHoursSuspension(a):
+			restartPre = core.PrecondSuspended
+		case a.Labels[core.LabelAppID] == "":
+			restartPre = core.PrecondUnavailable
+		default:
+			restartPre = billing()
+		}
+	}
+	out := []core.ActionDecision{}
+	if a.Spec.Type != appv1alpha1.TypeCronJob {
+		// No restart exists for a cron job — the verb refuses it 400 in both
+		// modes — so there is no row: absent means "not offered here", as for
+		// the shell and the maintenance toggle on the types they do not serve.
+		out = append(out, core.DecideAction(core.ActionRestart, operate, restartPre))
+	}
+	out = append(out,
 		core.DecideAction(core.ActionSuspend, suspend, suspendPre),
 		core.DecideAction(core.ActionResume, resume, resumePre),
 		core.DecideAction(core.ActionDelete, remove, ""),
-	}
+	)
 	typ := effectiveType(a.Spec.Type)
 	if sshTypeHasInstances(typ) {
 		shell, _ := core.RestrictedDecision("shell", s.CanDecisionOn(ctx, core.RelCanViewSensitive, workspace), protected, admin)
