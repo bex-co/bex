@@ -522,7 +522,7 @@ describe("DatastoreLogViewer row menu (w3/m528)", () => {
     await user.click(screen.getByRole("button", { name: "Log line options" }));
   };
 
-  it("offers View in context on a narrowed tab, to the tab's own URL, and never SSH", async () => {
+  it("offers View in context on a narrowed tab, to the Logs page's own URL, and never SSH", async () => {
     const user = userEvent.setup();
     state.lines = [line(0)];
     const { container, rerender } = render(
@@ -553,9 +553,9 @@ describe("DatastoreLogViewer row menu (w3/m528)", () => {
       .getByRole("menuitem", { name: "View in context" })
       .getAttribute("href")!;
     const url = new URL(href, "https://dashboard.bex.co");
-    expect(url.pathname).toBe("/databases/dpg-example");
+    // The Postgres database's own Logs page (w3/m641).
+    expect(url.pathname).toBe("/databases/dpg-example/logs");
     expect(Object.fromEntries(url.searchParams)).toEqual({
-      tab: "logs",
       range: "custom",
       rangeStart: "2026-07-15T11:50:00.000Z",
       rangeEnd: "2026-07-15T12:10:00.000Z",

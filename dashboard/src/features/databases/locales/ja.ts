@@ -1825,27 +1825,36 @@ const jaDatabases: Record<string, TranslationEntry> = {
     message: "ステートメントを実行",
     description: "SQL console confirmed write action",
   },
-  "databases.detailNavLabel": {
-    message: "データベースの詳細",
-    description: "Accessible label for the managed Postgres detail tabs",
-  },
-  "databases.sectionNavigation": {
-    message: "データベースのセクション",
+  // --- Sidebar and page headings (w3/m641) ---
+  "databases.navInfo": {
+    message: "情報",
     description:
-      "Accessible label for the database detail page section navigation",
+      "Postgres sidebar entry and page heading: the database's Info page (general details, connections, access, SQL console)",
   },
-  "databases.dangerZoneTitle": {
-    message: "危険ゾーン",
-    description:
-      "Database detail section-nav label for the destructive actions",
-  },
-  "databases.overviewTab": {
-    message: "概要",
-    description: "Managed Postgres overview tab",
-  },
-  "databases.logsTab": {
+  "databases.navLogs": {
     message: "ログ",
-    description: "Managed Postgres logs tab",
+    description:
+      "Postgres sidebar entry and page heading: the database's Logs page",
+  },
+  "databases.navMetrics": {
+    message: "メトリクス",
+    description:
+      "Postgres sidebar entry and page heading: the database's Metrics page",
+  },
+  "databases.navPlan": {
+    message: "プラン",
+    description:
+      "Postgres sidebar entry and page heading: the database's Plan page (compute plan, storage, high availability)",
+  },
+  "databases.navApps": {
+    message: "アプリ",
+    description:
+      "Postgres sidebar entry and page heading: the database's Apps page (pgAdmin, PgHero)",
+  },
+  "databases.navRecovery": {
+    message: "リカバリ",
+    description:
+      "Postgres sidebar entry and page heading: the database's Recovery page (point-in-time recovery, exports)",
   },
   "databases.logsRangeLabel": {
     message: "期間",

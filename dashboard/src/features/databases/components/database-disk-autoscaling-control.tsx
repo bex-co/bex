@@ -31,15 +31,18 @@ export function DatabaseDiskAutoscalingControl({
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-md border bg-muted/30 px-3 py-2">
-      <div className="min-w-0 text-right">
+    // Render's Plan page puts Storage Autoscaling right under Storage
+    // (w3/m641, docs/render-artifacts/postgres-dashboard.md), so this is a
+    // row of the plan card under its Storage row, with the same anatomy.
+    <div className="flex items-center justify-between gap-4 border-t pt-4">
+      <div className="min-w-0 space-y-1">
         <label
           htmlFor="database-disk-autoscaling"
-          className="block cursor-pointer text-xs font-medium"
+          className="block cursor-pointer text-sm font-medium"
         >
           {t("databases.diskAutoscalingLabel")}
         </label>
-        <span className="block text-xs text-muted-foreground">
+        <span className="block text-sm text-muted-foreground">
           {plan?.maxStorageGB != null
             ? t("databases.diskAutoscalingSize", {
                 current: database.diskSizeGB ?? 0,
@@ -52,7 +55,7 @@ export function DatabaseDiskAutoscalingControl({
         {planBlocked ? (
           <span
             id="database-disk-autoscaling-hint"
-            className="block text-xs text-muted-foreground"
+            className="block text-sm text-muted-foreground"
           >
             {t("databases.diskAutoscalingPlanUnsupported")}
           </span>

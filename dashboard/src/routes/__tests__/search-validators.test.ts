@@ -3,7 +3,9 @@ import { Route as AgentsRoute } from "../agents";
 import { Route as AgentDetailRoute } from "../agents_.$agentSessionId";
 import { Route as BuildSourcesRoute } from "../build-sources";
 import { Route as BuildSourcesNewRoute } from "../build-sources_.new";
-import { Route as DatabaseRoute } from "../databases.$databaseId";
+import { Route as DatabaseIndexRoute } from "../databases.$databaseId.index";
+import { Route as DatabaseLogsRoute } from "../databases.$databaseId.logs";
+import { Route as DatabaseMetricsRoute } from "../databases.$databaseId.metrics";
 import { Route as IndexRoute } from "../index";
 import { Route as KeyValueRoute } from "../keyvalue.$keyValueId";
 import { Route as ServiceDeployRoute } from "../services.$serviceId.deploys.$deployId";
@@ -113,11 +115,26 @@ describe.each([
     { tab: "bogus", range: "12y", text: "", instance: true },
     { tab: undefined, ...NO_DATASTORE_LOG_FILTERS },
   ],
+  // A Postgres database's bare URL owns only the old ?tab=logs, which it
+  // sends to the Logs page (w3/m641); the Logs and Metrics pages own their
+  // keys.
   [
-    "/databases/$databaseId",
-    DatabaseRoute,
-    { tab: "metrics", range: "custom", rangeStart: "x", text: 404 },
-    { tab: undefined, ...NO_DATASTORE_LOG_FILTERS, text: "404" },
+    "/databases/$databaseId/",
+    DatabaseIndexRoute,
+    { tab: "metrics", range: "24h", text: 404 },
+    { tab: undefined },
+  ],
+  [
+    "/databases/$databaseId/logs",
+    DatabaseLogsRoute,
+    { tab: "logs", range: "custom", rangeStart: "x", text: 404 },
+    { ...NO_DATASTORE_LOG_FILTERS, text: "404" },
+  ],
+  [
+    "/databases/$databaseId/metrics",
+    DatabaseMetricsRoute,
+    { range: "4h", rangeStart: "x", text: "boom" },
+    { ...NO_RANGE, range: "4h" },
   ],
   ["/", IndexRoute, { new: "bogus" }, { new: undefined }],
   // The three create dialogs the overview owns in its URL (w1/m45, w22/m311).
@@ -172,10 +189,10 @@ describe.each([
     { ...NO_LOG_FILTERS, range: "live" },
   ],
   [
-    "/databases/$databaseId",
-    DatabaseRoute,
-    { tab: "logs", range: "live", rangeEnd: "2026-11-20T10:20:00.000Z" },
-    { tab: "logs", ...NO_DATASTORE_LOG_FILTERS, range: "live" },
+    "/databases/$databaseId/logs",
+    DatabaseLogsRoute,
+    { range: "live", rangeEnd: "2026-11-20T10:20:00.000Z" },
+    { ...NO_DATASTORE_LOG_FILTERS, range: "live" },
   ],
   [
     "/project/$projectId/observability/logs/application",
@@ -191,10 +208,10 @@ describe.each([
     { ...NO_PROJECT_LOG_SEARCH, savedSearchId: "svs-1" },
   ],
   [
-    "/databases/$databaseId",
-    DatabaseRoute,
-    { tab: "logs", contextLine: "id:abc" },
-    { tab: "logs", ...NO_DATASTORE_LOG_FILTERS, contextLine: "id:abc" },
+    "/databases/$databaseId/logs",
+    DatabaseLogsRoute,
+    { contextLine: "id:abc" },
+    { ...NO_DATASTORE_LOG_FILTERS, contextLine: "id:abc" },
   ],
   [
     "/keyvalue/$keyValueId",

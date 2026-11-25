@@ -1872,27 +1872,36 @@ const esDatabases: Record<string, TranslationEntry> = {
     message: "Ejecutar sentencia",
     description: "SQL console confirmed write action",
   },
-  "databases.detailNavLabel": {
-    message: "Detalles de la base de datos",
-    description: "Accessible label for the managed Postgres detail tabs",
-  },
-  "databases.sectionNavigation": {
-    message: "Secciones de la base de datos",
+  // --- Sidebar and page headings (w3/m641) ---
+  "databases.navInfo": {
+    message: "Información",
     description:
-      "Accessible label for the database detail page section navigation",
+      "Postgres sidebar entry and page heading: the database's Info page (general details, connections, access, SQL console)",
   },
-  "databases.dangerZoneTitle": {
-    message: "Zona de peligro",
-    description:
-      "Database detail section-nav label for the destructive actions",
-  },
-  "databases.overviewTab": {
-    message: "Resumen",
-    description: "Managed Postgres overview tab",
-  },
-  "databases.logsTab": {
+  "databases.navLogs": {
     message: "Logs",
-    description: "Managed Postgres logs tab",
+    description:
+      "Postgres sidebar entry and page heading: the database's Logs page",
+  },
+  "databases.navMetrics": {
+    message: "Métricas",
+    description:
+      "Postgres sidebar entry and page heading: the database's Metrics page",
+  },
+  "databases.navPlan": {
+    message: "Plan",
+    description:
+      "Postgres sidebar entry and page heading: the database's Plan page (compute plan, storage, high availability)",
+  },
+  "databases.navApps": {
+    message: "Apps",
+    description:
+      "Postgres sidebar entry and page heading: the database's Apps page (pgAdmin, PgHero)",
+  },
+  "databases.navRecovery": {
+    message: "Recuperación",
+    description:
+      "Postgres sidebar entry and page heading: the database's Recovery page (point-in-time recovery, exports)",
   },
   "databases.logsRangeLabel": {
     message: "Intervalo de tiempo",

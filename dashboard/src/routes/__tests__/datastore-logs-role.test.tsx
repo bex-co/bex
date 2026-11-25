@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import {
   RouterProvider,
   createMemoryHistory,
@@ -9,9 +9,10 @@ import {
   createRouter,
   type RouteComponent,
 } from "@tanstack/react-router";
-import { Route as DatabaseRoute } from "../databases.$databaseId";
+import { Route as DatabaseLogsRoute } from "../databases.$databaseId.logs";
 import { Route as KeyValueRoute } from "../keyvalue.$keyValueId";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { renderDatabasePages } from "@/test/database-pages";
 import {
   LOGS_REASON,
   billingCapabilities,
@@ -20,10 +21,12 @@ import {
 } from "@/test/mocks/capabilities";
 
 // w9/145: Render's role table gives neither a Viewer nor a Billing member
-// "View service logs", and a Contributor has it. On a Postgres or Key Value
-// page, such a member gets no Logs tab, and a deep link to the tab names it
-// over the role's reason, with no log read. The real route components and
-// their tab rows run; the data hooks and the Overview's panels are stubbed.
+// "View service logs", and a Contributor has it. On a Key Value page, such a
+// member gets no Logs tab, and a deep link to the tab names it over the role's
+// reason, with no log read; a Postgres database's Logs page (w3/m641, its
+// sidebar entry left out by database-sidebar.test.tsx) shows the role's
+// reason, with no log read. The real route components and their tab rows run;
+// the data hooks and the Overview's panels are stubbed.
 
 const { stub, historyReads } = vi.hoisted(() => ({
   stub: () => null,
@@ -112,13 +115,6 @@ vi.mock("@/features/databases/components/database-danger-actions", () => ({
 vi.mock("@/features/databases/components/connection-info-panel", () => ({
   ConnectionInfoPanel: stub,
 }));
-vi.mock("@/features/databases/components/database-detail-navigation", () => ({
-  DatabaseDetailNavigation: stub,
-}));
-vi.mock(
-  "@/features/databases/components/database-disk-autoscaling-control",
-  () => ({ DatabaseDiskAutoscalingControl: stub }),
-);
 vi.mock("@/common/components/deferred-mount", () => ({
   DeferredMount: () => null,
 }));
@@ -174,15 +170,6 @@ vi.mock("@/features/keyvalue/components/key-value-detail-navigation", () => ({
 }));
 
 const MOUNTS = [
-  {
-    name: "Postgres",
-    route: DatabaseRoute,
-    path: "/databases/$databaseId",
-    base: "/databases/dpg-main",
-    resource: "dpg-main",
-    nav: "Database details",
-    tabs: ["Overview", "Logs"],
-  },
   {
     name: "Key Value",
     route: KeyValueRoute,
@@ -259,6 +246,40 @@ describe.each(MOUNTS)("$name Logs tab per role (w9/145)", (mount) => {
 
     expect(await tabNames()).toEqual(mount.tabs);
     expect(historyReads).toContain(mount.resource);
+    expect(screen.queryByText(LOGS_REASON)).not.toBeInTheDocument();
+  });
+});
+
+describe("Postgres Logs page per role (w9/145, w3/m641)", () => {
+  it.each([
+    ["a Viewer", viewerCapabilities],
+    ["a Billing member", billingCapabilities],
+  ])(
+    "shows %s the role's reason under the page's heading, reading no log",
+    async (_, capabilities) => {
+      vi.mocked(useCapabilities).mockReturnValue(capabilities());
+      await renderDatabasePages(
+        { "/logs": DatabaseLogsRoute },
+        "/databases/dpg-main/logs",
+      );
+
+      expect(
+        await screen.findByRole("heading", { level: 2, name: "Logs" }),
+      ).toBeVisible();
+      expect(await screen.findByText(LOGS_REASON)).toBeVisible();
+      expect(historyReads).toEqual([]);
+    },
+  );
+
+  it("reads a Contributor's logs", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(contributorCapabilities());
+    await renderDatabasePages(
+      { "/logs": DatabaseLogsRoute },
+      "/databases/dpg-main/logs",
+    );
+
+    await screen.findByRole("heading", { level: 2, name: "Logs" });
+    await waitFor(() => expect(historyReads).toContain("dpg-main"));
     expect(screen.queryByText(LOGS_REASON)).not.toBeInTheDocument();
   });
 });

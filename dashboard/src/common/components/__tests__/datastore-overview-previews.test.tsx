@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, within } from "@testing-library/react";
 import {
-  DatabaseOverviewSkeleton,
+  DatabaseInfoSkeleton,
   KeyValueOverviewSkeleton,
 } from "../route-skeletons";
 import { DatabaseMetadataCard } from "@/features/databases/components/database-metadata-card";
@@ -124,7 +124,9 @@ describe("datastore Details and Connections previews (w4/298)", () => {
   for (const [name, Skeleton, readyDetails, readyConnections] of [
     [
       "Postgres",
-      DatabaseOverviewSkeleton,
+      // A Postgres database's Details and Connections are its Info page's
+      // (w3/m641).
+      DatabaseInfoSkeleton,
       <DatabaseMetadataCard
         key="details"
         database={database}

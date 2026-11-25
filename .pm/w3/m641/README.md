@@ -1,20 +1,20 @@
 # w3 · m641 — A Postgres database's sidebar and pages are Render's: Info, Logs, Metrics, Plan, Apps, Recovery, each at its own URL
 
-**Worker:** worker3 **Goal:** a Postgres database's pages swap the workspace nav for a resource sidebar reading Info / Monitor: Logs, Metrics / Manage: Plan, Apps, Recovery, as Render's does; each entry is its own URL under `/databases/<id>`, so Render's `/d/<id>/<page>` links open the page they name; the one long Overview, its section rail and its Overview/Logs tab bar are gone. **Status:** todo
+**Worker:** worker3 **Goal:** a Postgres database's pages swap the workspace nav for a resource sidebar reading Info / Monitor: Logs, Metrics / Manage: Plan, Apps, Recovery, as Render's does; each entry is its own URL under `/databases/<id>`, so Render's `/d/<id>/<page>` links open the page they name; the one long Overview, its section rail and its Overview/Logs tab bar are gone. **Status:** todo (t001–t005, t007–t009 done; t006 walked locally, its production walk waits for a pin)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Record Render's Postgres sidebar, routes and pages from the bundle, and map every bex card to its page | 40m | — |
-| [t002](t002.md) | A Postgres database's pages carry a resource sidebar: Info / Monitor: Logs, Metrics / Manage: Plan, Apps, Recovery | 1h | t001 |
-| [t003](t003.md) | Each page is its own route under one layout: Info at the bare URL and `/info`, then `/logs`, `/metrics`, `/plan`, `/apps`, `/recovery` | 1h30m | t001 |
-| [t004](t004.md) | Old URLs and in-app links open the page they name: `?tab=logs`, the Overview's anchors, Render's upgrade paths | 45m | t003 |
-| [t005](t005.md) | Each page's pending frame equals its ready page at 1440 and 390 | 45m | t002, t003 |
+| [t001](done/t001.md) | Record Render's Postgres sidebar, routes and pages from the bundle, and map every bex card to its page — **DONE** | 40m | — |
+| [t002](done/t002.md) | A Postgres database's pages carry a resource sidebar: Info / Monitor: Logs, Metrics / Manage: Plan, Apps, Recovery — **DONE** | 1h | t001 |
+| [t003](done/t003.md) | Each page is its own route under one layout: Info at the bare URL and `/info`, then `/logs`, `/metrics`, `/plan`, `/apps`, `/recovery` — **DONE** | 1h30m | t001 |
+| [t004](done/t004.md) | Old URLs and in-app links open the page they name: `?tab=logs`, the Overview's anchors, Render's upgrade paths — **DONE** | 45m | t003 |
+| [t005](done/t005.md) | Each page's pending frame equals its ready page at 1440 and 390 — **DONE** | 45m | t002, t003 |
 | [t006](t006.md) | Verify in a real browser at 1440 and 390, locally and on production | 45m | t004, t005 |
-| [t007](t007.md) | Render parity | 30m | t006 |
-| [t008](t008.md) | Simplify | 15m | t007 |
-| [t009](t009.md) | Test coverage | 45m | t007 |
+| [t007](done/t007.md) | Render parity — **DONE** | 30m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007 |
 | [t010](t010.md) | Closeout | 10m | t008, t009 |
 
 Total: **10 tasks, about 7h05m**.
@@ -40,6 +40,41 @@ Verified 2026-11-25 on main `18f6d3388b`.
 - `render-alias.ts` maps `/d/<id>/<rest>` to `/databases/<id>/<rest>` verbatim, and no route serves `/databases/<id>/recovery` or any other sub-path, so Render's own `/d/<id>/recovery`, `/logs`, `/metrics`, `/plan` and `/apps` links reach none of those pages.
 - In-app links into the page: `database-expiry.tsx` (`#plan`), `features/logs/lib/datastore-log-search.ts` (View in context, `?tab=logs`), `global-search-dialog.tsx`, `features/blueprints/lib/resource-href.ts`, `recovery-panel.tsx` (a restore's landing) and `new-database-page.tsx` (after create).
 - The Key Value page (`keyvalue.$keyValueId.tsx`) has the same shape. It is out of scope here (see t007).
+
+## Page map
+
+From t001 (2026-11-25, recorded in [postgres-dashboard.md § Page map](../../../docs/render-artifacts/postgres-dashboard.md#page-map-bex-w3m641)). Render's Read Replicas render on Info, as a field of the General card; its High Availability controls render on Plan, as its last card.
+
+| bex card (old anchor) | Page | Render counterpart |
+| --- | --- | --- |
+| Details (`#metadata`) | Info | General |
+| Connections (`#connection`) | Info | Connections |
+| Access control (`#access-control`) | Info | Credentials, Networking |
+| SQL console (`#sql-console`) | Info, before the danger zone | none |
+| Danger zone (`#danger-zone`) | Info | the delete card (with Restart and Suspend) |
+| Metrics (`#metrics`) | Metrics | the metric groups |
+| Insights (`#insights`) | Metrics, below the charts | sizes, processes, top queries |
+| Plan (`#plan`) | Plan | Compute, Storage |
+| Disk autoscaling (the Metrics card's disk header) | Plan, a row under Storage | Storage Autoscaling |
+| High availability (`#high-availability`) | Plan | High Availability (its read replicas: w3/116) |
+| Apps (`#apps`) | Apps | Apps |
+| Recovery (`#recovery`) | Recovery | Point-in-Time Recovery, Export |
+
+## Live walk
+
+### Local (2026-11-25, t006 step 1)
+
+dev-3 was down (`bash scripts/dev-env.sh 3 status`: the kind cluster's API refused connections and the inventory found no default StorageClass), so the dashboard ran from this tree under Vite on `:5641` against `local-bex` on `:8641`, whose seeded Postgres `orders-db` (`dpg-c185th5c2rvvnhbfiltg`, Basic 1GB, public) stood in. Google Chrome, headless through `playwright-core`, at 1440 and 390 (the 390 sidebar in its drawer).
+
+| Point | Seen at 1440 and 390 | Verdict |
+| --- | --- | --- |
+| Sidebar | back link Dashboard, `orders-db`, Info / Monitor: Logs, Metrics / Manage: Plan, Apps, Recovery; exactly the open page highlighted on each of the seven URLs | holds |
+| Pages | `/databases/<id>` and `/info` on Info (Details, Connections, Access control, SQL console, danger zone), `/logs`, `/metrics` (charts, then Insights), `/plan` (plan card with Storage and Storage Autoscaling, then High Availability), `/apps`, `/recovery`, each with its `h2` and a title such as "Recovery ・ orders-db ・ Database ・ bex Dashboard"; no Overview tab, no section rail, no sideways scroll at 390 | holds |
+| Old links | `?tab=logs&range=24h&text=ready` on `/logs?range=24h&text=ready`; `#recovery`, `#high-availability` and `#insights` on their page with the hash, the card scrolled into view; `#sql-console` stayed on Info, scrolled to the console | holds |
+| Render's URLs | `/d/<id>` on Info; `/d/<id>/recovery?x=1` on `/recovery?x=1`; `/d/<id>/plan` and `/upgrade` on `/plan`; `/high-availability-upgrade` on `/plan#high-availability`, scrolled to it; `/version-upgrade`, `/sharing` on Info; `/metrics/7d` on `/metrics` | holds |
+| Pending against ready | GraphQL held after a client navigation from `/`: Plan 643/643 and 236/236 px (767/767, 276/276 at 390), Metrics 2650/2650 and 360/360 (2050/2050, 360/360), SQL console 375/375 (439/439), access control 240/240, danger zone 36/36 (84/84). Data decided the rest: Details 392/445 (616/669) for a public database whose Version row carries Upgrade, the Logs status line (24 px with no lines), Apps and Recovery (`local-bex` answers no admin-app catalog and no backups) | holds where data does not decide |
+
+The browser logged no page error; its console carried only `local-bex`'s missing-field warnings.
 
 ## Definition of done
 

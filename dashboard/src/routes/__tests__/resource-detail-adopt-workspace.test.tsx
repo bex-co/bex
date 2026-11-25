@@ -136,9 +136,6 @@ vi.mock("@/features/databases/components/database-danger-actions", () => ({
 vi.mock("@/features/databases/components/connection-info-panel", () => ({
   ConnectionInfoPanel: stub,
 }));
-vi.mock("@/features/databases/components/database-detail-navigation", () => ({
-  DatabaseDetailNavigation: stub,
-}));
 vi.mock(
   "@/features/databases/components/database-disk-autoscaling-control",
   () => ({ DatabaseDiskAutoscalingControl: stub }),
@@ -320,11 +317,13 @@ const PAGES: PageCase[] = [
     ready: "kv-name",
   },
   {
+    // A layout since w3/m641: its page must not mount while adopting.
     name: "Postgres",
     path: "/databases/$databaseId",
     url: "/databases/dpg-1",
     component: DatabaseRoute.options.component as RouteComponent,
-    ready: "db-name",
+    ready: "child page",
+    child: true,
   },
   {
     name: "environment group",

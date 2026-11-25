@@ -31,6 +31,7 @@ import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-
 import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
 import { useUpdateDatabasePlan } from "@/features/databases/hooks/use-update-database-plan";
 import { useUpdateDatabaseDiskSize } from "@/features/databases/hooks/use-update-database-disk-size";
+import { DatabaseDiskAutoscalingControl } from "@/features/databases/components/database-disk-autoscaling-control";
 import {
   STORAGE_STEP_GB,
   databaseStorageGB,
@@ -174,6 +175,10 @@ export function DatabasePlanSection({
         <StorageRow
           database={database}
           plan={instanceTypes.find((it) => it.id === database.plan)}
+          onChanged={onChanged}
+        />
+        <DatabaseDiskAutoscalingControl
+          database={database}
           onChanged={onChanged}
         />
       </CardContent>

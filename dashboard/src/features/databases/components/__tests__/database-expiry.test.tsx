@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { DatabaseDetailView } from "@/features/databases/types";
+import { PlainLink } from "@/test/mocks/router-link";
+
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  Link: PlainLink,
+}));
 
 vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
   useDatabaseInstanceTypes: () => ({
@@ -82,7 +88,8 @@ describe("free database expiry on the database page", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("warns within seven days and links to the upgrade", () => {
+  // The upgrade picker is the Plan page's (w3/m641).
+  it("warns within seven days and links to the Plan page's upgrade", () => {
     vi.setSystemTime(Date.parse(EXPIRES) - 2 * DAY);
     renderCard(db());
     expect(screen.getByRole("alert")).toHaveTextContent(
@@ -90,7 +97,7 @@ describe("free database expiry on the database page", () => {
     );
     expect(
       screen.getByRole("link", { name: "Upgrade to a paid plan" }),
-    ).toHaveAttribute("href", "#plan");
+    ).toHaveAttribute("href", "/databases/dpg-orders/plan");
   });
 
   it("names the deletion date and the expiry reason once expired", () => {

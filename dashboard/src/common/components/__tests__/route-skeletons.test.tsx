@@ -14,8 +14,12 @@ import {
   AuthWidgetSkeleton,
   BillingPageSkeleton,
   BlueprintCreatePageSkeleton,
+  DatabaseAppsSkeleton,
   DatabaseCreatePageSkeleton,
-  DatabaseOverviewSkeleton,
+  DatabaseInfoSkeleton,
+  DatabaseMetricsSkeleton,
+  DatabasePlanSkeleton,
+  DatabaseRecoverySkeleton,
   DatastoreLogsSkeleton,
   EnvGroupDetailContentSkeleton,
   EnvGroupsListPageSkeleton,
@@ -195,6 +199,34 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
       "static-edge-rules",
       ["rules-editor"],
     ],
+    // A Postgres database's pages (w3/m641), as the manifest lists them.
+    [
+      <DatabaseInfoSkeleton key="database-info" />,
+      "database-info",
+      [
+        "metadata",
+        "connection",
+        "access-control",
+        "sql-console",
+        "danger-zone",
+      ],
+    ],
+    [
+      <DatabaseMetricsSkeleton key="database-metrics" />,
+      "database-metrics",
+      ["datastore-metrics", "insights"],
+    ],
+    [
+      <DatabasePlanSkeleton key="database-plan" />,
+      "database-plan",
+      ["plan", "high-availability"],
+    ],
+    [<DatabaseAppsSkeleton key="database-apps" />, "database-apps", ["apps"]],
+    [
+      <DatabaseRecoverySkeleton key="database-recovery" />,
+      "database-recovery",
+      ["recovery"],
+    ],
   ])("renders the %s contract", (component, shape, expectedRegions) => {
     const { container, unmount } = render(component);
     const frame = container.querySelector<HTMLElement>(
@@ -286,7 +318,6 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
   });
 
   it.each([
-    [<DatabaseOverviewSkeleton key="database" />, 10],
     [<KeyValueOverviewSkeleton key="keyvalue" />, 7],
     [<ServiceSettingsSkeleton key="service" />, 13],
   ])(

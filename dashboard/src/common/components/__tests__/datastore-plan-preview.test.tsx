@@ -6,7 +6,7 @@ import {
   POSTGRES_PLAN_SLOTS,
 } from "../datastore-plan-preview";
 import {
-  DatabaseOverviewSkeleton,
+  DatabasePlanSkeleton,
   KeyValueOverviewSkeleton,
 } from "../route-skeletons";
 import {
@@ -53,7 +53,8 @@ describe("datastore plan preview", () => {
   for (const [name, Skeleton, title, buttonLabels, tiers, specs] of [
     [
       "Postgres",
-      DatabaseOverviewSkeleton,
+      // A Postgres database's plan card is its Plan page's (w3/m641).
+      DatabasePlanSkeleton,
       "Compute plan",
       ["Cancel", "Save", "Edit"],
       6,

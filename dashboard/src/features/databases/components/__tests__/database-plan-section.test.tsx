@@ -405,11 +405,12 @@ describe("DatabasePlanSection storage", () => {
     expect(screen.getByRole("button", { name: "Edit storage" })).toBeDisabled();
   });
 
-  // The pending plan card ends in the same Storage row: its label, row and
+  // The pending plan card has the same Storage row: its label, row and
   // Edit slot match, and the size is a slot until the database is read.
   it("is previewed by the pending plan card's Storage row", () => {
     const storageRow = (card: Element) =>
-      card.querySelector('[data-slot="card-content"]')!.lastElementChild!;
+      card.querySelector('[data-slot="card-content"]')!.lastElementChild!
+        .previousElementSibling!;
     const pending = storageRow(
       render(<DatastorePlanPreview kind="postgres" />).container
         .firstElementChild!,
@@ -429,6 +430,39 @@ describe("DatabasePlanSection storage", () => {
     expect(pendingEdit.className).toBe(readyEdit.className);
     expect(pendingEdit.textContent).toBe(readyEdit.textContent);
     expect((pendingEdit as HTMLButtonElement).disabled).toBe(true);
+    expect(pending.textContent).not.toContain("GB");
+  });
+
+  // Render's Plan page puts Storage Autoscaling under Storage (w3/m641): the
+  // ready card ends in its switch row, and the pending card ends in the same
+  // row, its label real and its size line and switch slots.
+  it("ends in the Storage Autoscaling row, previewed by the pending card", () => {
+    const lastRow = (card: Element) =>
+      card.querySelector('[data-slot="card-content"]')!.lastElementChild!;
+    const pending = lastRow(
+      render(<DatastorePlanPreview kind="postgres" />).container
+        .firstElementChild!,
+    );
+    const ready = lastRow(
+      render(<DatabasePlanSection database={STARTER} onChanged={vi.fn()} />)
+        .container.firstElementChild!,
+    );
+    expect(
+      within(ready as HTMLElement).getByRole("switch"),
+    ).toHaveAccessibleName("Disk autoscaling");
+    expect(pending.className).toBe(ready.className);
+    const [pendingText, pendingSwitch] = [...pending.children];
+    const [readyText, readySwitch] = [...ready.children];
+    expect(pendingText.className).toBe(readyText.className);
+    expect(pendingText.firstElementChild!.textContent).toBe(
+      readyText.firstElementChild!.textContent,
+    );
+    expect(pendingText.children[1].className).toContain("h-5");
+    // The switch's 20 × 36 box.
+    expect(pendingSwitch.className).toContain("h-5 w-9");
+    expect(
+      readySwitch.querySelector('[role="switch"]') ?? readySwitch,
+    ).toHaveClass("h-5", "w-9");
     expect(pending.textContent).not.toContain("GB");
   });
 

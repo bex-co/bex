@@ -47,9 +47,11 @@ export function parseDatastoreLogSearch(
 }
 
 /**
- * A Postgres or Key Value Logs tab's View in context link for a line
- * (w3/m528): the tab with no search or pick, 10 minutes either side of the
- * line, with the line marked. A custom range never tails.
+ * A Postgres or Key Value Logs page's View in context link for a line
+ * (w3/m528): the page with no search or pick, 10 minutes either side of the
+ * line, with the line marked. A custom range never tails. A Postgres
+ * database's Logs is its own page, `/databases/<id>/logs` (w3/m641); a Key
+ * Value's is still its `?tab=logs`.
  */
 export function datastoreLogContextHref(
   kind: "databases" | "keyvalue",
@@ -57,9 +59,10 @@ export function datastoreLogContextHref(
   line: LogLine,
 ): string | undefined {
   const context = logContextSearch(line);
-  return context
-    ? searchHref(`/${kind}/${resource}`, { tab: "logs", ...context })
-    : undefined;
+  if (!context) return undefined;
+  return kind === "databases"
+    ? searchHref(`/databases/${resource}/logs`, context)
+    : searchHref(`/keyvalue/${resource}`, { tab: "logs", ...context });
 }
 
 /**

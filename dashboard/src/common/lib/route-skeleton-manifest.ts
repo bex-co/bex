@@ -353,7 +353,68 @@ export const ROUTE_SKELETON_MANIFEST = {
     kind: "render",
     owner: "routes/databases.$databaseId.tsx",
     shape: "database-detail",
-    regions: ["resource-header", "tabs", "active-tab"],
+    regions: ["resource-header", "active-page"],
+  },
+  // A Postgres database's pages (w3/m641): the bare URL and `/info` are Info.
+  "/databases/$databaseId/": {
+    kind: "render",
+    owner: "routes/databases.$databaseId.index.tsx",
+    shape: "database-info",
+    regions: [
+      "metadata",
+      "connection",
+      "access-control",
+      "sql-console",
+      "danger-zone",
+    ],
+  },
+  "/databases/$databaseId/info": {
+    kind: "render",
+    owner: "routes/databases.$databaseId.info.tsx",
+    shape: "database-info",
+    regions: [
+      "metadata",
+      "connection",
+      "access-control",
+      "sql-console",
+      "danger-zone",
+    ],
+  },
+  "/databases/$databaseId/logs": {
+    kind: "render",
+    owner: "routes/databases.$databaseId.logs.tsx",
+    shape: "datastore-logs",
+    regions: ["log-filters", "log-lines"],
+  },
+  "/databases/$databaseId/metrics": {
+    kind: "render",
+    owner: "routes/databases.$databaseId.metrics.tsx",
+    shape: "database-metrics",
+    regions: ["datastore-metrics", "insights"],
+  },
+  "/databases/$databaseId/plan": {
+    kind: "render",
+    owner: "routes/databases.$databaseId.plan.tsx",
+    shape: "database-plan",
+    regions: ["plan", "high-availability"],
+  },
+  "/databases/$databaseId/apps": {
+    kind: "render",
+    owner: "routes/databases.$databaseId.apps.tsx",
+    shape: "database-apps",
+    regions: ["apps"],
+  },
+  "/databases/$databaseId/recovery": {
+    kind: "render",
+    owner: "routes/databases.$databaseId.recovery.tsx",
+    shape: "database-recovery",
+    regions: ["recovery"],
+  },
+  // Render's sub-paths with no page of their own land where their control is.
+  "/databases/$databaseId/$": {
+    kind: "redirect",
+    owner: "routes/databases.$databaseId.$.tsx",
+    destination: "the page holding the sub-path's control, else Info",
   },
   "/env-groups/$groupId": {
     kind: "render",

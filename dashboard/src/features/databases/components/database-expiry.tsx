@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useNow } from "@/common/hooks/use-now";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { RelativeUntil } from "@/common/components/relative-time";
@@ -13,9 +14,15 @@ import {
 /**
  * The Details card's Expires value (w8/m126): when the free database expires,
  * and, within the warning lead or after expiry, a warning with the way out —
- * the Plan section's upgrade picker.
+ * the Plan page's upgrade picker (w3/m641).
  */
-export function DatabaseExpiryValue({ expiresAt }: { expiresAt: string }) {
+export function DatabaseExpiryValue({
+  databaseId,
+  expiresAt,
+}: {
+  databaseId: string;
+  expiresAt: string;
+}) {
   const { t } = useTranslations();
   const state = freeExpiryState(expiresAt, useNow());
   return (
@@ -28,9 +35,13 @@ export function DatabaseExpiryValue({ expiresAt }: { expiresAt: string }) {
                 deleteAt: utcDate(freeDeletionAt(expiresAt)),
               })
             : t("databases.expirySoon", { expiresAt: utcDate(expiresAt) })}{" "}
-          <a href="#plan" className="font-medium underline">
+          <Link
+            to="/databases/$databaseId/plan"
+            params={{ databaseId }}
+            className="font-medium underline"
+          >
             {t("databases.expiryUpgrade")}
-          </a>
+          </Link>
         </p>
       ) : null}
     </div>

@@ -27,10 +27,13 @@ const ProjectSidebar = lazy(() =>
 const ServiceSidebar = lazy(() =>
   import("./service-sidebar").then((m) => ({ default: m.ServiceSidebar })),
 );
+const DatabaseSidebar = lazy(() =>
+  import("./database-sidebar").then((m) => ({ default: m.DatabaseSidebar })),
+);
 
 export function DashboardSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { projectId, serviceId } = useParams({ strict: false });
+  const { projectId, serviceId, databaseId } = useParams({ strict: false });
   const agentsEnabled = useAgentsFeatureEnabled();
   const isItemActive = useCallback(
     (to: string) => isNavItemActive(pathname, to),
@@ -51,6 +54,13 @@ export function DashboardSidebar() {
       </Suspense>
     );
   }
+  if (databaseId) {
+    return (
+      <Suspense fallback={<SidebarShell />}>
+        <DatabaseSidebar databaseId={databaseId} />
+      </Suspense>
+    );
+  }
 
   return (
     <Sidebar collapsible="icon">
@@ -62,9 +72,10 @@ export function DashboardSidebar() {
           agentsEnabled={agentsEnabled}
           isItemActive={isItemActive}
         />
-        {/* The contextual list slot (w5/m64). Unlike ProjectSidebar and
-            ServiceSidebar above — which REPLACE the rail for a deep hierarchy
-            and offer a back link — an agents-context section AUGMENTS the nav,
+        {/* The contextual list slot (w5/m64). Unlike ProjectSidebar,
+            ServiceSidebar and DatabaseSidebar above — which REPLACE the rail
+            for a deep hierarchy and offer a back link — an agents-context
+            section AUGMENTS the nav,
             Devin's own shape: global nav on top, the section's working set
             beneath. Section-scoped on purpose: sessions never follow you onto
             Projects/Services/Settings. See ADR047 D9. */}

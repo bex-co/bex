@@ -25,10 +25,12 @@ describe("route skeleton manifest (w5/m79)", () => {
     const classified = Object.keys(ROUTE_SKELETON_MANIFEST).sort();
 
     expect(classified).toEqual(generated);
-    // 116: + /build-sources/$buildSourceId detail layout, Builds index,
+    // 124: + a Postgres database's index, Info, Logs, Metrics, Plan, Apps
+    // and Recovery pages and its sub-path landing (w3/m641).
+    // 116 before them: + /build-sources/$buildSourceId detail layout, Builds index,
     // Build Detail, Services, Environment, and Settings routes (w2/m614).
     // 110 before them: + /build-sources and /build-sources/new (w2/m613).
-    expect(classified).toHaveLength(116);
+    expect(classified).toHaveLength(124);
   });
 
   it("points every classification at a real route owner", () => {

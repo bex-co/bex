@@ -1,15 +1,19 @@
-import { cn } from "@/common/lib/utils/utils";
 import { PageScroll } from "@/common/components/page-frame";
+import { useEffect, useRef } from "react";
 import {
+  Outlet,
   createFileRoute,
   useNavigate,
-  useRouter,
+  useRouterState,
 } from "@tanstack/react-router";
-import { lazy, Suspense } from "react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import {
-  DatabaseOverviewSkeleton,
+  DatabaseAppsSkeleton,
+  DatabaseInfoSkeleton,
+  DatabaseMetricsSkeleton,
+  DatabasePlanSkeleton,
+  DatabaseRecoverySkeleton,
   DatastoreLogsSkeleton,
 } from "@/common/components/route-skeletons";
 import { ResourceLoadError } from "@/common/components/resource-load-error";
@@ -19,39 +23,16 @@ import {
   resourceNotFound,
   useNotFoundRedirect,
 } from "@/common/hooks/use-not-found-redirect";
-import { DetailTabNav } from "@/common/components/detail-tab-nav";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
-import { DatabaseMetadataCard } from "@/features/databases/components/database-metadata-card";
-import { CardSkeleton } from "@/common/components/detail-skeletons";
-import { RecoveryPanelSkeleton } from "@/features/databases/components/recovery-panel-skeleton";
-import { AdminAppsPanelSkeleton } from "@/features/databases/components/admin-apps-panel-skeleton";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useDatabase } from "@/features/databases/hooks/use-database";
-import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
 import type { DatabaseDetailView } from "@/features/databases/types";
 import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import { useDatabaseLifecycle } from "@/features/databases/hooks/use-database-lifecycle";
-import { deriveStatus, sqlConsoleBlock } from "@/features/databases/lib/status";
 import { DatabaseStatusBadge } from "@/features/databases/components/database-status-badge";
 import { DatabaseRowActions } from "@/features/databases/components/database-row-actions";
-import { DatabaseDangerActions } from "@/features/databases/components/database-danger-actions";
-import { ConnectionInfoPanel } from "@/features/databases/components/connection-info-panel";
-import { DatabaseDetailNavigation } from "@/features/databases/components/database-detail-navigation";
-import { DatabaseDiskAutoscalingControl } from "@/features/databases/components/database-disk-autoscaling-control";
-import { DatastoreLogViewer } from "@/features/logs/components/datastore-log-viewer";
-import {
-  DEFAULT_RANGE_PRESET,
-  rangeFromSearch,
-  rangeToSearch,
-  type RangeSelection,
-} from "@/features/metrics/lib/range";
-import {
-  datastoreLogSearchProps,
-  parseDatastoreLogSearch,
-  type DatastoreLogSearch,
-} from "@/features/logs/lib/datastore-log-search";
-import { metricsRangeSearch } from "@/features/logs/lib/log-range";
+import { databasePageLabelKey } from "@/features/databases/components/database-nav";
+import { DatabaseDetailProvider } from "@/features/databases/lib/database-detail";
 import { DatabaseDocument } from "@/graphql/definitions";
 import {
   loadRouteResource,
@@ -60,84 +41,25 @@ import {
   titleLoaderFetchPolicy,
   translatedText,
 } from "@/common/lib/document-head";
-import { DatastorePlanPreview } from "@/common/components/datastore-plan-preview";
-import { DatabaseHighAvailabilityPreview } from "@/common/components/datastore-overview-previews";
-import { DeferredMount } from "@/common/components/deferred-mount";
-import {
-  SECTIONED_BODY_CLASS,
-  SECTIONED_GRID_CLASS,
-  SECTION_NAVIGATION_STICKY_CLASS,
-  SECTION_NAVIGATION_TARGET_CLASS,
-} from "@/common/components/section-navigation";
-
-const RecoveryPanel = lazy(() =>
-  import("@/features/databases/components/recovery-panel").then((m) => ({
-    default: m.RecoveryPanel,
-  })),
-);
-const AccessControlPanel = lazy(() =>
-  import("@/features/databases/components/access-control-panel").then((m) => ({
-    default: m.AccessControlPanel,
-  })),
-);
-const HAPanel = lazy(() =>
-  import("@/features/databases/components/ha-panel").then((m) => ({
-    default: m.HAPanel,
-  })),
-);
-const InsightsPanel = lazy(() =>
-  import("@/features/databases/components/insights-panel").then((m) => ({
-    default: m.InsightsPanel,
-  })),
-);
-const DatabasePlanSection = lazy(() =>
-  import("@/features/databases/components/database-plan-section").then((m) => ({
-    default: m.DatabasePlanSection,
-  })),
-);
-const AdminAppsPanel = lazy(() =>
-  import("@/features/databases/components/admin-apps-panel").then((m) => ({
-    default: m.AdminAppsPanel,
-  })),
-);
-const SQLConsole = lazy(() =>
-  import("@/features/databases/components/sql-console").then((m) => ({
-    default: m.SQLConsole,
-  })),
-);
-const DatastoreMetricsPanel = lazy(() =>
-  import("@/features/metrics/components/datastore-metrics-panel").then((m) => ({
-    default: m.DatastoreMetricsPanel,
-  })),
-);
 
 export const Route = createFileRoute("/databases/$databaseId")({
   staticData: { chrome: true },
-  component: DatabaseDetailPage,
-  // The page doubles as its own pending state at 0ms: it renders full
-  // chrome + its skeleton stack while its Apollo read loads (tolerating the
-  // absent loaderData), so the title-loader wait shows the real frame
-  // instead of the router-level blank that used to flash white.
-  pendingComponent: DatabaseDetailPage,
+  component: RouteComponent,
+  // A dedicated pending frame at 0ms: the layout's chrome and the open page's
+  // skeleton without the live <Outlet/>, so the title-loader wait shows the
+  // real frame instead of the router-level blank that used to flash white,
+  // and never a second live copy of the page (w4/m236, as the service
+  // layout does).
+  pendingComponent: PendingRouteComponent,
   pendingMs: 0,
-  // The pending frame is (or renders) the page itself: keep it in the page's
-  // chunk instead of the default reference-file placement (vite.config.ts).
+  // The pending frame is drawn with the layout: keep it in the layout's chunk
+  // instead of the default reference-file placement (vite.config.ts).
   codeSplitGroupings: [
     ["component", "pendingComponent"],
     ["errorComponent"],
     ["notFoundComponent"],
   ],
   beforeLoad: requireAuth(),
-  validateSearch: (
-    search: Record<string, unknown>,
-  ): { tab?: "logs" } & DatastoreLogSearch => ({
-    tab: search.tab === "logs" ? "logs" : undefined,
-    // The Logs and Metrics time ranges persist in the shared `range`/
-    // `rangeStart`/`rangeEnd` URL shape (w6/065, w4/703), and the Logs
-    // text/instance filters beside them (w4/228), so a filtered view survives
-    // a reload and is shareable.
-    ...parseDatastoreLogSearch(search),
-  }),
   loader: ({ context, params, cause }) =>
     loadRouteResource(
       () =>
@@ -149,6 +71,7 @@ export const Route = createFileRoute("/databases/$databaseId")({
         }),
       (data) => (data?.database?.name?.trim() ? data.database : null),
     ),
+  // Each page leads this with its own name (databasePageHead).
   head: ({ loaderData, match }) =>
     titleHead(
       routeResourceTitle(loaderData, (database) => [
@@ -159,44 +82,57 @@ export const Route = createFileRoute("/databases/$databaseId")({
     ),
 });
 
-function DatabaseDetailPage() {
+function PendingRouteComponent() {
+  return <DatabaseDetailLayout routePending />;
+}
+
+function RouteComponent() {
+  // A roll-window loader failure re-runs once (w1/m52) so the title recovers.
+  useLoaderErrorRetry(Route.useLoaderData(), Route.useParams().databaseId);
+  return <DatabaseDetailLayout />;
+}
+
+/**
+ * A Postgres database's pages share this layout (w3/m641), as Render's do:
+ * the header (name, status and actions), the open page's heading, which is
+ * its sidebar entry's label, and an `<Outlet/>` for the page. The sidebar is
+ * DashboardSidebar's DatabaseSidebar. The layout reads the database once and
+ * hands it to its pages through DatabaseDetailProvider.
+ */
+function DatabaseDetailLayout({
+  routePending = false,
+}: {
+  /**
+   * Rendered as the route's pendingComponent while its title loader runs:
+   * the same chrome with the page's skeleton, never the live `<Outlet/>`.
+   */
+  routePending?: boolean;
+}) {
   const { databaseId } = Route.useParams();
-  const search = Route.useSearch();
-  const { tab } = search;
   const { t } = useTranslations();
   const navigate = useNavigate();
-  const logsDenied = useCapabilities().denied("can_view_logs");
-  const router = useRouter();
-  // Functional form: committed verbatim, so a patch's explicit undefineds
-  // actually clear stale keys (w7/m42); the spread keeps `tab` and the
-  // untouched keys in place.
-  const writeSearch = (patch: DatastoreLogSearch) =>
-    void navigate({
-      to: ".",
-      search: (prev) => ({ ...prev, ...patch }),
-      replace: true,
-    });
-  // The Metrics range lives in the same w6/065 URL keys as the Logs tab's, so
-  // a picked window survives a reload and a copied link (w4/703). Each tab
-  // link resets the search, so one tab's range never leaks into the other.
-  const metricsRange = {
-    range: rangeFromSearch(metricsRangeSearch(search), DEFAULT_RANGE_PRESET),
-    onRangeChange: (range: RangeSelection) => writeSearch(rangeToSearch(range)),
-  };
   const { database: loaded, loading, error, refetch } = useDatabase(databaseId);
   const lifecycle = useDatabaseLifecycle({ refetch });
-  // Judge this page's controls in the database's own workspace (w4/641, as
+  // Judge the pages' controls in the database's own workspace (w4/641, as
   // w6/091 for services): until it is the selection, the skeleton stays up so
   // no role-gated control paints for the wrong workspace first.
-  const adopting = useAdoptResourceWorkspace(databaseId, loaded?.ownerId);
-  const database = adopting ? null : loaded;
+  const adopting = useAdoptResourceWorkspace(
+    databaseId,
+    routePending ? null : loaded?.ownerId,
+  );
+  const database = adopting || routePending ? null : loaded;
 
   // A dead id redirects home (w9/m55); a failed query stays put on the inline
-  // error state so an outage never masquerades as a deleted database. A
-  // roll-window loader failure re-runs once (w1/m52) so the title recovers.
-  useNotFoundRedirect(resourceNotFound(loaded, loading, error));
-  useLoaderErrorRetry(Route.useLoaderData(), databaseId);
-  const loadErrorVariant = resourceLoadErrorVariant(loaded, loading, error);
+  // error state so an outage never masquerades as a deleted database.
+  useNotFoundRedirect(
+    !routePending && resourceNotFound(loaded, loading, error),
+  );
+  const loadErrorVariant = routePending
+    ? null
+    : resourceLoadErrorVariant(loaded, loading, error);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const pageLabelKey = databasePageLabelKey(pathname, databaseId);
+  useScrollToHashedCard(pathname, database !== null);
 
   return (
     <DashboardLayout>
@@ -240,207 +176,29 @@ function DatabaseDetailPage() {
           )}
         </div>
 
-        <DetailTabNav
-          skeletonRegion={!database ? "tabs" : undefined}
-          label={t("databases.detailNavLabel")}
-          tabs={[
-            {
-              id: "overview",
-              label: t("databases.overviewTab"),
-              active: tab !== "logs",
-              onSelect: () => void navigate({ to: ".", search: {} }),
-            },
-            // Neither a Viewer nor a Billing member views logs (w9/145):
-            // the tab is left out, but a deep link to it still names the
-            // open tab, over the role's reason.
-            ...(logsDenied && tab !== "logs"
-              ? []
-              : [
-                  {
-                    id: "logs",
-                    label: t("databases.logsTab"),
-                    active: tab === "logs",
-                    onSelect: () =>
-                      void navigate({ to: ".", search: { tab: "logs" } }),
-                  },
-                ]),
-          ]}
-        />
-
-        <PageScroll data-skeleton-region={!database ? "active-tab" : undefined}>
-          {loadErrorVariant ? (
-            <div className="mx-auto w-full max-w-5xl space-y-6">
+        <PageScroll
+          data-skeleton-region={!database ? "active-page" : undefined}
+        >
+          <div className="mx-auto w-full max-w-5xl space-y-6">
+            {pageLabelKey ? (
+              // Every page opens with its name, the sidebar's label for it.
+              <h2 className="text-lg leading-7 font-semibold tracking-tight">
+                {t(pageLabelKey)}
+              </h2>
+            ) : null}
+            {loadErrorVariant ? (
               <ResourceLoadError
                 onRetry={() => void refetch()}
                 variant={loadErrorVariant}
               />
-            </div>
-          ) : database && tab === "logs" ? (
-            <div className="mx-auto w-full max-w-5xl space-y-6">
-              <DatastoreLogViewer
-                kind="databases"
-                resource={database.id}
-                {...datastoreLogSearchProps(search, writeSearch)}
-              />
-            </div>
-          ) : database ? (
-            <div className={cn("mx-auto max-w-5xl", SECTIONED_GRID_CLASS)}>
-              {/* Same right-rail quick nav as the service settings page. */}
-              <DatabaseDetailNavigation
-                className={SECTION_NAVIGATION_STICKY_CLASS}
-              />
-
-              <div className={SECTIONED_BODY_CLASS}>
-                <section
-                  id="metadata"
-                  className={SECTION_NAVIGATION_TARGET_CLASS}
-                >
-                  <DatabaseMetadataCard
-                    database={database}
-                    onVersionChanged={() => void refetch()}
-                    onRenamed={() => void router.invalidate()}
-                  />
-                </section>
-                <section
-                  id="connection"
-                  className={SECTION_NAVIGATION_TARGET_CLASS}
-                >
-                  {/* A revealed snapshot belongs to one publication state: when a
-                      confirmed access change flips `public`, remount so the old
-                      external URL is no longer copyable and a fresh Reveal is
-                      required (w4/222). Renames and status polls keep it. */}
-                  <ConnectionInfoPanel
-                    key={`${database.id}:${database.public}`}
-                    id={database.id}
-                  />
-                </section>
-                <section
-                  id="sql-console"
-                  className={SECTION_NAVIGATION_TARGET_CLASS}
-                >
-                  <DeferredMount hashId="sql-console" minHeight={280}>
-                    <Suspense fallback={<CardSkeleton rows={4} />}>
-                      <SQLConsole
-                        key={`sql-${database.id}`}
-                        id={database.id}
-                        blocked={sqlConsoleBlock(deriveStatus(database).key)}
-                      />
-                    </Suspense>
-                  </DeferredMount>
-                </section>
-                <section
-                  id="high-availability"
-                  className={SECTION_NAVIGATION_TARGET_CLASS}
-                >
-                  <DeferredMount hashId="high-availability" minHeight={236}>
-                    <Suspense fallback={<DatabaseHighAvailabilityPreview />}>
-                      <HAPanel database={database} refetch={refetch} />
-                    </Suspense>
-                  </DeferredMount>
-                </section>
-                <section
-                  id="metrics"
-                  className={SECTION_NAVIGATION_TARGET_CLASS}
-                >
-                  <DeferredMount hashId="metrics" minHeight={320}>
-                    <Suspense fallback={<CardSkeleton rows={4} />}>
-                      <DatabaseMetrics
-                        database={database}
-                        {...metricsRange}
-                        onChanged={() => void refetch()}
-                      />
-                    </Suspense>
-                  </DeferredMount>
-                </section>
-                <section id="plan" className={SECTION_NAVIGATION_TARGET_CLASS}>
-                  {/* The ready plan card's bounds (w4/m208) for the six-tier
-                      catalog plus the Storage row (w2/m307), measured: 764px
-                      stacked at a 390px phone, 416px from sm. */}
-                  <DeferredMount
-                    hashId="plan"
-                    minHeight="var(--plan-reserve)"
-                    className="[--plan-reserve:764px] sm:[--plan-reserve:416px]"
-                  >
-                    <Suspense
-                      fallback={<DatastorePlanPreview kind="postgres" />}
-                    >
-                      <DatabasePlanSection
-                        database={database}
-                        onChanged={() => void refetch()}
-                      />
-                    </Suspense>
-                  </DeferredMount>
-                </section>
-                {/* Render's Apps page, after Plan as in its navigation
-                    (w4/m551). */}
-                <section id="apps" className={SECTION_NAVIGATION_TARGET_CLASS}>
-                  <DeferredMount hashId="apps" minHeight={360}>
-                    <Suspense fallback={<AdminAppsPanelSkeleton />}>
-                      <AdminAppsPanel databaseId={database.id} />
-                    </Suspense>
-                  </DeferredMount>
-                </section>
-                <section
-                  id="insights"
-                  className={SECTION_NAVIGATION_TARGET_CLASS}
-                >
-                  <DeferredMount hashId="insights" minHeight={360}>
-                    <Suspense fallback={<CardSkeleton rows={4} />}>
-                      <InsightsPanel id={database.id} />
-                    </Suspense>
-                  </DeferredMount>
-                </section>
-                <section
-                  id="recovery"
-                  className={SECTION_NAVIGATION_TARGET_CLASS}
-                >
-                  <DeferredMount hashId="recovery" minHeight={240}>
-                    <Suspense
-                      fallback={
-                        <RecoveryPanelSkeleton
-                          backupsEnabled={database.backupsEnabled !== false}
-                          exportScope={Boolean(database.databaseName)}
-                        />
-                      }
-                    >
-                      <RecoveryPanel
-                        id={database.id}
-                        databaseName={database.databaseName}
-                        backupsEnabled={database.backupsEnabled}
-                      />
-                    </Suspense>
-                  </DeferredMount>
-                </section>
-                <section
-                  id="access-control"
-                  className={SECTION_NAVIGATION_TARGET_CLASS}
-                >
-                  <DeferredMount hashId="access-control" minHeight={240}>
-                    <Suspense fallback={<CardSkeleton rows={3} />}>
-                      <AccessControlPanel
-                        database={database}
-                        onChanged={() => void refetch()}
-                      />
-                    </Suspense>
-                  </DeferredMount>
-                </section>
-                <section
-                  id="danger-zone"
-                  className={SECTION_NAVIGATION_TARGET_CLASS}
-                >
-                  <DatabaseDangerActions
-                    database={database}
-                    onDeleted={() => void navigate({ to: "/", replace: true })}
-                    lifecycle={lifecycle}
-                  />
-                </section>
-              </div>
-            </div>
-          ) : tab === "logs" ? (
-            <DatastoreLogsSkeleton />
-          ) : (
-            <DatabaseOverviewSkeleton />
-          )}
+            ) : database ? (
+              <DatabaseDetailProvider value={{ database, refetch, lifecycle }}>
+                <Outlet />
+              </DatabaseDetailProvider>
+            ) : (
+              <DatabasePageSkeleton labelKey={pageLabelKey} database={loaded} />
+            )}
+          </div>
         </PageScroll>
       </div>
     </DashboardLayout>
@@ -448,39 +206,49 @@ function DatabaseDetailPage() {
 }
 
 /**
- * The Metrics section. Render's Active Connections chart reads the plan's
- * connection limit beside its title (w6/138), as the Key Value one does, from
- * the same cache-first catalog the Details card reads.
+ * Scroll the card the URL's hash names into view once the page renders. The
+ * router scrolls to a hash as it navigates, but not on a full load, and a
+ * page's cards wait for the database read: Render's
+ * `/high-availability-upgrade` landing on `plan#high-availability`, or an old
+ * Overview anchor (w3/m641), would otherwise open at the top of the page.
  */
-function DatabaseMetrics({
+function useScrollToHashedCard(pathname: string, ready: boolean) {
+  const hash = useRouterState({ select: (s) => s.location.hash });
+  const scrolledFor = useRef<string | null>(null);
+  useEffect(() => {
+    const key = `${pathname}#${hash}`;
+    if (!ready || !hash || scrolledFor.current === key) return;
+    const card = document.getElementById(hash);
+    if (!card) return;
+    scrolledFor.current = key;
+    card.scrollIntoView();
+  }, [pathname, hash, ready]);
+}
+
+/**
+ * The open page's own pending frame, the one its route shows on a page
+ * switch, while the layout has no database yet. `database` is the cache's
+ * copy when there is one (a workspace still being adopted).
+ */
+function DatabasePageSkeleton({
+  labelKey,
   database,
-  range,
-  onRangeChange,
-  onChanged,
 }: {
-  database: DatabaseDetailView;
-  range: RangeSelection;
-  onRangeChange: (range: RangeSelection) => void;
-  onChanged: () => void;
+  labelKey: ReturnType<typeof databasePageLabelKey>;
+  database: DatabaseDetailView | null;
 }) {
-  const { instanceTypes } = useDatabaseInstanceTypes();
-  return (
-    <DatastoreMetricsPanel
-      kind="database"
-      resource={database.id}
-      range={range}
-      onRangeChange={onRangeChange}
-      highAvailabilityEnabled={database.highAvailabilityEnabled}
-      hasReadReplicas={(database.readReplicas?.length ?? 0) > 0}
-      connectionLimit={
-        instanceTypes.find((it) => it.id === database.plan)?.maxConnections
-      }
-      diskHeaderExtra={
-        <DatabaseDiskAutoscalingControl
-          database={database}
-          onChanged={onChanged}
-        />
-      }
-    />
-  );
+  switch (labelKey) {
+    case "databases.navLogs":
+      return <DatastoreLogsSkeleton />;
+    case "databases.navMetrics":
+      return <DatabaseMetricsSkeleton />;
+    case "databases.navPlan":
+      return <DatabasePlanSkeleton />;
+    case "databases.navApps":
+      return <DatabaseAppsSkeleton />;
+    case "databases.navRecovery":
+      return <DatabaseRecoverySkeleton database={database} />;
+    default:
+      return <DatabaseInfoSkeleton />;
+  }
 }

@@ -129,7 +129,12 @@ export function DatabaseMetadataCard({
           ? [
               {
                 label: t("databases.metaExpires"),
-                value: <DatabaseExpiryValue expiresAt={database.expiresAt} />,
+                value: (
+                  <DatabaseExpiryValue
+                    databaseId={database.id}
+                    expiresAt={database.expiresAt}
+                  />
+                ),
               },
             ]
           : []),

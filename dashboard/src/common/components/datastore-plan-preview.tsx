@@ -95,8 +95,13 @@ const PLAN_COPY = {
     save: "databases.planPickerSave",
     slots: POSTGRES_PLAN_SLOTS,
     connections: false,
-    // The Storage row below the footer (Render's Plan page Storage, w2/m307).
-    storage: { title: "databases.storageTitle", edit: "databases.storageEdit" },
+    // The Storage row below the footer (Render's Plan page Storage, w2/m307),
+    // then Storage Autoscaling's switch row under it (w3/m641).
+    storage: {
+      title: "databases.storageTitle",
+      edit: "databases.storageEdit",
+      autoscaling: "databases.diskAutoscalingLabel",
+    },
   },
   keyvalue: {
     title: "keyvalue.planTitle",
@@ -112,8 +117,8 @@ const PLAN_COPY = {
 /**
  * A datastore plan card before its resource or code is ready: the ready
  * card's real title, description, tier slots and bordered footer — plus
- * Postgres's Storage row, its size a slot — inert, so every loading stage
- * keeps the ready bounds (w4/m208).
+ * Postgres's Storage and Storage Autoscaling rows, their values slots — inert,
+ * so every loading stage keeps the ready bounds (w4/m208).
  */
 export function DatastorePlanPreview({
   kind,
@@ -137,16 +142,29 @@ export function DatastorePlanPreview({
           <Button disabled>{t(copy.save)}</Button>
         </div>
         {copy.storage ? (
-          <div className="flex items-center justify-between gap-4 border-t pt-4">
-            <div className="min-w-0 space-y-1">
-              <p className="text-sm font-medium">{t(copy.storage.title)}</p>
-              {/* The size line: text-sm's 20px line box. */}
-              <Skeleton className="h-5 w-12" />
+          <>
+            <div className="flex items-center justify-between gap-4 border-t pt-4">
+              <div className="min-w-0 space-y-1">
+                <p className="text-sm font-medium">{t(copy.storage.title)}</p>
+                {/* The size line: text-sm's 20px line box. */}
+                <Skeleton className="h-5 w-12" />
+              </div>
+              <Button variant="outline" size="sm" disabled>
+                {t(copy.storage.edit)}
+              </Button>
             </div>
-            <Button variant="outline" size="sm" disabled>
-              {t(copy.storage.edit)}
-            </Button>
-          </div>
+            <div className="flex items-center justify-between gap-4 border-t pt-4">
+              <div className="min-w-0 space-y-1">
+                <p className="text-sm font-medium">
+                  {t(copy.storage.autoscaling)}
+                </p>
+                {/* The size and cap line, a slot like the Storage size. */}
+                <Skeleton className="h-5 w-40" />
+              </div>
+              {/* The switch; its position is data. */}
+              <Skeleton className="h-5 w-9 shrink-0 rounded-full" />
+            </div>
+          </>
         ) : null}
       </CardContent>
     </Card>

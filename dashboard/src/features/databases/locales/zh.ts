@@ -1781,27 +1781,36 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "运行语句",
     description: "SQL console confirmed write action",
   },
-  "databases.detailNavLabel": {
-    message: "数据库详情",
-    description: "Accessible label for the managed Postgres detail tabs",
-  },
-  "databases.sectionNavigation": {
-    message: "数据库区块",
+  // --- Sidebar and page headings (w3/m641) ---
+  "databases.navInfo": {
+    message: "信息",
     description:
-      "Accessible label for the database detail page section navigation",
+      "Postgres sidebar entry and page heading: the database's Info page (general details, connections, access, SQL console)",
   },
-  "databases.dangerZoneTitle": {
-    message: "危险区域",
-    description:
-      "Database detail section-nav label for the destructive actions",
-  },
-  "databases.overviewTab": {
-    message: "概览",
-    description: "Managed Postgres overview tab",
-  },
-  "databases.logsTab": {
+  "databases.navLogs": {
     message: "日志",
-    description: "Managed Postgres logs tab",
+    description:
+      "Postgres sidebar entry and page heading: the database's Logs page",
+  },
+  "databases.navMetrics": {
+    message: "指标",
+    description:
+      "Postgres sidebar entry and page heading: the database's Metrics page",
+  },
+  "databases.navPlan": {
+    message: "套餐",
+    description:
+      "Postgres sidebar entry and page heading: the database's Plan page (compute plan, storage, high availability)",
+  },
+  "databases.navApps": {
+    message: "应用",
+    description:
+      "Postgres sidebar entry and page heading: the database's Apps page (pgAdmin, PgHero)",
+  },
+  "databases.navRecovery": {
+    message: "恢复",
+    description:
+      "Postgres sidebar entry and page heading: the database's Recovery page (point-in-time recovery, exports)",
   },
   "databases.logsRangeLabel": {
     message: "时间范围",

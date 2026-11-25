@@ -9,10 +9,11 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import { Route as DatabaseRoute } from "../databases.$databaseId";
+import { Route as DatabaseMetricsRoute } from "../databases.$databaseId.metrics";
 import { Route as KeyValueRoute } from "../keyvalue.$keyValueId";
 import { Route as DiskRoute } from "../services.$serviceId.disk";
 import type { RangeSelection } from "@/features/metrics/lib/range";
+import { renderDatabasePages } from "@/test/database-pages";
 
 // w4/703: the datastore Metrics range (Key Value tab, Postgres overview,
 // service Disk tab) lived in the panel's own state, so a reload or a copied
@@ -141,9 +142,6 @@ vi.mock("@/features/databases/components/database-danger-actions", () => ({
 vi.mock("@/features/databases/components/connection-info-panel", () => ({
   ConnectionInfoPanel: stub,
 }));
-vi.mock("@/features/databases/components/database-detail-navigation", () => ({
-  DatabaseDetailNavigation: stub,
-}));
 
 vi.mock("@/features/keyvalue/hooks/use-key-value", () => ({
   useKeyValue: () => ({
@@ -238,10 +236,11 @@ const MOUNTS = [
     keeps: { tab: "metrics" },
   },
   {
-    name: "Postgres overview metrics",
-    route: DatabaseRoute,
-    path: "/databases/$databaseId",
-    base: "/databases/dpg-main?",
+    // A Postgres database's Metrics is its own page (w3/m641).
+    name: "Postgres Metrics page",
+    route: DatabaseMetricsRoute,
+    path: "/databases/$databaseId/metrics",
+    base: "/databases/dpg-main/metrics?",
     kind: "database",
     keeps: {},
   },
@@ -258,6 +257,9 @@ const MOUNTS = [
 type Mount = (typeof MOUNTS)[number];
 
 async function renderAt(mount: Mount, href: string) {
+  if (mount.kind === "database") {
+    return renderDatabasePages({ "/metrics": DatabaseMetricsRoute }, href);
+  }
   const root = createRootRoute();
   const page = createRoute({
     getParentRoute: () => root,
@@ -299,7 +301,9 @@ describe.each(MOUNTS)("$name range URL state (w4/703)", (mount) => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     const router = await renderAt(mount, mount.base);
 
-    await user.click(await screen.findByRole("button", { name: "pick custom" }));
+    await user.click(
+      await screen.findByRole("button", { name: "pick custom" }),
+    );
     await waitFor(() =>
       expect(router.state.location.search).toEqual({
         ...mount.keeps,
@@ -346,7 +350,7 @@ it("hands the Postgres metrics panel its plan's connection limit", async () => {
   ).toHaveTextContent(/^100$/);
 });
 
-// w34/011: Postgres overview forwards readReplicas presence so non-HA
+// w34/011: the Postgres Metrics page forwards readReplicas presence so non-HA
 // databases with read replicas query and render Replication Lag.
 it("forwards hasReadReplicas to the Postgres metrics panel", async () => {
   mockDatabase.readReplicas = [];

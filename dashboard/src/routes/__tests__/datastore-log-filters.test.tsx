@@ -15,8 +15,9 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import { Route as DatabaseRoute } from "../databases.$databaseId";
+import { Route as DatabaseLogsRoute } from "../databases.$databaseId.logs";
 import { Route as KeyValueRoute } from "../keyvalue.$keyValueId";
+import { renderDatabasePages } from "@/test/database-pages";
 import { setupVirtualGeometry } from "@/test/virtual-geometry";
 
 // w4/228: the datastore Logs tab's text and instance filters lived in local
@@ -119,12 +120,15 @@ vi.mock("@/features/environments/hooks/use-environments", () => ({
 
 setupVirtualGeometry();
 
+// A Postgres database's Logs is its own page (w3/m641); a Key Value's is its
+// ?tab=logs, which every write keeps.
 const MOUNTS = [
   {
     name: "Postgres",
-    route: DatabaseRoute,
-    path: "/databases/$databaseId",
-    base: "/databases/dpg-main",
+    route: DatabaseLogsRoute,
+    path: "/databases/$databaseId/logs",
+    logs: "/databases/dpg-main/logs?",
+    keeps: {},
     resource: "dpg-main",
     instance: "dpg-main-0",
     instanceLabel: "Database instance",
@@ -133,7 +137,8 @@ const MOUNTS = [
     name: "Key Value",
     route: KeyValueRoute,
     path: "/keyvalue/$keyValueId",
-    base: "/keyvalue/red-cache",
+    logs: "/keyvalue/red-cache?tab=logs&",
+    keeps: { tab: "logs" },
     resource: "red-cache",
     instance: "red-cache-931irt8468joti9ne4fj",
     instanceLabel: "Instance",
@@ -143,6 +148,9 @@ const MOUNTS = [
 type Mount = (typeof MOUNTS)[number];
 
 async function renderAt(mount: Mount, href: string) {
+  if (mount.name === "Postgres") {
+    return renderDatabasePages({ "/logs": DatabaseLogsRoute }, href);
+  }
   const root = createRootRoute();
   const page = createRoute({
     getParentRoute: () => root,
@@ -169,12 +177,12 @@ beforeEach(() => {
   labels.values = [];
 });
 
-describe.each(MOUNTS)("$name Logs tab filter URL state (w4/228)", (mount) => {
+describe.each(MOUNTS)("$name Logs filter URL state (w4/228)", (mount) => {
   const instancePicker = () =>
     screen.getByRole("combobox", { name: mount.instanceLabel });
 
   it("restores text + instance from a copied link, querying them first, without rewriting the URL", async () => {
-    const href = `${mount.base}?tab=logs&range=7d&text=Ready%20to%20accept&instance=${mount.instance}`;
+    const href = `${mount.logs}range=7d&text=Ready%20to%20accept&instance=${mount.instance}`;
     const router = await renderAt(mount, href);
 
     expect(await searchBox()).toHaveValue("Ready to accept");
@@ -188,7 +196,7 @@ describe.each(MOUNTS)("$name Logs tab filter URL state (w4/228)", (mount) => {
     });
     expect(queries.every((q) => q.text === "Ready to accept")).toBe(true);
     expect(router.state.location.search).toMatchObject({
-      tab: "logs",
+      ...mount.keeps,
       range: "7d",
       text: "Ready to accept",
       instance: mount.instance,
@@ -199,7 +207,7 @@ describe.each(MOUNTS)("$name Logs tab filter URL state (w4/228)", (mount) => {
   it("writes typed text and a picked instance, and survives a reload", async () => {
     labels.values = [mount.instance];
     const user = userEvent.setup({ pointerEventsCheck: 0 });
-    const router = await renderAt(mount, `${mount.base}?tab=logs&range=7d`);
+    const router = await renderAt(mount, `${mount.logs}range=7d`);
 
     fireEvent.change(await searchBox(), { target: { value: "checkpoint" } });
     await waitFor(() =>
@@ -211,7 +219,7 @@ describe.each(MOUNTS)("$name Logs tab filter URL state (w4/228)", (mount) => {
     await user.click(screen.getByRole("option", { name: mount.instance }));
     await waitFor(() =>
       expect(router.state.location.search).toMatchObject({
-        tab: "logs",
+        ...mount.keeps,
         range: "7d",
         text: "checkpoint",
         instance: mount.instance,
@@ -236,7 +244,7 @@ describe.each(MOUNTS)("$name Logs tab filter URL state (w4/228)", (mount) => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     const router = await renderAt(
       mount,
-      `${mount.base}?tab=logs&range=custom&rangeStart=2026-10-03T07:00:00.000Z&rangeEnd=2026-10-03T08:00:00.000Z&text=x&instance=${mount.instance}`,
+      `${mount.logs}range=custom&rangeStart=2026-10-03T07:00:00.000Z&rangeEnd=2026-10-03T08:00:00.000Z&text=x&instance=${mount.instance}`,
     );
 
     fireEvent.change(await searchBox(), { target: { value: "" } });
@@ -249,7 +257,7 @@ describe.each(MOUNTS)("$name Logs tab filter URL state (w4/228)", (mount) => {
     });
     expect(router.state.location.searchStr).not.toMatch(/text|instance/);
     expect(router.state.location.search).toMatchObject({
-      tab: "logs",
+      ...mount.keeps,
       range: "custom",
       rangeStart: "2026-10-03T07:00:00.000Z",
       rangeEnd: "2026-10-03T08:00:00.000Z",
@@ -257,7 +265,7 @@ describe.each(MOUNTS)("$name Logs tab filter URL state (w4/228)", (mount) => {
   });
 
   it("round-trips numeric-looking text as a string", async () => {
-    const router = await renderAt(mount, `${mount.base}?tab=logs&text=404`);
+    const router = await renderAt(mount, `${mount.logs}text=404`);
     expect(await searchBox()).toHaveValue("404");
     expect(queries[0]).toMatchObject({ text: "404" });
 
@@ -274,7 +282,7 @@ describe.each(MOUNTS)("$name Logs tab filter URL state (w4/228)", (mount) => {
   });
 
   it("adopts a URL change it did not write (back/forward)", async () => {
-    const router = await renderAt(mount, `${mount.base}?tab=logs&text=first`);
+    const router = await renderAt(mount, `${mount.logs}text=first`);
     expect(await searchBox()).toHaveValue("first");
 
     await act(async () => {
@@ -313,7 +321,7 @@ describe.each(MOUNTS)("$name Logs tab filter URL state (w4/228)", (mount) => {
   });
 
   it("Back within the debounce drops the typed text rather than re-writing it", async () => {
-    const router = await renderAt(mount, `${mount.base}?tab=logs&text=first`);
+    const router = await renderAt(mount, `${mount.logs}text=first`);
     expect(await searchBox()).toHaveValue("first");
     await act(async () => {
       await router.navigate({

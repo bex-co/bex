@@ -1815,27 +1815,36 @@ const koDatabases: Record<string, TranslationEntry> = {
     message: "구문 실행",
     description: "SQL console confirmed write action",
   },
-  "databases.detailNavLabel": {
-    message: "데이터베이스 세부 정보",
-    description: "Accessible label for the managed Postgres detail tabs",
-  },
-  "databases.sectionNavigation": {
-    message: "데이터베이스 섹션",
+  // --- Sidebar and page headings (w3/m641) ---
+  "databases.navInfo": {
+    message: "정보",
     description:
-      "Accessible label for the database detail page section navigation",
+      "Postgres sidebar entry and page heading: the database's Info page (general details, connections, access, SQL console)",
   },
-  "databases.dangerZoneTitle": {
-    message: "위험 영역",
-    description:
-      "Database detail section-nav label for the destructive actions",
-  },
-  "databases.overviewTab": {
-    message: "개요",
-    description: "Managed Postgres overview tab",
-  },
-  "databases.logsTab": {
+  "databases.navLogs": {
     message: "로그",
-    description: "Managed Postgres logs tab",
+    description:
+      "Postgres sidebar entry and page heading: the database's Logs page",
+  },
+  "databases.navMetrics": {
+    message: "메트릭",
+    description:
+      "Postgres sidebar entry and page heading: the database's Metrics page",
+  },
+  "databases.navPlan": {
+    message: "플랜",
+    description:
+      "Postgres sidebar entry and page heading: the database's Plan page (compute plan, storage, high availability)",
+  },
+  "databases.navApps": {
+    message: "앱",
+    description:
+      "Postgres sidebar entry and page heading: the database's Apps page (pgAdmin, PgHero)",
+  },
+  "databases.navRecovery": {
+    message: "복구",
+    description:
+      "Postgres sidebar entry and page heading: the database's Recovery page (point-in-time recovery, exports)",
   },
   "databases.logsRangeLabel": {
     message: "시간 범위",

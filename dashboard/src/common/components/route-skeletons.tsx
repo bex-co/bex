@@ -105,6 +105,10 @@ import {
 } from "@/features/services/lib/create-context";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
 import { CronRunsFrameSkeleton } from "@/features/services/components/cron-runs-frame";
+import { AdminAppsPanelSkeleton } from "@/features/databases/components/admin-apps-panel-skeleton";
+import { RecoveryPanelSkeleton } from "@/features/databases/components/recovery-panel-skeleton";
+import { useOptionalDatabaseDetail } from "@/features/databases/lib/database-detail";
+import type { DatabaseDetailView } from "@/features/databases/types";
 import {
   ObservabilityViewHeader,
   ViewActionButtons,
@@ -3514,46 +3518,108 @@ export function WebhookDetailShellSkeleton() {
   );
 }
 
-export function DatabaseOverviewSkeleton() {
+/**
+ * A Postgres database's Info page before the database resolves (w3/m641):
+ * its cards in its order (Details, Connections, Access control, the SQL
+ * console, then the danger zone's actions), each at the ready card's bounds.
+ */
+export function DatabaseInfoSkeleton() {
   return (
-    <PendingFrame
-      route="database-overview"
-      className={cn("mx-auto max-w-5xl", SECTIONED_GRID_CLASS)}
-    >
-      <ResponsiveSectionNavigationSkeleton count={10} />
-      <div className={SECTIONED_BODY_CLASS}>
-        <Region name="metadata">
-          <DatastoreMetadataPreview kind="postgres" />
-        </Region>
-        <Region name="connection">
-          <DatastoreConnectionsPreview kind="postgres" />
-        </Region>
-        <Region name="sql-console">
-          <ReservedCardSkeleton height={375} />
-        </Region>
-        <Region name="high-availability">
-          <DatabaseHighAvailabilityPreview />
-        </Region>
-        <Region name="metrics">
-          <ReservedCardSkeleton height={320} />
-        </Region>
-        <Region name="plan">
-          <DatastorePlanPreview kind="postgres" />
-        </Region>
-        <Region name="insights">
-          <ReservedCardSkeleton height={360} />
-        </Region>
-        <Region name="recovery">
-          <ReservedCardSkeleton height={240} />
-        </Region>
-        <Region name="access-control">
-          <ReservedCardSkeleton height={240} />
-        </Region>
-        <Region name="danger-zone" className="flex flex-wrap gap-2">
-          <Skeleton className="h-9 w-32" />
-          <Skeleton className="h-9 w-36" />
-        </Region>
-      </div>
+    <PendingFrame route="database-info" className="space-y-6">
+      <Region name="metadata">
+        <DatastoreMetadataPreview kind="postgres" />
+      </Region>
+      <Region name="connection">
+        <DatastoreConnectionsPreview kind="postgres" />
+      </Region>
+      <Region name="access-control">
+        <ReservedCardSkeleton height={240} />
+      </Region>
+      {/* The mounted SQL console's height, measured: 439 px stacked at a
+          390 px phone, 375 px from sm. Its deferred slot reserves the same. */}
+      <Region name="sql-console">
+        <ReservedCardSkeleton className="h-[439px] sm:h-[375px]" />
+      </Region>
+      {/* Delete, Restart and Suspend, at the ready buttons' widths (157,
+          162 and 172 px): Suspend wraps to a second row below `sm`. */}
+      <Region
+        name="danger-zone"
+        className="flex min-h-[5.25rem] flex-wrap items-center gap-3 sm:min-h-9"
+      >
+        <Skeleton className="h-9 w-[9.8125rem]" />
+        <Skeleton className="h-9 w-[10.125rem]" />
+        <Skeleton className="h-9 w-[10.75rem]" />
+      </Region>
+    </PendingFrame>
+  );
+}
+
+/**
+ * A Postgres database's Plan page (w3/m641): the plan card (its tiers, the
+ * Storage row and the Storage Autoscaling row), then High Availability.
+ */
+export function DatabasePlanSkeleton() {
+  return (
+    <PendingFrame route="database-plan" className="space-y-6">
+      <Region name="plan">
+        <DatastorePlanPreview kind="postgres" />
+      </Region>
+      <Region name="high-availability">
+        <DatabaseHighAvailabilityPreview />
+      </Region>
+    </PendingFrame>
+  );
+}
+
+/** A Postgres database's Apps page (w3/m641): pgAdmin and PgHero. */
+export function DatabaseAppsSkeleton() {
+  return (
+    <PendingFrame route="database-apps">
+      <Region name="apps">
+        <AdminAppsPanelSkeleton />
+      </Region>
+    </PendingFrame>
+  );
+}
+
+/**
+ * A Postgres database's Recovery page (w3/m641). Whether backups run and
+ * whether an export names the database decide the card's shape, so it reads
+ * them off the database when one is known: the layout passes what its cache
+ * holds, and a page switch reads the open database.
+ */
+export function DatabaseRecoverySkeleton({
+  database,
+}: {
+  database?: Pick<DatabaseDetailView, "backupsEnabled" | "databaseName"> | null;
+}) {
+  const open = useOptionalDatabaseDetail()?.database;
+  const known = database ?? open;
+  return (
+    <PendingFrame route="database-recovery">
+      <Region name="recovery">
+        <RecoveryPanelSkeleton
+          backupsEnabled={known?.backupsEnabled !== false}
+          exportScope={known ? Boolean(known.databaseName) : true}
+        />
+      </Region>
+    </PendingFrame>
+  );
+}
+
+/**
+ * A Postgres database's Metrics page (w3/m641): the metrics card, then
+ * Insights, which Render keeps below its charts.
+ */
+export function DatabaseMetricsSkeleton() {
+  return (
+    <PendingFrame route="database-metrics" className="space-y-6">
+      <Region name="datastore-metrics">
+        <DatastoreMetricsCardSkeleton kind="database" />
+      </Region>
+      <Region name="insights">
+        <ReservedCardSkeleton height={360} />
+      </Region>
     </PendingFrame>
   );
 }
@@ -3619,44 +3685,51 @@ export function DatastoreMetricsSkeleton({
 }: {
   kind: "database" | "keyvalue";
 }) {
-  const { t } = useTranslations();
   return (
     <PendingFrame
       route={`${kind}-metrics`}
       className="mx-auto w-full max-w-5xl"
     >
       <Region name="datastore-metrics">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("metrics.datastoreMetricsTitle")}</CardTitle>
-            <CardDescription>
-              {t("metrics.datastoreMetricsDescription")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <Region
-              name="metrics-range"
-              className="flex flex-wrap items-center gap-3"
-            >
-              <Skeleton className="h-8 w-40" />
-            </Region>
-            {DATASTORE_METRIC_SECTIONS[kind].map((titleKey) => (
-              <div key={titleKey}>
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <div className="text-sm font-medium text-foreground">
-                    {t(titleKey)}
-                  </div>
-                </div>
-                <Skeleton
-                  className="w-full rounded-md"
-                  style={CHART_FRAME_STYLE}
-                />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        <DatastoreMetricsCardSkeleton kind={kind} />
       </Region>
     </PendingFrame>
+  );
+}
+
+function DatastoreMetricsCardSkeleton({
+  kind,
+}: {
+  kind: "database" | "keyvalue";
+}) {
+  const { t } = useTranslations();
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("metrics.datastoreMetricsTitle")}</CardTitle>
+        <CardDescription>
+          {t("metrics.datastoreMetricsDescription")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <Region
+          name="metrics-range"
+          className="flex flex-wrap items-center gap-3"
+        >
+          <Skeleton className="h-8 w-40" />
+        </Region>
+        {DATASTORE_METRIC_SECTIONS[kind].map((titleKey) => (
+          <div key={titleKey}>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="text-sm font-medium text-foreground">
+                {t(titleKey)}
+              </div>
+            </div>
+            <Skeleton className="w-full rounded-md" style={CHART_FRAME_STYLE} />
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 

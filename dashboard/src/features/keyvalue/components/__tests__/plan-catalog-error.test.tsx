@@ -32,6 +32,16 @@ vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
 vi.mock("@/features/databases/hooks/use-update-database-disk-size", () => ({
   useUpdateDatabaseDiskSize: () => ({ updateDiskSize: vi.fn(), busy: false }),
 }));
+// The plan card's Storage Autoscaling row (w3/m641).
+vi.mock(
+  "@/features/databases/hooks/use-update-database-disk-autoscaling",
+  () => ({
+    useUpdateDatabaseDiskAutoscaling: () => ({
+      updateDiskAutoscaling: vi.fn(),
+      busy: false,
+    }),
+  }),
+);
 vi.mock("@/features/keyvalue/hooks/use-update-key-value-plan", () => ({
   useUpdateKeyValuePlan: () => ({ updatePlan, busy: false }),
 }));

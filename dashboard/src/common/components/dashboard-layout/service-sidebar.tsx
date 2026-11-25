@@ -1,18 +1,11 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { ChevronLeft } from "lucide-react";
-import { useTranslations } from "@/common/hooks/use-translations";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-} from "@/common/components/ui/sidebar.tsx";
+import { useRouterState } from "@tanstack/react-router";
 import { serviceNavGroups } from "@/features/services/components/service-nav";
 import { deriveServiceType } from "@/features/services/lib/service-type";
 import { useServiceBase } from "@/features/services/lib/service-base";
 import { useServer } from "@/features/services/hooks/use-server";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { isNavItemActive } from "./nav-active";
-import { SidebarBrand } from "./sidebar-brand";
+import { ResourceSidebar } from "./resource-sidebar";
 import { SidebarNavGroups } from "./sidebar-nav-groups";
 
 export interface ServiceSidebarProps {
@@ -36,7 +29,6 @@ export interface ServiceSidebarProps {
 export function ServiceSidebar({ serviceId }: ServiceSidebarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const base = useServiceBase();
-  const { t } = useTranslations();
   const { service, loading } = useServer(serviceId, { poll: false });
   // An id the caller can't see gets no service nav — the shell renders its
   // not-found state, and a sidebar of dead links would contradict it. While
@@ -49,37 +41,20 @@ export function ServiceSidebar({ serviceId }: ServiceSidebarProps) {
   const logsDenied = denied("can_view_logs");
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <SidebarBrand />
-      </SidebarHeader>
-      <SidebarContent>
-        <div className="flex flex-col gap-2 px-2 pt-2 pb-1 group-data-[collapsible=icon]:hidden">
-          <Link
-            to="/"
-            className="relative flex items-center gap-1 text-xs font-medium text-muted-foreground after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] hover:text-foreground"
-          >
-            <ChevronLeft className="size-3.5" />
-            {t("common.navBackToDashboard")}
-          </Link>
-          <p className="truncate text-sm font-semibold">
-            {service?.name ?? serviceId}
-          </p>
-        </div>
-        {showNav ? (
-          <SidebarNavGroups
-            groups={serviceNavGroups(
-              service ? deriveServiceType(service.type) : null,
-              base,
-              { activityDenied, logsDenied },
-            )}
-            linkParams={{ serviceId }}
-            isItemActive={(to) =>
-              isNavItemActive(pathname, to.replace("$serviceId", serviceId))
-            }
-          />
-        ) : null}
-      </SidebarContent>
-    </Sidebar>
+    <ResourceSidebar name={service?.name ?? serviceId}>
+      {showNav ? (
+        <SidebarNavGroups
+          groups={serviceNavGroups(
+            service ? deriveServiceType(service.type) : null,
+            base,
+            { activityDenied, logsDenied },
+          )}
+          linkParams={{ serviceId }}
+          isItemActive={(to) =>
+            isNavItemActive(pathname, to.replace("$serviceId", serviceId))
+          }
+        />
+      ) : null}
+    </ResourceSidebar>
   );
 }

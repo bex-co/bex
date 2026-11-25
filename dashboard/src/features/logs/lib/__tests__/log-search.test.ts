@@ -288,22 +288,21 @@ describe("View in context links (w3/m528)", () => {
     expect(serviceLogRange(parsed).id).toBe("custom");
   });
 
-  it("opens a Postgres or Key Value Logs tab the same way", () => {
+  // A Postgres database's Logs is its own page (w3/m641); a Key Value's is
+  // still its ?tab=logs.
+  it("opens a Postgres Logs page or a Key Value Logs tab on the line's window", () => {
+    const window = {
+      range: "custom",
+      rangeStart: "2026-11-20T10:20:15.250Z",
+      rangeEnd: "2026-11-20T10:40:15.250Z",
+      contextLine: "id:abc",
+    };
     expect(
       query(datastoreLogContextHref("databases", "dpg-a", line())!),
-    ).toEqual({
-      path: "/databases/dpg-a",
-      search: {
-        tab: "logs",
-        range: "custom",
-        rangeStart: "2026-11-20T10:20:15.250Z",
-        rangeEnd: "2026-11-20T10:40:15.250Z",
-        contextLine: "id:abc",
-      },
-    });
+    ).toEqual({ path: "/databases/dpg-a/logs", search: window });
     expect(
-      query(datastoreLogContextHref("keyvalue", "red-a", line())!).path,
-    ).toBe("/keyvalue/red-a");
+      query(datastoreLogContextHref("keyvalue", "red-a", line())!),
+    ).toEqual({ path: "/keyvalue/red-a", search: { tab: "logs", ...window } });
   });
 
   it("keeps a project view's own view, in Render's r key", () => {
