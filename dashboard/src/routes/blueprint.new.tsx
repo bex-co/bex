@@ -3,6 +3,7 @@ import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { BlueprintCreatePageSkeleton } from "@/common/components/route-skeletons";
 import { NewBlueprintPage } from "@/features/blueprints/pages/new-blueprint-page";
+import { prefetchCreatePage } from "@/common/lib/create-page-prefetch";
 
 /** Render's Blueprint create URL (`/blueprint/new`, singular —
  *  docs/render-artifacts/dashboard-routes.md); bex's old `/blueprints/new`
@@ -21,5 +22,6 @@ export const Route = createFileRoute("/blueprint/new")({
     ...(typeof search.path === "string" && { path: search.path }),
   }),
   beforeLoad: requireAuth(),
+  loader: (args) => prefetchCreatePage(args, { git: true }),
   head: ({ match }) => translatedTitleHead("blueprints.createTitle", match),
 });

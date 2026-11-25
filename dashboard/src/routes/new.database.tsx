@@ -3,6 +3,8 @@ import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { DatabaseCreatePageSkeleton } from "@/common/components/route-skeletons";
 import { NewDatabasePage } from "@/features/databases/pages/new-database-page";
+import { prefetchCreatePage } from "@/common/lib/create-page-prefetch";
+import { DatabaseInstanceTypesDocument } from "@/graphql/definitions";
 
 /**
  * Render's New-menu Postgres create URL (`/new/database`, live captures
@@ -15,5 +17,7 @@ export const Route = createFileRoute("/new/database")({
   component: NewDatabasePage,
   pendingComponent: DatabaseCreatePageSkeleton,
   beforeLoad: requireAuth(),
+  loader: (args) =>
+    prefetchCreatePage(args, { catalog: DatabaseInstanceTypesDocument }),
   head: ({ match }) => translatedTitleHead("databases.createTitle", match),
 });

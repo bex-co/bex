@@ -2,6 +2,8 @@ import { createFileRoute, useChildMatches } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { ServiceCreatePageSkeleton } from "@/common/components/route-skeletons";
 import { NewServicePage } from "@/features/services/pages/new-service-page";
+import { prefetchCreatePage } from "@/common/lib/create-page-prefetch";
+import { InstanceTypesDocument } from "@/graphql/definitions";
 import {
   DEFAULT_SERVICE_TYPE,
   parseNewServiceSearch,
@@ -21,6 +23,8 @@ export const Route = createFileRoute("/_serviceCreate")({
   component: ServiceCreateLayout,
   pendingComponent: ServiceCreatePageSkeleton,
   beforeLoad: requireAuth(),
+  loader: (args) =>
+    prefetchCreatePage(args, { catalog: InstanceTypesDocument, git: true }),
   validateSearch: parseNewServiceSearch,
 });
 
