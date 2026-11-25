@@ -8,6 +8,7 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
+import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   AccountSettingsPageSkeleton,
@@ -336,9 +337,10 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
       expect(nav).toHaveClass("min-w-0");
       expect(nav).not.toHaveClass("max-w-full");
       expect(nav).not.toHaveClass("hidden");
-      expect(nav!.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(
-        count,
-      );
+      const rows = nav!.querySelectorAll('[data-slot="skeleton"]');
+      expect(rows).toHaveLength(count);
+      // A rail row is a link's 36px (its text and py-2), not a 32px pill (w3/104).
+      for (const row of rows) expect(row).toHaveClass("@4xl/page:h-9");
       unmount();
     },
   );
@@ -445,11 +447,12 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
       };
     };
     const docker = buildCard("docker");
-    expect(docker.className).toContain("h-[930px]");
-    expect(docker.className).toContain("sm:h-[778px]");
+    expect(docker.className).toContain("h-[1042px]");
+    expect(docker.className).toContain("sm:h-[794px]");
     expect(docker.rows).toBe(8);
     const native = buildCard("node");
-    expect(native.className).toContain("h-[816px]");
+    expect(native.className).toContain("h-[920px]");
+    expect(native.className).toContain("sm:h-[680px]");
     expect(native.rows).toBe(7);
   });
 
@@ -843,8 +846,8 @@ describe("service metrics pending frame (w3/103)", () => {
 
 // The Runtime and Edge Caching cards reserve the heights measured in Chromium
 // at 390/640/768/1024/1280/1440 (en), one per breakpoint where the ready card
-// changes: the md sidebar narrows the card until xl, so a single
-// mobile/desktop pair mismatched at 768 and 1024.
+// changes: the md sidebar narrows the card at 768, and from lg its controls
+// drop to their desktop height (w3/104).
 describe("service settings card heights per breakpoint", () => {
   function regionCard(
     plan: string | null,
@@ -867,26 +870,162 @@ describe("service settings card heights per breakpoint", () => {
 
   it("sizes the Runtime card at every breakpoint", () => {
     expect(regionCard("starter", "runtime")).toHaveClass(
-      "h-[294px]",
-      "sm:h-[210px]",
-      "md:h-[230px]",
-      "xl:h-[210px]",
+      "h-[318px]",
+      "sm:h-[222px]",
+      "md:h-[242px]",
+      "lg:h-[210px]",
     );
   });
 
   it.each([
-    ["starter", "h-[520px]"],
-    ["free", "h-[540px]"],
+    ["starter", "h-[532px]"],
+    ["free", "h-[552px]"],
   ])(
     "sizes a %s plan's Edge Caching card at every breakpoint",
     (plan, base) => {
-      expect(regionCard(plan, "edge-caching")).toHaveClass(
+      const card = regionCard(plan, "edge-caching");
+      expect(card).toHaveClass(
         base,
-        "sm:h-[456px]",
-        "md:h-[488px]",
-        "xl:h-[436px]",
-        "min-[90rem]:h-[420px]",
+        "sm:h-[468px]",
+        "md:h-[500px]",
+        "lg:h-[436px]",
       );
+      // No wider override: at 1440 the card is lg's 436px.
+      expect(card?.className).not.toContain("min-[90rem]");
     },
   );
+});
+
+// w3/104: the heights the ready cards measured in Chromium at 390 and 1440
+// for each service shape whose cards differ, so a shape cannot fall back to
+// another shape's card.
+describe("service settings card heights per service shape", () => {
+  function card(
+    service: ComponentProps<typeof ServiceSettingsSkeleton>["service"],
+    region: string,
+    index = 0,
+  ): Element | undefined {
+    const { container } = render(<ServiceSettingsSkeleton service={service} />);
+    return [
+      ...container.querySelectorAll(
+        `[data-skeleton-region="${region}"] > [data-slot="card"]`,
+      ),
+    ][index];
+  }
+  const image = { repo: null, runtime: "image" };
+  const native = {
+    repo: "https://github.com/example/app",
+    runtime: "node",
+    builder: "native",
+  };
+  const docker = {
+    repo: "https://github.com/example/app",
+    runtime: "docker",
+    builder: "dockerfile",
+  };
+
+  it.each([
+    [
+      "a running web service",
+      { type: "web_service" },
+      "h-[202px]",
+      "sm:h-[154px]",
+    ],
+    [
+      "a running static site",
+      { type: "static_site" },
+      "h-[202px]",
+      "sm:h-[154px]",
+    ],
+    // A cron job's suspend copy runs a line longer at desktop than a worker's.
+    ["a running cron job", { type: "cron_job" }, "h-[182px]", "sm:h-[154px]"],
+    [
+      "a running worker",
+      { type: "background_worker" },
+      "h-[182px]",
+      "sm:h-[134px]",
+    ],
+    [
+      "a running private service",
+      { type: "private_service" },
+      "h-[182px]",
+      "sm:h-[134px]",
+    ],
+    [
+      "a suspended web service",
+      { type: "web_service", suspended: true },
+      "h-[162px]",
+      "sm:h-[134px]",
+    ],
+    [
+      "a suspended cron job",
+      { type: "cron_job", suspended: true },
+      "h-[142px]",
+      "sm:h-[134px]",
+    ],
+  ])("sizes %s's Suspend card", (_, shape, narrow, wide) => {
+    expect(card({ ...image, ...shape }, "suspend")).toHaveClass(narrow, wide);
+  });
+
+  it("sizes an image source's card below a repo's on a phone", () => {
+    expect(card({ type: "web_service", ...image }, "source")).toHaveClass(
+      "h-[168px]",
+      "sm:h-[148px]",
+    );
+    expect(card({ type: "web_service", ...native }, "source")).toHaveClass(
+      "h-[228px]",
+      "sm:h-[148px]",
+    );
+  });
+
+  it.each([
+    ["starter", undefined, "h-[682px]", "sm:h-[530px]"],
+    // A free plan says Pre-Deploy needs a paid plan, unless one is set.
+    ["free", undefined, "h-[730px]", "sm:h-[558px]"],
+    ["free", "npm run migrate", "h-[682px]", "sm:h-[530px]"],
+  ])(
+    "sizes a %s image service's Deploy card (pre-deploy %s)",
+    (plan, preDeployCommand, narrow, wide) => {
+      expect(
+        card(
+          { type: "web_service", ...image, plan, preDeployCommand },
+          "deploy",
+        ),
+      ).toHaveClass(narrow, wide);
+    },
+  );
+
+  it.each([
+    ["native", native, "starter", "h-[820px]", "sm:h-[642px]"],
+    ["native", native, "free", "h-[868px]", "sm:h-[670px]"],
+    ["Dockerfile", docker, "starter", "h-[822px]", "sm:h-[644px]"],
+    ["Dockerfile", docker, "free", "h-[870px]", "sm:h-[672px]"],
+  ])(
+    "sizes a %s build's Deploy card on a %s plan",
+    (_, source, plan, narrow, wide) => {
+      expect(
+        card({ type: "web_service", ...source, plan }, "build", 1),
+      ).toHaveClass(narrow, wide);
+    },
+  );
+
+  it.each([
+    ["native", native, "h-[382px]", "sm:h-[326px]"],
+    ["Dockerfile", docker, "h-[384px]", "sm:h-[328px]"],
+    ["image", image, "h-[384px]", "sm:h-[328px]"],
+  ])("sizes a %s cron job's Deploy card", (_, source, narrow, wide) => {
+    expect(card({ type: "cron_job", ...source }, "deploy")).toHaveClass(
+      narrow,
+      wide,
+    );
+  });
+
+  it("sizes a cron job's lone Build card, the same for every build", () => {
+    for (const source of [native, docker]) {
+      expect(card({ type: "cron_job", ...source }, "build")).toHaveClass(
+        "h-[898px]",
+        "sm:h-[680px]",
+      );
+    }
+  });
 });

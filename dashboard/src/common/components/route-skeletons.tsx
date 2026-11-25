@@ -201,6 +201,7 @@ import {
   autoSleepEligibleType,
   planSleeps,
 } from "@/features/services/lib/idle-timeout";
+import { isNativeRuntime } from "@/features/services/lib/runtime";
 import {
   deriveServiceType,
   isCronType,
@@ -356,10 +357,12 @@ function ResponsiveSectionNavigationSkeleton({ count }: { count: number }) {
       className={SECTION_NAVIGATION_STICKY_CLASS}
     >
       <div className={SECTION_NAVIGATION_ITEMS_CLASS}>
+        {/* A pill in the bar; in the rail a row as tall as a link's one line
+            of text and its py-2 (36px, w3/104). */}
         {Array.from({ length: count }, (_, index) => (
           <Skeleton
             key={index}
-            className="h-8 w-24 shrink-0 rounded-full max-lg:h-11 pointer-coarse:h-11 @4xl/page:w-full @4xl/page:rounded-md"
+            className="h-8 w-24 shrink-0 rounded-full max-lg:h-11 pointer-coarse:h-11 @4xl/page:h-9 @4xl/page:w-full @4xl/page:rounded-md"
           />
         ))}
       </div>
@@ -2942,12 +2945,17 @@ type SettingsSkeletonService = SettingsSectionsService & {
   region?: string | null;
   plan?: string | null;
   suspended?: boolean;
+  preDeployCommand?: string | null;
 };
 
-// Each card reserves its ready card's exact height, measured on dev-5 at
-// narrow mobile (390px) and desktop (1440px) with an empty service (w5/m124),
-// so the swap does not move the page. The classes are literal so Tailwind
-// sees them; the skeleton rows inside are clipped to the card.
+// Each card reserves its ready card's exact height at narrow mobile (390px)
+// and desktop (1440px), so the swap does not move the page. Measured in
+// Chromium against the ready page (w3/104, re-measuring w5/m124's dev-5
+// heights after the 44px touch-size buttons and longer hints arrived) for an
+// empty service with a real-length id (the General hint names it), no custom
+// domain, Render's default allow-all rule in a workspace below Scale, and no
+// stored registry credential. The classes are literal so Tailwind sees them;
+// the skeleton rows inside are clipped to the card.
 type PlainSettingsSection =
   | "static-site"
   | "domains"
@@ -2964,16 +2972,16 @@ const SETTINGS_CARD: Record<
   PlainSettingsSection,
   { fields: number; height: string }
 > = {
-  "static-site": { fields: 2, height: "h-[342px] sm:h-[238px]" },
-  domains: { fields: 2, height: "h-[611px] sm:h-[447px]" },
-  networking: { fields: 1, height: "h-[302px] sm:h-[182px]" },
+  "static-site": { fields: 2, height: "h-[350px] sm:h-[238px]" },
+  domains: { fields: 2, height: "h-[637px] sm:h-[473px]" },
+  networking: { fields: 1, height: "h-[198px] sm:h-[162px]" },
   "outbound-ips": { fields: 1, height: "h-[198px] sm:h-[138px]" },
-  "registry-credential": { fields: 1, height: "h-[268px] sm:h-[232px]" },
-  notifications: { fields: 1, height: "h-[246px] sm:h-[186px]" },
-  port: { fields: 1, height: "h-[286px] sm:h-[206px]" },
-  "health-checks": { fields: 1, height: "h-[346px] sm:h-[226px]" },
-  maintenance: { fields: 2, height: "h-[346px] sm:h-[266px]" },
-  "deploy-hook": { fields: 1, height: "h-[262px] sm:h-[222px]" },
+  "registry-credential": { fields: 1, height: "h-[292px] sm:h-[256px]" },
+  notifications: { fields: 1, height: "h-[268px] sm:h-[208px]" },
+  port: { fields: 1, height: "h-[294px] sm:h-[226px]" },
+  "health-checks": { fields: 1, height: "h-[354px] sm:h-[246px]" },
+  maintenance: { fields: 2, height: "h-[354px] sm:h-[286px]" },
+  "deploy-hook": { fields: 1, height: "h-[278px] sm:h-[222px]" },
 };
 
 function isPlainSettingsSection(
@@ -2987,7 +2995,7 @@ function isPlainSettingsSection(
  * whose plan is its own Compute section, w3/m554), the idle timeout (a free web
  * service's select, a paid one's shorter always-on notice), the max shutdown
  * delay (web, private, worker) and Region when the install sets one. Region is
- * 128px at narrow mobile and 88px at desktop plus a 24px gap; a static site
+ * 136px at narrow mobile and 88px at desktop plus a 24px gap; a static site
  * never shows it.
  */
 function generalHeight(service: SettingsSkeletonService): string {
@@ -2995,17 +3003,16 @@ function generalHeight(service: SettingsSkeletonService): string {
   switch (service.type) {
     case "web_service":
       if (!planSleeps(service.plan ?? null)) {
-        return region ? "h-[698px] sm:h-[546px]" : "h-[546px] sm:h-[434px]";
+        return region ? "h-[722px] sm:h-[546px]" : "h-[562px] sm:h-[434px]";
       }
-      return region ? "h-[782px] sm:h-[566px]" : "h-[630px] sm:h-[454px]";
+      return region ? "h-[858px] sm:h-[586px]" : "h-[698px] sm:h-[474px]";
     case "cron_job":
-      // Name and Region only: the plan is the Compute section (w3/m554,
-      // measured on dev-3 at 390 and 1440 with a region).
-      return region ? "h-[414px] sm:h-[298px]" : "h-[262px] sm:h-[186px]";
+      // Name and Region only: the plan is the Compute section (w3/m554).
+      return region ? "h-[414px] sm:h-[298px]" : "h-[254px] sm:h-[186px]";
     case "static_site":
-      return "h-[246px] sm:h-[186px]";
+      return "h-[254px] sm:h-[186px]";
     default:
-      return region ? "h-[630px] sm:h-[478px]" : "h-[478px] sm:h-[366px]";
+      return region ? "h-[654px] sm:h-[478px]" : "h-[494px] sm:h-[366px]";
   }
 }
 
@@ -3022,18 +3029,38 @@ function generalRows(service: SettingsSkeletonService): number {
 
 /**
  * Suspend's height: a running publicly routed service's card says what its
- * visitors will see; a suspended service's card offers Resume, which a cron job
- * words more briefly.
+ * visitors will see, and a running cron job's what happens to an active run,
+ * both a line longer at desktop than a worker's; a suspended service's card
+ * offers Resume, which a cron job words more briefly.
  */
 function suspendHeight(service: SettingsSkeletonService): string {
+  const cron = isCronType(service.type);
   if (service.suspended) {
-    return isCronType(service.type)
-      ? "h-[134px] sm:h-[134px]"
-      : "h-[154px] sm:h-[134px]";
+    return cron ? "h-[142px] sm:h-[134px]" : "h-[162px] sm:h-[134px]";
   }
-  return publiclyRoutable(service.type)
-    ? "h-[194px] sm:h-[154px]"
-    : "h-[174px] sm:h-[134px]";
+  if (publiclyRoutable(service.type)) return "h-[202px] sm:h-[154px]";
+  return cron ? "h-[182px] sm:h-[154px]" : "h-[182px] sm:h-[134px]";
+}
+
+/**
+ * A Deploy card's height (an image service's own, or the one under a repo
+ * build): a free plan without a Pre-Deploy Command says Pre-Deploy needs a
+ * paid plan beneath that row, and a Docker Command's hint is a little longer
+ * than a Start Command's.
+ */
+function deployCardHeight(
+  service: SettingsSkeletonService,
+  kind: "image" | "docker" | "native",
+): string {
+  const paidOnly = service.plan === "free" && !service.preDeployCommand;
+  switch (kind) {
+    case "image":
+      return paidOnly ? "h-[730px] sm:h-[558px]" : "h-[682px] sm:h-[530px]";
+    case "docker":
+      return paidOnly ? "h-[870px] sm:h-[672px]" : "h-[822px] sm:h-[644px]";
+    case "native":
+      return paidOnly ? "h-[868px] sm:h-[670px]" : "h-[820px] sm:h-[642px]";
+  }
 }
 
 function SettingsSourceCardSkeleton({ repo }: { repo: boolean }) {
@@ -3042,8 +3069,9 @@ function SettingsSourceCardSkeleton({ repo }: { repo: boolean }) {
     <Card
       className={cn(
         // The loaded card's heights, its Edit now in the header's action
-        // slot (measured: 228/148 with a repo, 44px less on a phone without).
-        repo ? "h-[228px] sm:h-[148px]" : "h-[188px] sm:h-[148px]",
+        // slot (measured: 228/148 with a repo, 60px less on a phone with an
+        // image, whose one field is its URL).
+        repo ? "h-[228px] sm:h-[148px]" : "h-[168px] sm:h-[148px]",
         "overflow-hidden",
       )}
     >
@@ -3121,41 +3149,47 @@ export function SettingsSectionSkeleton({
       return <SettingsSourceCardSkeleton repo={Boolean(service.repo)} />;
     case "deploy":
       // A cron job's schedule and command, or an image's Deploy card:
-      // Pre-Deploy, Docker Command and the Deploy Hook.
+      // Pre-Deploy, Docker Command and the Deploy Hook. A native cron job's
+      // Command is required, so its label carries no Optional badge (2px).
       return isCronType(type) ? (
         <SettingsFormCardSkeleton
           fields={2}
-          className="h-[368px] sm:h-[328px]"
+          className={
+            isNativeRuntime(service.runtime)
+              ? "h-[382px] sm:h-[326px]"
+              : "h-[384px] sm:h-[328px]"
+          }
         />
       ) : (
         <SettingsFormCardSkeleton
           fields={3}
-          className="h-[650px] sm:h-[530px]"
+          className={deployCardHeight(service, "image")}
         />
       );
     case "runtime":
       // The Runtime select beside its rebuild note, then Save. Measured in
-      // Chromium (en): the select drops below the note under sm (294px at
-      // 390), sits beside it from sm (210px), and the md sidebar narrows the
-      // card until xl so the note wraps once more (230px at 768 and 1024).
+      // Chromium (en): the select drops below the note under sm (318px at
+      // 390), sits beside it from sm (222px), the md sidebar narrows the card
+      // so the note wraps once more (242px at 768), and from lg its controls
+      // drop to their desktop height (210px at 1024 through 1440).
       return (
         <SettingsFormCardSkeleton
           fields={1}
-          className="h-[294px] sm:h-[210px] md:h-[230px] xl:h-[210px]"
+          className="h-[318px] sm:h-[222px] md:h-[242px] lg:h-[210px]"
         />
       );
     case "build": {
-      // A cron job's Build card alone, with Auto-Deploy folded in. Every other
-      // build shows Build and Deploy cards; a Dockerfile build shows Dockerfile
-      // Path, Docker Build Context Directory and a Docker Command where a
-      // native one shows Build and Start Commands. The context row matches
-      // Dockerfile Path's height at every width (w8/m128, measured in
-      // Chromium at 390/640/1024/1440): +134px below sm, +114px from sm.
+      // A cron job's Build card alone: Root Directory, Build Filters and
+      // Auto-Deploy folded in, the same for a Dockerfile and a native build.
+      // Every other build shows Build and Deploy cards; a Dockerfile build
+      // shows Dockerfile Path and Docker Build Context Directory where a
+      // native one shows a Build Command (w8/m128): +122px below sm, +114px
+      // from sm.
       if (isCronType(type)) {
         return (
           <SettingsFormCardSkeleton
-            fields={7}
-            className="h-[1078px] sm:h-[886px]"
+            fields={4}
+            className="h-[898px] sm:h-[680px]"
           />
         );
       }
@@ -3165,20 +3199,21 @@ export function SettingsSectionSkeleton({
           <SettingsFormCardSkeleton
             fields={docker ? 8 : 7}
             className={
-              docker ? "h-[930px] sm:h-[778px]" : "h-[816px] sm:h-[664px]"
+              docker ? "h-[1042px] sm:h-[794px]" : "h-[920px] sm:h-[680px]"
             }
           />
           {isStaticSiteType(type) ? (
             <SettingsFormCardSkeleton
               fields={2}
-              className="h-[494px] sm:h-[394px]"
+              className="h-[538px] sm:h-[416px]"
             />
           ) : (
             <SettingsFormCardSkeleton
               fields={4}
-              className={
-                docker ? "h-[802px] sm:h-[642px]" : "h-[800px] sm:h-[640px]"
-              }
+              className={deployCardHeight(
+                service,
+                docker ? "docker" : "native",
+              )}
             />
           )}
         </>
@@ -3186,24 +3221,22 @@ export function SettingsSectionSkeleton({
     }
     case "edge-caching":
       // Three option cards, a note and Save/Purge. Measured in Chromium (en):
-      // 520px at 390 (540px when a free plan's unavailable note wraps), 456px
-      // at sm, 488px from md through lg while the sidebar narrows the card,
-      // 436px at xl and 420px from 1440 where the option copy stops wrapping.
-      // That breakpoint is 90rem, not 1440px: Tailwind orders min-[...] among
-      // the named breakpoints only in their rem unit, so a px one lost to xl.
+      // 532px at 390 (552px when a free plan's unavailable note wraps), 468px
+      // at sm, 500px at md while the sidebar narrows the card, and 436px from
+      // lg through 1440.
       return (
         <SettingsFormCardSkeleton
           fields={3}
           className={cn(
-            service.plan === "free" ? "h-[540px]" : "h-[520px]",
-            "sm:h-[456px] md:h-[488px] xl:h-[436px] min-[90rem]:h-[420px]",
+            service.plan === "free" ? "h-[552px]" : "h-[532px]",
+            "sm:h-[468px] md:h-[500px] lg:h-[436px]",
           )}
         />
       );
     case "suspend":
       return <SettingsActionCardSkeleton className={suspendHeight(service)} />;
     case "danger-zone":
-      return <SettingsActionCardSkeleton className="h-[154px] sm:h-[134px]" />;
+      return <SettingsActionCardSkeleton className="h-[162px] sm:h-[134px]" />;
     default: {
       const unrendered: never = section;
       return unrendered;
