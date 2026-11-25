@@ -85,14 +85,22 @@ func (c *StripeClient) FollowWorkspaceRename(ctx context.Context, workspaceID, p
 	return nil
 }
 
-// fillCheckoutCustomer gives a Customer Checkout created what one
-// EnsureCustomer or workspace creation creates has: the workspace's name
-// (nameCheckoutCustomer) and its billing email in effect (w6/179). Checkout
-// named it after what it collected, and gave it the email bex sent or, where
+// fillCheckoutCustomer gives a Customer a completed Checkout touched what one
+// EnsureCustomer or workspace creation creates has: the workspace's name and
+// its billing email in effect (w6/m628, w6/179). Checkout named a Customer it
+// created after what it collected, and gave it the email bex sent or, where
 // bex could not name one when the session opened, the one the member typed;
-// with no email bex can name now, that one stays. Every delivery of the
-// event runs it, and it changes nothing once both are set.
+// with no email bex can name now, that one stays. The name is seeded only
+// when the session itself created the Customer — a pre-existing one was
+// named at its own creation and follows renames — but the email converges on
+// every completion, so a Customer created while bex could name no address,
+// or one whose address changed or failed to reset since, takes the address in
+// effect now. Every delivery of the event runs it, and it changes nothing
+// once both are set.
 func (c *StripeClient) fillCheckoutCustomer(ctx context.Context, checkout verifiedCheckout) error {
+	if !checkout.checkoutCreatedCustomer {
+		return c.fillPreExistingCustomerEmail(ctx, checkout)
+	}
 	customer, gone, err := c.liveCustomer(ctx, checkout.customerID)
 	if err != nil || gone {
 		return err
@@ -114,6 +122,33 @@ func (c *StripeClient) fillCheckoutCustomer(ctx context.Context, checkout verifi
 	params.Context = ctx
 	if _, err := c.sc.Customers.Update(checkout.customerID, params); err != nil {
 		return fmt.Errorf("stripe: name and email Checkout Customer %s of %s: %w", checkout.customerID, checkout.workspaceID, err)
+	}
+	return nil
+}
+
+// fillPreExistingCustomerEmail converges the email of a Customer a completed
+// Checkout touched but did not create. With no address bex can name (or no
+// reader, in isolated tests) there is nothing to write, so the Customer is
+// not even re-read.
+func (c *StripeClient) fillPreExistingCustomerEmail(ctx context.Context, checkout verifiedCheckout) error {
+	email, err := c.workspaceBillingEmail(ctx, checkout.workspaceID)
+	if err != nil {
+		return err
+	}
+	if email == "" {
+		return nil
+	}
+	customer, gone, err := c.liveCustomer(ctx, checkout.customerID)
+	if err != nil || gone {
+		return err
+	}
+	if customer.Email == email {
+		return nil
+	}
+	params := &stripe.CustomerParams{Email: stripe.String(email)}
+	params.Context = ctx
+	if _, err := c.sc.Customers.Update(checkout.customerID, params); err != nil {
+		return fmt.Errorf("stripe: email Checkout Customer %s of %s: %w", checkout.customerID, checkout.workspaceID, err)
 	}
 	return nil
 }
