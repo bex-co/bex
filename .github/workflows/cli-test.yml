@@ -9,6 +9,11 @@ on:
       - "docs/bex-cli.md"
       - "docs/cli-compatibility-checklist.md"
       - ".github/workflows/cli-test.yml"
+      # The Claude Code plugin packgen generates from the skills pack, and
+      # the marketplace that lists it (w4/m631): the launcher test compares
+      # them with what it generates, and the validate step reads them.
+      - "plugins/**"
+      - ".claude-plugin/**"
       # The Bex adapter step runs the cliauth and api packages' tests, which
       # walk every non-test source under lego/backend/internal and the client
       # GraphQL documents, and read these files.
@@ -26,6 +31,11 @@ on:
       - "docs/bex-cli.md"
       - "docs/cli-compatibility-checklist.md"
       - ".github/workflows/cli-test.yml"
+      # The Claude Code plugin packgen generates from the skills pack, and
+      # the marketplace that lists it (w4/m631): the launcher test compares
+      # them with what it generates, and the validate step reads them.
+      - "plugins/**"
+      - ".claude-plugin/**"
       # The Bex adapter step runs the cliauth and api packages' tests, which
       # walk every non-test source under lego/backend/internal and the client
       # GraphQL documents, and read these files.
@@ -78,6 +88,18 @@ jobs:
       - name: test launcher
         working-directory: lego/cli
         run: go test ./...
+      # The plugin and marketplace manifests load in Claude Code: the
+      # validator Claude Code ships, with warnings (a missing version, an
+      # unknown field, an unquoted hook path) as failures (w4/m631).
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - name: validate the Claude Code plugin and marketplace
+        env:
+          DISABLE_AUTOUPDATER: "1"
+        run: |
+          npx --yes @anthropic-ai/claude-code@2.1.322 plugin validate --strict .claude-plugin/marketplace.json
+          npx --yes @anthropic-ai/claude-code@2.1.322 plugin validate --strict plugins/claude-code/bex
       # The launcher test contains a complete local device-grant → token →
       # forced refresh → revoke lifecycle. These backend packages verify the
       # complementary Bex adapter still accepts the upstream Render CLI wire

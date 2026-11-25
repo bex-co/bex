@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "bex": {
+      "type": "http",
+      "url": "https://api.bex.co/mcp"
+    }
+  }
+}

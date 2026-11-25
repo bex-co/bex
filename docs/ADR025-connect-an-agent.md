@@ -14,6 +14,26 @@ None of this is bex-specific glue: it's the standard MCP authorization spec's di
 
 ## Claude Code
 
+### The bex plugin (preferred)
+
+Render's preferred Claude Code setup is its plugin (`render.com/agents/claude.md`), and so is bex's (w4/m631). In Claude Code:
+
+```text
+/plugin marketplace add bex-co/bex
+/plugin install bex@bex-plugins
+```
+
+`/plugin marketplace add` clones the whole `bex-co/bex` repository (about 51 MiB compressed and 206 MiB checked out, against Claude Code's 120-second clone timeout), and each marketplace update that finds new commits clones it again. From a shell, a sparse checkout fetches only the marketplace and the plugin:
+
+```bash
+claude plugin marketplace add bex-co/bex --sparse .claude-plugin plugins
+claude plugin install bex@bex-plugins
+```
+
+The plugin configures the MCP server `bex` at `https://api.bex.co/mcp` with no OAuth client ID. Render's plugin fixes `oauth.clientId: "claude"` because Render's server has no dynamic registration; Claude Code registers itself with bex (step 3 above) and signs in on first use (`/mcp`, or `claude mcp login bex`). The plugin also brings the 20 `bex:bex-*` skills, the `bex-assistant` agent, `/deploy-to-bex`, `/check-bex-status`, and a hook that suggests `bex blueprints validate` after Claude edits a `render.yaml` ([bex-cli.md](bex-cli.md#compatibility-and-branding-limits)).
+
+### Without the plugin
+
 ```bash
 claude mcp add --transport http bex-api https://api.bex.co/mcp
 ```
@@ -92,6 +112,7 @@ claude mcp add bex-cloud-agents -- api mcp-stdio --toolset cloud-agents   # or B
 ## Troubleshooting
 
 - **401 with a bare `WWW-Authenticate: Bearer` (no `resource_metadata`), or the `.well-known` URL 404s** — this deployment hasn't set `BEX_OAUTH_ISSUER`/`BEX_OAUTH_RESOURCE`, so there's nothing for a discovery-driven client to find. Nothing to fix agent-side: either ask the platform operator to set both, or use the [API-key path](#the-api-key-alternative-headless--ci-any-client) instead, which needs neither.
+- **Claude Code says "Incompatible auth server: does not support dynamic client registration"** — the authorization server's metadata (`curl -s https://oauth.bex.co/.well-known/oauth-authorization-server`) has no `registration_endpoint`, so a discovery-driven client cannot register (w31/001). The operator sets Hydra's `webfinger.oidc_discovery.client_registration_url`. Until then, connect with an [API key](#the-api-key-alternative-headless--ci-any-client) in a server of your own (`claude mcp add … --header`, above): the plugin's `bex` server takes no header.
 - **503 on `/mcp` (or any route)** — Hydra or Kratos is unreachable; bex-api fails closed rather than falling through to an unauthenticated response ([ADR012-auth.md](ADR012-auth.md)). This is an operational outage, not a client misconfiguration — retry once the platform is back.
 - **`404 session not found` after a successful initialize** — this identifies a pre-w2/m58 bex-api replica still serving the old stateful transport. Current releases accept the session id on any replica and share selected-workspace state through Postgres; upgrade every pod in the rollout rather than adding sticky routing.
 - **`error=access_denied` back at the agent** — the consent screen was denied (by you, or by someone closing the tab on it). Re-run the connect and approve it; nothing needs fixing platform-side. Note the flow also denies when the browser that answers consent isn't the one that logged in (the session must own the authorization) — if you signed in as a different user mid-flow, sign out and start over.

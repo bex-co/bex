@@ -1,0 +1,22 @@
+{
+  "name": "bex",
+  "description": "Deploy, debug, and monitor applications on bex. Includes skills, an agent, slash commands, a render.yaml validation hook, and the bex MCP server preconfigured over OAuth.",
+  "version": "1.0.0+a25af5671e63",
+  "author": {
+    "name": "bex",
+    "url": "https://bex.co"
+  },
+  "homepage": "https://github.com/bex-co/bex/tree/main/plugins/claude-code/bex",
+  "repository": "https://github.com/bex-co/bex",
+  "license": "MIT",
+  "privacyPolicyUrl": "https://bex.co/privacy",
+  "keywords": [
+    "bex",
+    "render",
+    "deploy",
+    "cloud",
+    "blueprint",
+    "monitoring",
+    "debugging"
+  ]
+}

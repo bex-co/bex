@@ -1,0 +1,20 @@
+{
+  "name": "bex-plugins",
+  "description": "bex plugins for Claude Code",
+  "owner": {
+    "name": "bex",
+    "url": "https://bex.co"
+  },
+  "plugins": [
+    {
+      "name": "bex",
+      "description": "Deploy, debug, and monitor applications on bex",
+      "author": {
+        "name": "bex",
+        "url": "https://bex.co"
+      },
+      "source": "./plugins/claude-code/bex",
+      "category": "developer-tools"
+    }
+  ]
+}
