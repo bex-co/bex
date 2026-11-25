@@ -1,6 +1,6 @@
 # w6 · m633 — A multi-instance service's deploy and restart keep every old instance serving until its replacement is healthy, as Render's zero-downtime deploy does
 
-**Worker:** worker6 **Goal:** no deploy or restart of a service with four or more instances takes an old instance out of service before a new one is healthy. Every RollingUpdate App Deployment rolls with `maxUnavailable: 0`, and a release that fails its health check leaves every old instance serving. **Status:** todo (t001–t003, t006 and t007 done; t004 waits for a production pin carrying t002)
+**Worker:** worker6 **Goal:** no deploy or restart of a service with four or more instances takes an old instance out of service before a new one is healthy. Every RollingUpdate App Deployment rolls with `maxUnavailable: 0`, and a release that fails its health check leaves every old instance serving. **Status:** blocked (t001–t003, t006 and t007 done; t004 waits for a production pin carrying `ab720955e1`)
 
 ## Tasks (in order)
 
