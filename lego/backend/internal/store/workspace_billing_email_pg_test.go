@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 // w6/m627: a workspace's billing email reads back with its plan, a write to a
@@ -59,5 +60,37 @@ func TestPGBillingEmailIsClearedByAMoveToHobby(t *testing.T) {
 	}
 	if _, _, err := st.WorkspaceBillingEmail(ctx, "tea-00000000000000000000000000"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("read of a missing workspace = %v, want ErrNotFound", err)
+	}
+}
+
+// w6/m627: a workspace finalized on Hobby stores no billing email, even
+// though its creation attempt keeps the owner's address for the Stripe setup
+// correlation — like every move to Hobby clears it (updateTenantPlanTx). An
+// upgrade then starts from the owner's live account email instead of
+// unmasking the creation-time address as one the workspace set. A Pro
+// finalize keeps the attempt's address.
+func TestPGBillingEmailIsBornEmptyOnHobbyCreation(t *testing.T) {
+	st := newReplayTestStore(t)
+	ctx := context.Background()
+	finalize := func(subject, name, plan, email string) string {
+		t.Helper()
+		attempt, err := st.CreateWorkspaceCreationAttempt(ctx, subject, name, plan, email, false, time.Now().Add(time.Hour))
+		if err != nil {
+			t.Fatal(err)
+		}
+		tenant, err := st.FinalizeWorkspaceCreation(ctx, attempt.ID, subject, time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = st.DeleteTenant(ctx, tenant.ID) })
+		return tenant.ID
+	}
+	hobby := finalize("user-hobby-born", "ws-hobby-born", PlanHobby, "owner@example.com")
+	if plan, email, err := st.WorkspaceBillingEmail(ctx, hobby); err != nil || plan != PlanHobby || email != "" {
+		t.Fatalf("finalized hobby = %q, %q, %v; want hobby with none stored", plan, email, err)
+	}
+	paid := finalize("user-paid-born", "ws-paid-born", PlanPro, "finance@example.com")
+	if plan, email, err := st.WorkspaceBillingEmail(ctx, paid); err != nil || plan != PlanPro || email != "finance@example.com" {
+		t.Fatalf("finalized pro = %q, %q, %v; want pro with the attempt's address kept", plan, email, err)
 	}
 }
