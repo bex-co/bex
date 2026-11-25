@@ -126,9 +126,9 @@ describe("useAccountThemeSync (w3/m531)", () => {
     ]);
     // The account is bound once its read is in the cache.
     await waitFor(() => expect(cachedUser(client)).toBeDefined());
-    act(() => theme.setTheme("light"));
-    act(() => theme.setHighContrast(true));
-    await act(async () => theme.setLogTheme("ALWAYS_DARK"));
+    act(() => void theme.setTheme("light"));
+    act(() => void theme.setHighContrast(true));
+    act(() => void theme.setLogTheme("ALWAYS_DARK"));
     // Every write reached the server and came back.
     await waitFor(() =>
       expect(cachedUser(client)).toMatchObject({
@@ -157,7 +157,7 @@ describe("useAccountThemeSync (w3/m531)", () => {
       },
     ]);
     await waitFor(() => expect(stored()?.themeSetting).toBe("LIGHT"));
-    act(() => theme.setTheme("dark"));
+    act(() => void theme.setTheme("dark"));
     expect(root().contains("dark")).toBe(true);
     await waitFor(() =>
       expect(toastError).toHaveBeenCalledWith(

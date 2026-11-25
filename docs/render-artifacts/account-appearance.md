@@ -11,6 +11,7 @@ Read without signing in, on 2026-11-20, from Render's public dashboard bundle (`
 - `user-DPFug-8R.js`: the GraphQL documents. `updateThemeSetting-BxAhuW7U.js`: the account menu's writer.
 - `localStorage-CPWZs5nN.js`: the browser copy.
 - `Logs-kRP_JevQ.js`, `Dropdown-D1gIrxMU.js`, `OverflowMenuItem-BCKAanA3.js`: how the log explorer, its dropdowns and its menus take a theme.
+- Re-read on 2026-11-25 for w3/097: `RowInput-vO6wbvrA.js`, `UserSettings-ZjtY3qzf.js` and `useUnsavedChangesWarning-DVhBkOwh.js`, whose provider `index-BPMVVQol.js` mounts at the app's root.
 
 ## Render's behaviour
 
@@ -29,6 +30,8 @@ The account settings list Profile, **Appearance**, Account Security, Stripe, CLI
 1. **Dashboard Theme**: an editable row (`RowInput`: the label, the current value and a ghost **Edit** button; editing shows a select with **Cancel** and **Save changes**, which reads **Saving** while it sends). The options are **System (Default)**, **Light** and **Dark**: the provider's six options filtered to the three high-contrast twins while High Contrast Mode is on and to the three bases while it is off, each twin labelled like its base (`System`, `Light`, `Dark`), the system option suffixed **(Default)**. Changing the select previews the theme on the page at once; Cancel, or leaving the page without saving, puts the stored theme back. Save sends `updateUserThemeSetting` and then commits the value the server returns to the provider and the cached user.
 2. **Log Explorer Theme**: the same editable row with **Match Dashboard (Default)** (`MATCH_APP`), **Light** (`ALWAYS_LIGHT`) and **Dark** (`ALWAYS_DARK`). Save sends `updateUserLogThemeSetting` and stores the returned value on the cached user.
 3. **High Contrast Mode**: a row headed **High Contrast Mode** with the description _"Increase the visibility of interactive elements."_ and a toggle labelled **Enabled** or **Disabled** after its state. Turning it on writes the current setting's twin, off writes its base, both through the account menu's writer (`updateUserThemeSetting`). The toggle is disabled while the Dashboard Theme row is being edited, and while it is off on a theme with no twin (`currentThemeSupportsHighContrast` is false; every theme Render offers has one).
+
+The two theme rows in detail (w3/097): before Edit, a row's select shows the saved value read-only, and the ghost **Edit** (a pencil and the word) sits under it on the right. Edit opens the select and puts a secondary **Cancel** and a primary **Save changes** in Edit's place. Save changes is off until the pick differs from the saved value, and reads **Saving**, spinning, while the account answers; Cancel is off meanwhile. A save that fails keeps the row open. While a row is open with an unsaved pick, the root provider blocks a navigation to another path with **Discard unsaved changes?** (_"You've edited the … field but haven't saved your changes. If you leave now, your changes will be lost."_, **Keep editing** and **Discard**), and a reload gets the browser's `beforeunload` prompt.
 
 ### High Contrast's twins
 
@@ -58,4 +61,4 @@ The account settings list Profile, **Appearance**, Account Security, Stripe, CLI
 
 ## What bex has since w3/m531
 
-All three settings, stored on the account in Render's enums and served by Render's GraphQL documents, with a REST extension; the account's settings follow it to every browser, High Contrast Mode is a token twin of each theme, and Log Explorer Theme reaches every explorer and what it opens. The behaviour and what is still built differently are recorded in [ADR018](../ADR018-render-parity.md)'s Identity section, row _Account Appearance_.
+All three settings, stored on the account in Render's enums and served by Render's GraphQL documents, with a REST extension; the account's settings follow it to every browser, High Contrast Mode is a token twin of each theme, and Log Explorer Theme reaches every explorer and what it opens. Since w3/097 the two themes are Render's Edit, Cancel and Save changes rows, Dashboard Theme previewing each pick until it is saved. The behaviour and what is still built differently are recorded in [ADR018](../ADR018-render-parity.md)'s Identity section, row _Account Appearance_.

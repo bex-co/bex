@@ -96,13 +96,13 @@ describe("the theme follows the account (w3/m531)", () => {
       logThemeSetting: "MATCH_APP",
     });
     act(() => theme.bindAccount(binding));
-    act(() => theme.setTheme("dark"));
+    act(() => void theme.setTheme("dark"));
     expect(root().contains("dark")).toBe(true);
     expect(writes.map((w) => w.patch)).toEqual([{ themeSetting: "DARK" }]);
     await act(async () => writes[0].resolve({ themeSetting: "DARK" }));
     expect(stored()?.themeSetting).toBe("DARK");
 
-    act(() => theme.setLogTheme("ALWAYS_DARK"));
+    act(() => void theme.setLogTheme("ALWAYS_DARK"));
     expect(writes[1].patch).toEqual({ logThemeSetting: "ALWAYS_DARK" });
   });
 
@@ -113,9 +113,9 @@ describe("the theme follows the account (w3/m531)", () => {
       logThemeSetting: "ALWAYS_LIGHT",
     });
     act(() => theme.bindAccount(binding));
-    act(() => theme.setTheme("dark"));
-    act(() => theme.setLogTheme("ALWAYS_LIGHT"));
-    act(() => theme.setHighContrast(false));
+    act(() => void theme.setTheme("dark"));
+    act(() => void theme.setLogTheme("ALWAYS_LIGHT"));
+    act(() => void theme.setHighContrast(false));
     expect(writes).toEqual([]);
   });
 
@@ -127,7 +127,7 @@ describe("the theme follows the account (w3/m531)", () => {
     });
     act(() => theme.bindAccount(binding));
     expect(root().contains("light")).toBe(true);
-    act(() => theme.setTheme("dark"));
+    act(() => void theme.setTheme("dark"));
     expect(root().contains("dark")).toBe(true);
     await act(async () => writes[0].reject(new Error("refused")));
     expect(root().contains("light")).toBe(true);
@@ -142,16 +142,16 @@ describe("the theme follows the account (w3/m531)", () => {
       logThemeSetting: "MATCH_APP",
     });
     act(() => theme.bindAccount(binding));
-    act(() => theme.setHighContrast(true));
+    act(() => void theme.setHighContrast(true));
     expect(writes[0].patch).toEqual({ themeSetting: "LIGHT_HIGH_CONTRAST" });
     expect(root().contains("high-contrast")).toBe(true);
     await act(async () => writes[0].resolve(writes[0].patch));
-    act(() => theme.setTheme("system"));
+    act(() => void theme.setTheme("system"));
     expect(writes[1].patch).toEqual({ themeSetting: "SYSTEM_HIGH_CONTRAST" });
     // Dashboard Theme still reads System, Light, Dark.
     expect(theme.theme).toBe("system");
     await act(async () => writes[1].resolve(writes[1].patch));
-    act(() => theme.setHighContrast(false));
+    act(() => void theme.setHighContrast(false));
     expect(writes[2].patch).toEqual({ themeSetting: "SYSTEM" });
     expect(root().contains("high-contrast")).toBe(false);
   });
@@ -163,9 +163,9 @@ describe("the theme follows the account (w3/m531)", () => {
       logThemeSetting: "MATCH_APP",
     });
     act(() => theme.bindAccount(binding));
-    act(() => theme.setTheme("dark"));
-    act(() => theme.setHighContrast(true));
-    act(() => theme.setLogTheme("ALWAYS_LIGHT"));
+    act(() => void theme.setTheme("dark"));
+    act(() => void theme.setHighContrast(true));
+    act(() => void theme.setLogTheme("ALWAYS_LIGHT"));
     // Only the first is in flight; the page already shows all three.
     expect(writes.map((w) => w.patch)).toEqual([{ themeSetting: "DARK" }]);
     expect(theme.highContrast).toBe(true);
@@ -189,7 +189,7 @@ describe("the theme follows the account (w3/m531)", () => {
 
   it("writes a change made before the account was bound once it is", () => {
     renderProvider();
-    act(() => theme.setTheme("dark"));
+    act(() => void theme.setTheme("dark"));
     const { binding, writes } = account({
       themeSetting: "LIGHT",
       logThemeSetting: "ALWAYS_LIGHT",
@@ -201,12 +201,76 @@ describe("the theme follows the account (w3/m531)", () => {
     expect(writes.map((w) => w.patch)).toEqual([{ themeSetting: "DARK" }]);
   });
 
+  it("resolves each change to whether the account kept it", async () => {
+    renderProvider();
+    const { binding, writes } = account({
+      themeSetting: "LIGHT",
+      logThemeSetting: "MATCH_APP",
+    });
+    act(() => theme.bindAccount(binding));
+    let kept: Promise<boolean> = Promise.resolve(false);
+    let refused: Promise<boolean> = Promise.resolve(true);
+    act(() => {
+      kept = theme.setTheme("dark");
+    });
+    // Folded into the next write while the first is in flight.
+    act(() => {
+      refused = theme.setLogTheme("ALWAYS_DARK");
+    });
+    await act(async () => writes[0].resolve(writes[0].patch));
+    await expect(kept).resolves.toBe(true);
+    await act(async () => writes[1].reject(new Error("refused")));
+    await expect(refused).resolves.toBe(false);
+    // A choice of what is saved already writes nothing and is kept.
+    await expect(theme.setTheme("dark")).resolves.toBe(true);
+    expect(writes).toHaveLength(2);
+  });
+
+  it("answers a change still waiting for the account as not saved when it signs out", async () => {
+    renderProvider();
+    let pending: Promise<boolean> = Promise.resolve(true);
+    act(() => {
+      pending = theme.setTheme("dark");
+    });
+    act(() => theme.bindAccount(null));
+    await expect(pending).resolves.toBe(false);
+  });
+
+  it("previews a theme on the page without choosing, keeping or writing it (w3/097)", () => {
+    renderProvider();
+    const { binding, writes } = account({
+      themeSetting: "LIGHT_HIGH_CONTRAST",
+      logThemeSetting: "MATCH_APP",
+    });
+    act(() => theme.bindAccount(binding));
+    act(() => theme.previewTheme("dark"));
+    expect(root().contains("dark")).toBe(true);
+    expect(root().contains("light")).toBe(false);
+    // High Contrast Mode stays as saved.
+    expect(root().contains("high-contrast")).toBe(true);
+    // The chosen theme, the browser's copy and the account are untouched.
+    expect(theme.theme).toBe("light");
+    expect(stored()?.themeSetting).toBe("LIGHT_HIGH_CONTRAST");
+    expect(writes).toEqual([]);
+    act(() => theme.previewTheme(null));
+    expect(root().contains("light")).toBe(true);
+    expect(root().contains("dark")).toBe(false);
+    // A theme chosen meanwhile replaces the preview.
+    act(() => theme.previewTheme("dark"));
+    act(() => void theme.setTheme("system"));
+    expect(theme.theme).toBe("system");
+    expect(root().contains("dark")).toBe(false);
+    expect(writes.map((w) => w.patch)).toEqual([
+      { themeSetting: "SYSTEM_HIGH_CONTRAST" },
+    ]);
+  });
+
   it("keeps a change in the browser when no account is bound (signed out)", () => {
     renderProvider();
-    act(() => theme.setTheme("dark"));
+    act(() => void theme.setTheme("dark"));
     expect(stored()?.themeSetting).toBe("DARK");
     act(() => theme.bindAccount(null));
-    act(() => theme.setTheme("light"));
+    act(() => void theme.setTheme("light"));
     expect(stored()?.themeSetting).toBe("LIGHT");
   });
 

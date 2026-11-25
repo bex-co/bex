@@ -13,16 +13,22 @@ export interface AccountThemeBinding {
 }
 
 export type ThemeProviderContextType = {
-  /** Dashboard Theme: System, Light or Dark, whatever High Contrast Mode. */
+  /** Dashboard Theme: System, Light or Dark, whatever High Contrast Mode;
+   *  the chosen one, never a preview. */
   theme: Theme;
-  /** Picks a Dashboard Theme and keeps High Contrast Mode as it is. */
-  setTheme: (theme: Theme) => void;
+  /** Picks a Dashboard Theme and keeps High Contrast Mode as it is. Each
+   *  setter resolves to whether the account kept the change. */
+  setTheme: (theme: Theme) => Promise<boolean>;
+  /** Shows a Dashboard Theme on the page without choosing it, as
+   *  Appearance's row does while it is edited (w3/097, Render's
+   *  `previewThemeSetting`); null puts the chosen theme back. */
+  previewTheme: (theme: Theme | null) => void;
   /** High Contrast Mode: the theme is its `_HIGH_CONTRAST` twin. */
   highContrast: boolean;
-  setHighContrast: (on: boolean) => void;
+  setHighContrast: (on: boolean) => Promise<boolean>;
   /** Log Explorer Theme. */
   logTheme: LogThemeSetting;
-  setLogTheme: (logTheme: LogThemeSetting) => void;
+  setLogTheme: (logTheme: LogThemeSetting) => Promise<boolean>;
   /** Whether the stored settings have been read (after hydration). */
   ready: boolean;
   /** The signed-in shell binds the account (null on sign-out). */

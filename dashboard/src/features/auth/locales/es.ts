@@ -127,6 +127,26 @@ const esAuth: Record<string, TranslationEntry> = {
     description:
       "Account settings > Appearance (w3/m531): the text beside High Contrast Mode's switch while it is off",
   },
+  "auth.appearanceEdit": {
+    message: "Editar",
+    description:
+      "Account settings > Appearance (w3/097): the ghost button under Dashboard Theme's and Log Explorer Theme's selects that opens the row for editing, Render's words",
+  },
+  "auth.appearanceCancel": {
+    message: "Cancelar",
+    description:
+      "Account settings > Appearance (w3/097): the button that ends a theme row's edit unsaved and puts the saved theme back, Render's words",
+  },
+  "auth.appearanceSaveChanges": {
+    message: "Guardar cambios",
+    description:
+      "Account settings > Appearance (w3/097): the button that writes a theme row's choice to the account, Render's words",
+  },
+  "auth.appearanceSaving": {
+    message: "Guardando",
+    description:
+      "Account settings > Appearance (w3/097): the save button's text while the account is answering, Render's words",
+  },
   "auth.integrationsSection": {
     message: "Integraciones",
     description:

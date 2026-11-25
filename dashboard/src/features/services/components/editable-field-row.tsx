@@ -93,8 +93,9 @@ export interface EditableFieldRowProps {
 const trimDraft = (draft: string) => draft.trim();
 
 /** A row's control before its pencil is pressed: the saved value at full
- *  contrast on a quiet surface, unlike a placeholder or a locked field. */
-const READ_MODE_CLASS =
+ *  contrast on a quiet surface, unlike a placeholder or a locked field.
+ *  Appearance's theme rows read the same way before Edit (w3/097). */
+export const READ_MODE_CLASS =
   "disabled:cursor-default disabled:opacity-100 bg-muted/40";
 
 /**

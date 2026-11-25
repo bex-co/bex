@@ -145,7 +145,7 @@ export function UserNav() {
   ).map(([value, Icon]) => (
     <DropdownMenuItem
       key={value}
-      onClick={() => setTheme(value)}
+      onClick={() => void setTheme(value)}
       className={theme === value ? "bg-accent" : ""}
     >
       <Icon className="mr-2 h-4 w-4" />

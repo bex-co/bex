@@ -41,7 +41,10 @@ const pick = (source: ThemeSettings, keys: string[]): Partial<ThemeSettings> =>
  * (`bindAccount`), whose stored settings then win, and every change is
  * written to it. A change shows at once; a write the server refuses puts the
  * previous setting back. Writes go one at a time, later changes folded into
- * the next, so two answers can never land out of order.
+ * the next, so two answers can never land out of order; each change resolves
+ * to whether the account kept it. A preview (`previewTheme`: Appearance's
+ * Dashboard Theme row being edited, w3/097) shows a theme on the page and is
+ * written neither to the browser's copy nor to the account.
  */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Read after hydration, so the server's render and the first client render
@@ -51,6 +54,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
   const [ready, setReady] = useState(false);
   const [override, setOverride] = useState<Theme | null>(null);
+  const [preview, setPreview] = useState<Theme | null>(null);
   // The latest settings, for a write that settles after newer changes.
   const latest = useRef(settings);
   // The bound account, with its settings as the server last answered them:
@@ -59,9 +63,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     binding: AccountThemeBinding;
     confirmed: ThemeSettings;
   } | null>(null);
-  // Changes not yet sent (all of them, before the account is bound), and the
-  // one write in flight.
+  // Changes not yet sent (all of them, before the account is bound) with
+  // whoever waits to hear whether they were saved, and the one write in
+  // flight.
   const queued = useRef<Partial<ThemeSettings>>({});
+  const waiting = useRef<((saved: boolean) => void)[]>([]);
   const sending = useRef<Partial<ThemeSettings> | null>(null);
 
   /** Shows `next`; false when it is what is shown already. */
@@ -98,13 +104,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [show]);
 
   const base = override ?? baseTheme(settings.themeSetting);
+  const shown = preview ?? base;
   const highContrast = isHighContrast(settings.themeSetting);
 
   useEffect(() => {
     if (!ready) return;
     const apply = () => {
       const root = window.document.documentElement;
-      const target = base === "system" ? getSystemTheme() : base;
+      const target = shown === "system" ? getSystemTheme() : shown;
       if (!root.classList.contains(target)) {
         root.classList.remove("light", "dark");
         root.classList.add(target);
@@ -114,11 +121,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     apply();
     // "System" follows the preference while the page is open, not only the
     // value it had when System was chosen (w4/315).
-    if (base !== "system") return;
+    if (shown !== "system") return;
     const query = window.matchMedia(SYSTEM_DARK_QUERY);
     query.addEventListener("change", apply);
     return () => query.removeEventListener("change", apply);
-  }, [base, highContrast, ready]);
+  }, [shown, highContrast, ready]);
 
   /** Sends the queued changes, one write at a time; a call while one is in
    *  flight leaves the rest to that loop. A refused write puts back each field
@@ -129,18 +136,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const bound = account.current;
       const patch = queued.current;
       if (!bound || Object.keys(patch).length === 0) return;
+      const waiters = waiting.current;
       queued.current = {};
+      waiting.current = [];
       sending.current = patch;
+      let saved = false;
       try {
-        const saved = await bound.binding.write(patch);
+        const kept = await bound.binding.write(patch);
         // The account may have been bound again meanwhile (its cache read
         // after a save); what it confirms is the one now bound.
         if (account.current) {
           account.current.confirmed = {
             ...account.current.confirmed,
-            ...saved,
+            ...kept,
           };
         }
+        saved = true;
       } catch {
         const now = account.current;
         if (now) {
@@ -156,6 +167,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       } finally {
         sending.current = null;
       }
+      for (const settle of waiters) settle(saved);
     }
   }, [keep]);
 
@@ -168,10 +180,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             latest.current[key as keyof ThemeSettings] !== value,
         ),
       );
-      if (Object.keys(changed).length === 0) return;
+      if (Object.keys(changed).length === 0) return Promise.resolve(true);
       keep({ ...latest.current, ...changed });
       queued.current = { ...queued.current, ...changed };
+      const saved = new Promise<boolean>((settle) => {
+        waiting.current.push(settle);
+      });
       void flush();
+      return saved;
     },
     [keep, flush],
   );
@@ -180,7 +196,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     (binding: AccountThemeBinding | null) => {
       account.current = binding && { binding, confirmed: binding.settings };
       if (!binding) {
+        // Signed out: the changes not yet sent never will be.
+        for (const settle of waiting.current) settle(false);
         queued.current = {};
+        waiting.current = [];
         return;
       }
       // The account's settings win, and the browser's copy takes them, but a
@@ -200,7 +219,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setTheme = useCallback(
     (theme: Theme) => {
       setOverride(null);
-      change({
+      setPreview(null);
+      return change({
         themeSetting: toThemeSetting(
           theme,
           isHighContrast(latest.current.themeSetting),
@@ -228,6 +248,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     () => ({
       theme: base,
       setTheme,
+      previewTheme: setPreview,
       highContrast,
       setHighContrast,
       logTheme: settings.logThemeSetting,

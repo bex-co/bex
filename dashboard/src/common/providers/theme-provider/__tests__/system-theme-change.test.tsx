@@ -97,17 +97,17 @@ describe("System theme follows preference changes (w4/315)", () => {
         <Capture />
       </ThemeProvider>,
     );
-    act(() => setThemeRef?.("light"));
+    act(() => void setThemeRef?.("light"));
     media.prefer("dark");
     expect(applied()).toBe("light");
     expect(media.listeners.size).toBe(0);
 
-    act(() => setThemeRef?.("dark"));
+    act(() => void setThemeRef?.("dark"));
     media.prefer("light");
     expect(applied()).toBe("dark");
 
     // Back to System applies the current preference, then follows it again.
-    act(() => setThemeRef?.("system"));
+    act(() => void setThemeRef?.("system"));
     expect(applied()).toBe("light");
     media.prefer("dark");
     expect(applied()).toBe("dark");
