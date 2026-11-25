@@ -30,7 +30,9 @@ It reads `pricing.yaml` and creates or validates:
 - a Product for each newly created Price;
 - the perpetual 100%-off coupon `bex-comp-100`;
 - deactivation of superseded kind-level shadow meters;
-- one metadata-tagged Customer Portal configuration with payment-method update, billing-information update, and invoice history enabled, and Subscription cancellation/plan changes disabled.
+- one metadata-tagged Customer Portal configuration with payment-method update, billing-information update (address, name and tax ID, never the email) and invoice history enabled, and Subscription cancellation/plan changes disabled.
+
+The portal leaves out the email on purpose (w6/m627): a workspace's billing email is a plan-gated setting (Pro and higher; Hobby's is the owner's account email), changed only on the Billing page or over the API, where bex writes it to the Customer itself ([billing-email.md](../render-artifacts/billing-email.md)). After writing the configuration the script reads it back and stops if it still differs. `--check-portal` (add `--live` for production) is the read-only drift check: it reads only bex's tagged configuration, writes nothing, and exits 1 if, for example, the configuration still lets a customer change the email. `--portal-only --dashboard-url <origin>` updates that one configuration and runs no other setup step.
 
 Run it a second time. Every active object and the coupon must report `exists`; the script must not create duplicates. If an active Price with a required lookup key has the wrong meter, currency, cadence, or amount, the script stops. Correct/deactivate the stale Stripe object deliberately, then rerun—never work around a catalog mismatch in bex code.
 
@@ -198,7 +200,7 @@ Verify all of the following before live activation:
 7. REST, GraphQL, and MCP return identical workspace-admin billing readiness. A non-admin is denied before any Stripe call, and every hosted return URL outside `BEX_DASHBOARD_URL` is rejected.
 8. Setup-mode Checkout uses the existing Customer, USD currency, dynamic payment methods (no `payment_method_types`), no line items, and no Subscription creation. Completing it with a Stripe test payment method makes both Customer and existing Subscription defaults match; replaying the signed completion is harmless.
 9. If the optional Tax gate is absent, readiness and invoice preview expose the explicit unconfigured reason and automatic tax stays off. If configured, the catalog and active test registration match and the resulting Subscription/invoice exposes Stripe's tax result.
-10. The scoped Portal opens for the same Customer, permits payment/billing-information updates and invoice history, returns only to the trusted dashboard origin, and cannot cancel or change the metered Subscription.
+10. The scoped Portal opens for the same Customer, permits payment/billing-information updates (no email change) and invoice history, returns only to the trusted dashboard origin, and cannot cancel or change the metered Subscription.
 11. With dunning enabled in test mode, a failed/action-required invoice creates one visible grace deadline; duplicate and older events are retained without repeating the transition.
 12. Grace expiry suspends only running App/Postgres/Key Value resources, never static content or tenant data; each changed resource has the exact billing ownership marker.
 13. A newer successful payment enters recovery and resumes only resources whose exact marker remains. A pre-suspended, deleted, or independently re-marked resource remains untouched.

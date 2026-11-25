@@ -26,6 +26,7 @@ The captures are local QA artifacts and intentionally remain outside source cont
 - When collection is requested, the server reserves an opaque attempt and `tea-*`, creates that workspace's Stripe Customer using the submitted email, and creates a SetupIntent. The browser receives only Stripe's publishable key and client secret, and renders the Payment Element. Raw PAN/CVC never enters bex state.
 - Finalization re-reads the succeeded SetupIntent and Customer-bound PaymentMethod, binds the Customer/Subscription defaults, then atomically creates the tenant, owner membership, billing mapping, payment marker, and stored billing email. The workspace is selected only after that transaction returns.
 - The attempt is subject-bound, expiring, resumable after redirect/refresh, and idempotent on finalization. Cancelled or abandoned attempts stay outside `tenants` and are reclaimed by a leased cleanup worker, so they are never visible as usable workspaces.
+- After creation a Pro or higher workspace changes its billing email on the Billing page, and a Hobby workspace's stays its owner's account email ([billing-email.md](billing-email.md), w6/m627).
 - The legacy `createWorkspace(name, plan)` GraphQL mutation remains the explicit billing-off compatibility path. When policy requires collection it returns stable `PAYMENT_REQUIRED`; clients must use `prepareWorkspaceCreation` followed by `finalizeWorkspaceCreation`. REST and MCP workspace mutations remain absent to match Render's public surface.
 
 ## Comparison

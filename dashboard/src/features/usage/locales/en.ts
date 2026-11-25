@@ -467,6 +467,61 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "No payment method",
     description: "Shown when the workspace has no payment method",
   },
+  "usage.billingEmailTitle": {
+    message: "Billing email",
+    description:
+      "Billing email card title and section navigation entry on the billing page (w6/m627)",
+  },
+  "usage.billingEmailDescription": {
+    message:
+      "Billing notices for this workspace go to this address, and its invoices are addressed to it.",
+    description: "Billing email card description: what the address is used for",
+  },
+  "usage.billingEmailHobbyNote": {
+    message:
+      "Hobby workspaces use the owner's account email. A separate billing email is available on Pro and above.",
+    description:
+      "Note under a Hobby workspace's billing email, which is read-only and is the owner's account email",
+  },
+  "usage.billingEmailNone": {
+    message: "No billing email",
+    description:
+      "Shown when neither a billing email nor the owner's account email is known",
+  },
+  "usage.billingEmailUnreadable": {
+    message: "The billing email could not be loaded.",
+    description: "Shown when the billing email could not be read",
+  },
+  "usage.billingEmailEdit": {
+    message: "Edit",
+    description: "Button that opens the billing email dialog (Pro and higher)",
+  },
+  "usage.billingEmailDialogTitle": {
+    message: "Edit billing email",
+    description: "Title of the dialog that sets the billing email",
+  },
+  "usage.billingEmailDialogDescription": {
+    message:
+      "Billing notices also reach the workspace's admins at their own addresses.",
+    description: "Description in the billing email dialog",
+  },
+  "usage.billingEmailLabel": {
+    message: "Email address",
+    description: "Label of the billing email input",
+  },
+  "usage.billingEmailSave": {
+    message: "Save",
+    description: "Save button of the billing email dialog",
+  },
+  "usage.billingEmailSaved": {
+    message: "Billing email set to {email}",
+    description:
+      "Toast after the billing email was saved; {email} is the new address",
+  },
+  "usage.billingEmailError": {
+    message: "Could not update the billing email",
+    description: "Fallback toast when the billing email could not be saved",
+  },
   "usage.includedUsageTitle": {
     message: "Included usage",
     description:

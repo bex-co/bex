@@ -79,6 +79,12 @@ const (
 	// (docs.devin.ai/admin/billing/usage, read 2026-11-22). Every other plan
 	// keeps the 5-minute default.
 	FeatureAgentIdleTimeout PlanFeature = "agent session idle timeouts"
+	// FeatureBillingEmail is a workspace billing email other than its owner's
+	// account email (w6/m627): "Billing email address is available on the
+	// Pro plan and above", and Render's new-workspace form resets a Hobby
+	// workspace's billing email to the account email and disables editing
+	// (docs/render-artifacts/billing-email.md).
+	FeatureBillingEmail PlanFeature = "a separate billing email"
 )
 
 // planFeatures is the one table of each gated feature's lowest plan and its
@@ -107,6 +113,7 @@ var planFeatures = map[PlanFeature]struct {
 	FeatureManagedOIDC:            {minimum: planPro, key: "managedOIDC", singular: true},
 	FeatureLogicalReplication:     {minimum: planPro, key: "logicalReplication", singular: true},
 	FeatureAgentIdleTimeout:       {minimum: planEnterprise, key: "agentIdleTimeout"},
+	FeatureBillingEmail:           {minimum: planPro, key: "billingEmail", singular: true},
 }
 
 // Machine codes for the workspace-plan refusals (w8/m138 t013), on REST's

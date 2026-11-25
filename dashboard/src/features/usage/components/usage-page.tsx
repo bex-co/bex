@@ -37,6 +37,7 @@ import { CustomDomainsCard } from "./custom-domains-card";
 import { FreeHoursCard } from "./free-hours-card";
 import { PlanCard } from "./plan-card";
 import { PaymentMethodCard } from "./payment-method-card";
+import { BillingEmailCard } from "./billing-email-card";
 import { ChargesCard } from "./charges-card";
 import { AgentModelCard } from "./agent-model-card";
 import { CreditBalanceCard, InvoiceHistoryCard } from "./billing-summary-cards";
@@ -50,10 +51,10 @@ import { cn } from "@/common/lib/utils/utils";
 /**
  * The workspace billing page (`/billing`).
  *
- * Seven cards, each answering one question a person opens this page with: what
- * plan am I on, what will you charge, what am I allowed to run, what is this
- * month costing me and why, what are my agents' models costing (ADR091 D6),
- * what credit do I hold, and what have I paid. The
+ * Eight cards, each answering one question a person opens this page with: what
+ * plan am I on, what will you charge, where do the bills go (w6/m627), what am
+ * I allowed to run, what is this month costing me and why, what are my agents'
+ * models costing (ADR091 D6), what credit do I hold, and what have I paid. The
  * charge tree (ChargesCard) carries the consumption detail that four separate
  * per-meter usage tables used to spread across the page without ever pricing
  * it.
@@ -167,6 +168,9 @@ export function UsagePage() {
           className={SECTION_NAVIGATION_TARGET_CLASS}
         >
           <PaymentMethodCard />
+        </section>
+        <section id="billing-email" className={SECTION_NAVIGATION_TARGET_CLASS}>
+          <BillingEmailCard />
         </section>
         <section
           id="included-usage"

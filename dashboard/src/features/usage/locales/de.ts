@@ -478,6 +478,61 @@ const deUsage: Record<string, TranslationEntry> = {
     message: "Keine Zahlungsmethode",
     description: "Shown when the workspace has no payment method",
   },
+  "usage.billingEmailTitle": {
+    message: "Rechnungs-E-Mail",
+    description:
+      "Billing email card title and section navigation entry on the billing page (w6/m627)",
+  },
+  "usage.billingEmailDescription": {
+    message:
+      "Abrechnungshinweise für diesen Workspace gehen an diese Adresse, und seine Rechnungen sind an sie adressiert.",
+    description: "Billing email card description: what the address is used for",
+  },
+  "usage.billingEmailHobbyNote": {
+    message:
+      "Hobby-Workspaces verwenden die Konto-E-Mail des Inhabers. Eine eigene Rechnungs-E-Mail gibt es ab Pro.",
+    description:
+      "Note under a Hobby workspace's billing email, which is read-only and is the owner's account email",
+  },
+  "usage.billingEmailNone": {
+    message: "Keine Rechnungs-E-Mail",
+    description:
+      "Shown when neither a billing email nor the owner's account email is known",
+  },
+  "usage.billingEmailUnreadable": {
+    message: "Die Rechnungs-E-Mail konnte nicht geladen werden.",
+    description: "Shown when the billing email could not be read",
+  },
+  "usage.billingEmailEdit": {
+    message: "Bearbeiten",
+    description: "Button that opens the billing email dialog (Pro and higher)",
+  },
+  "usage.billingEmailDialogTitle": {
+    message: "Rechnungs-E-Mail bearbeiten",
+    description: "Title of the dialog that sets the billing email",
+  },
+  "usage.billingEmailDialogDescription": {
+    message:
+      "Abrechnungshinweise gehen außerdem an die Admins des Workspace unter ihren eigenen Adressen.",
+    description: "Description in the billing email dialog",
+  },
+  "usage.billingEmailLabel": {
+    message: "E-Mail-Adresse",
+    description: "Label of the billing email input",
+  },
+  "usage.billingEmailSave": {
+    message: "Speichern",
+    description: "Save button of the billing email dialog",
+  },
+  "usage.billingEmailSaved": {
+    message: "Rechnungs-E-Mail auf {email} gesetzt",
+    description:
+      "Toast after the billing email was saved; {email} is the new address",
+  },
+  "usage.billingEmailError": {
+    message: "Die Rechnungs-E-Mail konnte nicht aktualisiert werden",
+    description: "Fallback toast when the billing email could not be saved",
+  },
   "usage.includedUsageTitle": {
     message: "Enthaltene Nutzung",
     description:

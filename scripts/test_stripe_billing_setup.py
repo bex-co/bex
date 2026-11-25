@@ -12,6 +12,20 @@ SETUP = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(SETUP)
 
 
+def portal_config(updates=("address", "name", "tax_id")):
+    """A portal configuration as Stripe returns it, bex's by default."""
+    return {
+        "id": "bpc_test",
+        "features": {
+            "payment_method_update": {"enabled": True},
+            "invoice_history": {"enabled": True},
+            "customer_update": {"enabled": True, "allowed_updates": list(updates)},
+            "subscription_cancel": {"enabled": False},
+            "subscription_update": {"enabled": False},
+        },
+    }
+
+
 class StripeBillingSetupTest(TestCase):
     def test_stripe_rejects_api_error_json_even_when_cli_exits_zero(self):
         result = mock.Mock(returncode=0, stdout='{"error":{"message":"denied"}}', stderr="")
@@ -233,7 +247,7 @@ class StripeBillingSetupTest(TestCase):
         with mock.patch.object(SETUP, "list_all", return_value=[]), mock.patch.object(
             SETUP,
             "stripe",
-            return_value={"id": "bpc_test"},
+            return_value=portal_config(),
         ) as stripe:
             self.assertEqual(
                 ("bpc_test", "created"),
@@ -244,12 +258,22 @@ class StripeBillingSetupTest(TestCase):
             self.assertIn("default_return_url=https://dashboard.bex.co/usage", args)
             self.assertIn("features[payment_method_update][enabled]=true", args)
             self.assertIn("features[subscription_cancel][enabled]=false", args)
+            # w6/m627: the billing email is changed only through bex.
+            updates = [a for a in args if a.startswith("features[customer_update][allowed_updates]")]
+            self.assertEqual(
+                [
+                    "features[customer_update][allowed_updates][0]=address",
+                    "features[customer_update][allowed_updates][1]=name",
+                    "features[customer_update][allowed_updates][2]=tax_id",
+                ],
+                updates,
+            )
 
         existing = {"id": "bpc_test", "metadata": {SETUP.PORTAL_METADATA_KEY: "true"}}
         with mock.patch.object(SETUP, "list_all", return_value=[existing]), mock.patch.object(
             SETUP,
             "stripe",
-            return_value={"id": "bpc_test"},
+            return_value=portal_config(),
         ) as stripe:
             self.assertEqual(
                 ("bpc_test", "exists"),
@@ -375,6 +399,61 @@ class StripeBillingSetupTest(TestCase):
             stripe.assert_not_called()
         with self.assertRaisesRegex(RuntimeError, "needs --webhook-url"):
             SETUP.main(add_missing_webhook_events=True)
+
+    def test_portal_drift_names_an_email_change_and_every_other_difference(self):
+        # w6/m627: a configuration that still lets a customer change the email
+        # drifts, and so does one that lets them cancel the Subscription.
+        self.assertEqual([], SETUP.portal_drift(portal_config()))
+        drift = SETUP.portal_drift(portal_config(updates=["address", "email", "name", "tax_id"]))
+        self.assertEqual(1, len(drift))
+        self.assertIn("allowed_updates=['address', 'email', 'name', 'tax_id']", drift[0])
+        cancel = portal_config()
+        cancel["features"]["subscription_cancel"]["enabled"] = True
+        self.assertEqual(["features.subscription_cancel.enabled=True want False"], SETUP.portal_drift(cancel))
+        # A bare configuration lacks the three features bex turns on and the
+        # allowed updates; the two it turns off are already off.
+        self.assertEqual(4, len(SETUP.portal_drift({"id": "bpc_bare"})))
+
+    def test_portal_write_that_still_drifts_fails_the_run(self):
+        # Stripe answering with the old allowed updates (a write it ignored)
+        # must not read as success.
+        existing = {"id": "bpc_test", "metadata": {SETUP.PORTAL_METADATA_KEY: "true"}}
+        with mock.patch.object(SETUP, "list_all", return_value=[existing]), mock.patch.object(
+            SETUP, "stripe", return_value=portal_config(updates=["address", "email", "name", "tax_id"])
+        ):
+            with self.assertRaisesRegex(RuntimeError, "still drifts"):
+                SETUP.ensure_portal_configuration("https://dashboard.bex.co")
+
+    def test_check_portal_reads_only_bex_tagged_configuration(self):
+        other = portal_config(updates=["email"])
+        other["id"], other["metadata"] = "bpc_other_product", {}
+        ours = portal_config(updates=["address", "email", "name", "tax_id"])
+        ours["metadata"] = {SETUP.PORTAL_METADATA_KEY: "true"}
+        with mock.patch.object(SETUP, "list_all", return_value=[other, ours]), \
+                mock.patch.object(SETUP, "stripe") as stripe:
+            with self.assertRaisesRegex(RuntimeError, "bpc_test drifted: .*email"):
+                SETUP.main(check_portal=True)
+            stripe.assert_not_called()
+        ours["features"]["customer_update"]["allowed_updates"] = ["address", "name", "tax_id"]
+        with mock.patch.object(SETUP, "list_all", return_value=[other, ours]), \
+                mock.patch.object(SETUP, "stripe") as stripe:
+            SETUP.main(check_portal=True)
+            stripe.assert_not_called()
+        with mock.patch.object(SETUP, "list_all", return_value=[other]):
+            with self.assertRaisesRegex(RuntimeError, "found 0"):
+                SETUP.main(check_portal=True)
+
+    def test_portal_only_mode_touches_only_the_portal(self):
+        with mock.patch.object(SETUP, "ensure_portal_configuration", return_value=("bpc_test", "exists")) as ensure, \
+                mock.patch.object(SETUP, "ensure_webhook_endpoint") as webhook, \
+                mock.patch.object(SETUP, "parse_pricing") as pricing:
+            SETUP.main(live=True, dashboard_url="https://dashboard.bex.co", portal_only=True)
+            ensure.assert_called_once_with("https://dashboard.bex.co")
+            webhook.assert_not_called()
+            pricing.assert_not_called()
+            self.assertEqual(["--live"], SETUP.STRIPE_GLOBAL_ARGS)
+        with self.assertRaisesRegex(RuntimeError, "needs --dashboard-url"):
+            SETUP.main(portal_only=True)
 
     def test_portal_configuration_rejects_non_origin_urls(self):
         for url in (

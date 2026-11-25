@@ -1,0 +1,20 @@
+# A workspace's billing email (w6/m627): where its invoices and billing
+# notices go. email is the owner's account email on Hobby, and on Pro or
+# higher until the workspace sets its own; configurable says whether its plan
+# lets it set one. Read by Admin, Developer and Billing; set by Admin and
+# Billing on Pro and higher (PLAN_FEATURE_REQUIRED on Hobby).
+query WorkspaceBillingEmail($workspaceId: String!) {
+  workspaceBillingEmail(workspaceId: $workspaceId) {
+    workspaceId
+    email
+    configurable
+  }
+}
+
+mutation SetWorkspaceBillingEmail($workspaceId: String!, $email: String!) {
+  setWorkspaceBillingEmail(workspaceId: $workspaceId, email: $email) {
+    workspaceId
+    email
+    configurable
+  }
+}

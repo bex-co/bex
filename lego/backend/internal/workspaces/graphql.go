@@ -131,6 +131,16 @@ var pipelineSettingsGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var billingEmailGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "WorkspaceBillingEmail",
+	Description: "Where a workspace's invoices and billing notices go (w6/m627). email is the owner's account email on Hobby, and on a higher plan until the workspace sets its own; configurable is whether its plan lets it set one (Pro and higher).",
+	Fields: graphql.Fields{
+		"workspaceId":  gqlutil.ReqStrField(func(v BillingEmailView) any { return v.WorkspaceID }),
+		"email":        gqlutil.ReqStrField(func(v BillingEmailView) any { return v.Email }),
+		"configurable": gqlutil.ReqBoolField(func(v BillingEmailView) any { return v.Configurable }),
+	},
+})
+
 var workspaceCreationPolicyGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "WorkspaceCreationPolicy",
 	Fields: graphql.Fields{
@@ -325,6 +335,15 @@ func (s *Service) workspaceGraphQLQuery() graphql.Fields {
 				return s.PipelineSettings(p.Context, p.Args["workspaceId"].(string))
 			},
 		},
+		// workspaceBillingEmail is the workspace's billing email (w6/m627), for
+		// members who may view billing details (Admin, Developer, Billing).
+		"workspaceBillingEmail": &graphql.Field{
+			Type: billingEmailGQLType,
+			Args: graphql.FieldConfigArgument{"workspaceId": gqlutil.ReqArg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.BillingEmail(p.Context, p.Args["workspaceId"].(string))
+			},
+		},
 		// workspaceLimits returns the named workspace's resource usage vs. cap
 		// (w7/m9): "3/5 services" visibility surface. Authorizes can_view on the
 		// workspace (the same membership source as the workspaces list).
@@ -448,6 +467,18 @@ func (s *Service) workspaceGraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetOverlappingDeployPolicy(p.Context, p.Args["id"].(string), p.Args["policy"].(string))
+			},
+		},
+		// setWorkspaceBillingEmail sets a Pro or higher workspace's billing
+		// email (w6/m627): Admin and Billing; PLAN_FEATURE_REQUIRED on Hobby.
+		"setWorkspaceBillingEmail": &graphql.Field{
+			Type: billingEmailGQLType,
+			Args: graphql.FieldConfigArgument{
+				"workspaceId": gqlutil.ReqArg(graphql.String),
+				"email":       gqlutil.ReqArg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetBillingEmail(p.Context, p.Args["workspaceId"].(string), p.Args["email"].(string))
 			},
 		},
 		// setPipelineSpendLimit sets the workspace's monthly pipeline spend

@@ -278,7 +278,10 @@ func (s *PGStore) SetTenantDisplayNameIfUnset(ctx context.Context, id, displayNa
 // a downgrade drops a kept floor its shorter window already covers, and an
 // upgrade into audit logs starts the audit history at that moment
 // (core.LogsVisibleFromAfterPlanChange, core.PITRVisibleFromAfterPlanChange,
-// core.AuditVisibleFromAfterPlanChange).
+// core.AuditVisibleFromAfterPlanChange). A move to Hobby also clears the
+// billing email a Pro or higher plan let the workspace set (w6/m627): Hobby's
+// billing email is its owner's account email, so an upgrade later starts from
+// that again rather than from an address set before the downgrade.
 // The row is locked first, so two changes at once cannot both read the old
 // plan.
 func (s *PGStore) UpdateTenantPlan(ctx context.Context, id, plan string) (Tenant, error) {
@@ -309,8 +312,35 @@ func updateTenantPlanTx(ctx context.Context, tx pgx.Tx, id, plan string) (Tenant
 	keptPITR := nullTime(core.PITRVisibleFromAfterPlanChange(old, plan, timeOrZero(pitrFrom), now))
 	keptAudit := nullTime(core.AuditVisibleFromAfterPlanChange(old, plan, timeOrZero(auditFrom), now))
 	return scanTenant(tx.QueryRow(ctx,
-		`UPDATE tenants SET plan = $2, logs_visible_from = $3, pitr_visible_from = $4, audit_visible_from = $5, updated_at = now() WHERE id = $1
+		`UPDATE tenants SET plan = $2, logs_visible_from = $3, pitr_visible_from = $4, audit_visible_from = $5,
+		 billing_email = CASE WHEN $2 = '`+PlanHobby+`' THEN '' ELSE billing_email END, updated_at = now() WHERE id = $1
 		 RETURNING `+tenantColumns, id, plan, keptLogs, keptPITR, keptAudit))
+}
+
+// WorkspaceBillingEmail is a workspace's plan and the billing email it stored
+// (w6/m627), in one read: the address given at creation, or set since by a
+// Pro or higher workspace's Admin or Billing member; "" when none was, which
+// stands for the owner's account email. ErrNotFound when the workspace
+// doesn't exist.
+func (s *PGStore) WorkspaceBillingEmail(ctx context.Context, workspaceID string) (plan, email string, err error) {
+	if err := s.Pool.QueryRow(ctx, `SELECT plan, billing_email FROM tenants WHERE id = $1`, workspaceID).Scan(&plan, &email); err != nil {
+		return "", "", classify("workspace", err)
+	}
+	return plan, email, nil
+}
+
+// SetWorkspaceBillingEmail stores a workspace's billing email, already
+// normalized by the caller (w6/m627). ErrNotFound when the workspace doesn't
+// exist.
+func (s *PGStore) SetWorkspaceBillingEmail(ctx context.Context, workspaceID, email string) error {
+	tag, err := s.Pool.Exec(ctx, `UPDATE tenants SET billing_email = $2, updated_at = now() WHERE id = $1`, workspaceID, email)
+	if err != nil {
+		return classify("workspace", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("workspace: %w", ErrNotFound)
+	}
+	return nil
 }
 
 // WorkspacePlan is a workspace's plan (core.WorkspacePlanReader). ErrNotFound

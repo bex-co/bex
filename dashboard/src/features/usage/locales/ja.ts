@@ -472,6 +472,61 @@ const jaUsage: Record<string, TranslationEntry> = {
     message: "お支払い方法がありません",
     description: "Shown when the workspace has no payment method",
   },
+  "usage.billingEmailTitle": {
+    message: "請求先メールアドレス",
+    description:
+      "Billing email card title and section navigation entry on the billing page (w6/m627)",
+  },
+  "usage.billingEmailDescription": {
+    message:
+      "このワークスペースの請求に関するお知らせはこのアドレスに届き、請求書もこのアドレス宛てになります。",
+    description: "Billing email card description: what the address is used for",
+  },
+  "usage.billingEmailHobbyNote": {
+    message:
+      "Hobby ワークスペースではオーナーのアカウントのメールアドレスを使います。別の請求先メールアドレスは Pro 以上で設定できます。",
+    description:
+      "Note under a Hobby workspace's billing email, which is read-only and is the owner's account email",
+  },
+  "usage.billingEmailNone": {
+    message: "請求先メールアドレスがありません",
+    description:
+      "Shown when neither a billing email nor the owner's account email is known",
+  },
+  "usage.billingEmailUnreadable": {
+    message: "請求先メールアドレスを読み込めませんでした。",
+    description: "Shown when the billing email could not be read",
+  },
+  "usage.billingEmailEdit": {
+    message: "編集",
+    description: "Button that opens the billing email dialog (Pro and higher)",
+  },
+  "usage.billingEmailDialogTitle": {
+    message: "請求先メールアドレスを編集",
+    description: "Title of the dialog that sets the billing email",
+  },
+  "usage.billingEmailDialogDescription": {
+    message:
+      "請求に関するお知らせは、ワークスペースの管理者それぞれのアドレスにも届きます。",
+    description: "Description in the billing email dialog",
+  },
+  "usage.billingEmailLabel": {
+    message: "メールアドレス",
+    description: "Label of the billing email input",
+  },
+  "usage.billingEmailSave": {
+    message: "保存",
+    description: "Save button of the billing email dialog",
+  },
+  "usage.billingEmailSaved": {
+    message: "請求先メールアドレスを {email} に設定しました",
+    description:
+      "Toast after the billing email was saved; {email} is the new address",
+  },
+  "usage.billingEmailError": {
+    message: "請求先メールアドレスを更新できませんでした",
+    description: "Fallback toast when the billing email could not be saved",
+  },
   "usage.includedUsageTitle": {
     message: "含まれる使用量",
     description:

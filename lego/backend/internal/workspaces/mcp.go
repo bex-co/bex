@@ -62,5 +62,26 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, limits, nil
 	})
 
+	// get_billing_email / update_billing_email — bex extension (w6/m627):
+	// the workspace's billing email, as the Billing page reads and sets it.
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "get_billing_email",
+		Description: "Get where the workspace's invoices and billing notices go: email is its owner's account email on Hobby, and on Pro or higher until the workspace sets its own; configurable says whether its plan lets it set one. Requires the Admin, Developer or Billing role, as Render's View billing details does. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, BillingEmailView, error) {
+		out, err := s.BillingEmail(ctx, core.NamedWorkspace(ctx))
+		return nil, out, err
+	})
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "update_billing_email",
+		Description: "Set the workspace's billing email, which its Stripe customer and bex's billing notices then use. Pro plan or higher (PLAN_FEATURE_REQUIRED on Hobby, whose billing email is its owner's account email); requires the Admin or Billing role. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in billingEmailArgs) (*mcp.CallToolResult, BillingEmailView, error) {
+		out, err := s.SetBillingEmail(ctx, core.NamedWorkspace(ctx), in.Email)
+		return nil, out, err
+	})
+
 	s.registerOrganizationMCP(srv)
+}
+
+type billingEmailArgs struct {
+	Email string `json:"email" jsonschema:"the billing email address"`
 }

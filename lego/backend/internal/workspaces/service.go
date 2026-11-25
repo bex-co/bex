@@ -70,6 +70,10 @@ type Service struct {
 	// legacy test stores do not accidentally gain provisional-financial verbs.
 	CreationStore   WorkspaceCreationStore
 	CreationBilling WorkspaceCreationBilling
+	// CustomerEmail sets the Stripe Customer's email when a workspace's billing
+	// email changes, and when a move to Hobby resets it (w6/m627). Nil (Stripe
+	// off) changes bex's own record alone.
+	CustomerEmail CustomerEmailSetter
 	// Granter/Revoker keep OpenFGA membership in step with the tenant_members
 	// rows: an owner tuple on create, its removal on delete. Both nil when authz
 	// is disabled (the tuples don't exist to write) — the row is still the
@@ -1481,6 +1485,19 @@ func (s *Service) ChangePlan(ctx context.Context, id, plan string) (WorkspaceVie
 	if t.Plan == plan {
 		return view(t, "admin"), nil // already there — nothing to write
 	}
+	v, err := s.changePlan(ctx, t, plan)
+	// Hobby's billing email is its owner's account email (w6/m627): the plan
+	// write cleared the stored one, and Stripe's copy follows it.
+	if err == nil && plan == store.PlanHobby {
+		s.resetCustomerEmail(ctx, t.ID)
+	}
+	return v, err
+}
+
+// changePlan is ChangePlan's move of workspace t to plan, which differs from
+// t's own.
+func (s *Service) changePlan(ctx context.Context, t store.Tenant, plan string) (WorkspaceView, error) {
+	id := t.ID
 	identity, _ := core.IdentityFrom(ctx)
 	if err := s.requirePlanEntitlement(ctx, identity.Subject, id, plan); err != nil {
 		return WorkspaceView{}, err

@@ -2218,6 +2218,7 @@ type Mutation {
   setStaticRoutes(id: String!, routes: [StaticRouteInput]): Service
   setSubdomainPolicy(confirm: String, id: String!, policy: String!): Service
   setWebhookEndpointEnabled(enabled: Boolean!, id: String!, ownerId: String): WebhookEndpoint
+  setWorkspaceBillingEmail(email: String!, workspaceId: String!): WorkspaceBillingEmail
   setWorkspaceIPAllowList(id: String!, ipAllowList: [IPAllowListEntryInput!]!): Workspace
   setWorkspaceOverlappingDeployPolicy(id: String!, policy: String!): Workspace
   setWorkspacePrivacy(privacy: String!, workspaceId: String!): Workspace
@@ -2738,6 +2739,7 @@ type Query {
   webhookEndpoints(ownerId: String): [WebhookEndpoint]
   webhookEventTypes: [String]
   workspace(id: String!): Workspace
+  workspaceBillingEmail(workspaceId: String!): WorkspaceBillingEmail
   workspaceBillingReadiness(workspaceId: String!): WorkspaceBillingReadiness
   workspaceCreationAttempt(id: String!): WorkspaceCreationAttempt
   workspaceCreationPolicy(plan: String!): WorkspaceCreationPolicy
@@ -3397,6 +3399,12 @@ type Workspace {
   requireTwoFactor: Boolean
   role: String
   slug: String
+}
+
+type WorkspaceBillingEmail {
+  configurable: Boolean!
+  email: String!
+  workspaceId: String!
 }
 
 type WorkspaceBillingReadiness {

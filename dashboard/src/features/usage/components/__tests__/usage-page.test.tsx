@@ -39,6 +39,10 @@ vi.mock("@/features/usage/components/payment-method-card", () => ({
   PaymentMethodCard: () => <div data-testid="payment-method-card" />,
 }));
 
+vi.mock("@/features/usage/components/billing-email-card", () => ({
+  BillingEmailCard: () => <div data-testid="billing-email-card" />,
+}));
+
 // The page mounts the section nav twice (mobile bar + desktop rail), and its
 // labels are the card titles, so leaving it in makes every title query
 // ambiguous. It has its own test.
@@ -106,9 +110,18 @@ describe("UsagePage", () => {
   it("renders the billing cards in order, money before consumption detail", () => {
     render(<UsagePage />);
 
-    expect(screen.getByTestId("plan-card")).toBeInTheDocument();
-    expect(screen.getByTestId("payment-method-card")).toBeInTheDocument();
-    expect(screen.getByTestId("included-usage")).toBeInTheDocument();
+    const order = [
+      "plan-card",
+      "payment-method-card",
+      "billing-email-card",
+      "included-usage",
+    ].map((id) => screen.getByTestId(id));
+    for (let i = 1; i < order.length; i++) {
+      expect(
+        order[i - 1].compareDocumentPosition(order[i]) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
     expect(screen.getByText("Charges")).toBeInTheDocument();
   });
 
@@ -286,6 +299,7 @@ describe("billing details per role (w9/m620)", () => {
       for (const card of [
         "plan-card",
         "payment-method-card",
+        "billing-email-card",
         "included-usage",
       ]) {
         expect(screen.queryByTestId(card)).not.toBeInTheDocument();

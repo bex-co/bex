@@ -460,6 +460,59 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "未添加付款方式",
     description: "Shown when the workspace has no payment method",
   },
+  "usage.billingEmailTitle": {
+    message: "账单邮箱",
+    description:
+      "Billing email card title and section navigation entry on the billing page (w6/m627)",
+  },
+  "usage.billingEmailDescription": {
+    message: "此工作区的账单通知会发送到此地址，发票也开给此地址。",
+    description: "Billing email card description: what the address is used for",
+  },
+  "usage.billingEmailHobbyNote": {
+    message:
+      "Hobby 工作区使用所有者的账户邮箱。Pro 及以上套餐可设置单独的账单邮箱。",
+    description:
+      "Note under a Hobby workspace's billing email, which is read-only and is the owner's account email",
+  },
+  "usage.billingEmailNone": {
+    message: "暂无账单邮箱",
+    description:
+      "Shown when neither a billing email nor the owner's account email is known",
+  },
+  "usage.billingEmailUnreadable": {
+    message: "无法加载账单邮箱。",
+    description: "Shown when the billing email could not be read",
+  },
+  "usage.billingEmailEdit": {
+    message: "编辑",
+    description: "Button that opens the billing email dialog (Pro and higher)",
+  },
+  "usage.billingEmailDialogTitle": {
+    message: "编辑账单邮箱",
+    description: "Title of the dialog that sets the billing email",
+  },
+  "usage.billingEmailDialogDescription": {
+    message: "账单通知也会发送到工作区管理员各自的邮箱。",
+    description: "Description in the billing email dialog",
+  },
+  "usage.billingEmailLabel": {
+    message: "邮箱地址",
+    description: "Label of the billing email input",
+  },
+  "usage.billingEmailSave": {
+    message: "保存",
+    description: "Save button of the billing email dialog",
+  },
+  "usage.billingEmailSaved": {
+    message: "账单邮箱已设为 {email}",
+    description:
+      "Toast after the billing email was saved; {email} is the new address",
+  },
+  "usage.billingEmailError": {
+    message: "无法更新账单邮箱",
+    description: "Fallback toast when the billing email could not be saved",
+  },
   "usage.includedUsageTitle": {
     message: "包含用量",
     description:

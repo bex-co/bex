@@ -476,6 +476,61 @@ const esUsage: Record<string, TranslationEntry> = {
     message: "Sin método de pago",
     description: "Shown when the workspace has no payment method",
   },
+  "usage.billingEmailTitle": {
+    message: "Correo de facturación",
+    description:
+      "Billing email card title and section navigation entry on the billing page (w6/m627)",
+  },
+  "usage.billingEmailDescription": {
+    message:
+      "Los avisos de facturación de este espacio de trabajo se envían a esta dirección, y sus facturas van dirigidas a ella.",
+    description: "Billing email card description: what the address is used for",
+  },
+  "usage.billingEmailHobbyNote": {
+    message:
+      "Los espacios de trabajo Hobby usan el correo de la cuenta del propietario. Un correo de facturación propio está disponible en Pro y superiores.",
+    description:
+      "Note under a Hobby workspace's billing email, which is read-only and is the owner's account email",
+  },
+  "usage.billingEmailNone": {
+    message: "Sin correo de facturación",
+    description:
+      "Shown when neither a billing email nor the owner's account email is known",
+  },
+  "usage.billingEmailUnreadable": {
+    message: "No se pudo cargar el correo de facturación.",
+    description: "Shown when the billing email could not be read",
+  },
+  "usage.billingEmailEdit": {
+    message: "Editar",
+    description: "Button that opens the billing email dialog (Pro and higher)",
+  },
+  "usage.billingEmailDialogTitle": {
+    message: "Editar correo de facturación",
+    description: "Title of the dialog that sets the billing email",
+  },
+  "usage.billingEmailDialogDescription": {
+    message:
+      "Los avisos de facturación también llegan a los administradores del espacio de trabajo en sus propias direcciones.",
+    description: "Description in the billing email dialog",
+  },
+  "usage.billingEmailLabel": {
+    message: "Dirección de correo",
+    description: "Label of the billing email input",
+  },
+  "usage.billingEmailSave": {
+    message: "Guardar",
+    description: "Save button of the billing email dialog",
+  },
+  "usage.billingEmailSaved": {
+    message: "Correo de facturación cambiado a {email}",
+    description:
+      "Toast after the billing email was saved; {email} is the new address",
+  },
+  "usage.billingEmailError": {
+    message: "No se pudo actualizar el correo de facturación",
+    description: "Fallback toast when the billing email could not be saved",
+  },
   "usage.includedUsageTitle": {
     message: "Uso incluido",
     description:

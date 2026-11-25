@@ -218,6 +218,7 @@ var scalarRoutes = map[string]bool{
 	"GET /v1/agent-attachments/{id}":                                 true,
 	"GET /v1/agent-attachments/{id}/content":                         true, // a redirect, no body
 	"GET /v1/users/theme-settings":                                   true, // the account's two theme settings (w3/m531)
+	"GET /v1/workspaces/{workspaceId}/billing/email":                 true, // the address in effect and whether the plan lets it change (w6/m627)
 	"GET /v1/services/{id}":                                          true,
 	"GET /v1/build-sources/{buildSourceId}":                          true,
 	"GET /v1/build-sources/{buildSourceId}/builds/{buildId}":         true,

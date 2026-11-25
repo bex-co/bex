@@ -475,6 +475,61 @@ const ptUsage: Record<string, TranslationEntry> = {
     message: "Nenhuma forma de pagamento",
     description: "Shown when the workspace has no payment method",
   },
+  "usage.billingEmailTitle": {
+    message: "E-mail de cobrança",
+    description:
+      "Billing email card title and section navigation entry on the billing page (w6/m627)",
+  },
+  "usage.billingEmailDescription": {
+    message:
+      "Os avisos de cobrança deste workspace vão para este endereço, e as faturas são endereçadas a ele.",
+    description: "Billing email card description: what the address is used for",
+  },
+  "usage.billingEmailHobbyNote": {
+    message:
+      "Workspaces Hobby usam o e-mail da conta do proprietário. Um e-mail de cobrança próprio está disponível no Pro ou superior.",
+    description:
+      "Note under a Hobby workspace's billing email, which is read-only and is the owner's account email",
+  },
+  "usage.billingEmailNone": {
+    message: "Nenhum e-mail de cobrança",
+    description:
+      "Shown when neither a billing email nor the owner's account email is known",
+  },
+  "usage.billingEmailUnreadable": {
+    message: "Não foi possível carregar o e-mail de cobrança.",
+    description: "Shown when the billing email could not be read",
+  },
+  "usage.billingEmailEdit": {
+    message: "Editar",
+    description: "Button that opens the billing email dialog (Pro and higher)",
+  },
+  "usage.billingEmailDialogTitle": {
+    message: "Editar e-mail de cobrança",
+    description: "Title of the dialog that sets the billing email",
+  },
+  "usage.billingEmailDialogDescription": {
+    message:
+      "Os avisos de cobrança também chegam aos administradores do workspace nos próprios endereços deles.",
+    description: "Description in the billing email dialog",
+  },
+  "usage.billingEmailLabel": {
+    message: "Endereço de e-mail",
+    description: "Label of the billing email input",
+  },
+  "usage.billingEmailSave": {
+    message: "Salvar",
+    description: "Save button of the billing email dialog",
+  },
+  "usage.billingEmailSaved": {
+    message: "E-mail de cobrança alterado para {email}",
+    description:
+      "Toast after the billing email was saved; {email} is the new address",
+  },
+  "usage.billingEmailError": {
+    message: "Não foi possível atualizar o e-mail de cobrança",
+    description: "Fallback toast when the billing email could not be saved",
+  },
   "usage.includedUsageTitle": {
     message: "Uso incluído",
     description:

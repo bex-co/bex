@@ -694,8 +694,11 @@ type Deps struct {
 	WorkspaceStore           workspaces.WorkspaceStore
 	WorkspaceCreationStore   workspaces.WorkspaceCreationStore
 	WorkspaceCreationBilling workspaces.WorkspaceCreationBilling
-	WorkspaceGranter         workspaces.WorkspaceGranter
-	WorkspaceRevoker         workspaces.WorkspaceRevoker
+	// WorkspaceCustomerEmail keeps the Stripe Customer's email in step with
+	// the workspace's billing email (w6/m627). Nil when Stripe is off.
+	WorkspaceCustomerEmail workspaces.CustomerEmailSetter
+	WorkspaceGranter       workspaces.WorkspaceGranter
+	WorkspaceRevoker       workspaces.WorkspaceRevoker
 	// OrgTuples keeps OpenFGA's org tuples in step with the organization rows
 	// (w7/m464, ADR115 D5): the OpenFGA checker when authz is wired.
 	OrgTuples core.OrganizationTupleWriter
@@ -948,6 +951,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Store:                 d.WorkspaceStore,
 		CreationStore:         d.WorkspaceCreationStore,
 		CreationBilling:       d.WorkspaceCreationBilling,
+		CustomerEmail:         d.WorkspaceCustomerEmail,
 		Granter:               d.WorkspaceGranter,
 		Revoker:               d.WorkspaceRevoker,
 		OrgTuples:             d.OrgTuples,

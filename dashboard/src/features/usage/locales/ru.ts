@@ -474,6 +474,61 @@ const ruUsage: Record<string, TranslationEntry> = {
     message: "Нет способа оплаты",
     description: "Shown when the workspace has no payment method",
   },
+  "usage.billingEmailTitle": {
+    message: "Email для счетов",
+    description:
+      "Billing email card title and section navigation entry on the billing page (w6/m627)",
+  },
+  "usage.billingEmailDescription": {
+    message:
+      "Уведомления о расчётах этого рабочего пространства приходят на этот адрес, и счета выставляются на него.",
+    description: "Billing email card description: what the address is used for",
+  },
+  "usage.billingEmailHobbyNote": {
+    message:
+      "В рабочих пространствах Hobby используется email аккаунта владельца. Отдельный email для счетов доступен на тарифе Pro и выше.",
+    description:
+      "Note under a Hobby workspace's billing email, which is read-only and is the owner's account email",
+  },
+  "usage.billingEmailNone": {
+    message: "Email для счетов не указан",
+    description:
+      "Shown when neither a billing email nor the owner's account email is known",
+  },
+  "usage.billingEmailUnreadable": {
+    message: "Не удалось загрузить email для счетов.",
+    description: "Shown when the billing email could not be read",
+  },
+  "usage.billingEmailEdit": {
+    message: "Изменить",
+    description: "Button that opens the billing email dialog (Pro and higher)",
+  },
+  "usage.billingEmailDialogTitle": {
+    message: "Изменить email для счетов",
+    description: "Title of the dialog that sets the billing email",
+  },
+  "usage.billingEmailDialogDescription": {
+    message:
+      "Уведомления о расчётах также приходят администраторам рабочего пространства на их собственные адреса.",
+    description: "Description in the billing email dialog",
+  },
+  "usage.billingEmailLabel": {
+    message: "Адрес email",
+    description: "Label of the billing email input",
+  },
+  "usage.billingEmailSave": {
+    message: "Сохранить",
+    description: "Save button of the billing email dialog",
+  },
+  "usage.billingEmailSaved": {
+    message: "Email для счетов изменён на {email}",
+    description:
+      "Toast after the billing email was saved; {email} is the new address",
+  },
+  "usage.billingEmailError": {
+    message: "Не удалось обновить email для счетов",
+    description: "Fallback toast when the billing email could not be saved",
+  },
   "usage.includedUsageTitle": {
     message: "Включённое использование",
     description:

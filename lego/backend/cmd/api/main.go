@@ -1262,6 +1262,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 		deps.Billing = stripeClient
 		deps.BillingState = st
 		deps.BillingEligibility = st
+		deps.WorkspaceCustomerEmail = stripeClient
 		if publishableKey != "" {
 			deps.WorkspaceCreationBilling = stripeClient
 			go (&billing.WorkspaceCreationCleaner{Store: st, Provider: stripeClient, Metrics: billingMetrics}).Run(ctx)

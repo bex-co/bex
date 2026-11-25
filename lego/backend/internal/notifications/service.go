@@ -100,6 +100,18 @@ type billingOwnerStore interface {
 	RecordBillingNotificationMailed(ctx context.Context, workspaceID string, version int64, subject string) error
 }
 
+// billingAddressStore reads a workspace's plan and the billing email it
+// stored (w6/m627); "" when it stored none.
+type billingAddressStore interface {
+	WorkspaceBillingEmail(ctx context.Context, workspaceID string) (plan, email string, err error)
+}
+
+// billingAddressRecipient is what a lifecycle notice records among the owners
+// it reached once it has mailed the workspace's own billing email, so a retry
+// does not mail it again. It names no address: one changed between two
+// attempts is not mailed a second time.
+const billingAddressRecipient = "billing-email"
+
 // Service is the notifications feature. Store nil (BEX_CP_DB_URI unset)
 // leaves the settings verbs answering core.ErrNotificationsUnavailable and
 // NotifyDeploy a no-op. Mailer/Identities nil leaves NotifyDeploy a no-op too
@@ -193,27 +205,98 @@ func (s *Service) notifyBilling(ctx context.Context, n store.BillingNotification
 	for _, owner := range n.MailedTo {
 		reached[owner] = true
 	}
+	to, addressErr := s.billingRecipients(ctx, n.WorkspaceID, subjects)
+	if reached[billingAddressRecipient] {
+		to.address = ""
+	}
 	pending := slices.DeleteFunc(subjects, func(owner string) bool { return reached[owner] })
-	if len(pending) == 0 {
-		return nil
+	if len(pending) == 0 && to.address == "" {
+		return addressErr
 	}
 	subject, msg := billingEmail(n, livemode, s.DashboardBaseURL)
-	return s.mailOwners(ctx, fmt.Sprintf("billing %s for %s", n.Status, n.WorkspaceID), pending, subject, msg,
+	what := fmt.Sprintf("billing %s for %s", n.Status, n.WorkspaceID)
+	ownersErr := s.mailOwners(ctx, what, pending, to, subject, msg,
 		func(owner string) error {
 			return owners.RecordBillingNotificationMailed(ctx, n.WorkspaceID, n.TransitionVersion, owner)
 		})
+	return errors.Join(ownersErr, addressErr, s.mailAddress(ctx, what, to.address, subject, msg, func() error {
+		return owners.RecordBillingNotificationMailed(ctx, n.WorkspaceID, n.TransitionVersion, billingAddressRecipient)
+	}))
 }
 
-// mailOwners sends one message to each owner, resolving every address in one
-// batched read. An owner the lookup could not read is an error to retry; an
-// owner with no address, or one the server refused for good, is logged and
-// skipped, since a retry would only mail the others again (w5/153, w5/m136).
-// mailed, when set, records each owner the message reached.
+// recipients is where a billing notice goes, read in one batched lookup
+// (w5/145): each billing owner's address, and the workspace's own billing
+// email (w6/m627).
+type recipients struct {
+	emails    map[string]string // owner subject → address
+	lookupErr error             // some owners' addresses could not be read
+	// address is the workspace's own billing email; "" when its plan
+	// includes none, it set none, or an owner already gets the notice there.
+	address string
+}
+
+// billingRecipients reads owners' addresses and the workspace's own billing
+// email, which goes out once beside them when its plan includes one (Pro and
+// higher) and no owner has the same address. Render merged "Separate email
+// for billing and failure notifications" into its billing email
+// (docs/render-artifacts/billing-email.md). An owner whose address could not
+// be read may have the same one, so the billing email then waits for the
+// notice's retry, and the lookup's error is returned for it.
+func (s *Service) billingRecipients(ctx context.Context, workspaceID string, owners []string) (recipients, error) {
+	var to recipients
+	if len(owners) > 0 {
+		to.emails, to.lookupErr = s.Identities.LookupEmails(ctx, owners)
+	}
+	st, ok := s.Store.(billingAddressStore)
+	if !ok {
+		return to, nil
+	}
+	plan, address, err := st.WorkspaceBillingEmail(ctx, workspaceID)
+	if errors.Is(err, store.ErrNotFound) {
+		return to, nil
+	}
+	if err != nil || address == "" || !core.PlanIncludes(plan, core.FeatureBillingEmail) {
+		return to, err
+	}
+	for _, owner := range to.emails {
+		if strings.EqualFold(strings.TrimSpace(owner), address) {
+			return to, nil
+		}
+	}
+	if to.lookupErr != nil {
+		return to, to.lookupErr
+	}
+	to.address = address
+	return to, nil
+}
+
+// mailAddress sends one message to a workspace's own billing email, if it
+// has one. An address the server refused for good is logged and skipped, as
+// an owner's is (mailOwners); mailed, when set, records that it was sent. The
+// address stays out of the log.
+func (s *Service) mailAddress(ctx context.Context, what, address, subject string, msg email.Message, mailed func() error) error {
+	if address == "" {
+		return nil
+	}
+	if err := s.Mailer.Send(ctx, address, subject, msg.Text(), msg.HTML()); err != nil {
+		if permanentRejection(err) {
+			log.Printf("notifications: %s not emailed to the workspace's billing email (address rejected: %v)", what, err)
+			return nil
+		}
+		return err
+	}
+	if mailed != nil {
+		return mailed()
+	}
+	return nil
+}
+
 // mailBillingOwners mails workspaceID's billing owners the message compose
 // builds, the scaffolding the worker notifiers (Free instance hours, build
-// minutes, Free database expiry) share. what names the email in logs. A store,
-// mailer or identity lookup that is not wired logs and sends nothing; a
-// workspace with no billing owners is nothing to send.
+// minutes, included bandwidth, Free database expiry) share, and the
+// workspace's own billing email beside them (billingRecipients). what names
+// the email in logs. A store, mailer or identity lookup that is not wired
+// logs and sends nothing; a workspace with neither is nothing to send.
 func (s *Service) mailBillingOwners(ctx context.Context, workspaceID, what string, compose func() (string, email.Message, error)) error {
 	if s == nil {
 		return fmt.Errorf("%s: notifier unavailable", what)
@@ -224,19 +307,29 @@ func (s *Service) mailBillingOwners(ctx context.Context, workspaceID, what strin
 		return nil
 	}
 	subjects, err := owners.ListBillingOwnerSubjects(ctx, workspaceID)
-	if err != nil || len(subjects) == 0 {
+	if err != nil {
 		return err
+	}
+	to, addressErr := s.billingRecipients(ctx, workspaceID, subjects)
+	if len(subjects) == 0 && to.address == "" {
+		return addressErr
 	}
 	subject, msg, err := compose()
 	if err != nil {
 		return err
 	}
-	return s.mailOwners(ctx, what, subjects, subject, msg, nil)
+	return errors.Join(s.mailOwners(ctx, what, subjects, to, subject, msg, nil), addressErr,
+		s.mailAddress(ctx, what, to.address, subject, msg, nil))
 }
 
-func (s *Service) mailOwners(ctx context.Context, what string, owners []string, subject string, msg email.Message, mailed func(owner string) error) error {
+// mailOwners sends one message to each owner, at the addresses to read in one
+// batched lookup. An owner the lookup could not read is an error to retry; an
+// owner with no address, or one the server refused for good, is logged and
+// skipped, since a retry would only mail the others again (w5/153, w5/m136).
+// mailed, when set, records each owner the message reached.
+func (s *Service) mailOwners(ctx context.Context, what string, owners []string, to recipients, subject string, msg email.Message, mailed func(owner string) error) error {
 	text, html := msg.Text(), msg.HTML()
-	emails, lookupErr := s.Identities.LookupEmails(ctx, owners)
+	emails, lookupErr := to.emails, to.lookupErr
 	var errs []error
 	unresolved := false
 	for _, owner := range owners {

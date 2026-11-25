@@ -467,6 +467,60 @@ const koUsage: Record<string, TranslationEntry> = {
     message: "결제 수단 없음",
     description: "Shown when the workspace has no payment method",
   },
+  "usage.billingEmailTitle": {
+    message: "청구 이메일",
+    description:
+      "Billing email card title and section navigation entry on the billing page (w6/m627)",
+  },
+  "usage.billingEmailDescription": {
+    message:
+      "이 워크스페이스의 청구 알림은 이 주소로 발송되며, 청구서도 이 주소로 발행됩니다.",
+    description: "Billing email card description: what the address is used for",
+  },
+  "usage.billingEmailHobbyNote": {
+    message:
+      "Hobby 워크스페이스는 소유자의 계정 이메일을 사용합니다. 별도의 청구 이메일은 Pro 이상에서 사용할 수 있습니다.",
+    description:
+      "Note under a Hobby workspace's billing email, which is read-only and is the owner's account email",
+  },
+  "usage.billingEmailNone": {
+    message: "청구 이메일 없음",
+    description:
+      "Shown when neither a billing email nor the owner's account email is known",
+  },
+  "usage.billingEmailUnreadable": {
+    message: "청구 이메일을 불러올 수 없습니다.",
+    description: "Shown when the billing email could not be read",
+  },
+  "usage.billingEmailEdit": {
+    message: "편집",
+    description: "Button that opens the billing email dialog (Pro and higher)",
+  },
+  "usage.billingEmailDialogTitle": {
+    message: "청구 이메일 편집",
+    description: "Title of the dialog that sets the billing email",
+  },
+  "usage.billingEmailDialogDescription": {
+    message: "청구 알림은 워크스페이스 관리자 각자의 주소로도 발송됩니다.",
+    description: "Description in the billing email dialog",
+  },
+  "usage.billingEmailLabel": {
+    message: "이메일 주소",
+    description: "Label of the billing email input",
+  },
+  "usage.billingEmailSave": {
+    message: "저장",
+    description: "Save button of the billing email dialog",
+  },
+  "usage.billingEmailSaved": {
+    message: "청구 이메일을 {email}(으)로 설정했습니다",
+    description:
+      "Toast after the billing email was saved; {email} is the new address",
+  },
+  "usage.billingEmailError": {
+    message: "청구 이메일을 업데이트할 수 없습니다",
+    description: "Fallback toast when the billing email could not be saved",
+  },
   "usage.includedUsageTitle": {
     message: "포함 사용량",
     description:

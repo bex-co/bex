@@ -146,6 +146,7 @@ import {
   type WorkspaceSettingsPendingSections,
 } from "@/features/workspaces/hooks/use-workspace-settings-skeleton-sections";
 import { AgentModelCardSkeleton } from "@/features/usage/components/agent-model-card-skeleton";
+import { BillingEmailCardSkeleton } from "@/features/usage/components/billing-email-card-skeleton";
 import {
   CreditBalanceCardSkeleton,
   InvoiceHistoryCardSkeleton,
@@ -693,6 +694,9 @@ export function BillingPageSkeleton() {
       </Region>
       <Region name="payment-method">
         <PaymentMethodCardSkeleton />
+      </Region>
+      <Region name="billing-email">
+        <BillingEmailCardSkeleton />
       </Region>
       <Region name="included-usage" className="space-y-6">
         <IncludedUsageSkeleton />

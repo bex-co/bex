@@ -17,6 +17,7 @@ import {
   CreditCard,
   FileText,
   Gauge,
+  Mail,
   Receipt,
   Sparkles,
   Wallet,
@@ -39,6 +40,11 @@ export function UsageNavigation({ className }: { className?: string }) {
       href: "#payment-method",
       label: t("usage.paymentMethodTitle"),
       icon: CreditCard,
+    },
+    {
+      href: "#billing-email",
+      label: t("usage.billingEmailTitle"),
+      icon: Mail,
     },
     {
       href: "#included-usage",

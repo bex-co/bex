@@ -24,9 +24,9 @@ import (
 
 // RegisterREST mounts Render's read-only /v1/owners surface
 // (docs/render-artifacts/owners-api.md, w6/m2): list, retrieve (with the
-// own-→default-workspace quirk), and members. No POST/PATCH/DELETE exists
-// here — Render exposes none, and bex's workspace-mutation surface is the
-// dashboard GraphQL (w6/m1's create/rename/delete).
+// own-→default-workspace quirk), and members, plus the member mutations and
+// bex's billing email extension. Workspace creation, rename and delete stay
+// dashboard GraphQL (w6/m1): Render's REST exposes none.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// GET /v1/users — Render's "who am I" endpoint (components.schemas.user):
 	// the CLI's `render whoami` and any client resolving its own identity.
@@ -94,6 +94,32 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	})
+	// The workspace's billing email (w6/m627), a bex extension beside the
+	// billing readiness read: GET for Admin, Developer and Billing, PUT for
+	// Admin and Billing on Pro and higher (PLAN_FEATURE_REQUIRED on Hobby).
+	mux.HandleFunc("GET /v1/workspaces/{workspaceId}/billing/email", func(w http.ResponseWriter, r *http.Request) {
+		v, err := s.BillingEmail(r.Context(), r.PathValue("workspaceId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, v)
+	})
+	mux.HandleFunc("PUT /v1/workspaces/{workspaceId}/billing/email", func(w http.ResponseWriter, r *http.Request) {
+		req, err := core.DecodeBody[struct {
+			Email string `json:"email"`
+		}](r)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		v, err := s.SetBillingEmail(r.Context(), r.PathValue("workspaceId"), req.Email)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, v)
 	})
 	// GET /v1/owners/{ownerId}/limits — bex extension (w7/m9): resource caps
 	// (services/postgres/keyValues used vs. limit, 0 = unlimited). Authorizes

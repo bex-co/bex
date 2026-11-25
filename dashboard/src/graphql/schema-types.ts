@@ -336,7 +336,7 @@ export type AgentEnvironment = {
   networkTier: AgentNetworkTier;
   /** The catalog models off only because they joined the catalog after an admin narrowed the list (the allowlist predates them), apart from the ones an admin turned off; an admin turns one on through enabledModels. Empty while every model is allowed, under a filter by provider (a model of an unlisted provider is off by the filter) and on the workspace's own key. */
   newModels: Array<Scalars['String']['output']>;
-  /** The agent-model spend beyond billing credits (which pay first) at which the card is charged mid-cycle; null at the top tier (month-end only). */
+  /** The agent-model spend beyond billing credits (which pay first) at which the card is charged mid-cycle; null at the top tier (month-end only) and wherever bex would not charge it (a payment hold, an unpaid invoice, the workspace's own key, or an unchargeable workspace). */
   nextChargeThresholdUsd: Maybe<Scalars['Float']['output']>;
   ownerId: Scalars['String']['output'];
   /** The platform catalog's default model; models lists every choice. */
@@ -2630,6 +2630,7 @@ export type Mutation = {
   setStaticRoutes: Maybe<Service>;
   setSubdomainPolicy: Maybe<Service>;
   setWebhookEndpointEnabled: Maybe<WebhookEndpoint>;
+  setWorkspaceBillingEmail: Maybe<WorkspaceBillingEmail>;
   setWorkspaceIPAllowList: Maybe<Workspace>;
   setWorkspaceOverlappingDeployPolicy: Maybe<Workspace>;
   /** Set an organization workspace's privacy, public or invite_only (workspace admins). */
@@ -4163,6 +4164,12 @@ export type MutationSetWebhookEndpointEnabledArgs = {
 };
 
 
+export type MutationSetWorkspaceBillingEmailArgs = {
+  email: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
+};
+
+
 export type MutationSetWorkspaceIpAllowListArgs = {
   id: Scalars['String']['input'];
   ipAllowList: Array<IpAllowListEntryInput>;
@@ -4877,6 +4884,7 @@ export type Query = {
   agentAutomationRuns: AgentAutomationRunList;
   /** The workspace's agent automations, newest first. mine keeps the caller's own. */
   agentAutomations: AgentAutomationList;
+  /** The workspace's agent environment, readable by every member. Its agent-model spend figures, caps and trust tier are billing details: null for a caller who may not view billing (a Contributor, a Viewer, or an API key whose grant lacks Workspaces Read), who still reads agentModelSpendCapReached and billingBalanceDue. */
   agentEnvironment: AgentEnvironment;
   /** One repository environment build with its redacted log. */
   agentRepoEnvironmentBuild: AgentRepoEnvironmentBuild;
@@ -5046,6 +5054,7 @@ export type Query = {
   webhookEndpoints: Maybe<Array<Maybe<WebhookEndpoint>>>;
   webhookEventTypes: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   workspace: Maybe<Workspace>;
+  workspaceBillingEmail: Maybe<WorkspaceBillingEmail>;
   workspaceBillingReadiness: Maybe<WorkspaceBillingReadiness>;
   workspaceCreationAttempt: Maybe<WorkspaceCreationAttempt>;
   workspaceCreationPolicy: Maybe<WorkspaceCreationPolicy>;
@@ -6041,6 +6050,11 @@ export type QueryWorkspaceArgs = {
 };
 
 
+export type QueryWorkspaceBillingEmailArgs = {
+  workspaceId: Scalars['String']['input'];
+};
+
+
 export type QueryWorkspaceBillingReadinessArgs = {
   workspaceId: Scalars['String']['input'];
 };
@@ -6800,6 +6814,14 @@ export type Workspace = {
   requireTwoFactor: Maybe<Scalars['Boolean']['output']>;
   role: Maybe<Scalars['String']['output']>;
   slug: Maybe<Scalars['String']['output']>;
+};
+
+/** Where a workspace's invoices and billing notices go (w6/m627). email is the owner's account email on Hobby, and on a higher plan until the workspace sets its own; configurable is whether its plan lets it set one (Pro and higher). */
+export type WorkspaceBillingEmail = {
+  __typename: 'WorkspaceBillingEmail';
+  configurable: Scalars['Boolean']['output'];
+  email: Scalars['String']['output'];
+  workspaceId: Scalars['String']['output'];
 };
 
 export type WorkspaceBillingReadiness = {

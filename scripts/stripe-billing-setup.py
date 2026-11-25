@@ -69,6 +69,11 @@ SUPERSEDED = ["instance_seconds", "egress_bytes", "storage_gb_seconds"]
 COMP_COUPON_ID = "bex-comp-100"
 STRIPE_GLOBAL_ARGS = []
 PORTAL_METADATA_KEY = "bex_billing_portal"
+# What a customer may change in bex's portal (w6/m627). `email` is left out on
+# purpose: the billing email is a plan-gated workspace setting (Pro and
+# higher, Hobby's is the owner's account email), changed only through bex so
+# its plan gate holds, and bex writes it to the Customer itself.
+PORTAL_CUSTOMER_UPDATES = ("address", "name", "tax_id")
 # The webhook receiver pins stripe-go v86's API version and consumes exactly
 # these events (docs/runbooks/stripe-billing-setup.md §3); a drifted endpoint
 # silently breaks intake, so provisioning refuses drift instead of patching.
@@ -369,8 +374,7 @@ def ensure_portal_configuration(dashboard_url):
         raise RuntimeError("--dashboard-url must be an absolute HTTPS origin")
     origin = f"{parsed.scheme}://{parsed.netloc}"
     return_url = origin + "/usage"
-    configs = list_all("billing_portal", "configurations")
-    tagged = [c for c in configs if (c.get("metadata") or {}).get(PORTAL_METADATA_KEY) == "true"]
+    tagged = tagged_portal_configurations()
     if len(tagged) > 1:
         raise RuntimeError(f"multiple portal configurations carry {PORTAL_METADATA_KEY}=true")
     common = [
@@ -378,20 +382,66 @@ def ensure_portal_configuration(dashboard_url):
         "-d", "features[payment_method_update][enabled]=true",
         "-d", "features[invoice_history][enabled]=true",
         "-d", "features[customer_update][enabled]=true",
-        "-d", "features[customer_update][allowed_updates][0]=address",
-        "-d", "features[customer_update][allowed_updates][1]=email",
-        "-d", "features[customer_update][allowed_updates][2]=name",
-        "-d", "features[customer_update][allowed_updates][3]=tax_id",
+    ]
+    for i, field in enumerate(PORTAL_CUSTOMER_UPDATES):
+        common += ["-d", f"features[customer_update][allowed_updates][{i}]={field}"]
+    common += [
         "-d", "features[subscription_cancel][enabled]=false",
         "-d", "features[subscription_update][enabled]=false",
         "-d", f"metadata[{PORTAL_METADATA_KEY}]=true",
     ]
     if tagged:
         config = stripe("billing_portal", "configurations", "update", tagged[0]["id"], *common)
-        return config["id"], "exists"
-    config = stripe("billing_portal", "configurations", "create",
-                    "-d", "name=bex billing portal", *common)
-    return config["id"], "created"
+        status = "exists"
+    else:
+        config = stripe("billing_portal", "configurations", "create",
+                        "-d", "name=bex billing portal", *common)
+        status = "created"
+    drift = portal_drift(config)
+    if drift:
+        raise RuntimeError(f"portal configuration {config['id']} still drifts after the write: " + "; ".join(drift))
+    return config["id"], status
+
+
+def tagged_portal_configurations():
+    """bex's portal configurations: those tagged PORTAL_METADATA_KEY. Other
+    products' configurations on the shared account are listed, never kept."""
+    return [c for c in list_all("billing_portal", "configurations")
+            if (c.get("metadata") or {}).get(PORTAL_METADATA_KEY) == "true"]
+
+
+def portal_drift(config):
+    """What in a portal configuration differs from bex's (w6/m627).
+
+    A customer may update the payment method, see invoice history and change
+    exactly PORTAL_CUSTOMER_UPDATES; never the email, the plan or the
+    Subscription's existence. An empty list means no drift.
+    """
+    features = config.get("features") or {}
+
+    def enabled(name):
+        return bool((features.get(name) or {}).get("enabled"))
+
+    drift = []
+    for name, want in (("payment_method_update", True), ("invoice_history", True),
+                       ("customer_update", True), ("subscription_cancel", False),
+                       ("subscription_update", False)):
+        if enabled(name) != want:
+            drift.append(f"features.{name}.enabled={enabled(name)} want {want}")
+    have = sorted((features.get("customer_update") or {}).get("allowed_updates") or [])
+    if have != sorted(PORTAL_CUSTOMER_UPDATES):
+        drift.append(f"features.customer_update.allowed_updates={have} want {sorted(PORTAL_CUSTOMER_UPDATES)}")
+    return drift
+
+
+def check_portal_configuration():
+    """The read-only drift check of bex's portal configuration: the one tagged
+    PORTAL_METADATA_KEY, other products' configurations unread. Returns the
+    configuration id and its drift; raises when bex has no tagged configuration."""
+    tagged = tagged_portal_configurations()
+    if len(tagged) != 1:
+        raise RuntimeError(f"want exactly one portal configuration with {PORTAL_METADATA_KEY}=true, found {len(tagged)}")
+    return tagged[0]["id"], portal_drift(tagged[0])
 
 
 def enabled_event_args():
@@ -462,9 +512,24 @@ def ensure_webhook_endpoint(webhook_url, live, add_missing_events=False):
 
 
 def main(live=False, tax_code=None, tax_behavior=None, dashboard_url=None, webhook_url=None,
-         add_missing_webhook_events=False):
+         add_missing_webhook_events=False, portal_only=False, check_portal=False):
     global STRIPE_GLOBAL_ARGS
     STRIPE_GLOBAL_ARGS = ["--live"] if live else []
+    if check_portal:
+        # Reads bex's portal configuration and writes nothing.
+        portal_id, drift = check_portal_configuration()
+        if drift:
+            raise RuntimeError(f"portal configuration {portal_id} drifted: " + "; ".join(drift))
+        print(f"portal configuration: matches ({portal_id})")
+        return
+    if portal_only:
+        # The portal step alone: no catalog, webhook or tax work runs, so the
+        # one change this mode can make is to bex's own portal configuration.
+        if not dashboard_url:
+            raise RuntimeError("--portal-only needs --dashboard-url")
+        portal_id, portal_status = ensure_portal_configuration(dashboard_url)
+        print(f"portal configuration: {portal_status} ({portal_id})")
+        return
     if add_missing_webhook_events:
         # The endpoint repair alone: no catalog, portal or tax work runs, so the
         # one change this mode can make is appending events to bex's endpoint.
@@ -554,11 +619,24 @@ if __name__ == "__main__":
         help="with --webhook-url: ONLY append handled events the existing endpoint lacks "
              "(never removes one; refuses any other drift); skips every other setup step",
     )
+    parser.add_argument(
+        "--portal-only",
+        action="store_true",
+        help="with --dashboard-url: ONLY create or update bex's tagged Customer Portal "
+             "configuration and verify it; skips every other setup step",
+    )
+    parser.add_argument(
+        "--check-portal",
+        action="store_true",
+        help="read-only: exit 1 when bex's tagged Customer Portal configuration drifts "
+             "(e.g. it still lets a customer change the billing email); writes nothing",
+    )
     args = parser.parse_args()
     try:
         main(live=args.live, tax_code=args.tax_code, tax_behavior=args.tax_behavior,
              dashboard_url=args.dashboard_url, webhook_url=args.webhook_url,
-             add_missing_webhook_events=args.add_missing_webhook_events)
+             add_missing_webhook_events=args.add_missing_webhook_events,
+             portal_only=args.portal_only, check_portal=args.check_portal)
     except RuntimeError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)

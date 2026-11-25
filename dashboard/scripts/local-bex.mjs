@@ -90,6 +90,28 @@ const WORKSPACES = [
   },
 ];
 
+// Billing emails a Pro workspace set (w6/m627), by workspace id. A workspace
+// with no entry reads its owner's account email; a Hobby workspace always does.
+const BILLING_EMAILS = new Map();
+const LOCAL_OWNER_EMAIL = "dev@localhost.test";
+function billingEmailFor(workspaceId) {
+  const ws = WORKSPACES.find((w) => w.id === workspaceId) ?? WORKSPACES[0];
+  const configurable = ws.plan !== "hobby";
+  return {
+    __typename: "WorkspaceBillingEmail",
+    workspaceId: ws.id,
+    email: (configurable && BILLING_EMAILS.get(ws.id)) || LOCAL_OWNER_EMAIL,
+    configurable,
+  };
+}
+// LOCAL_BEX_HOLD_OPS=WorkspaceBillingEmail,… holds those GraphQL operations'
+// answers for LOCAL_BEX_HOLD_MS (default 60 s), so a card's pending state can
+// be captured beside its ready one.
+const HOLD_OPS = new Set(
+  (process.env.LOCAL_BEX_HOLD_OPS ?? "").split(",").filter(Boolean),
+);
+const HOLD_MS = Number(process.env.LOCAL_BEX_HOLD_MS) || 60_000;
+
 // API keys are empty by default but create/revoke are interactive so the
 // account-settings mint-once flow can be browser-verified offline. The stored
 // rows intentionally exclude the key and its secret; only CreateApiKey's
@@ -2171,6 +2193,23 @@ function resolveGraphQL({ operationName, variables = {} }) {
           expiresAt: "",
         },
       };
+    case "WorkspaceBillingEmail":
+      return { workspaceBillingEmail: billingEmailFor(variables.workspaceId) };
+    case "SetWorkspaceBillingEmail": {
+      const current = billingEmailFor(variables.workspaceId);
+      if (!current.configurable) {
+        throw new Error(
+          "bad request: a separate billing email requires the Pro plan or higher; this workspace is on Hobby",
+        );
+      }
+      BILLING_EMAILS.set(
+        current.workspaceId,
+        String(variables.email).trim().toLowerCase(),
+      );
+      return {
+        setWorkspaceBillingEmail: billingEmailFor(current.workspaceId),
+      };
+    }
     case "WorkspaceLimits":
       return {
         workspaceLimits: {
@@ -3919,7 +3958,13 @@ const server = createServer((req, res) => {
           return { errors: [{ message: err.message }] };
         }
       });
-      return json(res, 200, Array.isArray(payload) ? results : results[0]);
+      const answer = () =>
+        json(res, 200, Array.isArray(payload) ? results : results[0]);
+      if (ops.some((op) => HOLD_OPS.has(op.operationName))) {
+        setTimeout(answer, HOLD_MS);
+        return;
+      }
+      return answer();
     });
     return;
   }

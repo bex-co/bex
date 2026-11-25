@@ -582,10 +582,12 @@ func TestMCPListWorkspacesCarriesIPAllowList(t *testing.T) {
 	}
 	// Render's MCP has no workspace mutations; the org tools are bex's
 	// extension for organizations (w7/m464, ADR115 D8), which Render's MCP
-	// does not cover either.
-	orgTools := map[string]bool{"list_organizations": true, "get_organization": true, "create_organization_workspace": true, "set_workspace_privacy": true}
+	// does not cover either, and the billing email tools are bex's billing
+	// extension, beside get_billing_readiness (w6/m627).
+	extensionTools := map[string]bool{"list_organizations": true, "get_organization": true, "create_organization_workspace": true, "set_workspace_privacy": true,
+		"get_billing_email": true, "update_billing_email": true}
 	for _, tool := range tools.Tools {
-		if tool.Name != "list_workspaces" && tool.Name != "get_workspace_limits" && !orgTools[tool.Name] {
+		if tool.Name != "list_workspaces" && tool.Name != "get_workspace_limits" && !extensionTools[tool.Name] {
 			t.Errorf("unexpected workspace MCP tool %q (Render's MCP has no workspace mutations)", tool.Name)
 		}
 	}
