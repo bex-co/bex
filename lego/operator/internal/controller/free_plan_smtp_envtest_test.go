@@ -35,9 +35,11 @@ import (
 )
 
 // w8/m127 t002: a plan change converges the free-plan label on the pod
-// template in both directions, so the SMTP egress deny follows the plan.
+// template in both directions, so the SMTP egress deny follows the plan. The
+// send-only private-network label follows it the same way (w6/m640): a free
+// web service receives no private traffic, a Starter one does.
 var _ = Describe("App free-plan SMTP label", func() {
-	It("adds the label on free, drops it on upgrade and restores it on downgrade", func() {
+	It("adds the labels on free, drops them on upgrade and restores them on downgrade", func() {
 		skipNameValidation := true
 		mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 			Scheme: k8sClient.Scheme(), Metrics: metricsserver.Options{BindAddress: "0"},
@@ -87,17 +89,23 @@ var _ = Describe("App free-plan SMTP label", func() {
 		}
 
 		Eventually(func(g Gomega) {
-			g.Expect(templateLabels(g)).To(HaveKeyWithValue(execution.LabelFreePlan, execution.FreePlanValue))
+			labels := templateLabels(g)
+			g.Expect(labels).To(HaveKeyWithValue(execution.LabelFreePlan, execution.FreePlanValue))
+			g.Expect(labels).To(HaveKeyWithValue(execution.LabelPrivateNetwork, execution.PrivateNetworkSendOnly))
 		}, 10*time.Second, 100*time.Millisecond).Should(Succeed())
 
 		setTier("starter")
 		Eventually(func(g Gomega) {
-			g.Expect(templateLabels(g)).NotTo(HaveKey(execution.LabelFreePlan))
+			labels := templateLabels(g)
+			g.Expect(labels).NotTo(HaveKey(execution.LabelFreePlan))
+			g.Expect(labels).NotTo(HaveKey(execution.LabelPrivateNetwork))
 		}, 10*time.Second, 100*time.Millisecond).Should(Succeed())
 
 		setTier(tierFree)
 		Eventually(func(g Gomega) {
-			g.Expect(templateLabels(g)).To(HaveKeyWithValue(execution.LabelFreePlan, execution.FreePlanValue))
+			labels := templateLabels(g)
+			g.Expect(labels).To(HaveKeyWithValue(execution.LabelFreePlan, execution.FreePlanValue))
+			g.Expect(labels).To(HaveKeyWithValue(execution.LabelPrivateNetwork, execution.PrivateNetworkSendOnly))
 		}, 10*time.Second, 100*time.Millisecond).Should(Succeed())
 	})
 })

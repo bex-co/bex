@@ -140,6 +140,16 @@ Render's Free plan does not support "Receiving private network traffic" ([render
 - **Plan changes.** The label follows the plan (`syncPolicyLabels`), so an upgrade opens the internal address and a downgrade closes it with the pod roll a tier change already causes. No allowlist or canary: the rule applies to every workspace at once.
 - **Surfaces.** [ADR041](ADR041-service-addresses.md) D5 and [ADR018](ADR018-render-parity.md) record that `internalAddress` stays readable on a free web service while the dashboard Connect → Internal section and Blueprint `fromService` `host`/`hostport` say the Free plan takes no private traffic.
 
+## Send-only pods (w6/m640)
+
+On Render, background workers, cron jobs and workflows "can _send_ private network requests, but they can't _receive_ them" ([render.com/docs/private-network](https://render.com/docs/private-network)), and background workers "don't receive any incoming network traffic" ([render.com/docs/background-workers](https://render.com/docs/background-workers)). bex does the same, in every workspace. Before this, `allow-same-namespace` admitted every pod of an environment from every other on any port, so a sibling could reach a worker's debug, metrics or admin port through its pod IP or its `<slug>-discovery` name.
+
+- **Label.** The operator stamps `app.bex.co/private-network: send-only` (`execution.LabelPrivateNetwork`) on every pod that receives no private traffic: the pods of an App whose `AppSpec.ReceivesPrivateTraffic()` is false (a background worker, a cron job's runs, a free web or private service), through the Deployment template (`appPodLabels` → `appPolicyLabels`) and cron runs (`cronPodSpec`), and every pre-deploy Job pod whatever its service (`predeploy.Job`). A held release's served template follows a plan change (`syncPolicyLabels`), so a move from Free to a paid plan drops it with the roll the plan change causes. A paid web or private service carries no label, and its template is byte-identical to before. bex runs no one-off job pods: it refuses Render's Create Job (`jobs.ErrOneOffJobsUnsupported`).
+- **Deny.** `deny-send-only-private-ingress` in `deploy/gitops/base/tenant-node-egress.yaml` is a `CiliumClusterwideNetworkPolicy` selecting that label with `ingressDeny` from every endpoint carrying `app.bex.co/workspace`, in any namespace: sibling services, builds and cron runs. Deny precedence beats the per-namespace same-workspace allow. `enableDefaultDeny.ingress: false` keeps it subtractive. `scripts/private-ingress-deny-check.sh` pins its shape, and its `.test.sh` proves that default deny, a dropped or widened selector and a wider or narrower source each fail.
+- **What still reaches the pod.** Platform sources carry no workspace label (none outside `tea-*` namespaces did on production, 2026-11-25): kubelet probes (`host`), Traefik, the activator, the operator's port reads and Prometheus. SSH runs through `pods/exec` (the API server and the kubelet), logs are read from the node's files and the listener reader reads `/proc` on the node, so none of them uses the pod network. The disk snapshot, disk holder and Key Value backup Jobs carry the workspace label but mount a volume or dial a datastore, never an App pod. Replies to the pod's own connections are not new ingress, so a worker or a cron run still reaches its siblings' internal addresses and its datastores.
+- **Discovery name.** A scaled worker keeps its headless `<slug>-discovery` Service and `RENDER_DISCOVERY_SERVICE` (w6/m148): the name resolves, and the deny refuses any connection to the addresses it returns. Render's environment-variables page describes the variable as the way to discover a scaled service's instances, while its private-network page names only web and private services as receivers. Whether Render sets it on a worker is unverified and open in ADR018.
+- **Rollout.** The operator upgrade re-projects the template of every existing worker and free service once, and their pods roll at once (a worker roll overlaps for 60 s since w6/178). Production ran no background worker, no cron job and no pre-deploy command on 2026-11-25, so only its free web services rolled. The free-plan ingress deny above selects a subset of the same pods, and stays until the send-only deny is verified on production.
+
 ## Platform-side lockdown (t004)
 
 Defense-in-depth: even if the tenant-side policy regresses, platform namespaces refuse traffic from the tenant apps namespace.
@@ -247,7 +257,7 @@ The original w7/m2 text follows; its "all Linux capabilities dropped" now descri
 | A build in workspace A reaches a service in workspace B | Unchanged by construction: every egress peer names exactly one namespace, A's own, by the API-server-owned `kubernetes.io/metadata.name`. Both workspace-side halves live in A's namespace and are keyed to A's App UID. B's namespace holds no grant naming A's build. Neither side can name B, and the DNS search domain names A's namespace only. | Closed (`TestBuildServiceReachIsOwnWorkspaceAndScopeOnly` evaluates both directions) |
 | A build crosses an isolated environment | The service targets start from the datastore grant's isolation-aware selector. An ordinary build matches only pods without `app.bex.co/network-isolation`, and an isolated build only pods of its own `environment-id`. A service whose environment becomes isolated gets the label in place (`relabelAppPods`) and drops out of the selector without a roll. | Closed |
 | A build reaches a non-service pod in its own workspace on an arbitrary port (a datastore's admin port, the Key Value internal proxy, a pre-deploy or backup Job) | The service rule matches only pods that carry `app.bex.co/app` naming an eligible App and `app.bex.co/app-id`. Datastore, proxy and Job pods carry neither pairing, so they keep the datastore ports only, as before. | Closed |
-| A build reaches a worker, cron job or free web service | They are never listed. A free web service is also behind `deny-free-plan-private-ingress`, whose `ingressDeny` from any `app.bex.co/workspace` endpoint covers build pods, which carry that label. | Closed (Render: they receive no private traffic) |
+| A build reaches a worker, cron job or free web service | They are never listed. Their pods are also behind `deny-send-only-private-ingress` ([Send-only pods](#send-only-pods-w6m640), w6/m640), and a free web service behind `deny-free-plan-private-ingress` too, whose `ingressDeny` from any `app.bex.co/workspace` endpoint covers build pods, which carry that label. | Closed (Render: they receive no private traffic) |
 | A tenant labels its own pod to become a target | Tenants have no Kubernetes identity. Pod labels are set by the operator from the App CR (`appPodLabels`), and bex-api writes the App CR. A tenant can only create a paid web or private service, which is a legitimate target. | Closed |
 | A build pod forges another App's labels, or spoofs an IP | Unchanged from the datastore review: only operator- and kpack-authored pods run in `bex-build`, `bex-build-job-shape` pins every Job template, and Cilium derives identity from labels and drops spoofed sources. | Closed |
 | A build reaches the platform, nodes or metadata | No peer names them. `deny-build-node-and-metadata-egress` still overrides any allow. | Unchanged |
@@ -268,26 +278,28 @@ The original w7/m2 text follows; its "all Linux capabilities dropped" now descri
 
 ## Reachability matrix (t005)
 
-| Probe                                                 | Direction | Expected |
-| ----------------------------------------------------- | --------- | -------- |
-| workspace-A pod → workspace-B pod                     | deny      | BLOCKED  |
-| workspace-A pod → workspace-B Postgres                | deny      | BLOCKED  |
-| workspace-A pod → workspace-B Valkey                  | deny      | BLOCKED  |
-| workspace-A pod → bex-api :8091                       | deny      | BLOCKED  |
-| workspace-A pod → OpenBao :8200                       | deny      | BLOCKED  |
-| workspace-A pod → Prometheus :9090                    | deny      | BLOCKED  |
-| workspace-A pod → zot :5000                           | deny      | BLOCKED  |
-| workspace-A pod → `169.254.169.254` (metadata)        | deny      | BLOCKED  |
-| workspace-A pod → node IP `:10250` (kubelet)          | deny      | BLOCKED  |
-| workspace-A pod → workspace-A private svc             | allow     | PASSES   |
-| workspace-A pod → its own Postgres                    | allow     | PASSES   |
-| workspace-A pod → https://example.com                 | allow     | PASSES   |
-| Traefik → workspace-A pod via Ingress URL             | allow     | PASSES   |
-| workspace-A build → its own Postgres (w8/m129)        | allow     | PASSES   |
-| workspace-A build → workspace-B Postgres              | deny      | BLOCKED  |
-| workspace-A build → its own private service (w9/m495) | allow     | PASSES   |
-| workspace-A build → workspace-B private service       | deny      | BLOCKED  |
-| workspace-A build → an isolated environment's service | deny      | BLOCKED  |
+| Probe | Direction | Expected |
+| --- | --- | --- |
+| workspace-A pod → workspace-B pod | deny | BLOCKED |
+| workspace-A pod → workspace-B Postgres | deny | BLOCKED |
+| workspace-A pod → workspace-B Valkey | deny | BLOCKED |
+| workspace-A pod → bex-api :8091 | deny | BLOCKED |
+| workspace-A pod → OpenBao :8200 | deny | BLOCKED |
+| workspace-A pod → Prometheus :9090 | deny | BLOCKED |
+| workspace-A pod → zot :5000 | deny | BLOCKED |
+| workspace-A pod → `169.254.169.254` (metadata) | deny | BLOCKED |
+| workspace-A pod → node IP `:10250` (kubelet) | deny | BLOCKED |
+| workspace-A pod → workspace-A private svc | allow | PASSES |
+| workspace-A pod → its own Postgres | allow | PASSES |
+| workspace-A pod → https://example.com | allow | PASSES |
+| Traefik → workspace-A pod via Ingress URL | allow | PASSES |
+| workspace-A build → its own Postgres (w8/m129) | allow | PASSES |
+| workspace-A build → workspace-B Postgres | deny | BLOCKED |
+| workspace-A build → its own private service (w9/m495) | allow | PASSES |
+| workspace-A build → workspace-B private service | deny | BLOCKED |
+| workspace-A build → an isolated environment's service | deny | BLOCKED |
+| workspace-A pod → workspace-A worker or cron run (w6/m640) | deny | BLOCKED |
+| workspace-A worker or cron run → workspace-A private svc | allow | PASSES |
 
 The metadata + node DENY probes and the external-egress ALLOW counter-probe are asserted by `scripts/verify-tenant-isolation.sh` (w7/m4); its egress-probe pod carries a per-App policy so it faithfully models a real tenant pod under the CNP.
 

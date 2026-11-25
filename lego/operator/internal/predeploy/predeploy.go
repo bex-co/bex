@@ -267,6 +267,10 @@ func Job(o Options) *batchv1.Job {
 	if o.FreePlan {
 		podLabels[execution.LabelFreePlan] = execution.FreePlanValue
 	}
+	// A pre-deploy command sends private traffic (a migration dials its
+	// database) but receives none, whatever its service's type or plan
+	// (w6/m640).
+	podLabels[execution.LabelPrivateNetwork] = execution.PrivateNetworkSendOnly
 	if o.EgressAppID != "" {
 		podLabels[LabelEgressAppID] = o.EgressAppID
 	}

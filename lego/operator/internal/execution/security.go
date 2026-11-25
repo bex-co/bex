@@ -62,6 +62,16 @@ const (
 	// unchanged.
 	LabelFreePlan = "app.bex.co/free-plan"
 	FreePlanValue = "true"
+	// LabelPrivateNetwork marks a pod that sends private network traffic but
+	// receives none. On Render, background workers, cron jobs and free
+	// instances "can send private network requests, but they can't receive
+	// them" (render.com/docs/private-network). The platform's
+	// deny-send-only-private-ingress policy
+	// (deploy/gitops/base/tenant-node-egress.yaml) refuses every
+	// workspace-labeled source to a pod carrying it (w6/m640).
+	// PrivateNetworkSendOnly is its only value.
+	LabelPrivateNetwork    = "app.bex.co/private-network"
+	PrivateNetworkSendOnly = "send-only"
 	// NodePoolLabel/UntrustedNodePool alias the canonical node-pool key in
 	// lego/types (v1alpha1), shared with bex-api's outbound-IP selection.
 	NodePoolLabel     = appv1alpha1.LabelNodePool

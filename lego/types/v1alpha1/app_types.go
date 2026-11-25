@@ -1191,9 +1191,13 @@ func (s AppSpec) HTTPHealthCheckPath() string {
 
 // ReceivesPrivateTraffic reports whether other services may dial the App's
 // internal address: an addressable type on a paid tier. Render's Free plan does
-// not support "Receiving private network traffic" (render.com/docs/free), so
-// the platform's deny-free-plan-private-ingress policy drops tenant traffic to
-// every free-plan pod (w8/m130). An empty tier is the free tier.
+// not support "Receiving private network traffic" (render.com/docs/free), and
+// background workers and cron jobs "can send private network requests, but
+// they can't receive them" (render.com/docs/private-network). The operator
+// labels the pods of every App this reports false for send-only, and the
+// platform's deny-send-only-private-ingress policy drops tenant traffic to them
+// (w6/m640; free-plan pods also by deny-free-plan-private-ingress, w8/m130).
+// An empty tier is the free tier.
 func (s AppSpec) ReceivesPrivateTraffic() bool {
 	return s.InternallyAddressable() && s.Tier != "" && s.Tier != "free"
 }

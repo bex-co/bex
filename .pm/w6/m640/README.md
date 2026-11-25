@@ -1,18 +1,18 @@
 # w6 · m640 — Background workers, cron jobs and pre-deploy jobs receive no private network traffic, as on Render
 
-**Worker:** worker6 **Goal:** the pods of background workers, cron runs, pre-deploy and one-off jobs refuse connections from the workspace's other services, as Render's private network does, while they still send private traffic and platform access (SSH, metrics, logs) keeps working. **Status:** todo
+**Worker:** worker6 **Goal:** the pods of background workers, cron runs, pre-deploy and one-off jobs refuse connections from the workspace's other services, as Render's private network does, while they still send private traffic and platform access (SSH, metrics, logs) keeps working. **Status:** todo (t001–t003 and t007 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Inventory production traffic into worker, cron and pre-deploy pods](t001.md) | 45m | — |
-| t002 | [The operator labels every pod that receives no private network traffic](t002.md) | 1h | t001 |
-| t003 | [A Cilium policy refuses tenant traffic to those pods; ADR022 and ADR041 say so](t003.md) | 45m | t002 |
+| t001 | [Inventory production traffic into worker, cron and pre-deploy pods](done/t001.md) — **DONE** | 45m | — |
+| t002 | [The operator labels every pod that receives no private network traffic](done/t002.md) — **DONE** | 1h | t001 |
+| t003 | [A Cilium policy refuses tenant traffic to those pods; ADR022 and ADR041 say so](done/t003.md) — **DONE** | 45m | t002 |
 | t004 | [Production check in bex-canary: a sibling cannot reach a worker or a cron run, and they still send](t004.md) | 45m | t003 |
 | t005 | [Render parity](t005.md) | 30m | t004 |
 | t006 | [Simplify](t006.md) | 20m | t005 |
-| t007 | [Test coverage](t007.md) | 45m | t005 |
+| t007 | [Test coverage](done/t007.md) — **DONE** | 45m | t005 |
 | t008 | [Closeout](t008.md) | 10m | t006, t007 |
 
 ## Definition of done
@@ -31,3 +31,24 @@
 - **Expected outcome:** a worker's debug, metrics or admin port is no longer open to the rest of its workspace, and bex's network does what its code and ADRs say.
 - **Why now:** the rule is written in bex's code but not enforced in the network, and ADR018 has no row for it.
 - **Render parity:** included: tenant-visible network behavior.
+
+## Production inventory (t001, 2026-11-25)
+
+Read-only, on the production app cluster (`scripts/fetch-app-kubeconfig.sh`), at about 21:00Z.
+
+- **Destinations.** Production ran **no** pod this milestone denies: 0 `background_worker` and 0 `cron_job` Apps, and 0 Apps with a pre-deploy command, among its 27 Apps. bex runs no one-off job pods (Create Job answers 410, `jobs.ErrOneOffJobsUnsupported`). So no flow into a worker, cron run or pre-deploy pod existed to find, and **no production tenant relies on reaching one**.
+- **Flows into workspace-labeled pods.** Hubble is on (`enable-hubble=true`), but each agent's ring buffer held only the last ~4 minutes (20:53:42–20:57:45Z). New TCP connections (SYN without ACK) across all 16 agents, by source:
+
+  | Source | `app.bex.co/workspace` | Destination | Connections |
+  | --- | --- | --- | --- |
+  | kubelet probes (`reserved:host`) | no | App pods (80, 3000, 3100, 8000, 9000, 9090, 10000), Postgres :8000 | 994 |
+  | Traefik (`traefik`) | no | web service pods :3000, :10000 | 459 |
+  | tenant pods | yes | Key Value :6379 | 219 |
+  | tenant pods | yes | Postgres :5432 | 34 |
+  | Prometheus (`monitoring`) | no | Postgres exporter :9187 | 36 |
+  | bex-api (`bex-system`) | no | Key Value :6379 | 18 |
+  | CloudNativePG operator (`cnpg-system`) | no | Postgres :8000 | 10 |
+  | tenant pods | yes | a paid web service in bex's own workspace :3100 | 2 |
+
+- **Platform sources.** No pod outside a `tea-*` namespace carries `app.bex.co/workspace` (0 found), so the deny leaves the operator (port reads), the activator, Traefik, Prometheus, ssh-gateway, the listener reader, the egress meter and the log shipper alone. Of those, only probes, Traefik, the activator and the operator open connections to tenant pods at all: SSH is `pods/exec` through the API server and the kubelet (`sshgateway/exec.go`), the listener reader reads `/proc` and the log shipper the node's files. Inside tenant namespaces, the disk snapshot (`dskbak-*`), disk holder and Key Value backup Jobs **do** carry the workspace label, but they mount the volume (`/disk-snapshot backup` mounts the service's claim) or dial the Key Value store, never an App pod.
+- **Cilium identity.** `cilium-config` sets no `labels` filter, so a new `app.bex.co/*` pod label is identity-relevant, as `app.bex.co/free-plan` already is.

@@ -8397,10 +8397,11 @@ func (r *AppReconciler) convergeServingRoute(ctx context.Context, app *appv1alph
 	scaled := dep.Spec.Replicas == nil || *dep.Spec.Replicas != plan.replicas
 	base := dep.DeepCopy()
 	// The served template keeps its release, but its pods carry the App's
-	// current free-plan label, which the free-plan SMTP deny selects by and
-	// which may not wait for the held release (w8/m127). Its environment labels
-	// reach the running pods in place instead (relabelAppPods, w4/m342).
-	relabeled := syncFreePlanLabel(&dep.Spec.Template, app)
+	// current network policy labels, which the free-plan SMTP deny and the
+	// send-only ingress deny select by and which may not wait for the held
+	// release (w8/m127, w6/m640). Its environment labels reach the running pods
+	// in place instead (relabelAppPods, w4/m342).
+	relabeled := syncPolicyLabels(&dep.Spec.Template, app)
 	if scaled || relabeled {
 		dep.Spec.Replicas = &plan.replicas
 		if err := r.Patch(ctx, dep, client.MergeFrom(base)); err != nil {
@@ -8488,10 +8489,14 @@ func (r *AppReconciler) ingressHasRoutes(ctx context.Context, namespace, name st
 	return true, nil
 }
 
-// syncFreePlanLabel sets the App's free-plan label on tpl, or removes it, and
-// reports whether tpl changed.
-func syncFreePlanLabel(tpl *corev1.PodTemplateSpec, app *appv1alpha1.App) bool {
-	return syncTemplateLabel(tpl, execution.LabelFreePlan, freePlanLabelValue(app))
+// syncPolicyLabels sets the App's networkPolicyLabels on tpl, removing those
+// that do not apply, and reports whether tpl changed.
+func syncPolicyLabels(tpl *corev1.PodTemplateSpec, app *appv1alpha1.App) bool {
+	changed := false
+	for key, want := range networkPolicyLabels(app) {
+		changed = syncTemplateLabel(tpl, key, want) || changed
+	}
+	return changed
 }
 
 // syncTemplateLabel sets key to want on tpl (removing it when want is empty)

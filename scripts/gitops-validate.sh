@@ -2193,6 +2193,10 @@ if [ -f "$EGRESS" ]; then
   [ "$ingress_deny_shape" = "true:false:1:1:app.bex.co/workspace/Exists:0" ] \
     || { echo "FAIL: deny-free-plan-private-ingress must select app.bex.co/free-plan=true, keep enableDefaultDeny.ingress=false and deny only fromEndpoints with app.bex.co/workspace Exists (Traefik, the activator and probes carry no workspace label); got '$ingress_deny_shape'" >&2; fail=1; }
 
+  echo "==> $EGRESS send-only private-ingress deny refuses only workspace-labeled tenant sources (w6/m640)"
+  bash scripts/private-ingress-deny-check.sh "$EGRESS" || fail=1
+  bash scripts/private-ingress-deny-check.test.sh || fail=1
+
   echo "==> CNPG apiserver allow is additive (does not enable default-deny)"
   DSCTL="deploy/gitops/base/datastore-control-egress.yaml"
   cnpg_allow_shape="$(yq -N \

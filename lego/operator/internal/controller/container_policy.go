@@ -35,14 +35,32 @@ func freePlanLabelValue(app *appv1alpha1.App) string {
 	return ""
 }
 
+// networkPolicyLabels are the pod labels the platform's network policies
+// select an App's pods by, each "" where it does not apply: the free-plan
+// label the SMTP egress deny selects (w8/m127), and the private-network label
+// the send-only ingress deny selects on an App that receives no private
+// traffic: a background worker, a cron job, or a free web or private service
+// (AppSpec.ReceivesPrivateTraffic, w6/m640).
+func networkPolicyLabels(app *appv1alpha1.App) map[string]string {
+	sendOnly := ""
+	if !app.Spec.ReceivesPrivateTraffic() {
+		sendOnly = execution.PrivateNetworkSendOnly
+	}
+	return map[string]string{
+		execution.LabelFreePlan:       freePlanLabelValue(app),
+		execution.LabelPrivateNetwork: sendOnly,
+	}
+}
+
 // appPolicyLabels projects only persisted policy, never an App's arbitrary
-// labels: the widened container policy's admission marker, and the free-plan
-// label the SMTP egress deny selects (w8/m127). Keep strict paid templates
-// byte-identical to avoid rolling legacy Apps.
+// labels: the widened container policy's admission marker, and the
+// networkPolicyLabels that apply. Keep strict paid web and private service
+// templates byte-identical to avoid rolling legacy Apps.
 func appPolicyLabels(app *appv1alpha1.App, labels map[string]string) map[string]string {
 	widened := len(appv1alpha1.ContainerPolicyCapabilities(app.Spec.ContainerPolicy)) > 0
-	free := freePlanLabelValue(app)
-	if !widened && free == "" {
+	network := networkPolicyLabels(app)
+	maps.DeleteFunc(network, func(_, v string) bool { return v == "" })
+	if !widened && len(network) == 0 {
 		return labels
 	}
 	labels = maps.Clone(labels)
@@ -54,9 +72,7 @@ func appPolicyLabels(app *appv1alpha1.App, labels map[string]string) map[string]
 		labels[execution.LabelApp] = app.Name
 		labels[execution.LabelAppUID] = string(app.UID)
 	}
-	if free != "" {
-		labels[execution.LabelFreePlan] = free
-	}
+	maps.Copy(labels, network)
 	return labels
 }
 
