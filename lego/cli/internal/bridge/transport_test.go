@@ -1,13 +1,16 @@
 package bridge
 
 import (
+	"encoding/json"
 	"github.com/render-oss/cli/pkg/cfg"
 	"github.com/render-oss/cli/pkg/client/version"
 	"github.com/render-oss/cli/pkg/config"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -241,6 +244,72 @@ func TestUpstreamReleaseCheckNeverAdvertisesRenderCLI(t *testing.T) {
 	newer, err := version.NewClient(cfg.RepoURL).NewVersionAvailable()
 	if err == nil || newer != "" {
 		t.Fatalf("NewVersionAvailable = %q, %v; want an error so the banner is skipped", newer, err)
+	}
+}
+
+func TestBlockedOwnerRefusesTheBarredName(t *testing.T) {
+	// A direct-ID command leaves an unresolvable workspace name in
+	// RENDER_WORKSPACE; the transport must fail fast when a fallback search
+	// would send it as an ownerId, and forward everything else.
+	var reached []string
+	transport := &controlPlaneTransport{
+		base: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			reached = append(reached, r.URL.String())
+			return &http.Response{StatusCode: http.StatusOK, Body: http.NoBody, Request: r}, nil
+		}),
+		version: "1.2.3",
+		hosts:   hostSet(t, "https://api.bex.co/v1/"),
+		blocked: func() string { return "stale-ws" },
+	}
+	for _, tc := range []struct {
+		url     string
+		blocked bool
+	}{
+		{"https://api.bex.co/v1/postgres?name=dpg-00000000000000000000&ownerId=stale-ws", true},
+		{"https://api.bex.co/v1/postgres?ownerId=tea-12345678901234567890&ownerId=stale-ws", true},
+		{"https://api.bex.co/v1/owners/stale-ws", true},
+		{"https://api.bex.co/v1/owners?name=stale-ws", false},
+		{"https://api.bex.co/v1/postgres?ownerId=tea-12345678901234567890", false},
+		{"https://api.bex.co/v1/services/srv-00000000000000000000", false},
+	} {
+		req, err := http.NewRequest(http.MethodGet, tc.url, nil)
+		if err != nil {
+			t.Fatalf("new request: %v", err)
+		}
+		resp, err := transport.RoundTrip(req)
+		if err != nil {
+			t.Fatalf("round trip %s: %v", tc.url, err)
+		}
+		_ = resp.Body.Close()
+		if tc.blocked && resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("%s forwarded with status %d, want the local refusal", tc.url, resp.StatusCode)
+		}
+		if !tc.blocked && resp.StatusCode != http.StatusOK {
+			t.Errorf("%s refused with status %d, want it forwarded", tc.url, resp.StatusCode)
+		}
+	}
+	if len(reached) != 3 {
+		t.Errorf("forwarded %v, want the three unbarred requests", reached)
+	}
+}
+
+func TestBlockedOwnerRefusalNamesTheWorkspace(t *testing.T) {
+	req, err := http.NewRequest(http.MethodGet, "https://api.bex.co/v1/postgres?ownerId=stale-ws", nil)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	resp := blockedOwnerRefusal(req, "stale-ws")
+	defer func() { _ = resp.Body.Close() }()
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+	var decoded map[string]string
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("refusal body = %q, want JSON: %v", raw, err)
+	}
+	if !strings.Contains(decoded["message"], `no workspace named "stale-ws"`) {
+		t.Errorf("refusal message = %q, want the unknown-name wording", decoded["message"])
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/render-oss/cli/pkg/client"
@@ -49,9 +50,30 @@ func ResolveWorkspaceName(use WorkspaceUse) error {
 	defer cancel()
 	err := resolveWorkspaceName(ctx, os.LookupEnv, os.Setenv, listOwnersByName)
 	if use == WorkspaceIfResolvable {
+		if err != nil {
+			// The raw name stays in RENDER_WORKSPACE so the direct read
+			// proceeds, but it must never reach the API as an ownerId —
+			// including through an id-or-name fallback search a 404
+			// triggers. Bar it at the control-plane transport (w32/117).
+			if name, _ := os.LookupEnv(renderWorkspace); name != "" {
+				blockedOwner.Store(name)
+			}
+		}
 		return nil
 	}
 	return err
+}
+
+// blockedOwner is the RENDER_WORKSPACE value left in place after an
+// unresolvable lookup for a direct-ID command (see ResolveWorkspaceName).
+// One command runs per process, so it is stored at most once outside tests.
+var blockedOwner atomic.Value
+
+// loadBlockedOwner returns the barred workspace name, or "" when none was
+// barred.
+func loadBlockedOwner() string {
+	name, _ := blockedOwner.Load().(string)
+	return name
 }
 
 // WorkspaceUse classifies how the invoked command uses the active workspace.
@@ -63,8 +85,9 @@ const (
 	WorkspaceRequired WorkspaceUse = iota
 	// WorkspaceIfResolvable: the command addresses a typed resource id, which
 	// upstream reads directly; a resolvable name is still mapped (an id
-	// selector's not-found fallback searches the active workspace), but an
-	// unresolvable one does not block the read.
+	// selector's not-found fallback searches the mapped workspace), but an
+	// unresolvable one neither blocks the read nor reaches the API —
+	// ResolveWorkspaceName bars it at the control-plane transport.
 	WorkspaceIfResolvable
 	// WorkspaceUnused: the command never reads the active workspace — help,
 	// inventory, identity, an explicit selection, completion, auth.

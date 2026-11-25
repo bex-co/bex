@@ -1756,6 +1756,105 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 	}
 }
 
+// TestStaleWorkspaceNameNeverLeaksOnDirectIDMiss: a direct-ID command with a
+// stale BEX_WORKSPACE must fail fast even when the id does not exist.
+// Upstream resolves a missed id-or-name through a workspace-scoped name
+// search (ListServices/ListPostgres/ListKeyValue with ownerId), so letting
+// the fallback run would send the unresolved name as a raw ownerId (w32/117).
+func TestStaleWorkspaceNameNeverLeaksOnDirectIDMiss(t *testing.T) {
+	const (
+		teamID  = "tea-12345678901234567890"
+		dbMiss  = "dpg-00000000000000000000"
+		kvMiss  = "red-00000000000000000000"
+		srvMiss = "srv-00000000000000000000"
+		sbgMiss = "sbg-00000000000000000000"
+		agsMiss = "ags-00000000000000000000"
+		exsMiss = "exs-00000000000000000000"
+	)
+	var mu sync.Mutex
+	var leakedOwners []string
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if owner := r.URL.Query().Get("ownerId"); owner == "stale-ws" {
+			mu.Lock()
+			leakedOwners = append(leakedOwners, r.Method+" "+r.URL.RequestURI())
+			mu.Unlock()
+		}
+		if strings.Contains(r.URL.Path, "/stale-ws/") {
+			mu.Lock()
+			leakedOwners = append(leakedOwners, r.Method+" "+r.URL.RequestURI())
+			mu.Unlock()
+		}
+		switch r.URL.Path {
+		case "/v1/owners":
+			if r.URL.Query().Get("name") == "stale-ws" {
+				_, _ = w.Write([]byte(`[]`))
+				return
+			}
+			_, _ = w.Write([]byte(`[{"owner":{"id":"` + teamID + `","name":"known","type":"team"}}]`))
+		case "/v1/users":
+			_, _ = w.Write([]byte(`{"id":"usr-12345678901234567890","email":"qa@example.test","name":"qa"}`))
+		case "/v1/postgres/" + dbMiss, "/v1/key-value/" + kvMiss, "/v1/services/" + srvMiss,
+			"/v1/agent-sessions/" + agsMiss, "/v1/sandbox-groups/" + sbgMiss:
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"message":"not found"}`))
+		case "/v1/blueprints/" + exsMiss + "/plan":
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"message":"blueprint not found"}`))
+		default: // list fallbacks and anything else answer empty
+			_, _ = w.Write([]byte(`[]`))
+		}
+	}))
+	t.Cleanup(api.Close)
+	run := func(args ...string) (int, string) {
+		t.Helper()
+		command := exec.Command(buildBex(), args...)
+		command.Env = append(withoutRenderEnv(updateTestEnv(t.TempDir())),
+			"HOME="+t.TempDir(), "BEX_HOST="+api.URL+"/v1/", "BEX_ACCESS_TOKEN=test-access-token",
+			"BEX_WORKSPACE=stale-ws", "BEX_NO_UPDATE_NOTIFIER=1", "BEX_CLI_DISABLE_ANALYTICS=1")
+		var stderr bytes.Buffer
+		command.Stderr = &stderr
+		err := command.Run()
+		code := 0
+		if exit, ok := err.(*exec.ExitError); ok {
+			code = exit.ExitCode()
+		} else if err != nil {
+			t.Fatalf("%v: %v", args, err)
+		}
+		return code, stderr.String()
+	}
+	// Commands whose miss falls back to a workspace-scoped name search must
+	// refuse like every other consumer instead of sending the stale name.
+	for _, args := range [][]string{
+		{"pg", "get", dbMiss, "-o", "json"},
+		{"kv", "get", kvMiss, "-o", "json"},
+		{"services", "delete", srvMiss, "-o", "json"},
+		{"services", "update", srvMiss, "--name", "miss-rename", "-o", "json"},
+	} {
+		if code, stderr := run(args...); code != 1 || !strings.Contains(stderr, `no workspace named "stale-ws"`) {
+			t.Errorf("stale bex %v = %d %q, want the unknown-name refusal", args, code, stderr)
+		}
+	}
+	// Commands whose miss stays on the direct route fail for their own
+	// reasons; either way nothing workspace-derived may reach the API.
+	for _, args := range [][]string{
+		{"services", "instances", srvMiss, "-o", "json"},
+		{"deploys", "list", srvMiss, "-o", "json"},
+		{"agent", "get", agsMiss, "-o", "json"},
+		{"sandbox-groups", "delete", sbgMiss, "-o", "json"},
+		{"ea", "blueprints", "plan", exsMiss, "-o", "json"},
+	} {
+		if _, stderr := run(args...); strings.Contains(stderr, "BEX_WORKSPACE") {
+			t.Errorf("stale bex %v failed on workspace resolution: %s", args, stderr)
+		}
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(leakedOwners) != 0 {
+		t.Errorf("unresolved BEX_WORKSPACE leaked into API requests: %v", leakedOwners)
+	}
+}
+
 // TestPostgresHelpNeedsNoConnectionInfo: psql/pgcli help with a database
 // selector prints help with no request even while the database's CA is
 // unavailable, and a real session is still refused (w8/065).
