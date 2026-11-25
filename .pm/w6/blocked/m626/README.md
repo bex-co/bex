@@ -27,7 +27,7 @@
 - t002, t003 and t005–t007 are done (commit below): a card bound through Checkout, or through the Billing Portal once `customer.updated` arrives ([w2/070](../../../w2/blocked/070.md)), while the workspace is in grace or enforcement pays each unpaid cycle invoice at once, off-session, oldest first, once per invoice and card (`billing_overdue_payments`, keyed by the card's fingerprint), and records the recovery at once; a decline leaves the state as it was with the issuer's reason. The lifecycle read names the overdue invoice (`overdueInvoice`: `id`, `hostedInvoiceUrl`) on REST, GraphQL and MCP, and the grace and enforced alerts offer Pay Now and Update payment method.
 - The DoD's second to fourth bullets hold in code and tests (Postgres-backed tests in `lego/backend/internal/billing/overdue_test.go`, the readiness tests in `service_test.go`, `billing-lifecycle-alert.test.tsx`). The first bullet and Pay now's recovery time need Stripe test mode: [t001](t001.md) and [t004](t004.md) say what to run, and t008 closes the milestone after them.
 - Portal path: t001 could not say whether the portal moves the Subscription's own default, so t002 always moves a differing Subscription default to the portal's card.
-- [w6/177](../../177.md)'s "Unpaid invoice, suspension and recovery" row, once written, should read: pay action and immediate charge on a new card shipped in w6/m626, its test-mode check pending.
+- [w6/177](../../done/177.md)'s "Unpaid invoice, suspension and recovery" row, once written, should read: pay action and immediate charge on a new card shipped in w6/m626, its test-mode check pending.
 
 ## Source + Goal linkage
 

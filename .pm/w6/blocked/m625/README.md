@@ -36,5 +36,5 @@
 - **Recommendation, not a user decision:** everyone who can view billing (Admin, Developer, Billing; [w9/m620](../../../w9/done/m620/README.md)'s `can_view_billing`) gets both links, because Render shows its invoice list to the same roles and paying a hosted invoice changes no setting. Which roles see Render's Pay Now is unverified.
 - **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)); ADR040 billing.
 - **Expected outcome:** a member downloads an invoice and pays an unpaid one without leaving bex.
-- **Why now:** w6/m626 reuses these links for the overdue invoice, and [w6/177](../../177.md)'s ledger row needs its owner.
+- **Why now:** w6/m626 reuses these links for the overdue invoice, and [w6/177](../../done/177.md)'s ledger row needs its owner.
 - **Render parity:** included: REST, GraphQL, MCP and the Billing page change.

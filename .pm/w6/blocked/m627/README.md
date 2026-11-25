@@ -38,5 +38,5 @@
 - **Live step:** t005 changes bex's live portal configuration on the Stripe account bex shares with other products. If the agent is refused that write, as in [w2/070](../../../w2/blocked/070.md), t005 parks on the user's run of the script and the rest ships.
 - **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)); ADR030 §9 plan gates.
 - **Expected outcome:** a finance contact who is not a member gets the workspace's invoices and billing notices, and Hobby can no longer move its billing email away from its owner.
-- **Why now:** the portal lets a Hobby workspace bypass w5/160's rule today, and [w6/177](../../177.md)'s ledger row needs its owner.
+- **Why now:** the portal lets a Hobby workspace bypass w5/160's rule today, and [w6/177](../../done/177.md)'s ledger row needs its owner.
 - **Render parity:** included: GraphQL, REST, MCP and the Billing page change.

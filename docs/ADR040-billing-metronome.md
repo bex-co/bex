@@ -191,7 +191,7 @@ Rollback is non-destructive: remove `BEX_STRIPE_SECRET_KEY` and `BEX_STRIPE_WEBH
 
 ## Render parity
 
-Render exposes payment-method updates, accrued charges, and invoice history in its dashboard but no public REST/GraphQL/MCP billing API. bex's raw usage quantities, normalized `billing` object, readiness state, and hosted-session verbs remain deliberate bex-ahead extensions. Since w1/m60 bex gates these financial actions on `can_manage_billing` (`billing or admin`), so — like Render — a dedicated **billing** role reaches billing management without full workspace-admin; the earlier admin-only limitation is closed (before w1/m60 the relation was modelled but had no Go consumer, so billing gated on admin-only `can_manage`). See [the dated comparison](render-artifacts/billing-onboarding.md) and [ADR018](ADR018-render-parity.md).
+Render exposes payment-method updates, accrued charges, and invoice history in its dashboard but no public REST/GraphQL/MCP billing API. bex's raw usage quantities, normalized `billing` object, readiness state, and hosted-session verbs remain deliberate bex-ahead extensions. Since w1/m60 bex gates these financial actions on `can_manage_billing` (`billing or admin`), so — like Render — a dedicated **billing** role reaches billing management without full workspace-admin; the earlier admin-only limitation is closed (before w1/m60 the relation was modelled but had no Go consumer, so billing gated on admin-only `can_manage`). See [the dated comparison](render-artifacts/billing-onboarding.md) and [ADR018 § Billing & invoicing](ADR018/billing-invoicing.md), which records each billing row's owner and the choices still waiting for the user's sign-off.
 
 ## Alternatives considered
 

@@ -60,6 +60,10 @@ This section lives in [ADR018/metrics.md](ADR018/metrics.md) since 2026-11-23 (w
 
 This section lives in [ADR018/identity-workspaces-account.md](ADR018/identity-workspaces-account.md) since 2026-11-23 (w10/m607), to keep this file under the 1 MiB blob limit. Amend its rows there.
 
+## Billing & invoicing
+
+This section lives in [ADR018/billing-invoicing.md](ADR018/billing-invoicing.md), added on 2026-11-25 (w6/177) as a file of its own. It holds each billing row's evidence and owner, and the billing choices still waiting for the user's sign-off. Amend its rows there.
+
 ## API contract
 
 This section lives in [ADR018/api-contract.md](ADR018/api-contract.md) since 2026-11-23 (w10/m607), to keep this file under the 1 MiB blob limit. Amend its rows there.
