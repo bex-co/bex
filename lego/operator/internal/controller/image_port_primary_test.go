@@ -22,6 +22,7 @@ import (
 	"io"
 	"net/http"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -43,10 +44,29 @@ func imageConfigRegistry(t interface{ Helper() }, exposed string) *http.Client {
 	})}
 }
 
+// declaredRange is an EXPOSE fixture declaring every TCP port from lo to hi.
+func declaredRange(lo, hi int) string {
+	keys := make([]string, 0, hi-lo+1)
+	for port := lo; port <= hi; port++ {
+		keys = append(keys, fmt.Sprintf(`"%d/tcp":{}`, port))
+	}
+	return strings.Join(keys, ",")
+}
+
+// portRange is every port from lo to hi, ascending.
+func portRange(lo, hi int32) []int32 {
+	ports := make([]int32, 0, hi-lo+1)
+	for port := lo; port <= hi; port++ {
+		ports = append(ports, port)
+	}
+	return ports
+}
+
 // The primary rule (ADR089 § Port slice decisions, w6/m148): an explicit port,
 // else 3000 when declared, else the lowest declared TCP port — ports below 1024
 // included, because tenant nodes run ip_unprivileged_port_start=0 — else 3000.
-// Every declared TCP port is published, and the strict policy adds nothing.
+// Every declared TCP port is published up to 75, the primary kept and the
+// lowest others, and the strict policy adds nothing.
 func TestImagePortPrimarySelection(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
@@ -63,6 +83,12 @@ func TestImagePortPrimarySelection(t *testing.T) {
 		{"udp is not published", `"53/udp":{},"9000/tcp":{}`, 0, 9000, []int32{9000}},
 		{"explicit port selects the primary and keeps the rest", `"8123/tcp":{},"9000/tcp":{}`, 9100, 9100, []int32{8123, 9000, 9100}},
 		{"explicit port below 1024 is bindable", `"8123/tcp":{}`, 80, 80, []int32{80, 8123}},
+		// No EXPOSE content fails the deploy, as on Render (w6/181).
+		{"reserved and sctp declarations are left out", `"19099/tcp":{},"8123/sctp":{},"9000/tcp":{}`, 0, 9000, []int32{9000}},
+		{"a reserved port alone falls back to the default port", `"18012/tcp":{}`, 0, 10000, []int32{10000}},
+		{"more than 75 ports publish the lowest 75", `"19099/tcp":{},` + declaredRange(8000, 8100), 0, 8000, portRange(8000, 8074)},
+		{"declared 3000 stays the primary beyond the 75th port", declaredRange(1, 100) + `,"3000/tcp":{}`, 0, 3000, slices.Concat(portRange(1, 74), []int32{3000})},
+		{"an explicit primary beyond the 75th port is kept", declaredRange(8000, 8100), 9100, 9100, slices.Concat(portRange(8000, 8073), []int32{9100})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := &AppReconciler{Registry: "registry.test", HTTPClient: imageConfigRegistry(t, tc.exposed)}

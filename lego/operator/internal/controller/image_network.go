@@ -88,6 +88,15 @@ func preferredPort(ports []int32) int32 {
 	return ports[0]
 }
 
+// publishedImagePorts is the port set a network publishes from its image's
+// ascending declared ports: the primary, then the lowest others, up to
+// Render's 75 open ports (render.com/docs/private-network). A higher declared
+// port is left out rather than failing the deploy (w6/181).
+func publishedImagePorts(declared []int32, primary int32) []int32 {
+	others := withoutPorts(declared, []int32{primary})
+	return mergePorts([]int32{primary}, others[:min(len(others), appv1alpha1.MaxImagePorts-1)])
+}
+
 // parseExternalImageReference splits a prebuilt image reference into the
 // registry API host, repository and reference for its metadata read
 // (w4/m243). No platform credential is ever attached to it.
@@ -311,14 +320,8 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 		if primary < 1 || primary > 65535 || appv1alpha1.IsReservedImagePort(primary) {
 			return "", 0, fmt.Errorf("configured primary port is unsupported")
 		}
-		if !slices.Contains(ports, primary) {
-			ports = append(slices.Clone(ports), primary)
-			slices.Sort(ports)
-		}
-		if len(ports) > appv1alpha1.MaxImagePorts {
-			return "", 0, fmt.Errorf("services support at most %d TCP ports including the configured primary", appv1alpha1.MaxImagePorts)
-		}
 	}
+	ports = publishedImagePorts(ports, primary)
 	image = prefix + "@" + metadata.Digest
 	network := &appv1alpha1.ImageNetworkStatus{
 		Image: image, Source: source, Revision: releaseRevision(app), PrimaryPort: primary, Ports: ports,

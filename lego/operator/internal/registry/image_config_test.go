@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -403,29 +404,43 @@ func imageMetadataClient(handler http.Handler) *http.Client {
 	})}
 }
 
-func TestPrivateTCPPortBounds(t *testing.T) {
-	for _, port := range []string{"0/tcp", "65536/tcp", "18012/tcp", "18013/tcp", "19099/tcp", "bad/tcp", "8123/sctp", "8123"} {
-		if _, err := privateTCPPorts(map[string]json.RawMessage{port: json.RawMessage(`{}`)}); err == nil {
-			t.Errorf("accepted %q", port)
+// No EXPOSE declaration fails the read, as none fails a deploy on Render
+// (w6/181): a reserved port, a non-TCP protocol (SCTP included) and a
+// malformed key are left out, a key with no protocol is TCP (OCI image spec),
+// and more than 75 ports all come back for the network to cap.
+func TestPrivateTCPPortsSkipWhatTheyCannotPublish(t *testing.T) {
+	declare := func(keys ...string) map[string]json.RawMessage {
+		exposed := map[string]json.RawMessage{}
+		for _, key := range keys {
+			exposed[key] = json.RawMessage(`{}`)
+		}
+		return exposed
+	}
+	for _, key := range []string{"0/tcp", "65536/tcp", "18012/tcp", "18013/tcp", "19099/tcp", "bad/tcp", "8123/sctp", "8123/udp", "8000-8100/tcp", ""} {
+		if got := privateTCPPorts(declare(key, "9000/tcp")); !reflect.DeepEqual(got, []int32{9000}) {
+			t.Errorf("%q beside 9000/tcp = %v, want [9000]", key, got)
 		}
 	}
-	exposed := map[string]json.RawMessage{}
-	for port := 1; port <= 76; port++ {
-		exposed[fmt.Sprintf("%d/tcp", port)] = json.RawMessage(`{}`)
+	if got := privateTCPPorts(declare("8123", "9000/TCP", "9000/tcp", "8123/udp")); !reflect.DeepEqual(got, []int32{8123, 9000}) {
+		t.Errorf("bare and upper-case TCP keys = %v, want [8123 9000]", got)
 	}
-	if _, err := privateTCPPorts(exposed); err == nil {
-		t.Fatal("accepted 76 ports")
+	if got := privateTCPPorts(declare("19099/tcp")); len(got) != 0 {
+		t.Errorf("a reserved port alone = %v, want no port", got)
 	}
-	ports, err := privateTCPPorts(map[string]json.RawMessage{"8123/tcp": json.RawMessage(`{}`), "8123/udp": json.RawMessage(`{}`)})
-	if err != nil || !reflect.DeepEqual(ports, []int32{8123}) {
-		t.Fatalf("TCP-only ports=%v, error=%v", ports, err)
+	keys := []string{"19099/tcp"}
+	for port := 8100; port >= 8000; port-- {
+		keys = append(keys, fmt.Sprintf("%d/tcp", port))
+	}
+	got := privateTCPPorts(declare(keys...))
+	if len(got) != 101 || got[0] != 8000 || got[100] != 8100 || !slices.IsSorted(got) {
+		t.Fatalf("EXPOSE 19099 8000-8100 = %d ports %v…, want 8000-8100 ascending", len(got), got[:min(3, len(got))])
 	}
 }
 
-// The label read shares ReadImageConfig's verified fetch but not its port
-// rules: an image declaring an invalid port still reports its provenance
-// (w5/m148) and what its native-init does (w32/m575).
-func TestReadImageLabelsReadsTheLabelsWithoutPortRules(t *testing.T) {
+// The label read shares ReadImageConfig's verified fetch: an image declaring
+// an invalid port reports its provenance (w5/m148) and what its native-init
+// does (w32/m575), and its port read leaves that port out (w6/181).
+func TestReadImageLabelsReadsTheLabelsBesideAnInvalidPort(t *testing.T) {
 	config := []byte(`{"architecture":"amd64","os":"linux","config":{"ExposedPorts":{"70000/tcp":{}},"Labels":{"org.opencontainers.image.revision":"0123456789abcdef0123456789abcdef01234567","co.bex.native-init.announces":"true"}}}`)
 	configDigest := fmt.Sprintf("sha256:%x", sha256.Sum256(config))
 	manifest := []byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"digest":%q}}`, configDigest))
@@ -442,8 +457,8 @@ func TestReadImageLabelsReadsTheLabelsWithoutPortRules(t *testing.T) {
 		_, _ = w.Write(body)
 	}))
 	ctx := context.Background()
-	if _, err := ReadImageConfig(ctx, server, "https://registry.test", "owned/web", "gen-1", ""); err == nil {
-		t.Fatal("fixture must declare a port ReadImageConfig refuses")
+	if metadata, err := ReadImageConfig(ctx, server, "https://registry.test", "owned/web", "gen-1", ""); err != nil || len(metadata.TCPPorts) != 0 {
+		t.Fatalf("ReadImageConfig = %+v, %v; want the out-of-range port left out, not a failed read", metadata, err)
 	}
 	got, err := ReadImageLabels(ctx, server, "https://registry.test", "owned/web", "gen-1", "")
 	if err != nil || got[RevisionLabel] != "0123456789abcdef0123456789abcdef01234567" || got["co.bex.native-init.announces"] != "true" || len(got) != 2 {

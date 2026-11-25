@@ -86,7 +86,9 @@ type ImageConfig struct {
 	// PlatformDigest identifies the verified hosting-platform manifest whose config
 	// supplied TCPPorts. It equals Digest for a single-platform reference.
 	PlatformDigest string
-	TCPPorts       []int32
+	// TCPPorts is every usable TCP port the config declares (privateTCPPorts),
+	// ascending and not yet capped at 75.
+	TCPPorts []int32
 }
 
 // TransientError is a registry answer a later read may not repeat: a rate
@@ -182,11 +184,7 @@ func readImageConfig(ctx context.Context, httpClient *http.Client, registryHost,
 	if err != nil {
 		return ImageConfig{}, err
 	}
-	ports, err := privateTCPPorts(document.Config.ExposedPorts)
-	if err != nil {
-		return ImageConfig{}, err
-	}
-	return ImageConfig{Digest: digest, PlatformDigest: platformDigest, TCPPorts: ports}, nil
+	return ImageConfig{Digest: digest, PlatformDigest: platformDigest, TCPPorts: privateTCPPorts(document.Config.ExposedPorts)}, nil
 }
 
 // RevisionLabel is the OCI annotation bex's builds stamp with the commit the
@@ -514,29 +512,25 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 	return "", "", imageConfigDocument{}, fmt.Errorf("image index nesting exceeds the supported limit")
 }
 
-func privateTCPPorts(exposed map[string]json.RawMessage) ([]int32, error) {
+// privateTCPPorts is every TCP port an image's EXPOSE declares, ascending. No
+// declaration fails the read, as none fails a deploy on Render (w6/181): a
+// UDP, SCTP or malformed one and a reserved port (18012, 18013, 19099, which
+// Render's private network does not carry) are left out. A key with no
+// protocol is TCP, as the OCI image spec says. The set is not capped here:
+// the network keeps its primary and the lowest others within Render's 75.
+func privateTCPPorts(exposed map[string]json.RawMessage) []int32 {
 	ports := make([]int32, 0, len(exposed))
 	for key := range exposed {
-		number, protocol, ok := strings.Cut(key, "/")
-		if !ok || (protocol != "tcp" && protocol != "udp") {
-			return nil, fmt.Errorf("invalid exposed port declaration")
-		}
-		port, err := strconv.ParseInt(number, 10, 32)
-		if err != nil || port < 1 || port > 65535 {
-			return nil, fmt.Errorf("exposed port is outside 1-65535")
-		}
-		if protocol == "udp" {
+		number, protocol, _ := strings.Cut(key, "/")
+		if protocol != "" && !strings.EqualFold(protocol, "tcp") {
 			continue
 		}
-		if appv1alpha1.IsReservedImagePort(int32(port)) {
-			return nil, fmt.Errorf("exposed TCP port %d is reserved", port)
+		port, err := strconv.ParseInt(number, 10, 32)
+		if err != nil || port < 1 || port > 65535 || appv1alpha1.IsReservedImagePort(int32(port)) {
+			continue
 		}
 		ports = append(ports, int32(port))
 	}
 	slices.Sort(ports)
-	ports = slices.Compact(ports)
-	if len(ports) > appv1alpha1.MaxImagePorts {
-		return nil, fmt.Errorf("private services support at most %d exposed TCP ports", appv1alpha1.MaxImagePorts)
-	}
-	return ports, nil
+	return slices.Compact(ports)
 }
