@@ -112,14 +112,12 @@ func readLevelActions() map[core.KeyAction]bool {
 
 // writesThatOnlyRead are the write- or mint-class operations a Read-level
 // action is enough for, each because it changes nothing a key could not
-// already read: validating or previewing a render.yaml, running SQL through
+// already read: previewing or generating a render.yaml, running SQL through
 // the connection the credentials read reveals, a recovery window's lookup, a
 // wait.
 var writesThatOnlyRead = map[string]bool{
-	"REST POST /v1/blueprints/validate":         true,
 	"REST POST /v1/blueprints/preview":          true,
 	"REST POST /v1/blueprints/generate":         true,
-	"MCP validate_bex_yml":                      true,
 	"MCP preview_blueprint":                     true,
 	"MCP generate_blueprint":                    true,
 	"REST POST /v1/postgres/{id}/query":         true,

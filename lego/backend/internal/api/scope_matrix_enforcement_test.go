@@ -472,3 +472,101 @@ func TestObjectStorageScopeClasses(t *testing.T) {
 	sensitive, _, _ := scopedAPI(t, "identity-1", "dcr-client", "openid "+core.ScopeSensitive, []string{bexResource}, map[string]bool{"dcr-client": false})
 	passes(t, sensitive, http.MethodGet, key, testToken, "")
 }
+
+// TestBlueprintValidateReadTokenAllSurfaces (w34/012): Blueprint validation is
+// read-only (can_view, KeyBlueprintsView, readOnlyHint: true) and must succeed
+// with a bex.read OAuth token across REST, GraphQL, and MCP.
+func TestBlueprintValidateReadTokenAllSurfaces(t *testing.T) {
+	h, srv, sink := scopedAPI(t, "identity-1", "dcr-client", "openid "+core.ScopeRead,
+		[]string{bexResource}, map[string]bool{"dcr-client": false})
+
+	const manifest = "services:\n  - type: web\n    name: demo\n    runtime: image\n    image:\n      url: nginx:latest\n"
+
+	// REST POST /v1/blueprints/validate
+	t.Run("REST", func(t *testing.T) {
+		restReq, err := json.Marshal(map[string]string{"bexYaml": manifest})
+		if err != nil {
+			t.Fatalf("marshal rest body: %v", err)
+		}
+		w := do(t, h, http.MethodPost, "/v1/blueprints/validate", testToken, string(restReq))
+		if w.Code != http.StatusOK {
+			t.Fatalf("REST POST /v1/blueprints/validate = %d (%s), want 200", w.Code, w.Body.String())
+		}
+		var restResp struct {
+			Valid bool `json:"valid"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &restResp); err != nil {
+			t.Fatalf("unmarshal rest response: %v (%s)", err, w.Body.String())
+		}
+		if !restResp.Valid {
+			t.Fatalf("REST valid = false, want true (%s)", w.Body.String())
+		}
+	})
+
+	// GraphQL Query.validateBlueprint
+	t.Run("GraphQL", func(t *testing.T) {
+		gqlReq, err := json.Marshal(map[string]any{
+			"query":     `query($y: String!) { validateBlueprint(bexYaml: $y) { valid } }`,
+			"variables": map[string]string{"y": manifest},
+		})
+		if err != nil {
+			t.Fatalf("marshal gql body: %v", err)
+		}
+		gw := do(t, h, http.MethodPost, "/graphql", testToken, string(gqlReq))
+		if gw.Code != http.StatusOK {
+			t.Fatalf("GQL validateBlueprint status = %d (%s), want 200", gw.Code, gw.Body.String())
+		}
+		var gqlResp struct {
+			Data struct {
+				ValidateBlueprint struct {
+					Valid bool `json:"valid"`
+				} `json:"validateBlueprint"`
+			} `json:"data"`
+			Errors []any `json:"errors"`
+		}
+		if err := json.Unmarshal(gw.Body.Bytes(), &gqlResp); err != nil {
+			t.Fatalf("unmarshal gql response: %v (%s)", err, gw.Body.String())
+		}
+		if len(gqlResp.Errors) != 0 || !gqlResp.Data.ValidateBlueprint.Valid {
+			t.Fatalf("GQL validateBlueprint = %s, want valid=true with no errors", gw.Body.String())
+		}
+	})
+
+	// MCP validate_bex_yml
+	t.Run("MCP", func(t *testing.T) {
+		cs := mcpSessionIdentity(t, srv, core.Identity{
+			Subject: "identity-1", Method: "oauth2", ClientID: "dcr-client", Human: true,
+			CanonicalScopes: core.ScopeRead, AcceptedAudience: bexResource,
+		})
+		res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{
+			Name:      "validate_bex_yml",
+			Arguments: map[string]any{"bexYaml": manifest},
+		})
+		if err != nil {
+			t.Fatalf("MCP validate_bex_yml transport: %v", err)
+		}
+		if res == nil || res.IsError {
+			t.Fatalf("MCP validate_bex_yml error: %s", fmtMCP(res))
+		}
+		if len(res.Content) == 0 {
+			t.Fatalf("MCP validate_bex_yml returned empty content")
+		}
+		tc, ok := res.Content[0].(*mcp.TextContent)
+		if !ok {
+			t.Fatalf("MCP validate_bex_yml content[0] = %T, want *mcp.TextContent", res.Content[0])
+		}
+		var mcpResp struct {
+			Valid bool `json:"valid"`
+		}
+		if err := json.Unmarshal([]byte(tc.Text), &mcpResp); err != nil {
+			t.Fatalf("unmarshal MCP response: %v (%s)", err, tc.Text)
+		}
+		if !mcpResp.Valid {
+			t.Fatalf("MCP validate_bex_yml valid = false, want true (%s)", tc.Text)
+		}
+	})
+
+	if n := len(auditOfVerb(sink.events, core.AuditVerbScopeClass)); n != 0 {
+		t.Fatalf("allowed blueprint validations must not audit ScopeClass, got %d", n)
+	}
+}

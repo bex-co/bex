@@ -32,6 +32,11 @@ var scopeClassOverrides = map[string]string{
 	"MCP preview_organization_invite": core.OpClassRead,
 	// wait_ blocks on state but writes nothing (ADR094 D6).
 	"MCP wait_agent_sessions": core.OpClassRead,
+	// Blueprint validation is a read-only dry-run (can_view, KeyBlueprintsView,
+	// readOnlyHint: true); REST uses POST for the manifest body and MCP uses
+	// validate_ rather than get_/list_ (w34/012).
+	"REST POST /v1/blueprints/validate": core.OpClassRead,
+	"MCP validate_bex_yml":              core.OpClassRead,
 	// Durable-credential mint. AuthorizeMintClass still runs at the verb.
 	"REST POST /v1/api-keys": core.OpClassMint,
 	// Changing a key's grant is mint too (w9/m496, I8): it widens what a
