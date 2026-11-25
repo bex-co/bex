@@ -1,6 +1,6 @@
 # Render's invoice list: PDF download, Pay Now, and who sees them
 
-**Captured:** 2026-11-24 · **Scope:** [w6/m625](../../.pm/w6/m625/README.md) · **Sources:** Render's public docs and feedback board, read on 2026-11-24; the community forum where noted
+**Captured:** 2026-11-24 · **Scope:** [w6/m625](../../.pm/w6/blocked/m625/README.md) · **Sources:** Render's public docs and feedback board, read on 2026-11-24; the community forum where noted
 
 ## What Render shows
 
