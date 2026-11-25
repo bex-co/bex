@@ -37,7 +37,7 @@ type billingPortalArgs struct {
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_billing_readiness",
-		Description: "Get Stripe Billing onboarding readiness, including test/live mode, Customer/Subscription/payment-method state, whether the paid-intent gate is on (paymentMethodRequired), whether this workspace must bind a payment method before any resource use (paymentMethodOnboardingRequired — the sign-up wall, `all` gate mode), and fail-closed tax configuration. Requires the Admin, Developer or Billing role, as Render's View billing details does. bex extension over Render's MCP.",
+		Description: "Get Stripe Billing onboarding readiness, including test/live mode, Customer/Subscription/payment-method state, the billing lifecycle (grace, enforcement, recovery) with the overdue invoice and its hosted payment page (lifecycle.overdueInvoice) while one is owed, whether the paid-intent gate is on (paymentMethodRequired), whether this workspace must bind a payment method before any resource use (paymentMethodOnboardingRequired — the sign-up wall, `all` gate mode), and fail-closed tax configuration. Requires the Admin, Developer or Billing role, as Render's View billing details does. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, Readiness, error) {
 		out, err := s.Status(ctx, core.NamedWorkspace(ctx))
 		return nil, out, err

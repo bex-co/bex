@@ -221,6 +221,12 @@ query BillingReadiness($workspaceId: String!) {
       recoveryPending
       allowedActions
       updatedAt
+      # The invoice owed while the workspace is in grace or enforcement, with
+      # Stripe's hosted page to pay it (the alert's Pay now); null otherwise.
+      overdueInvoice {
+        id
+        hostedInvoiceUrl
+      }
     }
     tax {
       configured

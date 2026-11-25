@@ -434,6 +434,10 @@ func (e2eBillingProvider) CreatePortalSession(_ context.Context, _ string, _ bil
 	return billing.HostedSession{URL: "https://billing.stripe.test/portal"}, nil
 }
 
+func (e2eBillingProvider) OverdueInvoice(context.Context, string) (*billing.OverdueInvoice, error) {
+	return nil, nil
+}
+
 // k8sKey is the fake apiserver's object key for a store-managed App: object-
 // named core.CRName(tenantID, name), living in the tenant's own `<ws>`
 // namespace (ADR043) — store.WorkspaceNamespace is the identity function, so

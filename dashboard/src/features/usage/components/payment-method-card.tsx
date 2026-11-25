@@ -135,7 +135,15 @@ export function PaymentMethodCardView({
                 <span>{t("usage.paymentMethodOnFile")}</span>
               )}
             </div>
-            <BillingStatusAlerts readiness={readiness} />
+            <BillingStatusAlerts
+              readiness={readiness}
+              update={{
+                onUpdatePayment: onCheckout,
+                busy: checkoutBusy,
+                canManageBilling,
+                reason,
+              }}
+            />
             <div className="flex flex-wrap gap-2">
               <PermissionTooltip reason={reason}>
                 <Button

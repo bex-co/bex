@@ -271,8 +271,13 @@ func (c *StripeClient) CompleteCheckoutSession(ctx context.Context, eventSession
 		}
 	}
 	if c.audit != nil {
-		return c.auditPaymentMethodChange(ctx, ids.Derive(ids.Audit, "checkout", checkout.sessionID), checkout.workspaceID, checkout.actor, checkout.actorMethod)
+		if err := c.auditPaymentMethodChange(ctx, ids.Derive(ids.Audit, "checkout", checkout.sessionID), checkout.workspaceID, checkout.actor, checkout.actorMethod); err != nil {
+			return err
+		}
 	}
+	// Last, once nothing above can fail the event: the new card pays what
+	// dunning holds the workspace for (w6/m626, overdue.go).
+	c.payOverdueInvoices(ctx, checkout.workspaceID, checkout.customerID, checkout.subscription.ID, paymentMethod)
 	return nil
 }
 

@@ -47,6 +47,10 @@ func (p *failingBillingProvider) CreatePortalSession(context.Context, string, bi
 	return billing.HostedSession{}, p.fail()
 }
 
+func (p *failingBillingProvider) OverdueInvoice(context.Context, string) (*billing.OverdueInvoice, error) {
+	return nil, p.fail()
+}
+
 // TestABillingFailureAnswersWithoutItsCause (w5/123): a failing billing
 // provider answers an uncoded "billing integration unavailable" (503 on REST)
 // on REST, GraphQL and MCP, without the provider's text. The provider is asked

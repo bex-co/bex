@@ -148,7 +148,15 @@ export function BillingOnboardingView({
                 ready={readiness.lifecycle.status === "healthy"}
               />
             </div>
-            <BillingStatusAlerts readiness={readiness} />
+            <BillingStatusAlerts
+              readiness={readiness}
+              update={{
+                onUpdatePayment: onCheckout,
+                busy: checkoutBusy,
+                canManageBilling,
+                reason: billingReason,
+              }}
+            />
             <div className="flex flex-wrap gap-2">
               <PermissionTooltip reason={billingReason}>
                 <Button

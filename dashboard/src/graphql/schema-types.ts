@@ -1108,10 +1108,17 @@ export type BillingLifecycle = {
   allowedActions: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   enforcementOwned: Maybe<Scalars['Boolean']['output']>;
   graceDeadline: Maybe<Scalars['String']['output']>;
+  overdueInvoice: Maybe<BillingOverdueInvoice>;
   reason: Maybe<Scalars['String']['output']>;
   recoveryPending: Maybe<Scalars['Boolean']['output']>;
   status: Maybe<Scalars['String']['output']>;
   updatedAt: Maybe<Scalars['String']['output']>;
+};
+
+export type BillingOverdueInvoice = {
+  __typename: 'BillingOverdueInvoice';
+  hostedInvoiceUrl: Maybe<Scalars['String']['output']>;
+  id: Maybe<Scalars['String']['output']>;
 };
 
 export type BillingTaxReadiness = {

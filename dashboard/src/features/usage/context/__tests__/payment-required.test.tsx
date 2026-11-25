@@ -53,6 +53,7 @@ vi.mock("@/features/usage/hooks/use-billing-onboarding", async () => {
             recoveryPending: false,
             allowedActions: ["update_payment_method", "open_portal"],
             updatedAt: "",
+            overdueInvoice: null,
           },
           tax: {
             configured: true,

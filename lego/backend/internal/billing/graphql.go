@@ -81,6 +81,23 @@ var billingLifecycleGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"recoveryPending":  gqlutil.BoolField(func(v LifecycleView) any { return v.RecoveryPending }),
 		"allowedActions":   gqlutil.StrsField(func(v LifecycleView) any { return v.AllowedActions }),
 		"updatedAt":        gqlutil.StrField(func(v LifecycleView) any { return v.UpdatedAt }),
+		"overdueInvoice": gqlutil.Typed(overdueInvoiceGQLType, func(v LifecycleView) any {
+			if v.OverdueInvoice == nil {
+				return nil
+			}
+			return *v.OverdueInvoice
+		}),
+	},
+})
+
+// overdueInvoiceGQLType is the invoice a workspace in dunning owes, as REST
+// and MCP serve it; hostedInvoiceUrl is null where Stripe gives none
+// (w6/m626).
+var overdueInvoiceGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BillingOverdueInvoice",
+	Fields: graphql.Fields{
+		"id":               gqlutil.StrField(func(v OverdueInvoice) any { return v.ID }),
+		"hostedInvoiceUrl": gqlutil.OptionalStrField(func(v OverdueInvoice) any { return v.HostedInvoiceURL }),
 	},
 })
 

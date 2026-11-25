@@ -36,6 +36,7 @@ const baseReadiness = {
     recoveryPending: false,
     allowedActions: ["update_payment_method", "open_portal"],
     updatedAt: "2026-07-28T01:00:00Z",
+    overdueInvoice: null,
   },
   tax: {
     configured: false,

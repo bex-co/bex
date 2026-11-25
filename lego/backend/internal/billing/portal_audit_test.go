@@ -47,15 +47,25 @@ func customerUpdatedEvent(t *testing.T, eventID, prev string, created time.Time,
 	return &event
 }
 
-// portalCustomerStub serves cus_1 with the given metadata and default method.
+// portalCustomerStub serves cus_1 with the given metadata and default method,
+// and tea-a's Subscription already charging that method.
 func portalCustomerStub(t *testing.T, metadata, defaultPM string) (*StripeClient, *stripeStub) {
 	t.Helper()
 	return newStripeTest(t, func(method, path string) (int, string) {
-		if method == http.MethodGet && path == "/v1/customers/cus_1" {
+		switch {
+		case method == http.MethodGet && path == "/v1/customers/cus_1":
 			return 200, fmt.Sprintf(`{"id":"cus_1","object":"customer","metadata":%s,"invoice_settings":{"default_payment_method":%q}}`, metadata, defaultPM)
+		case method == http.MethodGet && path == "/v1/subscriptions":
+			return 200, portalSubscriptions(defaultPM)
 		}
 		return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
 	})
+}
+
+// portalSubscriptions lists tea-a's live Subscription of cus_1, its own
+// default payment method set to defaultPM.
+func portalSubscriptions(defaultPM string) string {
+	return fmt.Sprintf(`{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","customer":"cus_1","default_payment_method":%q,"metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`, defaultPM)
 }
 
 const changedDefaultPM = `{"invoice_settings":{"default_payment_method":"pm_old"}}`

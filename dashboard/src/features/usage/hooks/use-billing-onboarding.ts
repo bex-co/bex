@@ -66,6 +66,15 @@ export interface BillingLifecycle {
   recoveryPending: boolean;
   allowedActions: string[];
   updatedAt: string;
+  /** The invoice owed while the workspace is in grace or enforcement, with
+   *  Stripe's hosted page to pay it (w6/m626); null otherwise. */
+  overdueInvoice: BillingOverdueInvoice | null;
+}
+
+export interface BillingOverdueInvoice {
+  id: string;
+  /** Stripe's hosted invoice page; "" when Stripe gave none. */
+  hostedInvoiceUrl: string;
 }
 
 export interface UseBillingOnboardingResult {
@@ -154,6 +163,13 @@ export function useBillingOnboarding({
           (action): action is string => action != null,
         ) ?? ["update_payment_method", "open_portal"],
         updatedAt: raw.lifecycle?.updatedAt ?? "",
+        overdueInvoice: raw.lifecycle?.overdueInvoice?.id
+          ? {
+              id: raw.lifecycle.overdueInvoice.id,
+              hostedInvoiceUrl:
+                raw.lifecycle.overdueInvoice.hostedInvoiceUrl ?? "",
+            }
+          : null,
       },
       tax: {
         configured: raw.tax?.configured ?? false,

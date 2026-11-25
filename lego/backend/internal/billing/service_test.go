@@ -30,6 +30,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 type billingTenant struct{ id string }
@@ -44,7 +45,11 @@ type billingProviderFake struct {
 	status    Readiness
 	checkout  HostedSession
 	portal    HostedSession
-	err       error
+	overdue   *OverdueInvoice
+	// overdueErr fails only the overdue-invoice lookup; overdueAsked counts it.
+	overdueErr   error
+	overdueAsked int
+	err          error
 }
 
 func (f *billingProviderFake) Readiness(_ context.Context, workspaceID string) (Readiness, error) {
@@ -58,6 +63,10 @@ func (f *billingProviderFake) CreateCheckoutSession(_ context.Context, workspace
 func (f *billingProviderFake) CreatePortalSession(_ context.Context, workspaceID string, _ PortalRequest) (HostedSession, error) {
 	f.workspace = workspaceID
 	return f.portal, f.err
+}
+func (f *billingProviderFake) OverdueInvoice(context.Context, string) (*OverdueInvoice, error) {
+	f.overdueAsked++
+	return f.overdue, f.overdueErr
 }
 
 type billingDeny struct{}
@@ -75,21 +84,12 @@ func billingIdentity(ctx context.Context) context.Context {
 	return core.WithIdentity(ctx, core.Identity{Subject: "user:admin"})
 }
 
-func TestBillingStatusRESTGraphQLMCPParity(t *testing.T) {
-	want := Readiness{
-		Mode:               "test",
-		CustomerReady:      true,
-		SubscriptionReady:  true,
-		PaymentMethodReady: true,
-		Tax: TaxReadiness{
-			Configured: true, Enabled: true, ProductTaxCode: "txcd_confirmed", TaxBehavior: "exclusive", RegistrationCount: 1,
-		},
-	}
-	provider := &billingProviderFake{status: want}
-	svc := billingTestService(provider)
+// readinessOnEverySurface reads the workspace's readiness through REST,
+// GraphQL (selecting lifecycleFields on lifecycle) and MCP.
+func readinessOnEverySurface(t *testing.T, svc *Service, lifecycleFields string) (rest, graph, agent Readiness) {
+	t.Helper()
 	ctx := billingIdentity(context.Background())
 
-	// REST.
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	req := httptest.NewRequest(http.MethodGet, "/v1/workspaces/tea-a/billing", nil).WithContext(ctx)
@@ -98,12 +98,10 @@ func TestBillingStatusRESTGraphQLMCPParity(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("REST status=%d body=%s", w.Code, w.Body.String())
 	}
-	var rest Readiness
 	if err := json.NewDecoder(w.Body).Decode(&rest); err != nil {
 		t.Fatal(err)
 	}
 
-	// GraphQL.
 	schema, err := graphql.NewSchema(graphql.SchemaConfig{
 		Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
 	})
@@ -115,7 +113,7 @@ func TestBillingStatusRESTGraphQLMCPParity(t *testing.T) {
 		RequestString: `{ workspaceBillingReadiness(workspaceId:"tea-a") {
 			workspaceId mode customerReady subscriptionReady paymentMethodReady paymentMethodBrand paymentMethodLast4 paymentMethodRequired paymentMethodOnboardingRequired
 			tax { configured enabled reason productTaxCode taxBehavior registrationCount }
-			lifecycle { status reason graceDeadline enforcementOwned recoveryPending allowedActions updatedAt }
+			lifecycle { ` + lifecycleFields + ` }
 		} }`,
 		Context: ctx,
 	})
@@ -123,12 +121,10 @@ func TestBillingStatusRESTGraphQLMCPParity(t *testing.T) {
 		t.Fatalf("GraphQL errors: %v", gql.Errors)
 	}
 	gqlJSON, _ := json.Marshal(gql.Data.(map[string]any)["workspaceBillingReadiness"])
-	var graph Readiness
 	if err := json.Unmarshal(gqlJSON, &graph); err != nil {
 		t.Fatal(err)
 	}
 
-	// MCP.
 	mcpServer := mcp.NewServer(&mcp.Implementation{Name: "billing-test", Version: "0"}, nil)
 	svc.RegisterMCP(mcpServer)
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
@@ -146,11 +142,26 @@ func TestBillingStatusRESTGraphQLMCPParity(t *testing.T) {
 		t.Fatalf("MCP result=%+v err=%v", result, err)
 	}
 	mcpJSON, _ := json.Marshal(result.StructuredContent)
-	var agent Readiness
 	if err := json.Unmarshal(mcpJSON, &agent); err != nil {
 		t.Fatal(err)
 	}
+	return rest, graph, agent
+}
 
+const allLifecycleFields = `status reason graceDeadline enforcementOwned recoveryPending allowedActions updatedAt overdueInvoice { id hostedInvoiceUrl }`
+
+func TestBillingStatusRESTGraphQLMCPParity(t *testing.T) {
+	want := Readiness{
+		Mode:               "test",
+		CustomerReady:      true,
+		SubscriptionReady:  true,
+		PaymentMethodReady: true,
+		Tax: TaxReadiness{
+			Configured: true, Enabled: true, ProductTaxCode: "txcd_confirmed", TaxBehavior: "exclusive", RegistrationCount: 1,
+		},
+	}
+	provider := &billingProviderFake{status: want}
+	rest, graph, agent := readinessOnEverySurface(t, billingTestService(provider), allLifecycleFields)
 	if !reflect.DeepEqual(rest, graph) || !reflect.DeepEqual(rest, agent) {
 		t.Fatalf("surface drift:\nREST  %+v\nGraph %+v\nMCP   %+v", rest, graph, agent)
 	}
@@ -159,6 +170,60 @@ func TestBillingStatusRESTGraphQLMCPParity(t *testing.T) {
 	}
 	if rest.PaymentMethodRequired {
 		t.Fatal("paymentMethodRequired must be false when the paid-intent gate is unwired")
+	}
+}
+
+// lifecycleAt is a LifecycleReader whose workspace is in status.
+type lifecycleAt string
+
+func (l lifecycleAt) GetBillingLifecycle(_ context.Context, workspaceID string) (store.BillingLifecycle, error) {
+	return store.BillingLifecycle{WorkspaceID: workspaceID, Status: string(l), Reason: "payment_failed"}, nil
+}
+
+// While dunning holds the workspace, the lifecycle read names the overdue
+// invoice and its hosted page on REST, GraphQL and MCP alike (w6/m626).
+func TestOverdueInvoiceReadsTheSameOnEverySurface(t *testing.T) {
+	overdue := &OverdueInvoice{ID: "in_overdue", HostedInvoiceURL: "https://invoice.stripe.com/i/acct_1/test_x"}
+	svc := billingTestService(&billingProviderFake{status: Readiness{Mode: "test"}, overdue: overdue})
+	svc.State = lifecycleAt(store.BillingEnforced)
+	rest, graph, agent := readinessOnEverySurface(t, svc, allLifecycleFields)
+	for name, got := range map[string]Readiness{"REST": rest, "GraphQL": graph, "MCP": agent} {
+		if got.Lifecycle.OverdueInvoice == nil || *got.Lifecycle.OverdueInvoice != *overdue {
+			t.Fatalf("%s overdueInvoice = %+v, want %+v", name, got.Lifecycle.OverdueInvoice, overdue)
+		}
+	}
+}
+
+// Only a workspace in dunning costs the Stripe lookup, and a lookup that fails
+// drops the link but not the read.
+func TestOverdueInvoiceIsReadOnlyInDunning(t *testing.T) {
+	overdue := &OverdueInvoice{ID: "in_overdue", HostedInvoiceURL: "https://invoice.stripe.test/in_overdue"}
+	for _, tc := range []struct {
+		status string
+		asked  bool
+	}{
+		{store.BillingHealthy, false}, {store.BillingGrace, true}, {store.BillingEnforcing, true},
+		{store.BillingEnforced, true}, {store.BillingRecovering, false}, {store.BillingExcluded, false},
+	} {
+		t.Run(tc.status, func(t *testing.T) {
+			provider := &billingProviderFake{status: Readiness{Mode: "test"}, overdue: overdue}
+			svc := billingTestService(provider)
+			svc.State = lifecycleAt(tc.status)
+			got, err := svc.Status(billingIdentity(context.Background()), "tea-a")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if asked := provider.overdueAsked == 1; asked != tc.asked || (got.Lifecycle.OverdueInvoice != nil) != tc.asked {
+				t.Fatalf("asked %d times, overdueInvoice %+v; want asked=%v", provider.overdueAsked, got.Lifecycle.OverdueInvoice, tc.asked)
+			}
+		})
+	}
+	provider := &billingProviderFake{status: Readiness{Mode: "test"}, overdueErr: errors.New("stripe down")}
+	svc := billingTestService(provider)
+	svc.State = lifecycleAt(store.BillingGrace)
+	got, err := svc.Status(billingIdentity(context.Background()), "tea-a")
+	if err != nil || got.Lifecycle.Status != store.BillingGrace || got.Lifecycle.OverdueInvoice != nil {
+		t.Fatalf("failed lookup: %+v, %v; want the read without the link", got.Lifecycle, err)
 	}
 }
 

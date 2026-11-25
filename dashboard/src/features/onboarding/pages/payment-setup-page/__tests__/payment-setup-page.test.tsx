@@ -84,6 +84,7 @@ function readiness(
       recoveryPending: false,
       allowedActions: [],
       updatedAt: "",
+      overdueInvoice: null,
     },
     tax: {
       configured: false,

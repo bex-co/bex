@@ -168,6 +168,10 @@ type StripeConfig struct {
 	// records why one was refused (ADR091 D10.5–D10.6). Nil still refuses
 	// prepaid cards, but checks no fingerprint and records nothing.
 	Cards CardScreenStore
+	// Overdue pays a workspace's overdue invoices with a card bound while
+	// dunning holds it, and records the recovery at once (w6/m626). Nil
+	// (dunning off, isolated tests) pays nothing at binding.
+	Overdue *OverduePayments
 }
 
 // BillingStateStore is the narrow persistence seam the Stripe client needs.
@@ -221,6 +225,7 @@ type StripeClient struct {
 	publishableKey        string
 	state                 BillingStateStore
 	cards                 CardScreenStore
+	overdue               *OverduePayments
 	settleWait            time.Duration
 	audit                 core.AuditSink
 	metrics               *Metrics
@@ -264,6 +269,7 @@ func NewStripe(cfg StripeConfig) *StripeClient {
 		publishableKey:        cfg.PublishableKey,
 		state:                 cfg.State,
 		cards:                 cfg.Cards,
+		overdue:               cfg.Overdue,
 		settleWait:            cfg.SettleWait,
 		audit:                 cfg.Audit,
 		metrics:               cfg.Metrics,

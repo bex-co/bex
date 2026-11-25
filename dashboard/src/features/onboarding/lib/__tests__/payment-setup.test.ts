@@ -27,6 +27,7 @@ function readiness(onboardingRequired: boolean): BillingReadiness {
       recoveryPending: false,
       allowedActions: [],
       updatedAt: "",
+      overdueInvoice: null,
     },
     tax: {
       configured: false,

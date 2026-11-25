@@ -72,9 +72,10 @@ func (c *StripeClient) recordPortalOpener(ctx context.Context, customerID string
 // Render's audit log records UpdateWorkspacePaymentMethodEvent whichever way
 // the card changed. The endpoint is account-wide, so a Customer that is not a
 // bex workspace's current Customer is ignored. The row id derives from the
-// event, so Stripe's retries cannot record it twice.
+// event, so Stripe's retries cannot record it twice. The new card then
+// becomes the one bex charges (followPortalPaymentMethod).
 func (c *StripeClient) RecordPortalPaymentMethodChange(ctx context.Context, event *stripe.Event) error {
-	if c.audit == nil || event == nil || event.Data == nil || !defaultPaymentMethodChanged(event.Data.PreviousAttributes) {
+	if event == nil || event.Data == nil || !defaultPaymentMethodChanged(event.Data.PreviousAttributes) {
 		return nil
 	}
 	// The event's own Customer snapshot decides dedupe and attribution, so a
@@ -103,8 +104,57 @@ func (c *StripeClient) RecordPortalPaymentMethodChange(ctx context.Context, even
 	if !found || current != customer.ID {
 		return nil
 	}
-	caller, method := portalOpener(snapshot.Metadata, time.Unix(event.Created, 0))
-	return c.auditPaymentMethodChange(ctx, ids.Derive(ids.Audit, "customer-updated", event.ID), workspaceID, caller, method)
+	if c.audit != nil {
+		caller, method := portalOpener(snapshot.Metadata, time.Unix(event.Created, 0))
+		if err := c.auditPaymentMethodChange(ctx, ids.Derive(ids.Audit, "customer-updated", event.ID), workspaceID, caller, method); err != nil {
+			return err
+		}
+	}
+	return c.followPortalPaymentMethod(ctx, event.ID, workspaceID, customer)
+}
+
+// followPortalPaymentMethod makes the card chosen in the portal the one bex
+// charges (w6/m626). A bex Checkout sets the card on both the Customer and the
+// Subscription, and Stripe charges the Subscription's own default first; the
+// portal changes the Customer's, and only may drop the Subscription's
+// (docs.stripe.com/customer-management/integrate-customer-portal, the
+// customer.updated row), which would leave Stripe retrying the card that
+// failed. So a Subscription default other than the new card moves to it. Then,
+// while dunning holds the workspace, the card pays its overdue invoices, as a
+// Checkout-bound card does. The live Customer's default is followed, so a
+// redelivered event cannot move the Subscription back to an older card.
+func (c *StripeClient) followPortalPaymentMethod(ctx context.Context, eventID, workspaceID string, customer *stripe.Customer) error {
+	paymentMethodID := customerDefaultPaymentMethod(customer)
+	if paymentMethodID == "" {
+		return nil
+	}
+	subscription, err := c.liveSubscription(ctx, workspaceID, customer.ID, false)
+	if err != nil || subscription == nil {
+		return err
+	}
+	if current := subscriptionDefaultPaymentMethod(subscription); current != "" && current != paymentMethodID {
+		params := &stripe.SubscriptionParams{DefaultPaymentMethod: stripe.String(paymentMethodID), ProrationBehavior: stripe.String("none")}
+		params.Context = ctx
+		params.SetIdempotencyKey("bex-portal-subscription-" + eventID + "-" + paymentMethodID)
+		if _, err := c.sc.Subscriptions.Update(subscription.ID, params); err != nil {
+			return fmt.Errorf("stripe: move Subscription default to the portal's payment method for %s: %w", workspaceID, err)
+		}
+	}
+	if c.overdue == nil {
+		return nil
+	}
+	pmParams := &stripe.PaymentMethodParams{}
+	pmParams.Context = ctx
+	paymentMethod, err := c.sc.PaymentMethods.Get(paymentMethodID, pmParams)
+	if err != nil {
+		log.Printf("billing: retrieve the portal's payment method for %s: %v (overdue invoices not paid)", workspaceID, err)
+		return nil
+	}
+	if paymentMethod.Customer == nil || paymentMethod.Customer.ID != customer.ID {
+		return nil
+	}
+	c.payOverdueInvoices(ctx, workspaceID, customer.ID, subscription.ID, paymentMethod)
+	return nil
 }
 
 // checkoutBind reports the write a bex Checkout makes when it binds a card:

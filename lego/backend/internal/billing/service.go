@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -72,6 +73,11 @@ type LifecycleView struct {
 	RecoveryPending  bool     `json:"recoveryPending"`
 	AllowedActions   []string `json:"allowedActions"`
 	UpdatedAt        string   `json:"updatedAt,omitempty"`
+	// OverdueInvoice names the invoice the workspace owes while dunning holds
+	// it (grace, enforcing, enforced), with Stripe's hosted page to pay it:
+	// the lifecycle alert's Pay now, as Render's Pay Now (w6/m626). Omitted
+	// otherwise, and when Stripe could not be read.
+	OverdueInvoice *OverdueInvoice `json:"overdueInvoice,omitempty"`
 }
 
 // TaxReadiness separates operator configuration from per-subscription
@@ -111,6 +117,9 @@ type HostedProvider interface {
 	Readiness(ctx context.Context, workspaceID string) (Readiness, error)
 	CreateCheckoutSession(ctx context.Context, workspaceID string, req CheckoutRequest) (HostedSession, error)
 	CreatePortalSession(ctx context.Context, workspaceID string, req PortalRequest) (HostedSession, error)
+	// OverdueInvoice is the workspace's oldest unpaid cycle invoice, nil when
+	// none is.
+	OverdueInvoice(ctx context.Context, workspaceID string) (*OverdueInvoice, error)
 }
 
 // Service owns customer-billing authorization and workspace resolution. Every
@@ -154,6 +163,13 @@ func (s *Service) Status(ctx context.Context, workspaceID string) (Readiness, er
 	status.Lifecycle, err = s.lifecycle(ctx, tenantID)
 	if err != nil {
 		return Readiness{}, core.HideCause(core.ErrBillingUnavailable, fmt.Errorf("lifecycle: %w", err))
+	}
+	// Only a workspace in dunning owes an overdue invoice, so only its read
+	// costs the Stripe lookup. A failed lookup drops the link, not the read.
+	if inDunning(status.Lifecycle.Status) {
+		if status.Lifecycle.OverdueInvoice, err = s.Provider.OverdueInvoice(ctx, tenantID); err != nil {
+			log.Printf("billing: overdue invoice of %s: %v (omitted from readiness)", tenantID, err)
+		}
 	}
 	if s.Eligibility != nil {
 		eligibility, err := s.Eligibility.PaymentEligibility(ctx, tenantID)

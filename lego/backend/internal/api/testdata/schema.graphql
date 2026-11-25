@@ -855,10 +855,16 @@ type BillingLifecycle {
   allowedActions: [String]
   enforcementOwned: Boolean
   graceDeadline: String
+  overdueInvoice: BillingOverdueInvoice
   reason: String
   recoveryPending: Boolean
   status: String
   updatedAt: String
+}
+
+type BillingOverdueInvoice {
+  hostedInvoiceUrl: String
+  id: String
 }
 
 type BillingTaxReadiness {

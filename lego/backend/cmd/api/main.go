@@ -1232,6 +1232,12 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 		// not exist; held rows ship once released.
 		held := billing.HeldMeters(cfg.StripeAgentModelMeter, cfg.StripeCustomDomainMeter)
 		thresholds := &billing.AgentModelThresholds{Store: st, Interval: cfg.StripeReconcileInterval, Metrics: billingMetrics}
+		// w6/m626: while dunning runs, a card bound during grace or
+		// enforcement pays the overdue invoices at once.
+		var overdue *billing.OverduePayments
+		if cfg.StripeDunningEnabled {
+			overdue = &billing.OverduePayments{Store: st, GracePeriod: cfg.StripeGracePeriod}
+		}
 		stripeClient := billing.NewStripe(billing.StripeConfig{
 			SecretKey:             stripeSecretKey,
 			PublishableKey:        publishableKey,
@@ -1244,6 +1250,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 			TaxBehavior:           cfg.StripeTaxBehavior,
 			State:                 st,
 			Cards:                 st,
+			Overdue:               overdue,
 			Audit:                 st,
 			Metrics:               billingMetrics,
 			HeldMeters:            held.LookupKeys,

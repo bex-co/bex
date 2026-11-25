@@ -100,6 +100,7 @@ const READINESS: BillingReadiness = {
     recoveryPending: false,
     allowedActions: [],
     updatedAt: "",
+    overdueInvoice: null,
   },
   tax: {
     configured: true,
