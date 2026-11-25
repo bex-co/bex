@@ -286,15 +286,16 @@ func (c *StripeClient) CompleteCheckoutSession(ctx context.Context, eventSession
 	// Last, once nothing above can fail the event: the new card pays what
 	// dunning holds the workspace for (w6/m626, overdue.go).
 	c.payOverdueInvoices(ctx, checkout.workspaceID, checkout.customerID, checkout.subscription.ID, paymentMethod)
-	// A Customer this Checkout created bills the workspace's name and emails
-	// its billing email, as every other Customer does (w6/m628, w6/179).
-	// Best-effort: the card is bound, and neither is worth failing the event
-	// for.
-	if checkout.checkoutCreatedCustomer {
-		if err := c.fillCheckoutCustomer(ctx, checkout); err != nil {
-			c.metrics.Operation("checkout_customer_details", "error")
-			log.Printf("billing: name and email the Checkout Customer of %s: %v", checkout.workspaceID, err)
-		}
+	// A completed Checkout leaves the Customer billing the workspace's name
+	// and emailing its billing email, as every other Customer does (w6/m628,
+	// w6/179): one the session created is named now, and any Customer's email
+	// converges to the address in effect — one created while bex could name
+	// none, typed by the member, changed mid-session, or left by a reset that
+	// could not be written. Best-effort: the card is bound, and neither is
+	// worth failing the event for.
+	if err := c.fillCheckoutCustomer(ctx, checkout); err != nil {
+		c.metrics.Operation("checkout_customer_details", "error")
+		log.Printf("billing: name and email the Checkout Customer of %s: %v", checkout.workspaceID, err)
 	}
 	return nil
 }

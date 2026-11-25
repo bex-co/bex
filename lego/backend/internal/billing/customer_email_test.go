@@ -251,3 +251,67 @@ func TestCompletedCheckoutGivesItsCustomerTheBillingEmail(t *testing.T) {
 		})
 	}
 }
+
+// w6/179: a completed Checkout converges the billing email on every Customer
+// it touches, not only one the session created. A workspace whose Customer
+// the emitter created while bex could name no address (or whose address
+// changed, or whose Hobby reset could not be written, since) binds its card
+// through Checkout on that Customer; the completion must leave it emailing
+// the address in effect, as the served BillingEmail view does. The name is
+// still seeded only for a Customer the session created: a pre-existing one
+// was named at its own creation and follows renames.
+func TestCompletedCheckoutConvergesAPreExistingCustomersEmail(t *testing.T) {
+	for name, tc := range map[string]struct {
+		current, inEffect string
+		want              string // the email written; "" when none is
+	}{
+		"an address unreadable at creation is filled": {"", "owner@example.com", "owner@example.com"},
+		"a stale address is replaced":                 {"finance@example.com", "owner@example.com", "owner@example.com"},
+		"the address in effect is left alone":         {"owner@example.com", "owner@example.com", ""},
+		"none bex can name leaves the customer alone": {"typed@example.com", "", ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			c, stub := newStripeTest(t, func(method, path string) (int, string) {
+				switch {
+				case method == http.MethodGet && path == "/v1/checkout/sessions/cs_old":
+					return 200, `{"id":"cs_old","object":"checkout.session","mode":"setup","status":"complete","livemode":false,"customer":"cus_old","setup_intent":"seti_old","metadata":{"bex_workspace":"tea-old"}}`
+				case method == http.MethodGet && path == "/v1/customers/cus_old":
+					return 200, `{"id":"cus_old","object":"customer","livemode":false,"name":"Acme Old","email":"` + tc.current + `","metadata":{"bex_workspace":"tea-old"}}`
+				case method == http.MethodPost && path == "/v1/customers/cus_old":
+					return 200, `{"id":"cus_old","object":"customer","livemode":false}`
+				case method == http.MethodGet && path == "/v1/setup_intents/seti_old":
+					return 200, `{"id":"seti_old","object":"setup_intent","status":"succeeded","customer":"cus_old","payment_method":"pm_old","metadata":{"bex_workspace":"tea-old"}}`
+				case method == http.MethodGet && path == "/v1/payment_methods/pm_old":
+					return 200, `{"id":"pm_old","object":"payment_method","customer":"cus_old","livemode":false,"type":"card","billing_details":{"address":{"country":"US","postal_code":"94107","line1":"1 Main St","city":"SF","state":"CA"}}}`
+				case method == http.MethodGet && path == "/v1/subscriptions":
+					return 200, `{"object":"list","data":[{"id":"sub_old","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-old","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
+				case method == http.MethodPost && path == "/v1/subscriptions/sub_old":
+					return 200, `{"id":"sub_old","object":"subscription","status":"active"}`
+				}
+				return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+			})
+			// The Customer predates the session: usage created it, and the
+			// member binds a card through Checkout on it.
+			c.storeCustomer("tea-old", "cus_old")
+			c.billingEmail = billingEmails(map[string]string{"tea-old": tc.inEffect}, nil)
+			if err := c.CompleteCheckoutSession(context.Background(), &stripe.CheckoutSession{ID: "cs_old"}); err != nil {
+				t.Fatal(err)
+			}
+			var emailed []string
+			for _, r := range stub.requests("/v1/customers/cus_old") {
+				if form := formOf(t, r.body); form.Has("email") {
+					emailed = append(emailed, form.Get("email"))
+				} else if form.Has("name") {
+					t.Fatalf("update body = %v, want no name write for a pre-existing Customer", form)
+				}
+			}
+			var want []string
+			if tc.want != "" {
+				want = []string{tc.want}
+			}
+			if !slices.Equal(emailed, want) {
+				t.Fatalf("email writes = %v, want %q", emailed, tc.want)
+			}
+		})
+	}
+}
