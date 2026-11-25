@@ -43,7 +43,7 @@ type Retention = { plan: string; days: number; upgrades: Upgrade[] } | null;
 const PRO: Upgrade = { plan: "pro", days: 14 };
 const SCALE: Upgrade = { plan: "scale", days: 30 };
 
-function mount(retention: Retention) {
+function mount(retention: Retention, { events = true } = {}) {
   const onRangeChange = vi.fn();
   const reads: Record<string, unknown>[] = [];
   const client = new ApolloClient({
@@ -74,10 +74,16 @@ function mount(retention: Retention) {
         resource="srv-1"
         range={DEFAULT_RANGE_PRESET}
         onRangeChange={onRangeChange}
-        eventFilter="all"
-        onEventFilterChange={vi.fn()}
-        timelineShown={false}
-        onTimelineShownChange={vi.fn()}
+        events={
+          events
+            ? {
+                filter: "all",
+                onFilterChange: vi.fn(),
+                timelineShown: false,
+                onTimelineShownChange: vi.fn(),
+              }
+            : undefined
+        }
       />
     </ApolloProvider>,
   );
@@ -168,5 +174,35 @@ describe("MetricsFilters range picker follows the plan's metrics window", () => 
     await user.click(screen.getByLabelText("Time range"));
     expect(disabledPresets()).toEqual([]);
     expect(screen.queryByText(/Metrics are kept for/)).not.toBeInTheDocument();
+  });
+});
+
+// w3/103: Render's cron job Metrics page has the range picker alone.
+describe("MetricsFilters without event controls", () => {
+  it("draws the range picker with no event filter or timeline toggle", async () => {
+    const user = userEvent.setup();
+    const { reads } = mount(null, { events: false });
+    await waitFor(() => expect(reads).toHaveLength(1));
+
+    expect(screen.getAllByRole("combobox")).toEqual([
+      screen.getByLabelText("Time range"),
+    ]);
+    expect(
+      screen.queryByRole("button", { name: "Show event timeline" }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText("Time range"));
+    expect(
+      screen.getByRole("option", { name: "Last 12 hours" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the event filter and timeline toggle beside it otherwise", async () => {
+    const { reads } = mount(null);
+    await waitFor(() => expect(reads).toHaveLength(1));
+
+    expect(screen.getAllByRole("combobox")).toHaveLength(2);
+    expect(
+      screen.getByRole("button", { name: "Show event timeline" }),
+    ).toBeInTheDocument();
   });
 });

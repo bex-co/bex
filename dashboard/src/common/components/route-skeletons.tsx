@@ -2726,15 +2726,12 @@ function MetricsCardSkeleton({
   sections,
   compact = false,
   eventLane = false,
-  controls = true,
 }: {
   sections: number;
   compact?: boolean;
   /** Service charts: the empty 24px event lane above a ratio-sized plot,
    *  as the ready MetricSection draws them (w4/446). */
   eventLane?: boolean;
-  /** False for a card whose ready header has no filter controls. */
-  controls?: boolean;
 }) {
   return (
     <Card>
@@ -2743,13 +2740,11 @@ function MetricsCardSkeleton({
           <Skeleton className="h-5 w-40" />
           <Skeleton className="h-4 w-64 max-w-full" />
         </div>
-        {controls ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <Skeleton className="h-9 w-40" />
-            <Skeleton className="h-9 w-36" />
-            <Skeleton className="h-9 w-40" />
-          </div>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <Skeleton className="h-9 w-40" />
+          <Skeleton className="h-9 w-36" />
+          <Skeleton className="h-9 w-40" />
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {Array.from({ length: sections }, (_, index) => (
@@ -2778,38 +2773,77 @@ function MetricsCardSkeleton({
 export function ServiceMetricsSkeleton({
   staticSite = false,
   servesRequests = true,
+  cronJob = false,
 }: {
   staticSite?: boolean;
   /** False for a worker, cron job or private service: its Network card is
    *  Outbound Bandwidth alone, with no request controls (w4/613). */
   servesRequests?: boolean;
+  /** A cron job's page: the range picker and Outbound Bandwidth alone, with
+   *  no event controls and no Application card (w3/103). */
+  cronJob?: boolean;
 }) {
   return (
     <PendingFrame
       route={staticSite ? "static-metrics" : "service-metrics"}
       className="space-y-6"
     >
-      <Region
-        name="metrics-filters"
-        className="flex flex-wrap items-center gap-3"
-      >
-        <Skeleton className="h-8 w-40" />
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="ml-auto size-8" />
-      </Region>
-      {!staticSite ? (
+      {cronJob ? (
+        <Region name="metrics-filters" className="flex items-center">
+          <Skeleton className="h-8 w-40 max-lg:h-11 pointer-coarse:h-11" />
+        </Region>
+      ) : (
+        <Region
+          name="metrics-filters"
+          className="flex flex-wrap items-center gap-3"
+        >
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-8 w-32" />
+          <Skeleton className="ml-auto size-8" />
+        </Region>
+      )}
+      {!staticSite && !cronJob ? (
         <Region name="application-metrics">
           <MetricsCardSkeleton sections={3} eventLane />
         </Region>
       ) : null}
       <Region name="network-metrics">
-        <MetricsCardSkeleton
-          sections={servesRequests ? 3 : 1}
-          controls={servesRequests}
-          eventLane
-        />
+        {servesRequests && !cronJob ? (
+          <MetricsCardSkeleton sections={3} eventLane />
+        ) : (
+          <BandwidthCardSkeleton />
+        )}
       </Region>
     </PendingFrame>
+  );
+}
+
+/**
+ * The Network card of a type with no public requests (a worker, private
+ * service or cron job): Outbound Bandwidth alone (w4/613, w3/103), on the ready
+ * card's geometry. Its title and subtitle, the section's title row, the event
+ * lane directly over the ratio-sized plot, and the month-to-date line.
+ */
+function BandwidthCardSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="gap-2">
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-5 w-52 max-w-full" />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div>
+          <div className="mb-2 flex h-5 items-center">
+            <Skeleton className="h-4 w-36" />
+          </div>
+          <div className="h-6" />
+          <Skeleton className="w-full" style={CHART_FRAME_STYLE} />
+        </div>
+        <Skeleton className="h-5 w-48" />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -3930,6 +3964,7 @@ export function ServiceRouteContentSkeleton({
         <ServiceMetricsSkeleton
           staticSite={base === "/static"}
           servesRequests={serviceType == null || publiclyRoutable(serviceType)}
+          cronJob={serviceType != null && isCronType(serviceType)}
         />
       );
     case "compute":

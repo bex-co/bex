@@ -33,10 +33,25 @@ vi.mock("@/features/metrics/components/application-metrics-card", () => ({
   ),
 }));
 vi.mock("@/features/metrics/components/network-metrics-card", () => ({
-  NetworkMetricsCard: () => <p>network card</p>,
+  NetworkMetricsCard: ({
+    servesRequests,
+    markers,
+  }: {
+    servesRequests?: boolean;
+    markers?: unknown[];
+  }) => (
+    <p
+      data-serves-requests={String(servesRequests)}
+      data-markers={markers ? "yes" : "no"}
+    >
+      network card
+    </p>
+  ),
 }));
 vi.mock("@/features/metrics/components/metrics-filters", () => ({
-  MetricsFilters: () => <p>filters</p>,
+  MetricsFilters: ({ events }: { events?: unknown }) => (
+    <p data-events={events ? "yes" : "no"}>filters</p>
+  ),
 }));
 vi.mock("@/features/events/components/event-timeline", () => ({
   EventTimeline: () => <p>timeline</p>,
@@ -218,13 +233,69 @@ describe("ServiceMetricsPage (w5/m48 — static sites get no pod metrics)", () =
       // not reproduce the leak, so pin the warning too: duplicate sibling
       // keys must never come back.
       const duplicateKeyWarning = consoleError.mock.calls.some((args) =>
-        args.some(
-          (a) => typeof a === "string" && a.includes("same key"),
-        ),
+        args.some((a) => typeof a === "string" && a.includes("same key")),
       );
       expect(duplicateKeyWarning).toBe(false);
     } finally {
       consoleError.mockRestore();
     }
+  });
+});
+
+// w3/103: Render's cron job Metrics page (CronJobMetrics) is the range picker
+// and Network Metrics → Outbound Bandwidth, with no event data for the chart.
+describe("ServiceMetricsPage for a cron job (w3/103)", () => {
+  it("shows the range picker and Outbound Bandwidth only", () => {
+    serverState.service = {
+      id: "crn-1",
+      type: "cron_job",
+      suspended: false,
+      phase: "Running",
+    } as ServiceView;
+    render(<ServiceMetricsPage serviceId="crn-1" />);
+
+    // The toolbar has no event filter or timeline toggle, so no timeline.
+    expect(screen.getByText("filters")).toHaveAttribute("data-events", "no");
+    expect(screen.queryByText("timeline")).not.toBeInTheDocument();
+    expect(screen.queryByText(/application card/)).not.toBeInTheDocument();
+    const network = screen.getByText("network card");
+    expect(network).toHaveAttribute("data-serves-requests", "false");
+    expect(network).toHaveAttribute("data-markers", "no");
+    expect(useServiceEvents).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["web_service", "true"],
+    ["private_service", "false"],
+    ["background_worker", "false"],
+  ])(
+    "keeps a %s's event controls, markers and Application card",
+    (type, servesRequests) => {
+      serverState.service = {
+        id: "srv-1",
+        type,
+        suspended: false,
+        phase: "Running",
+      } as ServiceView;
+      render(<ServiceMetricsPage serviceId="srv-1" />);
+
+      expect(screen.getByText("filters")).toHaveAttribute("data-events", "yes");
+      expect(screen.getByText("application card")).toBeInTheDocument();
+      const network = screen.getByText("network card");
+      expect(network).toHaveAttribute("data-serves-requests", servesRequests);
+      expect(network).toHaveAttribute("data-markers", "yes");
+      expect(useServiceEvents).toHaveBeenCalledWith("srv-1", expect.anything());
+    },
+  );
+
+  it("keeps a static site's event controls and markers", () => {
+    serverState.service = { id: "srv-1", type: "static_site" } as ServiceView;
+    render(<ServiceMetricsPage serviceId="srv-1" />);
+
+    expect(screen.getByText("filters")).toHaveAttribute("data-events", "yes");
+    expect(screen.getByText("network card")).toHaveAttribute(
+      "data-markers",
+      "yes",
+    );
   });
 });

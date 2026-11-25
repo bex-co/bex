@@ -1,6 +1,6 @@
 import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, getRouteApi } from "@tanstack/react-router";
 import { ApplicationMetricsCard } from "@/features/metrics/components/application-metrics-card";
 import { NetworkMetricsCard } from "@/features/metrics/components/network-metrics-card";
 import { MetricsFilters } from "@/features/metrics/components/metrics-filters";
@@ -18,10 +18,13 @@ import type { EventTimelineFilter } from "@/features/events/lib/timeline";
 import { useServiceEvents } from "@/features/events/hooks/use-service-events";
 import { useServer } from "@/features/services/hooks/use-server";
 import {
+  isCron,
+  isCronType,
   isStaticSite,
   publiclyRoutable,
   supportsScaling,
 } from "@/features/services/lib/service-type";
+import type { ServiceView } from "@/features/services/types";
 import { runsInstances } from "@/features/services/lib/status";
 import { ServiceMetricsSkeleton } from "@/common/components/route-skeletons";
 import { ActivityGate } from "@/features/capabilities/components/activity-gate";
@@ -29,13 +32,27 @@ import { ActivityGate } from "@/features/capabilities/components/activity-gate";
 export const Route = createFileRoute("/services/$serviceId/metrics")({
   head: serviceTabHead("services.navMetrics", "/services/$serviceId"),
   component: RouteComponent,
-  pendingComponent: ServiceMetricsSkeleton,
+  pendingComponent: ServiceMetricsPending,
   // The time range persists to the URL in the Logs page's param shape
   // (`range`, `rangeStart`/`rangeEnd` — w6/065) so a picked window survives a
   // reload and can be linked to a teammate. No `r` alias here: that is a
   // Logs-specific Render-compatibility shim.
   validateSearch: parseRangeSearch,
 });
+
+// The frame takes the page's shape from the service the parent loaded: a cron
+// job's range picker and Outbound Bandwidth (w3/103), and Outbound Bandwidth
+// alone for a type with no public requests (w4/613).
+function ServiceMetricsPending() {
+  const parent = getRouteApi("/services/$serviceId").useLoaderData();
+  const type = parent?.state === "ready" ? parent.resource.type : null;
+  return (
+    <ServiceMetricsSkeleton
+      cronJob={type != null && isCronType(type)}
+      servesRequests={type == null || publiclyRoutable(type)}
+    />
+  );
+}
 
 function RouteComponent() {
   const { serviceId } = Route.useParams();
@@ -91,14 +108,62 @@ function ServiceMetrics({
     useState<RangeSelection>(DEFAULT_RANGE_PRESET);
   const range = rangeProp ?? localRange;
   const setRange = onRangeChange ?? setLocalRange;
-  // Render hides the timeline until its toolbar toggle reveals it.
-  const [timelineShown, setTimelineShown] = useState(false);
-  const [eventFilter, setEventFilter] = useState<EventTimelineFilter>("all");
   // ONE live window for the whole page (a single tick timer; both cards'
   // x-axes stay in sync). pollIntervalMs: 0 — the window's own tick already
   // forces a refetch by changing startTime/endTime; Apollo's poll timer would
   // just be a second, redundant schedule.
   const window = { ...useLiveRange(range), pollIntervalMs: 0 };
+  const { service } = useServer(serviceId, { poll: false });
+
+  // Render's cron job Metrics page (`CronJobMetrics`, read from its public
+  // bundle 2026-11-25) is the range picker and Network Metrics → Outbound
+  // Bandwidth: no Application card, no event timeline or its toggle, and no
+  // event markers on the chart, so no event read either (w3/103).
+  if (service != null && isCron(service)) {
+    return (
+      <>
+        <MetricsFilters
+          resource={serviceId}
+          range={range}
+          onRangeChange={setRange}
+        />
+        <NetworkMetricsCard
+          key={`network:${serviceId}`}
+          resource={serviceId}
+          window={window}
+          servesRequests={false}
+        />
+      </>
+    );
+  }
+  return (
+    <ServiceMetricsCharts
+      serviceId={serviceId}
+      service={service}
+      range={range}
+      onRangeChange={setRange}
+      window={window}
+    />
+  );
+}
+
+function ServiceMetricsCharts({
+  serviceId,
+  service,
+  range,
+  onRangeChange,
+  window,
+}: {
+  serviceId: string;
+  /** Null until the service loads. */
+  service: ServiceView | null;
+  range: RangeSelection;
+  onRangeChange: (range: RangeSelection) => void;
+  window: ReturnType<typeof useLiveRange> & { pollIntervalMs: number };
+}) {
+  // Render hides the timeline until its toolbar toggle reveals it.
+  const [timelineShown, setTimelineShown] = useState(false);
+  const [eventFilter, setEventFilter] = useState<EventTimelineFilter>("all");
 
   // Chart event markers (Render parity): the same event feed the timeline
   // shows, mapped onto every chart as a vertical line + icon badge. Apollo
@@ -121,7 +186,6 @@ function ServiceMetrics({
   // card (its Traefik series attribute per-App: the operator names the static
   // site's Ingress after the App, w5/m48/t006). Gated on the loaded service so
   // a static site never fires the pod-metrics queries.
-  const { service } = useServer(serviceId, { poll: false });
   const showApplicationCard = service != null && !isStaticSite(service);
   const shellEligible = Boolean(service?.sshAddress);
 
@@ -130,11 +194,13 @@ function ServiceMetrics({
       <MetricsFilters
         resource={serviceId}
         range={range}
-        onRangeChange={setRange}
-        eventFilter={eventFilter}
-        onEventFilterChange={setEventFilter}
-        timelineShown={timelineShown}
-        onTimelineShownChange={setTimelineShown}
+        onRangeChange={onRangeChange}
+        events={{
+          filter: eventFilter,
+          onFilterChange: setEventFilter,
+          timelineShown,
+          onTimelineShownChange: setTimelineShown,
+        }}
       />
 
       {timelineShown && (

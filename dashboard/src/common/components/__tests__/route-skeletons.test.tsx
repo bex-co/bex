@@ -95,7 +95,10 @@ function renderServiceRootSkeleton(
   return render(<RouterProvider router={router} />);
 }
 
-function renderServiceComputeParentSkeleton(serviceType: string | null) {
+function renderServiceTabParentSkeleton(
+  serviceType: string | null,
+  tab: "compute" | "metrics" = "compute",
+) {
   const rootRoute = createRootRoute({ component: Outlet });
   const resourceRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -106,7 +109,7 @@ function renderServiceComputeParentSkeleton(serviceType: string | null) {
   });
   const computeRoute = createRoute({
     getParentRoute: () => resourceRoute,
-    path: "/compute",
+    path: `/${tab}`,
     component: () => null,
   });
   const router = createRouter({
@@ -114,7 +117,7 @@ function renderServiceComputeParentSkeleton(serviceType: string | null) {
       resourceRoute.addChildren([computeRoute]),
     ]),
     history: createMemoryHistory({
-      initialEntries: ["/services/srv-1/compute"],
+      initialEntries: [`/services/srv-1/${tab}`],
     }),
     context: {},
   });
@@ -670,6 +673,32 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     expect(widget!.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(5);
   });
 
+  // w3/103: a cron job's ready page is the range picker alone, then Network
+  // Metrics with Outbound Bandwidth (its plot and event lane) and no controls.
+  it("draws a cron job's metrics frame as the range picker and Outbound Bandwidth", () => {
+    const { container } = render(
+      <ServiceMetricsSkeleton cronJob servesRequests={false} />,
+    );
+    expect(regions(container)).toEqual(["metrics-filters", "network-metrics"]);
+    const region = (name: string) =>
+      container.querySelector(`[data-skeleton-region="${name}"]`)!;
+    const toolbar = region("metrics-filters").querySelectorAll(
+      '[data-slot="skeleton"]',
+    );
+    expect(toolbar).toHaveLength(1);
+    expect(toolbar[0]).toHaveClass("h-8", "w-40");
+    const plots = [
+      ...region("network-metrics").querySelectorAll('[data-slot="skeleton"]'),
+    ].filter((el) => (el as HTMLElement).style.aspectRatio !== "");
+    expect(plots).toHaveLength(1);
+    expect(plots[0].previousElementSibling).toHaveClass("h-6");
+    // Title and subtitle, the section's title, its plot and the month-to-date
+    // line: no filters.
+    expect(
+      region("network-metrics").querySelectorAll('[data-slot="skeleton"]'),
+    ).toHaveLength(5);
+  });
+
   it("keeps static metrics free of the application-metrics region", () => {
     const { container } = render(<ServiceMetricsSkeleton staticSite />);
     expect(regions(container)).toContain("network-metrics");
@@ -755,7 +784,7 @@ describe("service compute pending frame (w6/m483)", () => {
   ])(
     "parent-pending Compute frame for %s reserves its ready sections",
     async (serviceType, expected) => {
-      const { container } = renderServiceComputeParentSkeleton(serviceType);
+      const { container } = renderServiceTabParentSkeleton(serviceType);
       await waitFor(() => expect(regions(container)).toEqual(expected));
       // The Compute section's title is static copy, drawn as on the ready card.
       expect(
@@ -769,7 +798,7 @@ describe("service compute pending frame (w6/m483)", () => {
   // A cron job has no Compute page: its Compute URL lands on Settings, whose
   // frame the parent's pending state previews instead (w3/m554).
   it("previews Settings for a cron job's Compute URL", async () => {
-    const { container } = renderServiceComputeParentSkeleton("cron_job");
+    const { container } = renderServiceTabParentSkeleton("cron_job");
     await waitFor(() =>
       expect(
         container.querySelector('[data-route-skeleton="service-settings"]'),
@@ -777,6 +806,39 @@ describe("service compute pending frame (w6/m483)", () => {
     );
     expect(regions(container)).toEqual([]);
   });
+});
+
+describe("service metrics pending frame (w3/103)", () => {
+  // w3/103: the parent's pending state previews a cron job's Metrics page as
+  // the range picker and Outbound Bandwidth, a worker's with its event
+  // controls and Application card.
+  it.each([
+    ["cron_job", ["metrics-filters", "network-metrics"], 1],
+    [
+      "background_worker",
+      ["metrics-filters", "application-metrics", "network-metrics"],
+      3,
+    ],
+  ])(
+    "previews a %s's Metrics page",
+    async (serviceType, expected, toolbarSlots) => {
+      const { container } = renderServiceTabParentSkeleton(
+        serviceType,
+        "metrics",
+      );
+      await waitFor(() =>
+        expect(
+          container.querySelector('[data-route-skeleton="service-metrics"]'),
+        ).not.toBeNull(),
+      );
+      expect(regions(container)).toEqual(expected);
+      expect(
+        container.querySelectorAll(
+          '[data-skeleton-region="metrics-filters"] [data-slot="skeleton"]',
+        ),
+      ).toHaveLength(toolbarSlots);
+    },
+  );
 });
 
 // The Runtime and Edge Caching cards reserve the heights measured in Chromium
