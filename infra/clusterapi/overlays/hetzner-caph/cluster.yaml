@@ -1251,12 +1251,12 @@ spec:
           etcd-cafile: /etc/kubernetes/pki/etcd/ca.crt
           etcd-certfile: /etc/kubernetes/pki/etcd/server.crt
           etcd-keyfile: /etc/kubernetes/pki/etcd/server.key
-          # ImageVolume (beta, off by default until v1.35; w6/m624): without it
-          # the API server drops a pod's `image` volume source, and the
-          # operator mounts its health-probe helper from one when
-          # BEX_HEALTH_PROBE_IMAGE_VOLUME is on. The App pools' kubelets carry
-          # it too (scripts/clusterapi-validate.sh).
-          feature-gates: UserNamespacesSupport=true,ImageVolume=true
+          # ImageVolume (w6/m624) is not on here yet: adding it rolls the
+          # control plane, and its first surge on 2026-11-24 found no cx33 in
+          # fsn1 (resource_unavailable), so the change was reverted. The App
+          # pools' kubelets already carry it. Until the API server does,
+          # BEX_HEALTH_PROBE_IMAGE_VOLUME stays off in production.
+          feature-gates: UserNamespacesSupport=true
           kubelet-client-certificate: /etc/kubernetes/pki/apiserver-kubelet-client.crt
           kubelet-client-key: /etc/kubernetes/pki/apiserver-kubelet-client.key
           # InternalIP first (w1/m19 t006): apiserver→kubelet (logs/exec/metrics)
@@ -1463,7 +1463,7 @@ spec:
           authorization-mode: Webhook
           cloud-provider: external
           event-qps: "5"
-          feature-gates: UserNamespacesSupport=true,ImageVolume=true
+          feature-gates: UserNamespacesSupport=true
           kubeconfig: /etc/kubernetes/kubelet.conf
           max-pods: "120"
           read-only-port: "0"
@@ -1483,7 +1483,7 @@ spec:
           authorization-mode: Webhook
           cloud-provider: external
           event-qps: "5"
-          feature-gates: UserNamespacesSupport=true,ImageVolume=true
+          feature-gates: UserNamespacesSupport=true
           kubeconfig: /etc/kubernetes/kubelet.conf
           max-pods: "120"
           read-only-port: "0"

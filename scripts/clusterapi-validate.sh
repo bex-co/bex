@@ -1047,14 +1047,11 @@ fi
 # BEX_HEALTH_PROBE_IMAGE_VOLUME is on (w6/m624). ImageVolume is beta and off by
 # default on v1.34: an API server without it drops the volume's source, so the
 # Deployment's pods are Invalid, and a kubelet without it cannot mount one. So
-# the API server, the control plane's kubelets and the kubelet of every pool
-# that runs Apps (bex-tenant-0 and each serving pool) keep the gate.
-echo "==> $OVERLAY keeps ImageVolume on the API server and every App pool's kubelet"
-image_volume_sites=(
-  "KubeadmControlPlane bex-control-plane .spec.kubeadmConfigSpec.clusterConfiguration.apiServer.extraArgs"
-  "KubeadmControlPlane bex-control-plane .spec.kubeadmConfigSpec.initConfiguration.nodeRegistration.kubeletExtraArgs"
-  "KubeadmControlPlane bex-control-plane .spec.kubeadmConfigSpec.joinConfiguration.nodeRegistration.kubeletExtraArgs"
-)
+# the kubelet of every pool that runs Apps (bex-tenant-0 and each serving pool)
+# keeps the gate. The API server joins this list with the control-plane roll
+# that turns it on there (w6/m624 t003).
+echo "==> $OVERLAY keeps ImageVolume on every App pool's kubelet"
+image_volume_sites=()
 while read -r md; do
   [ -n "$md" ] || continue
   cfg="$(md_field "$md" .spec.template.spec.bootstrap.configRef.name)"
