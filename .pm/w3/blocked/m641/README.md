@@ -1,6 +1,6 @@
 # w3 · m641 — A Postgres database's sidebar and pages are Render's: Info, Logs, Metrics, Plan, Apps, Recovery, each at its own URL
 
-**Worker:** worker3 **Goal:** a Postgres database's pages swap the workspace nav for a resource sidebar reading Info / Monitor: Logs, Metrics / Manage: Plan, Apps, Recovery, as Render's does; each entry is its own URL under `/databases/<id>`, so Render's `/d/<id>/<page>` links open the page they name; the one long Overview, its section rail and its Overview/Logs tab bar are gone. **Status:** todo (t001–t005, t007–t009 done; t006 walked locally, its production walk waits for a pin)
+**Worker:** worker3 **Goal:** a Postgres database's pages swap the workspace nav for a resource sidebar reading Info / Monitor: Logs, Metrics / Manage: Plan, Apps, Recovery, as Render's does; each entry is its own URL under `/databases/<id>`, so Render's `/d/<id>/<page>` links open the page they name; the one long Overview, its section rail and its Overview/Logs tab bar are gone. **Status:** blocked (t001–t005, t007–t009 done in `0ae1f90038`; t006 walked locally; pin must carry `0ae1f90038`, then t006 steps 2–3 walk production and t010 closes it)
 
 ## Tasks (in order)
 
@@ -43,7 +43,7 @@ Verified 2026-11-25 on main `18f6d3388b`.
 
 ## Page map
 
-From t001 (2026-11-25, recorded in [postgres-dashboard.md § Page map](../../../docs/render-artifacts/postgres-dashboard.md#page-map-bex-w3m641)). Render's Read Replicas render on Info, as a field of the General card; its High Availability controls render on Plan, as its last card.
+From t001 (2026-11-25, recorded in [postgres-dashboard.md § Page map](../../../../docs/render-artifacts/postgres-dashboard.md#page-map-bex-w3m641)). Render's Read Replicas render on Info, as a field of the General card; its High Availability controls render on Plan, as its last card.
 
 | bex card (old anchor) | Page | Render counterpart |
 | --- | --- | --- |
@@ -88,8 +88,8 @@ The browser logged no page error; its console carried only `local-bex`'s missing
 
 ## Source + Goal linkage
 
-- **Source:** `/pm one aspect of render parity for w3` (2026-11-25), from Render's public dashboard bundle read the same day. It gives Postgres what w3/m554 gave a cron job ([done/m554](../done/m554/README.md): sidebar and routes). It amends two rulings that predate the parity-first rule: the w5/m32 dashboard walk ([datastores.md](../../../docs/render-artifacts/dashboard-walk/datastores.md)) ruled Postgres Metrics and Recovery "information architecture differs, not a gap", and [dashboard-routes.md](../../../docs/render-artifacts/dashboard-routes.md) § Sidebar navigation says "that ruling stands". Neither is recorded in [ADR018](../../../docs/ADR018-render-parity.md) with the user's sign-off, so neither stands.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)). The pages and URLs of a managed Postgres are customer-facing behavior, and Render-shaped `/d/<id>/…` links are a contract bex already accepts through its alias routes.
+- **Source:** `/pm one aspect of render parity for w3` (2026-11-25), from Render's public dashboard bundle read the same day. It gives Postgres what w3/m554 gave a cron job ([done/m554](../../done/m554/README.md): sidebar and routes). It amends two rulings that predate the parity-first rule: the w5/m32 dashboard walk ([datastores.md](../../../../docs/render-artifacts/dashboard-walk/datastores.md)) ruled Postgres Metrics and Recovery "information architecture differs, not a gap", and [dashboard-routes.md](../../../../docs/render-artifacts/dashboard-routes.md) § Sidebar navigation says "that ruling stands". Neither is recorded in [ADR018](../../../../docs/ADR018-render-parity.md) with the user's sign-off, so neither stands.
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). The pages and URLs of a managed Postgres are customer-facing behavior, and Render-shaped `/d/<id>/…` links are a contract bex already accepts through its alias routes.
 - **Expected outcome:** someone who knows Render's Postgres pages finds the same sidebar, the same pages and the same URLs. A phone reaches Recovery or Plan in one tap instead of scrolling past the SQL console and the charts, and a pasted `/d/<id>/recovery` opens Recovery.
 - **Why now:** the cron job's pages were just brought to Render's shape (w3/m554–m556), and the Postgres page is the dashboard's largest single page (eleven sections in one scroll). Render's own deep links into it reach none of the pages they name today. Doing it before the next Postgres feature lands spares that feature a home on a page about to be split.
 - **Render parity task:** included (t007), because the milestone changes the dashboard's pages and URLs. REST, GraphQL and MCP do not change; t007 checks that the `dashboardUrl` bex-api emits for a Postgres still opens Info.
