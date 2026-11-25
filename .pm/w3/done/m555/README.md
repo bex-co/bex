@@ -1,6 +1,6 @@
 # w3 · m555 — A cron job's header and actions are Render's: Trigger Run while it runs, the schedule in words, Manual Build on its Deploys page
 
-**Worker:** worker3 **Goal:** every page of a running cron job carries Render's one header action, Trigger Run, which runs at once and opens the Logs on Live tail; the header says "Runs `<command>` <schedule in words>"; and a repo-backed cron job builds from its Deploys page's Manual Build, as on Render. **Status:** blocked (t001–t006 and t008–t010 done; t007 step 2 walked production on 2026-11-25 and found three defects, fixed in `a43d36790f`; its re-check waits for a pin that carries the fix)
+**Worker:** worker3 **Goal:** every page of a running cron job carries Render's one header action, Trigger Run, which runs at once and opens the Logs on Live tail; the header says "Runs `<command>` <schedule in words>"; and a repo-backed cron job builds from its Deploys page's Manual Build, as on Render. **Status:** done (t007 step 2's re-check held on production pin `cdaa0a248615` on 2026-11-25)
 
 ## Tasks (in order)
 
@@ -12,11 +12,11 @@
 | [t004](done/t004.md) | Header facts: "Runs `<command>` <schedule in words>" and "Last successful run <date>" — **DONE** | 45m | t001 |
 | [t005](done/t005.md) | Deploys page: Manual Build for a repo-backed cron job, and Render's "Search deploys and commits" on every Deploys page — **DONE** | 1h | t001, w3/m554/t003 |
 | [t006](done/t006.md) | Skeletons: the header's action slot and facts line, and the Deploys toolbar — **DONE** | 30m | t002, t004, t005 |
-| [t007](t007.md) | Verify in a real browser at 1440 and 390, on dev-3 and on production | 45m | t003, t006 |
+| [t007](done/t007.md) | Verify in a real browser at 1440 and 390, on dev-3 and on production — **DONE** | 45m | t003, t006 |
 | [t008](done/t008.md) | Render parity — **DONE** | 30m | t007 |
 | [t009](done/t009.md) | Simplify — **DONE** | 15m | t008 |
 | [t010](done/t010.md) | Test coverage — **DONE** | 45m | t008 |
-| [t011](t011.md) | Closeout | 10m | t009, t010 |
+| [t011](done/t011.md) | Closeout — **DONE** | 10m | t009, t010 |
 
 Total: **11 tasks, about 7h10m**.
 
@@ -81,6 +81,22 @@ Checked locally against a copy of `local-bex` serving a cron job with a long nam
 
 Found on the way, not this milestone's: at 390 a building deploy's Cancel sits over "Created 1 minute ago" on Deploys, filed as w3/111.
 
+### Production re-check (2026-11-25, t007 step 2, pin `cdaa0a248615`)
+
+Pin `cdaa0a248615` (carries `a43d36790f`); the `dashboard` pod ran its digest (`bex-dashboard@sha256:8f20de7594a9…`) from 18:00 UTC, walked 18:14–18:40 UTC. As the QA user in `bex-canary`, over REST: the repo-backed cron job `qa-20261125-m555r-repo` (disposable, `srv-dc3ib94g1jgc73dafl6g`, `render-examples/express-hello-world` on `main`, Node, build `yarn`, command `node -e "console.log('m555 recheck run ok')"`, `0 9 * * *`, Starter) and the image-backed `qa-20261125-m555r-img` (disposable, `srv-dc3ib9cg1jgc73dafl8g`, `docker.io/library/busybox:1.36`, a 64-character `echo …` command, `0 9 * * *`, Starter). Each ran once from the header's Trigger Run (repo at 1440, image at 390: no dialog, `/services/<id>/logs?range=live` in 338 ms), and both runs succeeded ("Last successful run November 25, 2026 at 10:17 AM"; the Runs page then had one Trigger Run, the header's). `hello-go` was the web service. Google Chrome headless through `playwright-core`, `en-US`, zone America/Los_Angeles, at 1440 and 390. Pending frames were drawn by holding the batched GraphQL request that carries `Server` after a click from the workspace's service list, then releasing it.
+
+| Point | Seen at 1440 and 390 | Verdict |
+| --- | --- | --- |
+| Page errors | 24 full loads of Runs, Deploys, Events, Logs, Settings and the bare URL, both cron jobs at both widths, each after its successful run: no page error and no console error. The same 24 again while suspended: none. The server's HTML now carries `<p …cron-last-run>Last successful run <time …><span><span><span data-slot="skeleton">`, phrasing content throughout | holds |
+| Header pending against ready, running | band 189/189 px at 1440 and 239/239 at 390 for both cron jobs; the Trigger Run slot (36+32 at 1440, 104+44 at 390, button 101 px wide), the Runs line and the last-run line at the same offsets in both states | holds |
+| Header pending against ready, suspended | band 239/239 at 1440 and 285/285 at 390 for both; the notice at 180+46 (1440) and 174+102 (390) in both states, no action slot | holds |
+| Header pending against ready, `hello-go` | 145/145 at 1440, 219/219 at 390 | holds |
+| Facts line | one 20 px line at both widths, running and suspended; at 390 the command truncates (`node -e "console.…`, `echo m555-recheck…`) and "at 09:00 AM UTC" stays on the line | holds |
+
+**Cleanup:** both cron jobs were deleted (`DELETE` 204; by-id `GET` 404 for each and for the repo-backed one's first build); the app cluster kept no App, CronJob, Job or Pod of either. The QA session was logged out (`qa-login.sh --logout`, after which its cookie answered 401), and the session jar, the state file and the fetched kubeconfig were deleted.
+
+Found on the way, not this milestone's: during the same held `Server` read the sidebar and the breadcrumb show the service id and a type-less nav while the header's frame already uses the cached name and type, filed as w3/119.
+
 ## Definition of done
 
 1. A running cron job's header shows Trigger Run on every cron page and nothing else; a suspended one's shows no action and Render's suspension notice with Resume service; other types' headers are unchanged.
@@ -114,3 +130,16 @@ Found on the way, not this milestone's: at 390 a building deploy's Cancel sits o
 - **Finding:** every point held except two: React #418 on every cron job page once it had a successful run, and the header's loading frame 30–42 px short of the ready band at 390. Both are this milestone's (t004's facts line, t006's frame) and were fixed and tested in `a43d36790f`, with a local browser check at five widths.
 - **Gate:** production must run `a43d36790f` (`pin must carry`); nothing is needed from the user.
 - **Next:** t007 step 2's re-check as § Live walk › Production lists it, recorded there; then t011 closes the milestone if it holds.
+
+## Unblock (2026-11-25, second)
+
+- **Affected:** t007 step 2's re-check, then t011.
+- **Source:** verified evidence (`/loopx w3` dispatch, gate check).
+  - `git merge-base --is-ancestor a43d36790f cdaa0a248615` holds. The newest `chore(deploy): pin platform images to …` on origin/main is `8b9d780f45`, which pins `cdaa0a248615`.
+  - On the production app cluster the `dashboard` Deployment and its one pod run that pin's digest (`bex-dashboard@sha256:8f20de7594a9…`, pod started 2026-11-25 18:00 UTC).
+- **Gate:** the `pin must carry` gate is cleared; nothing else gates the re-check. The QA user's sign-in comes from `scripts/qa-login.sh`.
+- **Next:** t007 step 2's re-check as § Live walk › Production lists it under "Left for the next pin", recorded there; then t011 closes the milestone if it holds.
+
+## Closeout (2026-11-25)
+
+t007 step 2's re-check on production pin `cdaa0a248615` held every point at 1440 and 390 (§ Live walk › Production re-check): no page error on either cron job's pages after a successful run, the header's pending frame equal to the ready band running and suspended and for `hello-go`, and the facts line on one line at 390. With the first production walk's other points, every definition-of-done item holds; t011 closed the milestone.
