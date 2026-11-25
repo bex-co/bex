@@ -1,6 +1,6 @@
 # w3 · m555 — A cron job's header and actions are Render's: Trigger Run while it runs, the schedule in words, Manual Build on its Deploys page
 
-**Worker:** worker3 **Goal:** every page of a running cron job carries Render's one header action, Trigger Run, which runs at once and opens the Logs on Live tail; the header says "Runs `<command>` <schedule in words>"; and a repo-backed cron job builds from its Deploys page's Manual Build, as on Render. **Status:** blocked (t001–t006 and t008–t010 done; t007's production walk waits for a pin that carries `ad7f6e2b36`)
+**Worker:** worker3 **Goal:** every page of a running cron job carries Render's one header action, Trigger Run, which runs at once and opens the Logs on Live tail; the header says "Runs `<command>` <schedule in words>"; and a repo-backed cron job builds from its Deploys page's Manual Build, as on Render. **Status:** blocked (t001–t006 and t008–t010 done; t007 step 2 walked production on 2026-11-25 and found three defects, fixed in `a43d36790f`; its re-check waits for a pin that carries the fix)
 
 ## Tasks (in order)
 
@@ -51,9 +51,35 @@ Total: **11 tasks, about 7h10m**.
 
 No page errors at either width.
 
-### Production
+### Production (2026-11-25, t007 step 2)
 
-Waits for a pin that carries the milestone's commit (t007 step 2). Then, as the QA user in `bex-canary`, with a repo-backed cron job and an image-backed one created for the walk (disposable): the header on Runs, Deploys, Events, Logs and Settings at 1440 and 390, Trigger Run's click landing on Live tail with the run's output, the no-build and suspended states, Manual Build building and opening the build, pending against ready for the header and the Deploys toolbar, then cleanup.
+Pins `7b046987bcd8` (07:31–07:39 UTC: the no-build state, the first Trigger Runs) and `9cc529d10432` (14:28–14:45 UTC: everything else, every point re-walked), both carrying `ad7f6e2b36`; the `dashboard` pod ran each pin's digest. As the QA user in `bex-canary` (`tea-daif693dqjvc73e7as3g`), over REST: the repo-backed cron job `qa-20261125-m555-repo` (disposable, `srv-dc38tnpa7e1c7381dh0g`, `render-examples/express-hello-world` on `main`, Node, build `yarn`, command `node -e "console.log('m555 run ok')"`, `0 9 * * *`, Starter) and the image-backed `qa-20261125-m555-img` (disposable, `srv-dc38u0guqmis73a84kig`, `docker.io/library/busybox:1.36`, `echo m555-image-run-ok`, `0 9 * * *`, Starter). `hello-go` was the web service. Google Chrome headless through `playwright-core`, `en-US`, zone America/Los_Angeles, at 1440 and 390.
+
+| Point | Seen at 1440 and 390 | Verdict |
+| --- | --- | --- |
+| Header actions, running | Trigger Run alone on Runs, Deploys, Events, Logs and Settings of both cron jobs (1440 at x 1315, 101×32; 390 at y 152, 101×44); no Connect, no Manual Deploy. `hello-go` kept Connect and Manual Deploy | holds |
+| No build | the repo-backed cron job during its first build (Latest deploy Building): Trigger Run disabled, tooltip "No successful build detected. View Deploys." linking `/services/<id>/deploys` | holds |
+| Trigger Run's click | four clicks (each cron job at each width): no dialog, one `RunCronJob`, `/services/<id>/logs?range=live` within 340 ms with Live tail selected, then the run's own line (`m555 run ok`, `m555-image-run-ok`) streamed in 13–21 s with no reload. Afterwards the Runs page had one Trigger Run, the header's | holds |
+| Facts | "Runs `node -e "console.log('m555 run ok')"` at 09:00 AM UTC" (and `echo m555-image-run-ok`), "No successful runs yet." before a run, then "Last successful run November 25, 2026 at 1:00 AM" after the 09:00 UTC run (the viewer's zone) and 6:30 AM after a triggered one | holds at 1440; at 390 the line wrapped, see below |
+| Suspended | suspended over REST: no action; "Manually suspended You are not billed for suspended services. Resume service" (1136×46 at 1440, 358×102 at 390) on Runs, Deploys and Settings. Resume service in the notice resumed it at once (`ResumeService`, no dialog) and Trigger Run came back | holds |
+| Deploys | "Search deploys and commits" on both cron jobs' and `hello-go`'s pages; Manual Build only on the repo-backed one (1440: x 1305 after the search and filter, 111×32; 390: on the count's line, 111×44), absent on the image-backed one; a click at each width called `TriggerDeploy` once with no menu or dialog and opened `/services/<id>/deploys/<new deploy>`, which built from `039c347` and went live | holds |
+| Deploys toolbar pending against ready | the route's chunk (`services._serviceId.deploys.index-*.js`) held on a sidebar click from Runs, then released: toolbar 1136×36 and Manual Build 111×32 at 1440, 358×96 and 111×44 at 390, the same in both states | holds |
+| Header pending against ready | the `Server` read held on a click from the workspace's service list, then released. 1440: running 189/189 px, suspended 239/239, `hello-go` 145/145. 390: running 209 against 239, suspended 255 against 297, `hello-go` 189 against 219 | **fails at 390** |
+| Page errors | React #418 on every load of either cron job once it had a successful run (20 of 20 loads), none before its first run and none on `hello-go` | **fails** |
+
+**Three defects, fixed in `a43d36790f`:**
+
+- **React #418.** "Last successful run <date>" sits in a `<p>`, and `LocalDateTime`'s pre-hydration placeholder was a `<div>`, which the HTML parser moves out of a paragraph. The server's HTML carried `<p …cron-last-run>Last successful run <time …><span><div data-slot="skeleton">`. The local walk ran `vite dev`, whose server render drew the header's loading frame, so it never hydrated this markup. The placeholder is now phrasing content.
+- **The name row at 390.** The frame drew no "Latest deploy" item, so its row fit one line while every real service's ready row wraps (t006 had sized it to the local stub, which has no deploys). It now reserves "Service" and "Latest deploy" in their own words and lays the cached name out invisibly at the heading's size.
+- **The facts line at 390.** "Runs `<command>` at 09:00 / AM UTC" wrapped while the command still had room to truncate. The command now gives up its width first; the words never shrink, and from `sm` the Runs line is its own line, so the frame no longer depends on the command's length. An empty action slot (a suspended cron job's) is hidden, so it adds no row gap.
+
+Checked locally against a copy of `local-bex` serving a cron job with a long name, a long command, a last successful run and a deploy (running and suspended), and the web service, the dashboard from this tree on `vite dev`: the header frame equals the ready band at 390, 640, 768, 1024 and 1440 for both cron states and at 390, 768, 1024 and 1440 for the web service (at 640 the web service's frame is 22 px taller, as it was before this change: filed as w3/112). The hydration tests in `local-time.test.tsx` and `service-detail-header.test.tsx` fail without the fix.
+
+**Cleanup:** both cron jobs were deleted (`DELETE` 204; by-id `GET` 404 for each and for the last build); the app cluster kept no App, CronJob, Job or Pod of either. The QA session was logged out (`qa-login.sh --logout`, after which its cookie answered 401), and the session jar, the state file and the fetched kubeconfig were deleted.
+
+**Left for the next pin** (t007 step 2's re-check, once production carries `a43d36790f`): as the QA user in `bex-canary`, with a cron job created for it (disposable) that has run once: no page error on its pages; the header's pending frame equal to the ready band at 390 and 1440, running and suspended, and for `hello-go`; the facts line on one line at 390.
+
+Found on the way, not this milestone's: at 390 a building deploy's Cancel sits over "Created 1 minute ago" on Deploys, filed as w3/111.
 
 ## Definition of done
 
@@ -71,3 +97,20 @@ Waits for a pin that carries the milestone's commit (t007 step 2). Then, as the 
 - **Why now:** it follows w3/m554's routes (Manual Build lives on the Deploys page m554 restores), and w3/m556's empty states reuse the Trigger Run this milestone builds.
 - **Open decision, recorded as a recommendation:** dropping the confirm w4/m114 t003 added follows Render's bundle. That is the proposal's recommendation under ADR008's parity-first rule (parity work is not parked on an optional decision), not a user decision. Keeping the confirm would be a divergence awaiting the user's sign-off in ADR018. Checking the click on Render needs a disposable Render cron job (at least $1 a month), the user's call; until then t001 records the click as bundle-only.
 - **Render parity task included:** the dashboard's cron header and Deploys page change. No REST, GraphQL or MCP surface changes.
+
+## Unblock (2026-11-24)
+
+- **Affected:** t007 step 2, then t011.
+- **Source:** verified evidence (`/loopx w3` dispatch, gate check).
+  - `git merge-base --is-ancestor ad7f6e2b36 9fdf7e0a1171` holds. The newest `chore(deploy): pin platform images to …` on origin/main is now `4b533337ab`, which pins `7b046987bcd8` (deploy run 45545485172, green), and it carries `ad7f6e2b36` too.
+  - On the production app cluster the `dashboard` Deployment and its one pod run that pin's digest (`bex-dashboard@sha256:0ae406bbdc60…`, pod started 2026-11-25 04:45 UTC).
+- **Gate:** the `pin must carry` gate is cleared; nothing else gates the walk. The QA user's sign-in comes from `scripts/qa-login.sh`.
+- **Next:** t007 step 2 as § Live walk › Production describes, recorded there; then t011 closes the milestone if every point holds.
+
+## Park (2026-11-25)
+
+- **Affected:** t007 step 2, then t011.
+- **Source:** verified evidence: the production walk above.
+- **Finding:** every point held except two: React #418 on every cron job page once it had a successful run, and the header's loading frame 30–42 px short of the ready band at 390. Both are this milestone's (t004's facts line, t006's frame) and were fixed and tested in `a43d36790f`, with a local browser check at five widths.
+- **Gate:** production must run `a43d36790f` (`pin must carry`); nothing is needed from the user.
+- **Next:** t007 step 2's re-check as § Live walk › Production lists it, recorded there; then t011 closes the milestone if it holds.
