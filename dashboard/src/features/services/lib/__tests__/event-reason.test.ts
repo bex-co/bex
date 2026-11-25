@@ -4,7 +4,9 @@ import {
   AUTO_DEPLOY_DISABLED_REASONS,
   autoDeployDisabledReasonKey,
   eventReasonKey,
+  healthCheckResult,
   memoryLimitLabel,
+  UNHEALTHY_WITHOUT_RESULT,
 } from "@/features/services/lib/event-reason";
 import en from "@/features/services/locales/en";
 import zh from "@/features/services/locales/zh";
@@ -50,6 +52,57 @@ describe("eventReasonKey", () => {
       expect(en).toHaveProperty([key]);
       expect(zh).toHaveProperty([key]);
     }
+  });
+});
+
+// w6/m634: a failed health check names what it got back, in Render's words;
+// the API's generic sentence for one that recorded nothing adds nothing to
+// the event's own.
+describe("healthCheckResult", () => {
+  const result = "HTTP health check failed with status code 503";
+
+  it("reads a server_failed health check's recorded result", () => {
+    expect(healthCheckResult("server_failed", "readiness_failed", result)).toBe(
+      result,
+    );
+    expect(
+      eventReasonKey("server_failed", "readiness_failed", null, result),
+    ).toBe("services.eventsReason.instance.readiness_failed_result");
+  });
+
+  it("reads nothing without a recorded result", () => {
+    for (const unhealthy of [null, undefined, "", UNHEALTHY_WITHOUT_RESULT]) {
+      expect(
+        healthCheckResult("server_failed", "readiness_failed", unhealthy),
+      ).toBeNull();
+    }
+    expect(healthCheckResult("server_failed", "non_zero_exit", result)).toBe(
+      null,
+    );
+    expect(
+      healthCheckResult("postgres_unavailable", "readiness_failed", result),
+    ).toBeNull();
+  });
+
+  it("knows the API's sentence for no result", () => {
+    const rest = readFileSync(
+      `${process.cwd()}/../lego/backend/internal/events/rest.go`,
+      "utf8",
+    );
+    expect(rest).toContain(
+      `const unhealthyMessage = "${UNHEALTHY_WITHOUT_RESULT}"`,
+    );
+  });
+
+  it("has its sentence in both locales", () => {
+    const key = eventReasonKey(
+      "server_failed",
+      "readiness_failed",
+      null,
+      result,
+    );
+    expect(en).toHaveProperty([key]);
+    expect(zh).toHaveProperty([key]);
   });
 });
 

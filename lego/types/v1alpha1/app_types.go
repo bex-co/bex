@@ -1974,6 +1974,35 @@ type ReleaseRolloutExitStatus struct {
 	ExitCode int32 `json:"exitCode"`
 }
 
+// HealthCheckFailureMaxLength bounds HealthCheckFailureStatus.Message. A
+// result in Render's words is under 100 characters, a dial error's included.
+const HealthCheckFailureMaxLength = 256
+
+// BoundHealthCheckFailure is message cut to HealthCheckFailureMaxLength bytes
+// on a character boundary.
+func BoundHealthCheckFailure(message string) string {
+	if len(message) <= HealthCheckFailureMaxLength {
+		return message
+	}
+	return strings.ToValidUTF8(message[:HealthCheckFailureMaxLength], "")
+}
+
+// HealthCheckFailureStatus is what the failing health check of one of the
+// App's instances last got back (w6/m634), read from the kubelet's Unhealthy
+// event for that instance when Ready names it HealthCheckFailing.
+type HealthCheckFailureStatus struct {
+	// Instance is the pod whose check failed.
+	// +kubebuilder:validation:MaxLength=253
+	Instance string `json:"instance"`
+
+	// Message is the check's result in Render's words: "HTTP health check
+	// failed with status code 503", "HTTP health check failed (timed out
+	// after 5 seconds)", or what a connect got back ("… connect: connection
+	// refused", "… i/o timeout").
+	// +kubebuilder:validation:MaxLength=256
+	Message string `json:"message"`
+}
+
 // RolloutFailureStatus is the structured cause of a failed rollout (w8/m146),
 // recorded when the operator settles it: the app container's last exit, read
 // from a current-revision pod, and the rollout budget when the deadline ended
@@ -2301,6 +2330,14 @@ type AppStatus struct {
 	// Attributed to the release generation, like ImageDigest.
 	// +optional
 	RolloutFailure *RolloutFailureStatus `json:"rolloutFailure,omitempty"`
+
+	// HealthCheckFailure is the last result of the failing health check Ready
+	// names while its reason is HealthCheckFailing (w6/m634). A rollout pass
+	// that stamps another Ready, and every instance passing again, clear it;
+	// bex-api reads it only beside that reason, as server_failed's
+	// failureReason.unhealthy.
+	// +optional
+	HealthCheckFailure *HealthCheckFailureStatus `json:"healthCheckFailure,omitempty"`
 
 	// ReleaseRollout is what the operator saw of the latest release rollout
 	// it started (w32/m560): its start, its app container's starts, its

@@ -5166,6 +5166,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Instance failed reason for a running service: killed at its plan's memory limit (w8/m158)",
   },
+  "services.eventsReason.instance.readiness_failed_result": {
+    message: "运行中的实例未通过健康检查：{result}。",
+    description:
+      'Instance failed reason for a running service whose health check failed, naming what the check got back (w6/m634); {result} is Render\'s English message ("HTTP health check failed with status code 503"), shown verbatim in every language as Render shows it',
+  },
   "services.eventsReason.instance.oom_killed_no_limit": {
     message: "实例内存不足，已重新启动。",
     description:

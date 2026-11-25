@@ -5282,6 +5282,11 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Instance failed reason for a running service: killed at its plan's memory limit (w8/m158)",
   },
+  "services.eventsReason.instance.readiness_failed_result": {
+    message: "실행 중인 인스턴스가 헬스 체크에 실패했습니다: {result}.",
+    description:
+      'Instance failed reason for a running service whose health check failed, naming what the check got back (w6/m634); {result} is Render\'s English message ("HTTP health check failed with status code 503"), shown verbatim in every language as Render shows it',
+  },
   "services.eventsReason.instance.oom_killed_no_limit": {
     message: "인스턴스의 메모리가 부족하여 다시 시작되었습니다.",
     description:

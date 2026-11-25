@@ -718,6 +718,42 @@ Render removes an instance that fails its health check from rotation and restart
 - **The Events reason** reads "A running instance failed its health check.", naming the check the service's Settings configure, where it said "readiness checks".
 - **Not verified on Render:** its header and services-list badge during an instance failure. Its docs describe the failure as an instance event only.
 
+## A failed health check says what it got back (w6/m634, 2026-11-25)
+
+Render (read 2026-11-24, [troubleshooting-deploys](https://render.com/docs/troubleshooting-deploys)): "A custom HTTP health check can fail during startup or while running, emitting an event with one of the following errors": `HTTP health check failed (timed out after 5 seconds)` and `HTTP health check failed with status code <N>`. "If your service restarts due to health check failures, the event can include `connection refused` or `i/o timeout` errors." bex said only "The instance failed its health check" on `server_failed`, and a deploy's probe-stall reason named what was checked, not what came back.
+
+**The words.** Each outcome reads as one line:
+
+| Outcome | Result |
+| --- | --- |
+| An HTTP check answers outside 2xx–3xx | `HTTP health check failed with status code 503` |
+| An HTTP check has no answer within its 5 s, by the helper's own deadline or the kubelet's command timeout | `HTTP health check failed (timed out after 5 seconds)` |
+| An HTTP check cannot connect | `HTTP health check failed: dial tcp 10.0.0.7:8080: connect: connection refused` |
+| A TCP check is refused or times out: Render's default any-open-port check, a named port, or the kubelet's own TCP probe | `TCP health check failed: dial tcp 10.0.0.7:8080: connect: connection refused` (or `… i/o timeout`) |
+| The any-open-port check finds nothing listening | `TCP health check failed: no open ports detected` |
+| The kubelet kills a TCP check at its timeout | `TCP health check failed (timed out after 5 seconds)` |
+| The probe errored (it could not run at all), or printed anything else | no result |
+
+- **The helper prints it.** `lego/operator/internal/healthprobe` prints exactly one such line. It gives up 250 ms before its `--timeout`, because the kubelet kills an exec probe at the same 5 s and keeps nothing it printed.
+- **No tenant pod rolls.** The helper's install and its `/bex-health/health-probe` path are unchanged, so no pod template changes (w6/m624 changes how it is mounted, not what it prints). An instance keeps the helper it was installed with until its template next changes, so the operator also reads the earlier helper's `health check answered 503` and Go's `Get "…": …` errors, and the kubelet's own HTTP and TCP probe errors, into the same words.
+- **A dial error keeps its address.** It reads as Go and the kubelet's TCP probe write it, pod address included. A TCP failure is worded like Render's HTTP ones, `TCP health check failed: …`; Render documents no TCP wording beyond its errors.
+
+**The channel.** The kubelet records each failed probe as an `Unhealthy` event on the pod, with the check's output. Nothing else carries it, and pod status says only that the container is not ready. When Ready names a probe stall (`HealthCheckFailing`), the operator lists that one pod's events (`involvedObject.name`, `reason=Unhealthy`, one namespaced list through the API reader), keeps the newest of the app container's events that words a result, and records it (`health_check_result.go`).
+
+- **When it reads.** Once for each instance a stall names. A read that found nothing is retried after 10 s, before bex-api confirms the outage, and a deploy that settles failed reads once more for its verdict. It never watches. Of several stalled instances, the stall names the first by pod name, so it names the same one on every pass.
+- **RBAC.** The manager role gains `list` on events, beside `create`, `patch` and `update`, and no `get` or `watch`. The list goes through the API reader: a list through the cached client would start a cluster-wide events informer.
+- **Rejected: a file the helper writes for a node-side reader.** It needs no RBAC, but it is a second channel and a reader on every node, and the kubelet's own TCP probe writes no file.
+- **Rejected: watching events.** That is a cluster-wide informer of every event, for a read that happens only when a check fails.
+
+**The status field.** `status.healthCheckFailure` holds `{instance, message}`, with the message at most 256 bytes, cut on a character boundary. It describes Ready only while Ready is False with reason `HealthCheckFailing`, and bex-api reads it only then. A rollout pass that stamps another Ready (a crash, a rollout progressing) clears it, and so does every instance passing again. A stall on another instance replaces it, or clears it when that instance has no result yet, so a new release never inherits the last one's.
+
+**The surfaces.**
+
+- **`server_failed`.** When bex-api concludes a `readiness_failed` outage, it reads the field, only beside Ready's `HealthCheckFailing`, and keeps it on the fact (`service_event_facts.message`). REST and MCP send it as `failureReason.unhealthy`, and "The instance failed its health check" when none was recorded. GraphQL `details.unhealthy` is the same string. A webhook's receiver reads the event by id through the same lookup. The alert email adds the result as a paragraph after its lead.
+- **The deploy.** A probe-stall reason, in flight and once failed, ends with ` Last result: <result>.`, the `hint_last_result` part of its `{hint}`, so the reason keeps its code. With no result it is the sentence it always was.
+- **The dashboard.** Events reads "A running instance failed its health check: <result>." The deploy page words the reason in the reader's language and keeps the result in Render's English, as Render shows it.
+- **Unchanged.** A health check failing while a deploy is open records no `server_failed`: the deploy reports it, as before. Render's "can fail during startup … emitting an event" may mean it does; that is unverified.
+
 ## A platform refusal reads as a support reference (w9/090, 2026-11-12)
 
 Render reports a failure on its own side as an internal error and asks the customer to contact support. bex copied the API server's refusal of the operator's own write verbatim. On 2026-11-12 a failed deploy and its Events entry read `deployments.apps "…" is forbidden: ValidatingAdmissionPolicy 'bex-operator-workloads' with binding 'bex-operator-workloads' denied request: …`. That names an internal policy and the tenant namespace, and the customer can do nothing about it.

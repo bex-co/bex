@@ -19,6 +19,7 @@ package healthprobe
 import (
 	"net"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -77,6 +78,30 @@ func TestOpenPortFailsWithNoListener(t *testing.T) {
 	// listener seen from the pod IP) does not pass either.
 	if got, err := OpenPort(t.Context(), "127.0.0.1", []int{closedPort(t)}, nil, time.Second); err == nil {
 		t.Fatalf("OpenPort on a refused port = %d, want an error", got)
+	}
+}
+
+// w6/m634: a TCP check's failure is one line naming what the dial got back,
+// Render's "connection refused", or Render's "No open ports detected" when
+// nothing listens at all. Skipped ports are never dialed.
+func TestOpenPortWordsItsFailure(t *testing.T) {
+	_, err := OpenPort(t.Context(), "127.0.0.1", nil, nil, time.Second)
+	if err == nil || err.Error() != "TCP health check failed: no open ports detected" {
+		t.Fatalf("nothing listening: %v", err)
+	}
+	open := listen(t)
+	if _, err := OpenPort(t.Context(), "127.0.0.1", []int{open}, []int{open}, time.Second); err == nil ||
+		err.Error() != "TCP health check failed: no open ports detected" {
+		t.Fatalf("only a skipped port listening: %v", err)
+	}
+	closed := closedPort(t)
+	_, err = OpenPort(t.Context(), "127.0.0.1", []int{closed}, nil, time.Second)
+	want := "TCP health check failed: dial tcp 127.0.0.1:" + strconv.Itoa(closed) + ": connect: connection refused"
+	if err == nil || err.Error() != want {
+		t.Fatalf("refused: %v, want %q", err, want)
+	}
+	if strings.Contains(err.Error(), "\n") {
+		t.Fatalf("the failure spans lines: %q", err)
 	}
 }
 

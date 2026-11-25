@@ -535,7 +535,7 @@ func (r *AppReconciler) keepPortHint(key string, pod *corev1.Pod, port int, text
 
 // forgetPortScans drops a deleted App's scan state.
 func (r *AppReconciler) forgetPortScans(key string) {
-	for _, m := range []*sync.Map{&r.portScanned, &r.portCandidate, &r.portHint, &r.privatePortScanned, &r.privatePortStable} {
+	for _, m := range []*sync.Map{&r.portScanned, &r.portCandidate, &r.portHint, &r.privatePortScanned, &r.privatePortStable, &r.healthCheckRead} {
 		m.Delete(key)
 	}
 	r.portScanned.Delete("http/" + key)

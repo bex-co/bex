@@ -1,21 +1,21 @@
 # w6 · m634 — A failed health check says what the check got back, in Render's words, on every surface
 
-**Worker:** worker6 **Goal:** when an instance fails its health check, at deploy or while live, every surface names what the check got back in Render's words: the status code, the 5-second timeout, `connection refused` or `i/o timeout`. The surfaces are the `server_failed` event's `failureReason.unhealthy` on REST, GraphQL, MCP and webhooks, the deploy's failure reason, and the dashboard. **Status:** todo
+**Worker:** worker6 **Goal:** when an instance fails its health check, at deploy or while live, every surface names what the check got back in Render's words: the status code, the 5-second timeout, `connection refused` or `i/o timeout`. The surfaces are the `server_failed` event's `failureReason.unhealthy` on REST, GraphQL, MCP and webhooks, the deploy's failure reason, and the dashboard. **Status:** todo (t001–t006, t009 and t010 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [ADR004 design: how the probe's last result reaches the App's status](t001.md) | 30m | — |
-| t002 | [The health-probe helper reports a failure in Render's words](t002.md) | 45m | t001 |
-| t003 | [The operator records an instance's last health-check result when it fails readiness](t003.md) | 1h30m | t002 |
-| t004 | [`server_failed` carries the result as `failureReason.unhealthy` on REST, GraphQL, MCP, webhooks and the alert email](t004.md) | 1h | t003 |
-| t005 | [A deploy that fails its health check ends its failure reason with the last result](t005.md) | 45m | t003 |
-| t006 | [The dashboard's Events and deploy pages show the result](t006.md) | 45m | t004, t005 |
+| t001 | [ADR004 design: how the probe's last result reaches the App's status](done/t001.md) — **DONE** | 30m | — |
+| t002 | [The health-probe helper reports a failure in Render's words](done/t002.md) — **DONE** | 45m | t001 |
+| t003 | [The operator records an instance's last health-check result when it fails readiness](done/t003.md) — **DONE** | 1h30m | t002 |
+| t004 | [`server_failed` carries the result as `failureReason.unhealthy` on REST, GraphQL, MCP, webhooks and the alert email](done/t004.md) — **DONE** | 1h | t003 |
+| t005 | [A deploy that fails its health check ends its failure reason with the last result](done/t005.md) — **DONE** | 45m | t003 |
+| t006 | [The dashboard's Events and deploy pages show the result](done/t006.md) — **DONE** | 45m | t004, t005 |
 | t007 | [Production check in `bex-canary`: a 503, a timeout and no listener](t007.md) | 45m | t006 |
 | t008 | [Render parity](t008.md) | 30m | t007 |
-| t009 | [Simplify](t009.md) | 20m | t008 |
-| t010 | [Test coverage](t010.md) | 45m | t008 |
+| t009 | [Simplify](done/t009.md) — **DONE** | 20m | t008 |
+| t010 | [Test coverage](done/t010.md) — **DONE** | 45m | t008 |
 | t011 | [Closeout](t011.md) | 10m | t009, t010 |
 
 ## Definition of done

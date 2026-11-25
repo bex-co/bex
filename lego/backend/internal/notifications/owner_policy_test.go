@@ -262,7 +262,7 @@ func TestDeployMailFollowsTheWorkspacePolicy(t *testing.T) {
 func TestAlertFeedFollowsTheWorkspacePolicy(t *testing.T) {
 	byTenant := map[string][]store.AlertEmailRecipient{"tea-a": {{TenantID: "tea-a", Subject: "alice", DeployFailed: true}}}
 	rows := []store.WebhookEventRow{{TenantID: "tea-a", ServiceID: "srv-1", Key: "fact:1", Source: store.EventSourceFact, FactType: string(store.EventFactServerFailed)}}
-	w := &AlertEmailWorker{Policy: func(context.Context, string, string) (string, error) {
+	w := &AlertEmailWorker{Store: &fakeAlertStore{}, Policy: func(context.Context, string, string) (string, error) {
 		return appv1alpha1.NotificationsToSendDefault, nil
 	}}
 	if items, err := w.projectFeed(context.Background(), rows, byTenant); err != nil || len(items) != 1 {
@@ -334,7 +334,7 @@ func TestPushFollowsTheServiceLevel(t *testing.T) {
 func TestAlertFeedLinksTheServiceByItsID(t *testing.T) {
 	byTenant := map[string][]store.AlertEmailRecipient{"tea-a": {{TenantID: "tea-a", Subject: "alice", DeployFailed: true}}}
 	rows := []store.WebhookEventRow{{TenantID: "tea-a", ServiceID: "tea-a-web", AppID: "srv-1", ServiceName: "web", Key: "fact:1", Source: store.EventSourceFact, FactType: string(store.EventFactServerFailed)}}
-	w := &AlertEmailWorker{DashboardBaseURL: "https://dashboard.example"}
+	w := &AlertEmailWorker{Store: &fakeAlertStore{}, DashboardBaseURL: "https://dashboard.example"}
 	items, err := w.projectFeed(context.Background(), rows, byTenant)
 	if err != nil || len(items) != 1 || items[0].ResourceID != "srv-1" {
 		t.Fatalf("items = %+v, %v; want one alert on srv-1", items, err)

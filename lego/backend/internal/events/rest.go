@@ -210,7 +210,10 @@ type renderDetails struct {
 }
 
 // unhealthyMessage is server_failed's reason when an instance failed its
-// health check; the fact records which check, not its output.
+// health check and no result was recorded. A recorded one is what the check
+// got back, in Render's words: "HTTP health check failed with status code
+// 503", "HTTP health check failed (timed out after 5 seconds)", or a connect
+// that was refused or timed out (w6/m634).
 const unhealthyMessage = "The instance failed its health check"
 
 // toFailureReason maps a failure's closed reason code onto Render's
@@ -233,7 +236,7 @@ func toFailureReason(d Details) *FailureReason {
 		timeout := appv1alpha1.CronRunActiveDeadlineSeconds
 		return &FailureReason{TimedOutSeconds: &timeout}
 	case store.EventReasonReadinessFailed:
-		return &FailureReason{Unhealthy: unhealthyMessage}
+		return &FailureReason{Unhealthy: cmp.Or(d.HealthCheckResult, unhealthyMessage)}
 	}
 	return nil
 }

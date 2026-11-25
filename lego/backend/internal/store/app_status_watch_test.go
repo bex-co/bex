@@ -268,6 +268,7 @@ func TestStatusFingerprintNamesEveryStatusField(t *testing.T) {
 		"ImageRevision":              "read at a deploy's close, which a phase or release change kicks",
 		"Image":                      "read at a deploy's close, which a phase or release change kicks",
 		"ImageDigest":                "read at a deploy's close, which a phase or release change kicks",
+		"HealthCheckFailure":         "read with Ready's HealthCheckFailing, whose arrival kicks, when its outage is recorded",
 		"URL":                        "read by service views, not recorded",
 		"URLs":                       "read by service views, not recorded",
 		"Disk":                       "disk facts come from the disk verbs and the usage sampler",

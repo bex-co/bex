@@ -24,12 +24,15 @@ limitations under the License.
 // TCP probe. "drain --seconds N CHECK…" is the preStop hook (w4/m353): it runs
 // one of those checks and waits N seconds only when it passes, so an instance
 // still serving drains while one the health check failed restarts at once.
+// A failed check prints one line in Render's words (w6/m634), which the
+// kubelet puts in the pod's Unhealthy event.
 package main
 
 import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -38,11 +41,29 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/healthprobe"
 )
 
-// podAddrs and drainSleep are seams for the tests.
+// podAddrs, drainSleep and failures are seams for the tests. failures is
+// where a failed check prints its line; the kubelet keeps stdout and stderr
+// alike.
 var (
-	podAddrs   = healthprobe.PodAddrs
-	drainSleep = time.Sleep
+	podAddrs             = healthprobe.PodAddrs
+	drainSleep           = time.Sleep
+	failures   io.Writer = os.Stderr
 )
+
+// outputMargin is how much sooner than its --timeout a check gives up. The
+// kubelet's probe timeout is the same 5 s, counted from the exec's start, and
+// the kubelet kills a command that overruns it and keeps none of its output,
+// so a check that waited the whole 5 s would never print its own failure.
+const outputMargin = 250 * time.Millisecond
+
+// checkContext bounds a check whose --timeout is timeout, outputMargin short
+// of it when that leaves the check most of its time.
+func checkContext(timeout time.Duration) (context.Context, context.CancelFunc) {
+	if timeout > 4*outputMargin {
+		timeout -= outputMargin
+	}
+	return context.WithTimeout(context.Background(), timeout)
+}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -131,8 +152,10 @@ func check(args []string) int {
 	if !ok {
 		return 1
 	}
-	if err := healthprobe.Check(context.Background(), addr, *port, *path, *host, *timeout); err != nil {
-		fmt.Fprintln(os.Stderr, "health-probe:", err)
+	ctx, cancel := checkContext(*timeout)
+	defer cancel()
+	if err := healthprobe.Check(ctx, addr, *port, *path, *host, *timeout); err != nil {
+		_, _ = fmt.Fprintln(failures, err)
 		return 1
 	}
 	return 0
@@ -160,8 +183,10 @@ func openPort(args []string) int {
 	if !ok {
 		return 1
 	}
-	if _, err := healthprobe.OpenPort(context.Background(), addr, healthprobe.Listening(), skip, *timeout); err != nil {
-		fmt.Fprintln(os.Stderr, "health-probe:", err)
+	ctx, cancel := checkContext(*timeout)
+	defer cancel()
+	if _, err := healthprobe.OpenPort(ctx, addr, healthprobe.Listening(), skip, *timeout); err != nil {
+		_, _ = fmt.Fprintln(failures, err)
 		return 1
 	}
 	return 0
@@ -179,8 +204,10 @@ func tcp(args []string) int {
 	if !ok {
 		return 1
 	}
-	if _, err := healthprobe.OpenPort(context.Background(), addr, []int{*port}, nil, *timeout); err != nil {
-		fmt.Fprintln(os.Stderr, "health-probe:", err)
+	ctx, cancel := checkContext(*timeout)
+	defer cancel()
+	if _, err := healthprobe.OpenPort(ctx, addr, []int{*port}, nil, *timeout); err != nil {
+		_, _ = fmt.Fprintln(failures, err)
 		return 1
 	}
 	return 0

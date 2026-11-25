@@ -1436,6 +1436,30 @@ spec:
                 maximum: 65535
                 minimum: 0
                 type: integer
+              healthCheckFailure:
+                description: |-
+                  HealthCheckFailure is the last result of the failing health check Ready
+                  names while its reason is HealthCheckFailing (w6/m634). A rollout pass
+                  that stamps another Ready, and every instance passing again, clear it;
+                  bex-api reads it only beside that reason, as server_failed's
+                  failureReason.unhealthy.
+                properties:
+                  instance:
+                    description: Instance is the pod whose check failed.
+                    maxLength: 253
+                    type: string
+                  message:
+                    description: |-
+                      Message is the check's result in Render's words: "HTTP health check
+                      failed with status code 503", "HTTP health check failed (timed out
+                      after 5 seconds)", or what a connect got back ("… connect: connection
+                      refused", "… i/o timeout").
+                    maxLength: 256
+                    type: string
+                required:
+                - instance
+                - message
+                type: object
               image:
                 description: Image is the OCI image of the active revision.
                 type: string

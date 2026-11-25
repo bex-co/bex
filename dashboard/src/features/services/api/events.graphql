@@ -129,6 +129,10 @@ query ServiceEvents(
       # server_failed with reasonCode oom_killed (w8/m158): the plan's memory
       # limit the instance was killed at ("512Mi").
       memoryLimit
+      # server_failed with reasonCode readiness_failed (w6/m634): what the
+      # failing health check last got back, in Render's words, or the generic
+      # sentence when none was recorded (REST's failureReason.unhealthy).
+      unhealthy
       # service_disk_usage_high / _recovered (w2/m255): Render's disk details.
       diskName
       mountPath

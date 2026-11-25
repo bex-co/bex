@@ -17,6 +17,7 @@ limitations under the License.
 package notifications
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -70,6 +71,7 @@ type AlertEmailStore interface {
 	RetryAlertEmailStream(context.Context, store.AlertEmailStream, time.Time) (bool, error)
 	ListFailedBlueprintSyncs(context.Context, time.Time, string, time.Time, int) ([]store.FailedBlueprintSync, error)
 	SweepAlertEmails(context.Context, time.Time) error
+	HealthCheckResults(context.Context, []string) (map[string]string, error)
 }
 
 // ServiceNotificationPolicy resolves a service's notificationsToSend for a
@@ -189,11 +191,17 @@ func (w *AlertEmailWorker) projectFeed(ctx context.Context, rows []store.Webhook
 	var items []store.AlertEmailItem
 	policies := map[string]string{}
 	owners := ownerPolicyCache{lookup: w.Owners}
+	results, err := w.healthCheckResults(ctx, rows, byTenant)
+	if err != nil {
+		return nil, err
+	}
 	for _, row := range rows {
 		event, detail, ok := classifyAlertEmail(row)
 		if !ok || len(byTenant[row.TenantID]) == 0 {
 			continue
 		}
+		// A failed health check names what it got back (w6/m634).
+		detail = cmp.Or(detail, results[row.Key])
 		// The service is its srv- id (row.AppID, the App CR's app-id label),
 		// not the feed's tenant-name composite, which no App carries: keyed on
 		// that, every override read as "default" and the email's Events link
@@ -232,6 +240,21 @@ func (w *AlertEmailWorker) projectFeed(ctx context.Context, rows []store.Webhook
 		}
 	}
 	return items, nil
+}
+
+// healthCheckResults reads what the failing health check of each server_failed
+// row that someone is to be emailed about last got back, by feed key.
+func (w *AlertEmailWorker) healthCheckResults(ctx context.Context, rows []store.WebhookEventRow, byTenant map[string][]store.AlertEmailRecipient) (map[string]string, error) {
+	var keys []string
+	for _, row := range rows {
+		if row.Source == store.EventSourceFact && row.FactType == string(store.EventFactServerFailed) && len(byTenant[row.TenantID]) > 0 {
+			keys = append(keys, row.Key)
+		}
+	}
+	if len(keys) == 0 {
+		return nil, nil
+	}
+	return w.Store.HealthCheckResults(ctx, keys)
 }
 
 // classifyAlertEmail maps a feed row onto Render's emailed failure events.

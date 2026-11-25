@@ -74,6 +74,7 @@ import { useGoneBuilds } from "@/features/deploys/hooks/use-gone-builds";
 import {
   autoDeployDisabledReasonKey,
   eventReasonKey,
+  healthCheckResult,
   memoryLimitLabel,
   redeployTriggerKey,
 } from "@/features/services/lib/event-reason";
@@ -513,6 +514,8 @@ function EventRow({
   const finishedAt = details?.finishedAt || null;
   const reasonCode = details?.reasonCode || null;
   const memoryLimit = details?.memoryLimit || null;
+  // w6/m634: what a failed health check got back, in Render's words.
+  const checkResult = healthCheckResult(type, reasonCode, details?.unhealthy);
   const exitCode = details?.exitCode ?? null;
   const instanceId = details?.instanceId || null;
   // An autoscaling start/end's replica pair, or an instance-count change's
@@ -667,9 +670,10 @@ function EventRow({
         ) : null}
         {reasonCode && !artifactMessage ? (
           <p>
-            {t(eventReasonKey(type, reasonCode, memoryLimit), {
+            {t(eventReasonKey(type, reasonCode, memoryLimit, checkResult), {
               exitCode: exitCode ?? "",
               memory: memoryLimit ? memoryLimitLabel(memoryLimit) : "",
+              result: checkResult ?? "",
             })}
             {instanceId
               ? ` · ${t("services.eventsInstanceReference", { id: instanceId })}`

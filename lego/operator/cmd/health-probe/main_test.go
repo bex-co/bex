@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -97,6 +98,47 @@ func TestDrainWaitsOnlyForAPassingInstance(t *testing.T) {
 				}
 			} else if len(*slept) != 0 {
 				t.Fatalf("slept %v, want no drain", *slept)
+			}
+		})
+	}
+}
+
+// w6/m634: a failed check prints exactly one line, in Render's words, and a
+// check slower than its 5 s timeout gives up soon enough to print it before the
+// kubelet's own 5 s probe timeout kills the command and keeps no output.
+func TestCheckPrintsOneLineInRendersWords(t *testing.T) {
+	fakeDrain(t)
+	unavailable := serveStatus(t, http.StatusServiceUnavailable, 0)
+	slow := serveStatus(t, http.StatusOK, 6*time.Second)
+	refused := closedPort(t)
+	for _, tc := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"503", []string{"check", "--port", unavailable, "--path", "/health", "--timeout", "5s"},
+			"HTTP health check failed with status code 503"},
+		{"a 6-second answer", []string{"check", "--port", slow, "--path", "/health", "--timeout", "5s"},
+			"HTTP health check failed (timed out after 5 seconds)"},
+		{"a closed port", []string{"check", "--port", refused, "--path", "/health", "--timeout", "5s"},
+			"HTTP health check failed: dial tcp 127.0.0.1:" + refused + ": connect: connection refused"},
+		{"a closed port by TCP", []string{"tcp", "--port", refused, "--timeout", "5s"},
+			"TCP health check failed: dial tcp 127.0.0.1:" + refused + ": connect: connection refused"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var out strings.Builder
+			old := failures
+			failures = &out
+			t.Cleanup(func() { failures = old })
+			start := time.Now()
+			if code := runCheck(tc.args); code != 1 {
+				t.Fatalf("exit %d, want 1", code)
+			}
+			if elapsed := time.Since(start); elapsed >= 5*time.Second {
+				t.Fatalf("the check took %s, not short of the kubelet's 5 s", elapsed)
+			}
+			if got := out.String(); got != tc.want+"\n" {
+				t.Fatalf("printed %q, want the one line %q", got, tc.want)
 			}
 		})
 	}

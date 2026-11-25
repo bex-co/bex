@@ -202,6 +202,10 @@ type ServiceEventRow struct {
 	// attached after a page or by-id lookup is read.
 	ArtifactBuildID string
 	ArtifactMessage string
+	// HealthCheckResult is what a server_failed instance's failing health
+	// check last got back, in Render's words (w6/m634); empty when none was
+	// recorded. Attached like ArtifactMessage, from the same column.
+	HealthCheckResult string
 }
 
 // ServiceEventLookup is one globally-addressed event plus the resource identity
@@ -640,7 +644,7 @@ func (s *PGStore) ListServiceEvents(ctx context.Context, appID, ownerWorkspace s
 	if err := s.attachDiskUsage(ctx, out); err != nil {
 		return nil, err
 	}
-	return out, s.attachArtifactFetchFailures(ctx, out)
+	return out, s.attachFactMessages(ctx, out)
 }
 
 // AuditChanges are the audit_events columns event details need beyond the
@@ -957,20 +961,42 @@ func (s *PGStore) GetServiceEvent(ctx context.Context, workspaceID, eventID stri
 	if err := s.attachDiskUsage(ctx, one); err != nil {
 		return ServiceEventLookup{}, err
 	}
-	if err := s.attachArtifactFetchFailures(ctx, one); err != nil {
+	if err := s.attachFactMessages(ctx, one); err != nil {
 		return ServiceEventLookup{}, err
 	}
 	out.Event = one[0]
 	return out, nil
 }
 
-// attachArtifactFetchFailures fills ArtifactBuildID and ArtifactMessage on any
-// artifact_fetch_failed rows in one read (w4/m510), matching attachDiskUsage so
-// the feed's UNION stays unchanged.
-func (s *PGStore) attachArtifactFetchFailures(ctx context.Context, rows []ServiceEventRow) error {
+// HealthCheckResults returns what the failing health check of each
+// server_failed fact whose feed key ("fact:<source_key>") is in keys last got
+// back (w6/m634), for the alert email the feed row alone cannot word. A fact
+// that recorded no result is left out.
+func (s *PGStore) HealthCheckResults(ctx context.Context, keys []string) (map[string]string, error) {
+	rows := make([]ServiceEventRow, len(keys))
+	for i, key := range keys {
+		rows[i] = ServiceEventRow{Key: key, Source: EventSourceFact, FactType: string(EventFactServerFailed)}
+	}
+	if err := s.attachFactMessages(ctx, rows); err != nil {
+		return nil, err
+	}
+	out := map[string]string{}
+	for _, r := range rows {
+		if r.HealthCheckResult != "" {
+			out[r.Key] = r.HealthCheckResult
+		}
+	}
+	return out, nil
+}
+
+// attachFactMessages fills the details fact rows keep beyond the feed's
+// UNION, in one read: an artifact_fetch_failed fact's ArtifactBuildID and
+// ArtifactMessage (w4/m510), and a server_failed fact's HealthCheckResult
+// (w6/m634), matching attachDiskUsage so the UNION stays unchanged.
+func (s *PGStore) attachFactMessages(ctx context.Context, rows []ServiceEventRow) error {
 	at := map[string][]int{}
 	for i, r := range rows {
-		if r.Source == EventSourceFact && r.FactType == string(EventFactArtifactFetchFailed) {
+		if r.Source == EventSourceFact && (r.FactType == string(EventFactArtifactFetchFailed) || r.FactType == string(EventFactServerFailed)) {
 			key := factSourceKey(r.Key)
 			at[key] = append(at[key], i)
 		}
@@ -982,15 +1008,19 @@ func (s *PGStore) attachArtifactFetchFailures(ctx context.Context, rows []Servic
 		`SELECT source_key, build_id, message FROM service_event_facts WHERE source_key = ANY($1)`,
 		slices.Collect(maps.Keys(at)))
 	if err != nil {
-		return fmt.Errorf("read artifact fetch failure details: %w", err)
+		return fmt.Errorf("read fact details: %w", err)
 	}
 	defer found.Close()
 	for found.Next() {
 		var key, buildID, message string
 		if err := found.Scan(&key, &buildID, &message); err != nil {
-			return fmt.Errorf("read artifact fetch failure details: %w", err)
+			return fmt.Errorf("read fact details: %w", err)
 		}
 		for _, i := range at[key] {
+			if rows[i].FactType == string(EventFactServerFailed) {
+				rows[i].HealthCheckResult = message
+				continue
+			}
 			rows[i].ArtifactBuildID = buildID
 			rows[i].ArtifactMessage = message
 		}

@@ -2777,6 +2777,7 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 				obs.Availability = "unhealthy"
 				obs.AvailabilityObserved = true
 				obs.ReasonCode = EventReasonReadinessFailed
+				obs.HealthCheckResult = healthCheckResult(app, condition)
 				obs.ReadyTransitionAt = serving.LastTransitionTime.Time
 				break
 			}
@@ -2801,6 +2802,7 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 				// container; server_hardware_failure carries no reason code.
 				if !obs.NodeLost {
 					obs.ReasonCode = EventReasonReadinessFailed
+					obs.HealthCheckResult = healthCheckResult(app, condition)
 				}
 				obs.ReadyTransitionAt = condition.LastTransitionTime.Time
 				if hasOpenDeploy {
@@ -2819,6 +2821,19 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 		break
 	}
 	return obs
+}
+
+// healthCheckResult is what the failing health check last got back, as the
+// operator recorded it (status.healthCheckFailure, w6/m634), while ready, the
+// App's Ready condition, names that failing check; "" otherwise, when the
+// surfaces keep their generic sentence. Bounded like the status field, in
+// case a status ever carries more.
+func healthCheckResult(app *appv1alpha1.App, ready *metav1.Condition) string {
+	failure := app.Status.HealthCheckFailure
+	if failure == nil || ready.Status != metav1.ConditionFalse || ready.Reason != appv1alpha1.ReasonHealthCheckFailing {
+		return ""
+	}
+	return appv1alpha1.BoundHealthCheckFailure(failure.Message)
 }
 
 // servingStoppedAt is when the serving revision stopped serving: the

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"net/textproto"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -122,6 +123,15 @@ func TestAlertEmailCopy(t *testing.T) {
 		t.Errorf("digest listed more than the newest %d times", store.AlertEmailOccurrenceCap)
 	}
 
+	// w6/m634: a health check's result is its own paragraph after the lead.
+	_, msg = alertEmail(store.AlertEmailStream{
+		Event: store.AlertEmailServerFailed, ResourceName: "api", Detail: "HTTP health check failed (timed out after 5 seconds)",
+		Occurrences: []time.Time{at}, PendingCount: 1,
+	}, "")
+	if len(msg.Paragraphs) < 2 || msg.Paragraphs[1] != "HTTP health check failed (timed out after 5 seconds)" {
+		t.Errorf("server failed with a result = %q", msg.Paragraphs)
+	}
+
 	blueprint, msg := alertEmail(store.AlertEmailStream{
 		Event: store.AlertEmailBlueprintSyncFailed, ResourceName: "stack", Detail: "unknown plan",
 		Occurrences: []time.Time{at}, PendingCount: 1,
@@ -133,10 +143,17 @@ func TestAlertEmailCopy(t *testing.T) {
 
 type fakeAlertStore struct {
 	AlertEmailStore
-	streams   []store.AlertEmailStream
-	completed []store.AlertEmailStream
-	dropped   []store.AlertEmailStream
-	retried   map[string]time.Time
+	streams    []store.AlertEmailStream
+	completed  []store.AlertEmailStream
+	dropped    []store.AlertEmailStream
+	retried    map[string]time.Time
+	results    map[string]string
+	resultKeys []string
+}
+
+func (f *fakeAlertStore) HealthCheckResults(_ context.Context, keys []string) (map[string]string, error) {
+	f.resultKeys = append(f.resultKeys, keys...)
+	return f.results, nil
 }
 
 func (f *fakeAlertStore) DropAlertEmailStream(_ context.Context, st store.AlertEmailStream) (bool, error) {
@@ -357,7 +374,9 @@ func TestAlertFeedAppliesTheServicePolicyBySrvID(t *testing.T) {
 		{TenantID: "tea-a", Subject: "alice", DeployFailed: true},
 		{TenantID: "tea-a", Subject: "bob", DeployFailed: false},
 	}}
-	w := &AlertEmailWorker{Policy: AppNotificationPolicy(cl), DashboardBaseURL: "https://dashboard.example"}
+	// w6/m634: a failed health check's email names what it got back.
+	results := &fakeAlertStore{results: map[string]string{"fact:loud": "HTTP health check failed with status code 503"}}
+	w := &AlertEmailWorker{Store: results, Policy: AppNotificationPolicy(cl), DashboardBaseURL: "https://dashboard.example"}
 	row := func(name string) store.WebhookEventRow {
 		return store.WebhookEventRow{TenantID: "tea-a", ServiceID: "tea-a-" + name, AppID: "srv-" + name, ServiceName: name,
 			Key: "fact:" + name, Source: store.EventSourceFact, FactType: string(store.EventFactServerFailed)}
@@ -366,9 +385,15 @@ func TestAlertFeedAppliesTheServicePolicyBySrvID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if want := []string{"fact:quiet", "fact:loud", "fact:plain"}; !slices.Equal(results.resultKeys, want) {
+		t.Errorf("results read for %v, want %v", results.resultKeys, want)
+	}
 	var got []string
 	for _, it := range items {
 		got = append(got, it.Subject+"/"+it.ResourceID)
+		if want := results.results[it.SourceKey]; it.Detail != want {
+			t.Errorf("%s detail = %q, want %q", it.SourceKey, it.Detail, want)
+		}
 		if url := w.dashboardURL(store.AlertEmailStream{ResourceID: it.ResourceID, Event: it.Event}); url != "https://dashboard.example/services/"+it.ResourceID+"/events" {
 			t.Errorf("link = %q", url)
 		}

@@ -129,6 +129,66 @@ func TestCheckTimeoutAndRefused(t *testing.T) {
 	}
 }
 
+// w6/m634: a failed HTTP check is one line in Render's words: the status code
+// it answered, the timeout it ran out of, or what the dial got back, without
+// the request's URL.
+func TestCheckWordsItsFailureAsRender(t *testing.T) {
+	addr, port := serve(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/unavailable":
+			w.WriteHeader(http.StatusServiceUnavailable)
+		case "/slow":
+			select {
+			case <-r.Context().Done():
+			case <-time.After(5 * time.Second):
+			}
+		}
+	}))
+	if err := Check(t.Context(), addr, port, "/unavailable", "", 2*time.Second); err == nil ||
+		err.Error() != "HTTP health check failed with status code 503" {
+		t.Errorf("503: %v", err)
+	}
+	if err := Check(t.Context(), addr, port, "/slow", "", 200*time.Millisecond); err == nil ||
+		err.Error() != "HTTP health check failed (timed out after 0.2 seconds)" {
+		t.Errorf("slow: %v", err)
+	}
+	// A deadline the caller set sooner still reads as the configured timeout:
+	// the helper stops short of the kubelet's own, which counts the same 5 s.
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+	if err := Check(ctx, addr, port, "/slow", "", 5*time.Second); err == nil ||
+		err.Error() != "HTTP health check failed (timed out after 5 seconds)" {
+		t.Errorf("slow under a shorter deadline: %v", err)
+	}
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	closed := l.Addr().(*net.TCPAddr).Port
+	_ = l.Close()
+	err = Check(t.Context(), "127.0.0.1", closed, "/hc", "", time.Second)
+	want := "HTTP health check failed: dial tcp 127.0.0.1:" + strconv.Itoa(closed) + ": connect: connection refused"
+	if err == nil || err.Error() != want {
+		t.Errorf("refused: %v, want %q", err, want)
+	}
+}
+
+// Render's timeout reads in whole seconds, one of them singular.
+func TestTimeoutFailure(t *testing.T) {
+	for timeout, want := range map[time.Duration]string{
+		5 * time.Second:         "HTTP health check failed (timed out after 5 seconds)",
+		time.Second:             "HTTP health check failed (timed out after 1 second)",
+		1500 * time.Millisecond: "HTTP health check failed (timed out after 1.5 seconds)",
+	} {
+		if got := TimeoutFailure(HTTPFailed, timeout); got != want {
+			t.Errorf("TimeoutFailure(%s) = %q, want %q", timeout, got, want)
+		}
+	}
+	if got := TimeoutFailure(TCPFailed, 5*time.Second); got != "TCP health check failed (timed out after 5 seconds)" {
+		t.Errorf("TCP: %q", got)
+	}
+}
+
 // Install copies the executable read-and-execute only, and replaces an existing
 // file atomically.
 func TestInstall(t *testing.T) {

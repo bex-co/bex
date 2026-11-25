@@ -3244,6 +3244,7 @@ type ServiceEventDetails {
   toVersion: String
   trigger: DeployTrigger
   triggeredByUser: String
+  unhealthy: String
   usagePercent: Float
   user: EventUser
 }

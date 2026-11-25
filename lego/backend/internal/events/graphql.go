@@ -217,6 +217,11 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// server_failed with reasonCode oom_killed (w8/m158): the plan's memory
 		// limit the instance was killed at, as a Kubernetes quantity ("512Mi").
 		"memoryLimit": gqlutil.StrField(func(d Details) any { return d.MemoryLimit }),
+		// server_failed with reasonCode readiness_failed (w6/m634): REST's and
+		// MCP's failureReason.unhealthy, what the failing health check last got
+		// back in Render's words, or the generic sentence when none was
+		// recorded.
+		"unhealthy": gqlutil.StrField(func(d Details) any { return d.unhealthy }),
 		// deploy_ended / build_ended (w8/m146): Render's buildDeployEndReason.
 		"reason": &graphql.Field{Type: endReasonGQLType, Resolve: gqlutil.Field(func(d Details) any {
 			if d.EndReason == nil {
@@ -346,6 +351,9 @@ var eventGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"details": gqlutil.Typed(eventDetailsGQLType, func(e Event) any {
 			d, render := e.Details, toRenderEvent(e).Details
 			d.render = &render
+			if reason, ok := render.Reason.(*FailureReason); ok && reason.Unhealthy != "" {
+				d.unhealthy = &reason.Unhealthy
+			}
 			return d
 		}),
 	},

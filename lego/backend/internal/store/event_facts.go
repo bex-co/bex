@@ -199,7 +199,8 @@ type ServiceEventFact struct {
 	DiskUsage *DiskUsageDetails
 	// BuildID and Message belong to artifact_fetch_failed (w4/m510): the build
 	// source build (bld-...) that could not be fetched and the pull failure
-	// message Render requires.
+	// message Render requires. A readiness_failed server_failed's Message is
+	// what its failing health check last got back (w6/m634).
 	BuildID string
 	Message string
 }
@@ -466,6 +467,11 @@ type ObservedServiceState struct {
 	// than Ready's (the rollout start), and both the edge and the stale guard
 	// use it (w5/083).
 	ReadyTransitionAt time.Time
+	// HealthCheckResult is what the failing health check of a readiness_failed
+	// conclusion last got back, in Render's words (the App's
+	// status.healthCheckFailure, w6/m634); empty when the operator recorded
+	// none. The server_failed it concludes keeps it as its Message.
+	HealthCheckResult string
 	// AvailabilitySuppressed marks a pass whose availability conclusion a
 	// reconciler guard blanked: the debounce's first unhealthy pass, or a
 	// stale re-read (suppressAvailability). Its phase still records, but it
@@ -863,6 +869,15 @@ WHERE NOT EXISTS (
             AND a.at > LEAST(o.at, $4::timestamptz) AND a.at <= GREATEST(o.at, $4::timestamptz)))
 ON CONFLICT (source_key) DO NOTHING`
 
+// withHealthCheckResult is fact carrying obs's health-check result as its
+// Message when it is a readiness_failed server_failed (w6/m634).
+func withHealthCheckResult(fact ServiceEventFact, obs ObservedServiceState) ServiceEventFact {
+	if fact.Type == EventFactServerFailed && fact.ReasonCode == EventReasonReadinessFailed {
+		fact.Message = obs.HealthCheckResult
+	}
+	return fact
+}
+
 // failureFactType names an availability failure edge: an instance lost with
 // its node is Render's server_hardware_failure, anything else server_failed.
 func failureFactType(obs ObservedServiceState) ServiceEventFactType {
@@ -1129,7 +1144,7 @@ func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailab
 		}
 		switch {
 		case previousAvailability == "healthy" && obs.Availability == "unhealthy":
-			facts = append(facts, edge("failed", failureFactType(obs)))
+			facts = append(facts, withHealthCheckResult(edge("failed", failureFactType(obs)), obs))
 		case previousAvailability == "" && obs.Availability == "unhealthy" && previousPhase == string(appv1alpha1.PhaseHibernated):
 			// A wake or resume whose instance fails concretely
 			// (heldAvailability keeps only those): the service is down to
@@ -1138,7 +1153,7 @@ func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailab
 			// slept, so its transition dates the sleep, not this failure: the
 			// observation is the edge's time.
 			fact := makeFact("failed", failureFactType(obs))
-			facts = append(facts, fact)
+			facts = append(facts, withHealthCheckResult(fact, obs))
 		case previousAvailability == "unhealthy" && obs.Availability == "healthy":
 			facts = append(facts, edge("available", EventFactServerAvailable))
 		}

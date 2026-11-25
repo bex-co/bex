@@ -841,6 +841,11 @@ const deDeploys: Record<string, TranslationEntry> = {
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_env_port_closed, w8/416): a web service's PORT names the one port Render scans; en starts with the space that joins it to the sentence before; params are the sentence's values",
   },
+  "deploys.reason.hint_last_result": {
+    message: " Letztes Ergebnis: {result}.",
+    description:
+      'What the failing health check last got back, which the operator appends to a health-check stall (bex-api DeployReason part hint_last_result, w6/m634); {result} is Render\'s English message ("HTTP health check failed with status code 503"), shown verbatim in every language as Render shows it; en starts with the space that joins it to the sentence before',
+  },
   "deploys.reason.hint_configured_port_only": {
     message:
       " Auf Port {port} hat nichts eine TCP-Verbindung angenommen; er wurde durch den konfigurierten Port des Services gesetzt, und das Image deklariert keinen anderen TCP-Port. Binde den Server an 0.0.0.0 auf Port {port} oder ändere den Port des Services auf den, auf dem er lauscht.",

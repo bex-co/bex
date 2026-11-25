@@ -825,6 +825,11 @@ const koDeploys: Record<string, TranslationEntry> = {
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_env_port_closed, w8/416): a web service's PORT names the one port Render scans; en starts with the space that joins it to the sentence before; params are the sentence's values",
   },
+  "deploys.reason.hint_last_result": {
+    message: " 마지막 결과: {result}.",
+    description:
+      'What the failing health check last got back, which the operator appends to a health-check stall (bex-api DeployReason part hint_last_result, w6/m634); {result} is Render\'s English message ("HTTP health check failed with status code 503"), shown verbatim in every language as Render shows it; en starts with the space that joins it to the sentence before',
+  },
   "deploys.reason.hint_configured_port_only": {
     message:
       " 서비스에 구성된 포트로 설정된 {port} 포트에서 TCP 연결을 수락하는 곳이 없으며, 이미지는 다른 TCP 포트를 선언하지 않습니다. 서버를 {port} 포트의 0.0.0.0에 바인딩하거나, 서비스 포트를 서버가 수신 대기하는 포트로 변경하세요.",

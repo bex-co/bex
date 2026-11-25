@@ -5324,6 +5324,11 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "Instance failed reason for a running service: killed at its plan's memory limit (w8/m158)",
   },
+  "services.eventsReason.instance.readiness_failed_result": {
+    message: "実行中のインスタンスがヘルスチェックに失敗しました: {result}。",
+    description:
+      'Instance failed reason for a running service whose health check failed, naming what the check got back (w6/m634); {result} is Render\'s English message ("HTTP health check failed with status code 503"), shown verbatim in every language as Render shows it',
+  },
   "services.eventsReason.instance.oom_killed_no_limit": {
     message: "インスタンスのメモリが不足したため、再起動しました。",
     description:

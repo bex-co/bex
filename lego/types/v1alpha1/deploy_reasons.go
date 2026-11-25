@@ -163,6 +163,9 @@ const (
 	// A private image service keeps hint_env_port_only and
 	// hint_env_port_declared.
 	DeployReasonHintEnvPortClosed = "hint_env_port_closed"
+	// w6/m634: what the failing health check last got back, in Render's
+	// words (HealthCheckFailureStatus), ending a probe stall.
+	DeployReasonHintLastResult = "hint_last_result"
 
 	DeployReasonQueuedBuildLimit     = "queued_build_limit"
 	DeployReasonQueuedClusterFull    = "queued_cluster_full"
@@ -312,6 +315,8 @@ var deployReasonPartTemplates = map[string]string{
 	// Render's "Bind your service to port {port} or update the PORT
 	// environment variable to the correct port" (w8/416).
 	DeployReasonHintEnvPortClosed: hintNothingAccepted + "set by the service's PORT environment variable. Bind the server to 0.0.0.0 on port {port}, or update the PORT environment variable to the port it listens on.",
+	// The result is Render's English in every language (w6/m634).
+	DeployReasonHintLastResult: " Last result: {result}.",
 
 	DeployReasonQueuedBuildLimit:  "{noun} has {active}/{limit} concurrent builds active; waiting for a slot",
 	DeployReasonQueuedClusterFull: "the cluster's build capacity is full; waiting for a slot",
@@ -429,7 +434,7 @@ type deployReasonMatcher struct {
 }
 
 // deployReasonParamPattern is what a parameter may match: a hint is empty or
-// a whole appended sentence, a path or a cause is free text, a detail is the
+// a whole appended sentence, a path, a cause or a result is free text, a detail is the
 // rest of its part, a list of ports or resources is comma-separated, and every
 // other value (an id, a port, a code, an image, a host) is one token, so it
 // cannot swallow the text of a sentence it is part of.
@@ -437,7 +442,7 @@ func deployReasonParamPattern(name string) string {
 	switch name {
 	case "hint":
 		return "(?P<hint>(?: .+)?)"
-	case "path", "cause":
+	case "path", "cause", "result":
 		return "(?P<" + name + ">.+?)"
 	case "detail":
 		return "(?P<detail>.+)"

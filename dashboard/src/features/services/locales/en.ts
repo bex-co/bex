@@ -5298,6 +5298,11 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Instance failed reason for a running service: killed at its plan's memory limit (w8/m158)",
   },
+  "services.eventsReason.instance.readiness_failed_result": {
+    message: "A running instance failed its health check: {result}.",
+    description:
+      'Instance failed reason for a running service whose health check failed, naming what the check got back (w6/m634); {result} is Render\'s English message ("HTTP health check failed with status code 503"), shown verbatim in every language as Render shows it',
+  },
   "services.eventsReason.instance.oom_killed_no_limit": {
     message: "The instance ran out of memory and was restarted.",
     description:

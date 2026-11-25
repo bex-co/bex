@@ -73,28 +73,30 @@ func listeningPorts(table io.Reader) []int {
 
 // OpenPort returns the first port of listening, skip aside, on which addr
 // accepts a TCP connection within timeout. skip holds the ports bex's own
-// sidecars listen on inside the pod, which are not the service's.
+// sidecars listen on inside the pod, which are not the service's. A failure
+// names the last dial's error ("connect: connection refused", "i/o timeout"),
+// as Render's restart events do (w6/m634).
 func OpenPort(ctx context.Context, addr string, listening, skip []int, timeout time.Duration) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	var dialer net.Dialer
-	tried := 0
+	var last error
 	for _, port := range listening {
 		if slices.Contains(skip, port) {
 			continue
 		}
-		tried++
 		conn, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(addr, strconv.Itoa(port)))
 		if err == nil {
 			_ = conn.Close()
 			return port, nil
 		}
+		last = err
 		if ctx.Err() != nil {
 			break
 		}
 	}
-	if tried == 0 {
-		return 0, errors.New("no open port: nothing listens")
+	if last == nil {
+		return 0, errors.New(NoOpenPorts)
 	}
-	return 0, fmt.Errorf("no open port: none of the %d listening ports accepted a connection on %s", tried, addr)
+	return 0, fmt.Errorf("%s: %w", TCPFailed, last)
 }

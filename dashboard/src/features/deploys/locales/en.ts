@@ -836,6 +836,11 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_env_port_closed, w8/416): a web service's PORT names the one port Render scans; en starts with the space that joins it to the sentence before; params are the sentence's values",
   },
+  "deploys.reason.hint_last_result": {
+    message: " Last result: {result}.",
+    description:
+      'What the failing health check last got back, which the operator appends to a health-check stall (bex-api DeployReason part hint_last_result, w6/m634); {result} is Render\'s English message ("HTTP health check failed with status code 503"), shown verbatim in every language as Render shows it; en starts with the space that joins it to the sentence before',
+  },
   "deploys.reason.hint_configured_port_only": {
     message:
       " Nothing accepted a TCP connection on port {port}, set by the service's configured port; the image declares no other TCP port. Bind the server to 0.0.0.0 on port {port}, or change the service's port to the one it listens on.",

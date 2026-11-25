@@ -469,6 +469,44 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
     expect(screen.getAllByText(/Instance web-7d9f5c-abcde/)).toHaveLength(3);
   });
 
+  // w6/m634: a failed health check names what the check got back, in
+  // Render's words; one that recorded nothing keeps the event's own sentence.
+  it("names what a failed health check got back", async () => {
+    const failed = (id: string, unhealthy: string) => ({
+      ...deployEvent({ details: {} }),
+      id,
+      type: "server_failed",
+      details: {
+        instanceId: "web-7d9f5c-abcde",
+        reasonCode: "readiness_failed",
+        unhealthy,
+      },
+    });
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          failed("evt-503", "HTTP health check failed with status code 503"),
+          failed("evt-none", "The instance failed its health check"),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+    renderEvents("app");
+
+    expect(
+      await screen.findByText(
+        /A running instance failed its health check: HTTP health check failed with status code 503\./,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/^A running instance failed its health check\. · /),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/The instance failed its health check/),
+    ).not.toBeInTheDocument();
+  });
+
   // w8/m156: the registry keeps a bounded history of builds. A previous
   // deploy whose build is gone cannot be rolled back to, so its row offers no
   // Rollback; one whose build is stored keeps it.

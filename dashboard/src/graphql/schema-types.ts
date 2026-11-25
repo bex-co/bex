@@ -6658,6 +6658,7 @@ export type ServiceEventDetails = {
   toVersion: Maybe<Scalars['String']['output']>;
   trigger: Maybe<DeployTrigger>;
   triggeredByUser: Maybe<Scalars['String']['output']>;
+  unhealthy: Maybe<Scalars['String']['output']>;
   usagePercent: Maybe<Scalars['Float']['output']>;
   user: Maybe<EventUser>;
 };

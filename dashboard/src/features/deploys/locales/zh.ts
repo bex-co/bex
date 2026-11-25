@@ -808,6 +808,11 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_env_port_closed, w8/416): a web service's PORT names the one port Render scans; en starts with the space that joins it to the sentence before; params are the sentence's values",
   },
+  "deploys.reason.hint_last_result": {
+    message: "最后一次结果：{result}。",
+    description:
+      'What the failing health check last got back, which the operator appends to a health-check stall (bex-api DeployReason part hint_last_result, w6/m634); {result} is Render\'s English message ("HTTP health check failed with status code 503"), shown verbatim in every language as Render shows it; en starts with the space that joins it to the sentence before',
+  },
   "deploys.reason.hint_configured_port_only": {
     message:
       "端口 {port} 上没有任何进程接受 TCP 连接，该端口是服务配置的端口；镜像未声明其他 TCP 端口。请让服务器在端口 {port} 上绑定 0.0.0.0，或把服务的端口改为它实际监听的端口。",

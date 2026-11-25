@@ -954,6 +954,10 @@ type Details struct {
 	// limit, on a server_failed whose ReasonCode is oom_killed (w8/m158). The
 	// fact does not record it; the read fills it from the service's plan.
 	MemoryLimit string
+	// HealthCheckResult is what the failing health check of a server_failed
+	// whose ReasonCode is readiness_failed last got back, in Render's words
+	// (w6/m634); empty when none was recorded.
+	HealthCheckResult string
 	// postgres_cluster_leader_changed (w2/m171): the instance that became
 	// primary — Render's leaderId.
 	LeaderID string
@@ -1014,6 +1018,9 @@ type Details struct {
 	// the copy GraphQL's ServiceEventDetails resolves over carries it, so the
 	// members REST derives per type read the same values there (w4/655).
 	render *renderDetails
+	// unhealthy is render's failureReason.unhealthy, on that same copy only:
+	// GraphQL's flat unhealthy (w6/m634), null off a failed health check.
+	unhealthy *string
 }
 
 // userRefs are the {id, email} user objects an event's details name — the
@@ -1593,6 +1600,8 @@ func view(r store.ServiceEventRow, service string) Event {
 		case TypeArtifactFetchFailed:
 			ev.Details.BuildID = r.ArtifactBuildID
 			ev.Details.Message = r.ArtifactMessage
+		case TypeServerFailed:
+			ev.Details.HealthCheckResult = r.HealthCheckResult
 		}
 	}
 	return ev

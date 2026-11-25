@@ -10,12 +10,49 @@
  */
 const INSTANCE_EXIT_REASONS = ["non_zero_exit", "oom_killed"];
 
-/** The translation key for `reasonCode` on an event of `type`. */
+/**
+ * bex-api's `unhealthy` for a failed health check that recorded no result
+ * (`unhealthyMessage` in lego/backend/internal/events/rest.go): the event's
+ * own sentence already says as much.
+ */
+export const UNHEALTHY_WITHOUT_RESULT = "The instance failed its health check";
+
+/**
+ * What a `server_failed` instance's failing health check got back, in
+ * Render's words ("HTTP health check failed with status code 503"), or null
+ * when the event records none (w6/m634). Render shows it in English, so it is
+ * shown verbatim in every language.
+ */
+export function healthCheckResult(
+  type: string,
+  reasonCode: string | null,
+  unhealthy: string | null | undefined,
+): string | null {
+  if (
+    type !== "server_failed" ||
+    reasonCode !== "readiness_failed" ||
+    !unhealthy ||
+    unhealthy === UNHEALTHY_WITHOUT_RESULT
+  ) {
+    return null;
+  }
+  return unhealthy;
+}
+
+/**
+ * The translation key for `reasonCode` on an event of `type`; a failed health
+ * check with a recorded `result` (healthCheckResult) gets the sentence that
+ * names it.
+ */
 export function eventReasonKey(
   type: string,
   reasonCode: string,
   memoryLimit?: string | null,
+  result?: string | null,
 ): string {
+  if (result) {
+    return "services.eventsReason.instance.readiness_failed_result";
+  }
   if (type !== "server_failed" || !INSTANCE_EXIT_REASONS.includes(reasonCode)) {
     return `services.eventsReason.${reasonCode}`;
   }
@@ -75,8 +112,7 @@ export const REDEPLOY_TRIGGERS = [
 export function redeployTriggerKey(
   trigger: string | null | undefined,
 ): string | null {
-  return trigger &&
-    (REDEPLOY_TRIGGERS as readonly string[]).includes(trigger)
+  return trigger && (REDEPLOY_TRIGGERS as readonly string[]).includes(trigger)
     ? `services.eventsRedeployTrigger.${trigger}`
     : null;
 }

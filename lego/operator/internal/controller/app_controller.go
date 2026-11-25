@@ -392,6 +392,9 @@ type AppReconciler struct {
 	portCandidate sync.Map // "<ns>/<name>" -> int
 	// portHint keeps the last scan's stall hint for the passes between scans.
 	portHint sync.Map // "<ns>/<name>" -> scannedHint
+	// healthCheckRead spaces the reads of an instance's Unhealthy events
+	// while none has given a result yet (w6/m634).
+	healthCheckRead sync.Map // "<ns>/<name>" -> healthCheckReadAt
 	// portDetectEvery overrides the scan spacing (tests); zero uses the default.
 	portDetectEvery time.Duration
 	// BuildClient bypasses controller-runtime's shared cache for build-plane
@@ -3852,6 +3855,8 @@ func (r *AppReconciler) markRunning(ctx context.Context, app *appv1alpha1.App, d
 func (r *AppReconciler) settleReady(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, reason, message string) (bool, error) {
 	// Before ActiveRevision moves: only a release that had already served recovers.
 	clearRecoveredRolloutVerdict(app)
+	// Every instance passes its health check again (w6/m634).
+	app.Status.HealthCheckFailure = nil
 	app.Status.Phase = appv1alpha1.PhaseRunning
 	app.Status.ActiveRevision = releaseRevision(app)
 	if dep != nil {
@@ -4193,12 +4198,13 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 	}
 	stampNotReadyCondition(app, notReadyReason, notReadyMessage)
 	if reason, msg := r.rolloutStallDiagnosis(ctx, app, dep, port); msg != "" {
-		stampNotReadyCondition(app, reason, msg)
+		stampNotReadyCondition(app, reason, msg+r.healthCheckResultHint(ctx, app, dep, reason, false))
 	} else if reason, msg := r.rolloutQuotaBlockMessage(ctx, dep); msg != "" {
 		stampNotReadyCondition(app, reason, msg)
 	} else if msg := r.nodeLossMessage(ctx, dep); msg != "" {
 		stampNotReadyCondition(app, appv1alpha1.ReasonNodeLost, msg)
 	}
+	keepHealthCheckFailureWithReady(app)
 	r.observeServingRevision(ctx, app, dep, replicas)
 	// Best-effort progress stamp: the 5s requeue below re-writes it if lost.
 	err := updateStatusIfChanged(ctx, r.Client, app)
@@ -4328,6 +4334,8 @@ func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha
 	// last one replayed (w5/m356).
 	r.portScanned.Delete(app.Namespace + "/" + app.Name)
 	reason, msg := r.rolloutStallDiagnosis(ctx, app, dep, port)
+	// The verdict ends with what the check got back last, read afresh.
+	msg += r.healthCheckResultHint(ctx, app, dep, reason, true)
 	if msg == "" {
 		if qr, qm := r.rolloutQuotaBlockMessage(ctx, dep); qm != "" {
 			reason, msg = qr, qm
@@ -7070,9 +7078,10 @@ func startErrorMessage(runtimeMsg string) string {
 // 404ing probe path from a slow image pull until the budget expired.
 //
 // kubelet does not publish probe results in pod status (the HTTP status code
-// lives only in an expiring `Unhealthy` Event, which this controller does not
-// watch), so the diagnosis is derived from what status DOES carry, and says
-// only what that proves:
+// lives only in an expiring `Unhealthy` Event, which this controller reads on
+// demand for the stall's last result and never watches, health_check_result.go),
+// so the diagnosis is derived from what status DOES carry, and says only what
+// that proves:
 //
 //   - `Started == false` — the startupProbe has not passed yet. Boot.
 //   - `Ready == false` with the startup probe passed — the readinessProbe is
@@ -7089,8 +7098,33 @@ func startErrorMessage(runtimeMsg string) string {
 // probe period, or when no probe is configured — users act on this message, so
 // a rollout that is merely progressing must not be reported as stuck.
 func probeStallMessage(pods []corev1.Pod) (string, string) {
+	stall := probeStallOf(pods)
+	if stall == nil {
+		return "", ""
+	}
+	return reasonHealthCheckFailing, probeStallText(stall.kind, stall.probe, stall.status.RestartCount)
+}
+
+// probeStall is the instance a probe stall names: its pod, the unready
+// container's status, and the probe gating it with that probe's kind.
+type probeStall struct {
+	pod    *corev1.Pod
+	status corev1.ContainerStatus
+	probe  *corev1.Probe
+	kind   string
+}
+
+// probeStallOf is the first running, unready container of pods, by pod name,
+// whose probe has had the time to fail (probeStallMessage), nil when there is
+// none. The cache lists pods in no fixed order, and the stall names the same
+// instance on every pass while it stalls.
+func probeStallOf(pods []corev1.Pod) *probeStall {
+	byName := make([]*corev1.Pod, len(pods))
 	for i := range pods {
-		p := &pods[i]
+		byName[i] = &pods[i]
+	}
+	slices.SortFunc(byName, func(a, b *corev1.Pod) int { return strings.Compare(a.Name, b.Name) })
+	for _, p := range byName {
 		if p.DeletionTimestamp != nil || p.Status.Phase != corev1.PodRunning {
 			continue // terminating or not yet running: not a probe stall
 		}
@@ -7107,10 +7141,10 @@ func probeStallMessage(pods []corev1.Pod) (string, string) {
 			if !probeHadTimeToFail(probe, cs.State.Running.StartedAt.Time) {
 				continue
 			}
-			return reasonHealthCheckFailing, probeStallText(kind, probe, cs.RestartCount)
+			return &probeStall{pod: p, status: cs, probe: probe, kind: kind}
 		}
 	}
-	return "", ""
+	return nil
 }
 
 // probeStallText is a probe stall's in-flight sentence, worded from the shared

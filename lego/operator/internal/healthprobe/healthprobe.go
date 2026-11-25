@@ -24,6 +24,7 @@ package healthprobe
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -38,9 +39,56 @@ import (
 // Healthy reports whether an HTTP status is a passing health check: 2xx or 3xx.
 func Healthy(status int) bool { return status >= 200 && status < 400 }
 
+// A failed check prints one line in Render's words (w6/m634): "HTTP health
+// check failed (timed out after 5 seconds)" and "HTTP health check failed with
+// status code <N>" (render.com/docs/troubleshooting-deploys). A check that
+// could not connect names the dial error, which carries the "connection
+// refused" or "i/o timeout" Render's restart events show, and a TCP check is
+// worded the same way. The kubelet puts the line in the pod's Unhealthy event,
+// and the operator records it as the App's last health-check result.
+const (
+	HTTPFailed = "HTTP health check failed"
+	TCPFailed  = "TCP health check failed"
+	// NoOpenPorts is the any-open-port check finding nothing listening, as
+	// Render's port scan words it ("No open ports detected").
+	NoOpenPorts = TCPFailed + ": no open ports detected"
+)
+
+// StatusFailure is the failure of an HTTP check that answered status.
+func StatusFailure(status int) string {
+	return fmt.Sprintf("%s with status code %d", HTTPFailed, status)
+}
+
+// TimeoutFailure is the failure of a check of kind, HTTPFailed or TCPFailed,
+// that had no answer within timeout.
+func TimeoutFailure(kind string, timeout time.Duration) string {
+	n := strconv.FormatFloat(timeout.Seconds(), 'f', -1, 64)
+	unit := "seconds"
+	if n == "1" {
+		unit = "second"
+	}
+	return fmt.Sprintf("%s (timed out after %s %s)", kind, n, unit)
+}
+
+// requestFailure words an HTTP check that got no answer: any deadline as
+// Render's timeout of timeout, anything else as the error under the request
+// (the dial's "connect: connection refused"), without the URL.
+func requestFailure(err error, timeout time.Duration) error {
+	var netErr net.Error
+	if errors.Is(err, context.DeadlineExceeded) || errors.As(err, &netErr) && netErr.Timeout() {
+		return errors.New(TimeoutFailure(HTTPFailed, timeout))
+	}
+	if urlErr := (*url.Error)(nil); errors.As(err, &urlErr) {
+		err = urlErr.Err
+	}
+	return fmt.Errorf("%s: %w", HTTPFailed, err)
+}
+
 // Check makes one GET to http://addr:port<path> with Host header host (empty:
 // the URL's own), never following a redirect, and returns nil when the status
-// is healthy. The request is bounded by timeout.
+// is healthy. The request is bounded by timeout, or by ctx when it ends
+// sooner; a failure is one line in Render's words, its timeout named as
+// timeout.
 func Check(ctx context.Context, addr string, port int, path, host string, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -62,12 +110,12 @@ func Check(ctx context.Context, addr string, port int, path, host string, timeou
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return requestFailure(err, timeout)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
 	if !Healthy(resp.StatusCode) {
-		return fmt.Errorf("health check answered %d", resp.StatusCode)
+		return errors.New(StatusFailure(resp.StatusCode))
 	}
 	return nil
 }
