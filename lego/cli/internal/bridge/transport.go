@@ -1,6 +1,8 @@
 package bridge
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -49,6 +51,7 @@ func InstallControlPlaneHeaders(version string) {
 		version:   version,
 		hosts:     controlPlaneHosts,
 		workspace: func() string { selected, _ := config.WorkspaceID(); return selected },
+		blocked:   loadBlockedOwner,
 	}
 }
 
@@ -57,6 +60,9 @@ type controlPlaneTransport struct {
 	version   string
 	hosts     func() map[string]struct{}
 	workspace func() string
+	// blocked is the unresolved workspace name barred from ownerId,
+	// /owners/{id} paths, and X-Bex-Workspace (see blockedOwner); nil bars nothing.
+	blocked func() blockedOwnerInfo
 }
 
 // RoundTrip adds the header only for the control plane. A request to any other
@@ -71,6 +77,15 @@ func (t *controlPlaneTransport) RoundTrip(req *http.Request) (*http.Response, er
 	if _, ok := t.hosts()[req.URL.Host]; !ok {
 		return t.base.RoundTrip(req)
 	}
+	// An unresolvable workspace name left in place for a direct-ID read must
+	// fail fast rather than ride along as an ownerId on a fallback search.
+	var barred blockedOwnerInfo
+	if t.blocked != nil {
+		barred = t.blocked()
+		if barred.name != "" && carriesBlockedOwner(req, barred.name) {
+			return blockedOwnerRefusal(req, barred), nil
+		}
+	}
 	// RoundTrip must not modify the request it is given, so the header goes on
 	// a clone (http.RoundTripper contract).
 	clone := req.Clone(req.Context())
@@ -78,11 +93,56 @@ func (t *controlPlaneTransport) RoundTrip(req *http.Request) (*http.Response, er
 	// Read the selection fresh: an interactive command may change workspaces
 	// after an earlier request. Other API paths do not consume this header.
 	if t.workspace != nil && strings.HasPrefix(req.URL.Path, "/v1/services/") {
-		if selected := t.workspace(); selected != "" {
+		if selected := t.workspace(); selected != "" && selected != barred.name {
 			clone.Header.Set(WorkspaceHeader, selected)
 		}
 	}
 	return t.base.RoundTrip(clone)
+}
+
+// carriesBlockedOwner reports whether req would send the barred workspace
+// name as an ownerId: an ownerId query value or an /owners/{barred} path
+// segment. Matching only the owner-ID path position keeps valid direct-ID
+// routes like /v1/services/{id} working even when BEX_WORKSPACE is named
+// "services", "postgres", or "v1". Other uses of the value (the ?name=
+// resolve lookup runs before the bar is set) are untouched.
+func carriesBlockedOwner(req *http.Request, barred string) bool {
+	for _, v := range req.URL.Query()["ownerId"] {
+		if v == barred {
+			return true
+		}
+	}
+	segs := strings.Split(req.URL.Path, "/")
+	for i := 0; i+1 < len(segs); i++ {
+		if segs[i] == "owners" && segs[i+1] == barred {
+			return true
+		}
+	}
+	return false
+}
+
+// blockedOwnerRefusal answers a request carrying the barred name locally, in
+// the words of the startup refusal, so the command fails fast instead of
+// sending the raw name.
+func blockedOwnerRefusal(req *http.Request, barred blockedOwnerInfo) *http.Response {
+	reason := barred.reason
+	if reason == "" {
+		reason = bexWorkspace + `: no workspace named "` + barred.name + `"; run ` + "`bex workspaces`" + ` to list yours`
+	}
+	msg, _ := json.Marshal(map[string]string{
+		"message": reason,
+	})
+	return &http.Response{
+		Status:        "400 Bad Request",
+		StatusCode:    http.StatusBadRequest,
+		Proto:         "HTTP/1.1",
+		ProtoMajor:    1,
+		ProtoMinor:    1,
+		Header:        http.Header{"Content-Type": {"application/json"}},
+		Body:          io.NopCloser(strings.NewReader(string(msg))),
+		ContentLength: int64(len(msg)),
+		Request:       req,
+	}
 }
 
 // upstreamLatestRelease is the URL the imported CLI's release lookups poll
