@@ -93,7 +93,10 @@ const (
 var resourceTypes = []string{ResourceTypeService, ResourceTypeCronJob, ResourceTypePostgres, ResourceTypeKeyValue}
 
 // timeRanges are the presets a view's timeRange.relative names: the
-// dashboard's log ranges, which hold Render's (Last hour … Last 30 days).
+// dashboard's Metrics ladder, Render's log ranges (Last hour … Last 30 days)
+// plus the 30m and 12h a metrics view adds. A log view's editor offers only
+// Render's log ranges, and a log explorer opens a stored 30m or 12h on the
+// nearest of them (w3/100).
 var timeRanges = []string{"30m", "1h", "4h", "12h", "24h", "2d", "7d", "14d", "30d"}
 
 // fieldsByType is which filter fields each view type's editor offers (the

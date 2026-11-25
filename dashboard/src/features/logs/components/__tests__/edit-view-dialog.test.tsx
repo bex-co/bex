@@ -326,6 +326,60 @@ describe("EditViewDialog", () => {
     );
   });
 
+  // Render's Edit view lists the log ranges after Live tail (w3/100); a
+  // Service Metrics view keeps Metrics' ladder.
+  it("offers a log view Render's log ranges, and keeps a stored 12h as itself", async () => {
+    const user = userEvent.setup();
+    const { dialog } = open({
+      kind: "edit",
+      view: view({ version: 1, filters: [], timeRange: { relative: "12h" } }),
+    });
+    const range = within(dialog).getByRole("combobox", {
+      name: "Values for Time Range",
+    });
+    expect(range).toHaveTextContent("Last 12 hours");
+    await user.click(range);
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual([
+      "Last hour",
+      "Last 4 hours",
+      "Last 24 hours",
+      "Last 2 days",
+      "Last 7 days",
+      "Last 14 days",
+      "Last 30 days",
+      "Last 12 hours",
+    ]);
+  });
+
+  it("gives a Service Metrics view's Time Range Metrics' ladder", async () => {
+    const user = userEvent.setup();
+    const { dialog } = open({
+      kind: "edit",
+      view: {
+        ...view({ version: 1, filters: [], timeRange: { relative: "30m" } }),
+        type: SavedSearchType.Metrics,
+      },
+    });
+    await user.click(
+      within(dialog).getByRole("combobox", { name: "Values for Time Range" }),
+    );
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual([
+      "Last 30 minutes",
+      "Last hour",
+      "Last 4 hours",
+      "Last 12 hours",
+      "Last 24 hours",
+      "Last 2 days",
+      "Last 7 days",
+      "Last 14 days",
+      "Last 30 days",
+    ]);
+  });
+
   it("lists the instances the project's logs hold, each named with its resource, and adds one that has gone as typed (w3/079)", async () => {
     const user = userEvent.setup();
     mutations.update.mockResolvedValue(view());

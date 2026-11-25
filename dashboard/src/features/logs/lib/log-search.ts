@@ -79,7 +79,9 @@ export const CLEARED_LOG_SEARCH = Object.fromEntries(
 // Render's `r` tokens without an exact bex preset (Render's grammar is
 // 15m|1h|6h|24h|7d — the captured deploy-page contract, see
 // features/deploys/lib/log-range.ts) map onto the nearest bex preset; the
-// overlapping tokens (1h/24h/7d) and bex's own ids parse directly. bex's
+// overlapping tokens (1h/24h/7d) and bex's own ids parse directly. A log
+// explorer then reads a Metrics-only preset as its nearest log range
+// (`toLogRange`, w3/100), so `15m` opens on Last hour. bex's
 // retired preset ids (3h/6h/1d, pre-w5/m42) are deliberately not aliased —
 // an old bookmark degrades to the default range rather than a guess.
 const RENDER_RANGE_ALIASES: Record<string, RangePresetID> = {

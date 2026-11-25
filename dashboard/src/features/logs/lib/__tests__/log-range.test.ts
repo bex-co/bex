@@ -3,6 +3,7 @@ import {
   DEFAULT_LOG_RANGE,
   LIVE_TAIL,
   LIVE_TAIL_HISTORY,
+  LOG_RANGE_PRESETS,
   historyRange,
   isPresetRange,
   logRangeEndMs,
@@ -10,8 +11,10 @@ import {
   logRangeToSearch,
   metricsRangeSearch,
   parseLogRangeSearch,
+  toLogRange,
 } from "../log-range";
 import {
+  RANGE_PRESETS,
   makeCustomRange,
   parseRangePreset,
   parseRangeSearch,
@@ -67,6 +70,45 @@ describe("the log range", () => {
     ).toBe("4h");
   });
 
+  // Render's `logTimeRangeIntervals` after `live` (w3/100); Metrics' own
+  // ladder adds 30m and 12h (range.test.ts pins it).
+  it("lists Render's log ranges, Metrics' ladder without 30m and 12h", () => {
+    expect(LOG_RANGE_PRESETS.map((preset) => preset.id)).toEqual([
+      "1h",
+      "4h",
+      "24h",
+      "2d",
+      "7d",
+      "14d",
+      "30d",
+    ]);
+    expect(
+      RANGE_PRESETS.filter((preset) => !LOG_RANGE_PRESETS.includes(preset)).map(
+        (preset) => preset.id,
+      ),
+    ).toEqual(["30m", "12h"]);
+  });
+
+  it("reads Metrics' 30m and 12h as the nearest log range, and every other range as itself", () => {
+    expect(toLogRange(parseRangePreset("30m")!)).toBe(parseRangePreset("1h"));
+    expect(toLogRange(parseRangePreset("12h")!)).toBe(parseRangePreset("24h"));
+    for (const range of [LIVE_TAIL, custom, ...LOG_RANGE_PRESETS]) {
+      expect(toLogRange(range)).toBe(range);
+    }
+    expect(
+      logRangeFromSearch(
+        parseLogRangeSearch({ range: "12h" }),
+        DEFAULT_LOG_RANGE,
+      ).id,
+    ).toBe("24h");
+    expect(
+      logRangeFromSearch(
+        parseLogRangeSearch({ range: "bogus" }),
+        parseRangePreset("30m")!,
+      ).id,
+    ).toBe("1h");
+  });
+
   it("reads Render's 4-hour history on Live tail, and the range itself otherwise", () => {
     expect(historyRange(LIVE_TAIL)).toBe(LIVE_TAIL_HISTORY);
     expect(LIVE_TAIL_HISTORY.spanSeconds).toBe(4 * 60 * 60);
@@ -85,6 +127,18 @@ describe("a datastore Logs tab's range", () => {
       datastoreLogSearchProps(parseDatastoreLogSearch(search), () => undefined);
     expect(props({}).range.id).toBe("1h");
     expect(props({ range: "live" }).range).toEqual(LIVE_TAIL);
+  });
+
+  // A Key Value's Metrics tab shares the keys and keeps 12h; its Logs tab
+  // reads it as Last 24 hours (w3/100).
+  it("opens a shared range=12h on Last 24 hours while Metrics keeps 12h", () => {
+    const search = parseDatastoreLogSearch({ range: "12h" });
+    expect(datastoreLogSearchProps(search, () => undefined).range.id).toBe(
+      "24h",
+    );
+    expect(
+      rangeFromSearch(metricsRangeSearch(search), DEFAULT_LOG_RANGE).id,
+    ).toBe("12h");
   });
 
   it("writes Live tail as range=live, and drops a View in context mark with it", () => {

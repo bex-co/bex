@@ -59,7 +59,12 @@ import {
 import type { SavedSearch } from "@/features/projects/hooks/use-saved-searches";
 import { useSavedSearchMutations } from "@/features/projects/hooks/use-saved-search-mutations";
 import { SavedSearchType } from "@/graphql/definitions";
-import { RANGE_LABEL_KEYS, RANGE_PRESETS } from "@/features/metrics/lib/range";
+import {
+  RANGE_LABEL_KEYS,
+  RANGE_PRESETS,
+  parseRangePreset,
+} from "@/features/metrics/lib/range";
+import { LOG_RANGE_PRESETS } from "../lib/log-range";
 import { useProjectLogLabelDiscovery } from "../hooks/use-log-label-values";
 import {
   VIEW_FIELD_LABEL_KEYS,
@@ -459,13 +464,18 @@ function operatorLabel(
 
 /**
  * The options plus any stored value they no longer list (a deleted
- * environment or resource), shown as itself rather than read as unset.
+ * environment or resource, a log view's 30m), shown as itself rather than
+ * read as unset.
  */
-function withStale(options: ValueChoice[], values: string[]): ValueChoice[] {
+function withStale(
+  options: ValueChoice[],
+  values: string[],
+  labelOf: (value: string) => string = (value) => value,
+): ValueChoice[] {
   const stale = values.filter((v) => !options.some((o) => o.value === v));
   return stale.length === 0
     ? options
-    : [...options, ...stale.map((v) => ({ value: v, label: v }))];
+    : [...options, ...stale.map((v) => ({ value: v, label: labelOf(v) }))];
 }
 
 function ValuesPicker({
@@ -492,15 +502,27 @@ function ValuesPicker({
   const describedBy = invalid ? errorId : undefined;
 
   if (kind === "environment" || kind === "timeRange") {
+    // A log view's Time Range lists Render's log ranges (w3/100); a metrics
+    // view keeps Metrics' ladder.
+    const presets =
+      type === SavedSearchType.Metrics ? RANGE_PRESETS : LOG_RANGE_PRESETS;
+    const rangeLabel = (value: string) => {
+      const preset = parseRangePreset(value);
+      return preset ? t(RANGE_LABEL_KEYS[preset.id]) : value;
+    };
     const options: ValueChoice[] =
       kind === "environment"
         ? choices.environments
-        : RANGE_PRESETS.map((preset) => ({
+        : presets.map((preset) => ({
             value: preset.id,
             label: t(RANGE_LABEL_KEYS[preset.id]),
           }));
     const current = row.values[0];
-    const shown = withStale(options, row.values);
+    const shown = withStale(
+      options,
+      row.values,
+      kind === "timeRange" ? rangeLabel : undefined,
+    );
     return (
       <Select
         value={current ?? ""}

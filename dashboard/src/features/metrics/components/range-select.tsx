@@ -29,6 +29,7 @@ import {
   parseRangePreset,
   presetWithinBound,
   type RangeBound,
+  type RangePreset,
   type RangeSelection,
 } from "@/features/metrics/lib/range";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
@@ -73,12 +74,15 @@ export interface RangeSelectProps {
   /** A log explorer's Live tail, listed first; `range` is ignored while it
    *  is picked. */
   liveTail?: LiveTailOption;
+  /** The relative presets listed, Metrics' ladder unless a log explorer
+   *  passes Render's log ranges (w3/100). */
+  presets?: RangePreset[];
 }
 
 /**
  * Render's single time-range dropdown (captured live 2026-07-17, w5/m42;
  * "Last 30 days" + "Custom" added w5/m56) — shared by the Metrics toolbar and
- * the Logs filter bar so both tabs offer the same preset ladder. Picking
+ * the log explorers, which list Render's log ranges instead (w3/100). Picking
  * "Custom" opens an absolute start/end picker; every relative preset applies
  * immediately. Re-picking the already-selected "Custom" is a no-op for a
  * controlled Select (Radix only fires onValueChange on a change), so an active
@@ -91,6 +95,7 @@ export function RangeSelect({
   bound,
   triggerClassName,
   liveTail,
+  presets = RANGE_PRESETS,
 }: RangeSelectProps) {
   const { t, i18n } = useTranslations();
   // The window reads the viewer's clock, which the SSR pass doesn't have, so
@@ -179,7 +184,7 @@ export function RangeSelect({
               <SelectSeparator />
             </>
           ) : null}
-          {RANGE_PRESETS.map((preset) => (
+          {presets.map((preset) => (
             <SelectItem
               key={preset.id}
               value={preset.id}

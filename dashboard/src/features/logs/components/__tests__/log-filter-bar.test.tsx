@@ -241,15 +241,24 @@ describe("LogFilterBar (w5/008, simplified w7/m42)", () => {
     expect(onChange).toHaveBeenCalledWith({ text: "boom" });
   });
 
-  // Live tail is the range picker's first entry (w3/m537), as on Render.
-  it("lists Live tail first in the range, then the presets and Custom, and picks it", async () => {
+  // Live tail is the range picker's first entry (w3/m537), and the presets
+  // are Render's log ranges, without Metrics' 30m and 12h (w3/100).
+  it("lists Live tail first in the range, then Render's log ranges and Custom, and picks it", async () => {
     const user = userEvent.setup();
     const { onRangeChange } = renderBar();
     await user.click(screen.getByLabelText("Log history range"));
     const options = screen.getAllByRole("option").map((o) => o.textContent);
-    expect(options[0]).toBe("Live tail");
-    expect(options[1]).toBe("Last 30 minutes");
-    expect(options.at(-1)).toBe("Custom…");
+    expect(options).toEqual([
+      "Live tail",
+      "Last hour",
+      "Last 4 hours",
+      "Last 24 hours",
+      "Last 2 days",
+      "Last 7 days",
+      "Last 14 days",
+      "Last 30 days",
+      "Custom…",
+    ]);
     await user.click(screen.getByRole("option", { name: "Live tail" }));
     expect(onRangeChange).toHaveBeenCalledWith({ id: "live" });
   });

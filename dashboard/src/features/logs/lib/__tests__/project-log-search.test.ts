@@ -126,6 +126,20 @@ describe("a project view's Live tail", () => {
     expect(projectLogRange(none, parseRangePreset("7d")!).id).toBe("7d");
   });
 
+  // Render's Logs never list Metrics' 30m and 12h (w3/100); a Service
+  // Metrics view keeps them.
+  it("opens a 30m or 12h, from the URL or the view, on the nearest log range", () => {
+    const none = parseProjectLogSearch({ savedSearchId: "svs-1" });
+    expect(projectLogRange(none, parseRangePreset("12h")!).id).toBe("24h");
+    expect(projectLogRange(none, parseRangePreset("30m")!).id).toBe("1h");
+    const old = parseProjectLogSearch({ savedSearchId: "svs-1", r: "12h" });
+    expect(projectLogRange(old, DEFAULT_LOG_RANGE).id).toBe("24h");
+    const render15m = parseProjectLogSearch({ r: "15m" });
+    expect(projectLogRange(render15m, DEFAULT_LOG_RANGE).id).toBe("1h");
+    const metrics = parseProjectMetricsSearch({ r: "12h" });
+    expect(projectMetricsRange(metrics, DEFAULT_LOG_RANGE).id).toBe("12h");
+  });
+
   it("keeps Live tail out of a Service Metrics view", () => {
     const search = parseProjectMetricsSearch({
       savedSearchId: "svs-1",

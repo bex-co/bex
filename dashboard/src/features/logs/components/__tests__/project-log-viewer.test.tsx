@@ -433,7 +433,7 @@ describe("ProjectLogViewer", () => {
   // Live tail is a range (w3/m537): neither the toolbar nor its pending
   // frame holds a Live switch, and the pending row is the ready one's
   // [search | range | Maximize | Options].
-  it("holds no Live switch, ready or pending, and lists Live tail first in the range", async () => {
+  it("holds no Live switch, ready or pending, and lists Live tail first in the range, then Render's log ranges (w3/100)", async () => {
     const user = userEvent.setup();
     const ready = viewer(LOG_TYPE_APP).container;
     const pending = render(<ProjectLogViewPageSkeleton />).container;
@@ -444,7 +444,19 @@ describe("ProjectLogViewer", () => {
       pending.querySelector('[data-skeleton-region="log-toolbar"]')!.children,
     ).toHaveLength(3);
     await user.click(rangePicker());
-    expect(screen.getAllByRole("option")[0]).toHaveTextContent("Live tail");
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual([
+      "Live tail",
+      "Last hour",
+      "Last 4 hours",
+      "Last 24 hours",
+      "Last 2 days",
+      "Last 7 days",
+      "Last 14 days",
+      "Last 30 days",
+      "Custom…",
+    ]);
   });
 });
 

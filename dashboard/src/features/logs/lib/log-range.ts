@@ -7,6 +7,7 @@ import {
   rangeToSearch,
   type CustomRange,
   type RangePreset,
+  type RangePresetID,
   type RangeSearch,
   type RangeSelection,
 } from "@/features/metrics/lib/range";
@@ -48,6 +49,28 @@ export function isPresetRange(range: LogRange): range is RangePreset {
   return !isLiveTail(range) && !isCustomRange(range);
 }
 
+/** The presets a log explorer lists between Live tail and Custom, and a log
+ *  view's Time Range offers (w3/100): Render's `logTimeRangeIntervals`
+ *  after `live`. Metrics keeps its own ladder, which adds 30m and 12h. */
+export const LOG_RANGE_PRESETS: RangePreset[] = (
+  ["1h", "4h", "24h", "2d", "7d", "14d", "30d"] as const
+).map((id) => parseRangePreset(id)!);
+
+// Metrics' presets Render's Logs never list, each read as the log range
+// nearest it on the ladder's ratio scale: Last hour is twice 30 minutes, and
+// Last 24 hours twice 12 hours where Last 4 hours is a third of it.
+const METRICS_ONLY_RANGES: Partial<Record<RangePresetID, RangePresetID>> = {
+  "30m": "1h",
+  "12h": "24h",
+};
+
+/** A range as a log explorer reads it: Metrics' 30m and 12h, from an old
+ *  link or a view saved with one, open on the nearest log range. */
+export function toLogRange(range: LogRange): LogRange {
+  const nearest = isPresetRange(range) && METRICS_ONLY_RANGES[range.id];
+  return nearest ? parseRangePreset(nearest)! : range;
+}
+
 /** The range an explorer opens on when its URL names none, and the one it
  *  reads where bex's tail cannot run: Last hour, Render's default for
  *  runtime logs (render.com/docs/logging, "The default displayed range is
@@ -81,16 +104,19 @@ export function parseLogRangeSearch(
     : parseRangeSearch(search);
 }
 
-/** The range validated keys name, else `fallback`. */
+/** The range validated keys name, else `fallback`, as a log explorer reads
+ *  it (`toLogRange`). The keys keep Metrics' presets: a Key Value's Metrics
+ *  tab shares them. */
 export function logRangeFromSearch(
   search: LogRangeSearch,
   fallback: LogRange,
 ): LogRange {
   if (search.range === LIVE_TAIL.id) return LIVE_TAIL;
-  if (search.range === "custom") {
-    return parseCustomRange(search.rangeStart, search.rangeEnd) ?? fallback;
-  }
-  return parseRangePreset(search.range) ?? fallback;
+  const range =
+    search.range === "custom"
+      ? parseCustomRange(search.rangeStart, search.rangeEnd)
+      : parseRangePreset(search.range);
+  return toLogRange(range ?? fallback);
 }
 
 /** The keys as a Metrics range reads them (a datastore's Metrics tab shares

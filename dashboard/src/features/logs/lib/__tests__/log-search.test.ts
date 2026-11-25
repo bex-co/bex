@@ -18,9 +18,18 @@ import { EMPTY_LOG_FILTERS, type LogFilters, type LogLine } from "../../types";
 
 describe("log range URL state", () => {
   it("round-trips a supported selection through route validation", () => {
-    const restored = parseLogSearch({ range: "12h" });
-    expect(restored).toEqual({ range: "12h" });
-    expect(serviceLogRange(restored).id).toBe("12h");
+    const restored = parseLogSearch({ range: "24h" });
+    expect(restored).toEqual({ range: "24h" });
+    expect(serviceLogRange(restored).id).toBe("24h");
+  });
+
+  // Render's Logs never list Metrics' 30m and 12h (w3/100): an old link
+  // naming one opens on the nearest log range.
+  it("opens an old 30m or 12h link on Last hour or Last 24 hours", () => {
+    expect(serviceLogRange(parseLogSearch({ range: "30m" })).id).toBe("1h");
+    expect(serviceLogRange(parseLogSearch({ range: "12h" })).id).toBe("24h");
+    expect(serviceLogRange(parseLogSearch({ r: "12h" })).id).toBe("24h");
+    expect(serviceLogRange(parseLogSearch({ r: "15m" })).id).toBe("1h");
   });
 
   // Live tail is a range (w3/m537), spelled as Render spells it.

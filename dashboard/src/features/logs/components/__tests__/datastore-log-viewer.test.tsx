@@ -333,7 +333,7 @@ describe("DatastoreLogViewer level and live tail (w5/m139)", () => {
     ["has already ended", -60, -59],
     ["ends in the future", -5, 60],
   ])(
-    "never tails a custom range that %s, and still offers Live tail",
+    "never tails a custom range that %s, and still offers Live tail and Render's log ranges",
     async (_, startMinutes, endMinutes) => {
       render(
         <DatastoreLogViewer
@@ -357,6 +357,20 @@ describe("DatastoreLogViewer level and live tail (w5/m139)", () => {
       expect(streams).toHaveLength(0);
       await userEvent.click(screen.getByRole("combobox", { name: /range/i }));
       expect(screen.getByRole("option", { name: "Live tail" })).toBeEnabled();
+      // Render's Logs never list Metrics' 30m and 12h (w3/100).
+      expect(
+        screen.getAllByRole("option").map((option) => option.textContent),
+      ).toEqual([
+        "Live tail",
+        "Last hour",
+        "Last 4 hours",
+        "Last 24 hours",
+        "Last 2 days",
+        "Last 7 days",
+        "Last 14 days",
+        "Last 30 days",
+        "Custom…",
+      ]);
     },
   );
 

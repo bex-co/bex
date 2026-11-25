@@ -10,6 +10,7 @@ import { documentTimeRange } from "./view-filters";
 import {
   LIVE_TAIL,
   isCustomLogRange,
+  toLogRange,
   type LogRange,
   type LogRangeID,
 } from "./log-range";
@@ -87,14 +88,16 @@ export function projectMetricsRange(
 }
 
 /** The range the URL names, Live tail among them, else the view's own
- *  default (its saved time range, else Last hour). */
+ *  default (its saved time range, else Last hour), as a log explorer reads
+ *  it: a 30m or 12h, which Metrics' views keep, opens on its nearest log
+ *  range (`toLogRange`). */
 export function projectLogRange(
   search: ProjectLogSearch,
   fallback: RangeSelection,
 ): LogRange {
   return search.r === LIVE_TAIL.id
     ? LIVE_TAIL
-    : projectMetricsRange(search, fallback);
+    : toLogRange(projectMetricsRange(search, fallback));
 }
 
 /** A range as the URL's keys, every one written so a stale bound clears,
