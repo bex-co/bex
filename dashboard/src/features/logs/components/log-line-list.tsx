@@ -799,7 +799,7 @@ export function LogLineList({
           // The list anchors the reader itself; the browser's own overflow
           // anchoring would move it again mid-reflow (w4/m228).
           // A container, so a wrapped row can stack by the panel's own width.
-          "peer @container/logs overflow-auto rounded-md border bg-muted/30 font-mono text-xs leading-relaxed [overflow-anchor:none] focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none",
+          "peer @container/logs overflow-auto rounded-md border bg-muted/30 font-mono text-xs leading-relaxed [overflow-anchor:none] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
           fill && "h-full",
         )}
       >

@@ -245,9 +245,9 @@ export function SteeringComposer({
           <div
             {...drop.handlers}
             className={cn(
-              "border-input bg-background focus-within:border-ring focus-within:ring-ring/40 relative rounded-xl border shadow-xs transition-[color,box-shadow] focus-within:ring-[3px]",
+              "border-input bg-background focus-within:border-ring focus-within:ring-ring relative rounded-xl border shadow-xs transition-[color,box-shadow] focus-within:ring-2",
               hardDisabled && "opacity-70",
-              drop.dragging && "border-ring ring-ring/40 ring-[3px]",
+              drop.dragging && "border-ring ring-ring ring-2",
             )}
           >
             <DropOverlay visible={drop.dragging} />

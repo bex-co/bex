@@ -103,7 +103,7 @@ export function GitCredentialsMenu({
               list's empty states send people to "Credentials" by name. */}
           <Button
             variant="outline"
-            className="h-11 gap-1.5 border-muted-foreground/70 focus-visible:ring-ring max-sm:grow sm:h-9 dark:border-muted-foreground/70"
+            className="h-11 gap-1.5 border-muted-foreground/70 max-sm:grow sm:h-9 dark:border-muted-foreground/70"
           >
             {/* The word names it; on a phone the mark's width goes to the
                 search field beside it. */}
@@ -226,7 +226,7 @@ export function GitCredentialsMenu({
 // An account's two actions: 44 px tall on a phone, and padded so each label
 // starts under the account's mark.
 const ACCOUNT_ACTION_CLASS =
-  "h-11 gap-1 px-1.5 has-[>svg]:px-1.5 focus-visible:ring-ring sm:h-8 sm:gap-1.5 sm:px-2 sm:has-[>svg]:px-2";
+  "h-11 gap-1 px-1.5 has-[>svg]:px-1.5 sm:h-8 sm:gap-1.5 sm:px-2 sm:has-[>svg]:px-2";
 
 function AccountRow({
   connection,

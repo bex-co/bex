@@ -68,8 +68,8 @@ const TAB_TRIGGER_CLASS = cn(
   // leading-5, a whole number of pixels: a 17.5 px line put everything under
   // the tabs on a half pixel, and the list's sticky heading showed a seam.
   "min-w-0 text-sm leading-5 whitespace-normal max-sm:gap-1 max-sm:px-1.5",
-  // The buttons' focus ring, not the tabs' own offset rectangle.
-  "focus-visible:rounded-sm focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-offset-0",
+  // The ring's corners: an underline tab has none of its own.
+  "focus-visible:rounded-sm",
   // An unselected cell is an enabled control: the fields' border and the
   // text colour, on the dialog's own surface. A grey fill under a grey label
   // is the disabled button's look, and read as three sources switched off.
@@ -99,7 +99,7 @@ function RepoListAction(
     <Button
       variant="outline"
       size="sm"
-      className="h-11 text-foreground focus-visible:ring-ring sm:h-8"
+      className="h-11 text-foreground sm:h-8"
       {...props}
     />
   );
@@ -540,7 +540,7 @@ export function ServiceSourcePicker({
                     under 104 px (Russian on a 360 px phone), the button
                     takes a line of its own instead of squeezing it. */}
                 <Input
-                  className="h-11 min-w-26 flex-[999_1_6.5rem] focus-visible:ring-ring sm:h-9"
+                  className="h-11 min-w-26 flex-[999_1_6.5rem] sm:h-9"
                   placeholder={t(
                     isMobile
                       ? "services.createRepoSearchShort"

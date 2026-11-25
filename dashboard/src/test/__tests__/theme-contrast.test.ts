@@ -148,6 +148,16 @@ const tokenPair = (fg: string, bg: string, min: Pair["min"] = 4.5): Pair => ({
   }),
 });
 
+// The surfaces a focus ring is drawn on (w3/m642).
+const RING_SURFACES = [
+  "background",
+  "card",
+  "popover",
+  "muted",
+  "sidebar",
+  "accent",
+] as const;
+
 const TOKEN_PAIRS: Pair[] = [
   tokenPair("foreground", "background"),
   tokenPair("foreground", "card"),
@@ -166,9 +176,10 @@ const TOKEN_PAIRS: Pair[] = [
   tokenPair("sidebar-accent-foreground", "sidebar-accent"),
   tokenPair("primary", "background"),
   tokenPair("primary", "card"),
-  // The focus ring identifies the focused control (WCAG 1.4.11).
-  tokenPair("ring", "background", 3),
-  tokenPair("ring", "card", 3),
+  // The focus ring identifies the focused control (WCAG 1.4.11), on every
+  // surface a control sits on: the page, a card, a dialog or menu, a tab list,
+  // the sidebar, and a current or highlighted row that draws its ring inset.
+  ...RING_SURFACES.map((surface) => tokenPair("ring", surface, 3)),
 ];
 
 // The edges that identify a control: an input's or a select's border, an
@@ -451,6 +462,108 @@ const describeFailures = (list: Failure[]) =>
     .map((f) => `${f.theme}: ${f.pair} is ${f.ratio}:1, needs ${f.min}:1`)
     .join("\n");
 
+// ---- the focus ring at the strength the components apply (w3/m642) ---------
+// The token pairs read --ring at full strength. A component that applies it
+// weaker (`ring-ring/50`, `color-mix(… var(--ring) 50% …)`) blends it into the
+// surface: at 50% it measured 2.06:1 on the page while the token read 4.90:1.
+// So every strength the source applies is read here and blended over each
+// surface a ring is drawn on.
+
+interface Source {
+  path: string;
+  text: string;
+}
+
+// The stylesheet is the one `css` above: Vitest hands a `?raw` CSS import back
+// empty.
+const SOURCES: Source[] = [
+  ...Object.entries(
+    import.meta.glob<string>(
+      ["/src/**/*.{ts,tsx}", "!/src/**/__tests__/**", "!/src/**/*.test.*"],
+      { query: "?raw", import: "default", eager: true },
+    ),
+  ).map(([path, text]) => ({ path: path.slice(1), text })),
+  { path: "src/style.css", text: css },
+];
+
+/** The focus colours, with the surfaces each is drawn on. */
+const FOCUS_TOKENS: Record<string, readonly string[]> = {
+  ring: RING_SURFACES,
+  destructive: RING_SURFACES,
+  "sidebar-ring": ["sidebar"],
+};
+
+interface RingUse {
+  where: string;
+  applied: string;
+  token: string;
+  alpha: number;
+}
+
+// `focus-visible:ring-ring`, `ring-ring/50`, `outline-ring/[0.5]`,
+// `aria-invalid:ring-destructive/20`, `ring-sidebar-ring`; not `inset-ring-*`.
+const RING_CLASS =
+  /(?<![\w-])((?:[^\s"'`:]+:)*(?:ring|outline)-(ring|destructive|sidebar-ring)(?:\/(\d+)|\/\[([\d.]+)(%?)\])?)(?![\w/[-])/g;
+// `color-mix(in oklab, var(--ring) 50%, transparent)`, in CSS or a class.
+const RING_MIX =
+  /color-mix\(in[\s_]+\w+,[\s_]*var\(--(ring|destructive|sidebar-ring)\)[\s_]+([\d.]+)%/g;
+
+function ringUses(files: Source[]): RingUse[] {
+  const uses: RingUse[] = [];
+  for (const { path, text } of files) {
+    text.split("\n").forEach((line, index) => {
+      const where = `${path}:${index + 1}`;
+      for (const m of line.matchAll(RING_CLASS)) {
+        const alpha =
+          m[3] !== undefined
+            ? Number(m[3]) / 100
+            : m[4] !== undefined
+              ? Number(m[4]) / (m[5] ? 100 : 1)
+              : 1;
+        uses.push({ where, applied: m[1], token: m[2], alpha });
+      }
+      for (const m of line.matchAll(RING_MIX))
+        uses.push({
+          where,
+          applied: m[0],
+          token: m[1],
+          alpha: Number(m[2]) / 100,
+        });
+    });
+  }
+  return uses;
+}
+
+const ringBar = (theme: string) => (theme.endsWith("high-contrast") ? 4.5 : 3);
+
+function ringFailures(
+  uses: RingUse[],
+  tokensByTheme: Record<string, Tokens>,
+): string[] {
+  const found: string[] = [];
+  for (const use of uses) {
+    for (const [theme, tokens] of Object.entries(tokensByTheme)) {
+      const ring = { ...token(tokens, use.token), alpha: use.alpha };
+      for (const surface of FOCUS_TOKENS[use.token]) {
+        const bg = token(tokens, surface).rgb;
+        const ratio = contrast(over(ring, bg), bg);
+        if (ratio < ringBar(theme))
+          found.push(
+            `${use.where}: ${use.applied} (--${use.token} at ${Math.round(use.alpha * 100)}%) is ${Math.round(ratio * 100) / 100}:1 on --${surface} in ${theme}, needs ${ringBar(theme)}:1`,
+          );
+      }
+    }
+  }
+  return found;
+}
+
+const RING_THEMES = {
+  light: LIGHT,
+  dark: DARK,
+  "light high-contrast": LIGHT_HC,
+  "dark high-contrast": DARK_HC,
+};
+
 // ---- tests ------------------------------------------------------------------
 
 describe("the contrast calculation", () => {
@@ -579,4 +692,103 @@ describe("the status colours the components use", () => {
       }
     },
   );
+});
+
+describe("the focus ring at the strength the components apply (w3/m642)", () => {
+  const uses = ringUses(SOURCES);
+  // A copy of the sources with one file's text changed.
+  const edited = (path: string, from: string, to: string): Source[] =>
+    SOURCES.map((file) => {
+      if (file.path !== path) return file;
+      expect(file.text, `${path} no longer contains "${from}"`).toContain(from);
+      return { path, text: file.text.replace(from, to) };
+    });
+
+  it("reads the ring every shared control and stylesheet rule applies", () => {
+    const applied = (path: string) =>
+      uses.filter((use) => use.where.startsWith(`${path}:`));
+    for (const control of [
+      "button",
+      "input",
+      "textarea",
+      "auto-textarea",
+      "select",
+      "checkbox",
+      "tabs",
+      "badge",
+      "scroll-area",
+      "dropdown-menu",
+    ])
+      expect(
+        applied(`src/common/components/ui/${control}.tsx`).length,
+        control,
+      ).toBeGreaterThan(0);
+    expect(applied("src/style.css").map((use) => use.applied)).toContain(
+      "outline-ring",
+    );
+    expect(uses.some((use) => use.token === "destructive")).toBe(true);
+  });
+
+  it("reaches 3:1 on every surface in both themes, and 4.5:1 in the high-contrast twins", () => {
+    const found = ringFailures(uses, RING_THEMES);
+    expect(found, found.join("\n")).toEqual([]);
+  });
+
+  it("fails, naming the file and the strength, when a shared control applies the ring at half strength", () => {
+    const found = ringFailures(
+      ringUses(
+        edited(
+          "src/common/components/ui/button.tsx",
+          "focus-visible:ring-ring ",
+          "focus-visible:ring-ring/50 ",
+        ),
+      ),
+      RING_THEMES,
+    );
+    expect(found.length).toBeGreaterThan(0);
+    expect(
+      found.every((f) => f.startsWith("src/common/components/ui/button.tsx:")),
+    ).toBe(true);
+    expect(found.join("\n")).toMatch(
+      /focus-visible:ring-ring\/50 \(--ring at 50%\) is 2\.06:1 on --background in light/,
+    );
+  });
+
+  it("fails when the destructive button's ring is weakened again", () => {
+    const found = ringFailures(
+      ringUses(
+        edited(
+          "src/common/components/ui/button.tsx",
+          "focus-visible:ring-destructive",
+          "focus-visible:ring-destructive/20",
+        ),
+      ),
+      RING_THEMES,
+    );
+    expect(found.join("\n")).toMatch(/ring-destructive\/20 .* in light,/);
+  });
+
+  it("reads a colour-mixed ring, as the sign-in form's rule once drew it", () => {
+    const found = ringFailures(
+      ringUses(
+        edited(
+          "src/style.css",
+          "box-shadow: 0 0 0 2px var(--ring);",
+          "box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);",
+        ),
+      ),
+      RING_THEMES,
+    );
+    expect(found.join("\n")).toMatch(/^src\/style\.css:\d+: color-mix/m);
+  });
+
+  it("holds the high-contrast twin to its own bar where the normal ring passes", () => {
+    // The light twin's darker --ring is what reaches 4.5:1 on a tab list or a
+    // highlighted row; the normal light ring measures 4.35:1 there.
+    const found = ringFailures(uses, {
+      "light high-contrast": { ...LIGHT_HC, ring: LIGHT.ring },
+    });
+    expect(found.join("\n")).toMatch(/on --muted in light high-contrast/);
+    expect(ringFailures(uses, { light: LIGHT })).toEqual([]);
+  });
 });

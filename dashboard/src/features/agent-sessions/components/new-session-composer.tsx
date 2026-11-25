@@ -408,8 +408,8 @@ export function NewSessionComposer() {
           <div
             {...drop.handlers}
             className={cn(
-              "bg-background focus-within:border-ring relative rounded-xl border shadow-sm",
-              drop.dragging && "border-ring ring-ring/40 ring-[3px]",
+              "bg-background focus-within:border-ring focus-within:ring-ring relative rounded-xl border shadow-sm transition-[color,box-shadow] focus-within:ring-2",
+              drop.dragging && "border-ring ring-ring ring-2",
             )}
           >
             <DropOverlay visible={drop.dragging} />

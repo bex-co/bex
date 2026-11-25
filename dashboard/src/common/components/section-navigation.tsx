@@ -70,7 +70,7 @@ export const SECTION_NAVIGATION_ITEMS_CLASS =
 
 /** A pill in the bar; a full-width row in the rail. Current: filled. */
 const LINK_CLASS =
-  "flex h-8 shrink-0 items-center gap-2 rounded-full px-3 max-lg:h-11 pointer-coarse:h-11 text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground aria-[current=location]:bg-accent aria-[current=location]:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset @4xl/page:h-auto @4xl/page:rounded-md @4xl/page:py-2 @4xl/page:whitespace-normal @4xl/page:hover:bg-accent";
+  "flex h-8 shrink-0 items-center gap-2 rounded-full px-3 max-lg:h-11 pointer-coarse:h-11 text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground aria-[current=location]:bg-accent aria-[current=location]:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset @4xl/page:h-auto @4xl/page:rounded-md @4xl/page:py-2 @4xl/page:whitespace-normal @4xl/page:hover:bg-accent";
 
 /** Fade the bar's clipped edge(s) so overflow reads as "more this way". */
 const FADE_CLASS: Record<"start" | "end" | "both", string> = {

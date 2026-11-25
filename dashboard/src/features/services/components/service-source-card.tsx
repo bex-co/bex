@@ -81,12 +81,8 @@ import {
   isStaticSiteType,
 } from "@/features/services/lib/service-type";
 
-// 44 px on a phone, where the two share the row; a ring that reads on the
-// dialog's surface (the default is the ring colour at half strength).
-const FOOTER_BUTTON_CLASS = cn(
-  CREATE_INPUT_CLASS,
-  "focus-visible:ring-ring max-sm:flex-1",
-);
+// 44 px on a phone, where the two share the row.
+const FOOTER_BUTTON_CLASS = cn(CREATE_INPUT_CLASS, "max-sm:flex-1");
 // Disabled, the primary action turns neutral: the default half-strength green
 // still read as a button to press, most of all on the dark surface.
 const FOOTER_PRIMARY_CLASS = cn(
@@ -763,10 +759,7 @@ function SourceEditDialog({
                 placeholder={t("services.buildDeployBranchPlaceholder")}
                 emptyText={t("services.sourceBranchEmpty")}
                 ariaLabel={t("services.buildDeployBranchLabel")}
-                className={cn(
-                  CREATE_INPUT_CLASS,
-                  "font-mono focus-visible:ring-ring",
-                )}
+                className={cn(CREATE_INPUT_CLASS, "font-mono")}
               />
               <p className="text-xs text-muted-foreground">
                 {t(

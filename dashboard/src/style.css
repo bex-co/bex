@@ -192,12 +192,13 @@
      vertical middle. */
   align-items: center;
 }
-/* Focus: shadcn pairs the border swap with a soft 3px ring
-   (focus-visible:ring-ring/50 ring-[3px]); Ory only swaps the border. */
+/* Focus: the shared controls pair the border swap with a 2px ring at full
+   strength (focus-visible:ring-ring ring-2), which reaches 3:1 on every
+   surface (w3/m642); Ory only swaps the border. */
 .ory-elements input[data-testid^="ory/form/node/input"]:focus-visible,
 .ory-elements div:focus-within > input[data-testid^="ory/form/node/input"],
 .ory-elements button[data-testid^="ory/form/node/button"]:focus-visible {
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+  box-shadow: 0 0 0 2px var(--ring);
 }
 /* Card: match shadcn Card's density and shadow-sm (Ory defaults to
    px-8 py-12 sm:px-12 sm:py-14 with gap-8 and no shadow). */
@@ -322,6 +323,7 @@
    (src/test/__tests__/theme-contrast.test.ts). */
 .light.high-contrast {
   --primary: oklch(0.4 0.14 138.3);
+  --ring: oklch(0.4 0.14 138.3);
   --muted-foreground: oklch(0.33 0.02 260);
   --destructive: oklch(0.44 0.2 27);
   --border: oklch(0.5 0.01 260);
@@ -381,7 +383,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
     /* Global scrollbar styling - theme-aware and modern */
   }
 

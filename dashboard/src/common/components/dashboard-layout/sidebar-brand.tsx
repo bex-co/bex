@@ -23,7 +23,7 @@ export function SidebarBrand() {
         <Link
           to="/"
           aria-label={t("common.goHome")}
-          className="shrink-0 rounded-md ring-offset-background transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="shrink-0 rounded-md ring-offset-sidebar transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <img
             src="/logo.webp"
