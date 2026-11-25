@@ -201,14 +201,33 @@ export function lineFilterKey(f: LogFilters): string {
   return LINE_FILTER_KEYS.map((key) => f[key]).join("|");
 }
 
-// Whether any filter narrows the visible log set — drives the filtered vs
-// genuinely-empty copy in log-viewer.
+/**
+ * The filters a service's Logs tab opens on from its URL (w3/101). A service
+ * that also has request logs (a web service) opens on Application logs when
+ * the URL names no type, as Render's explorer turns its initial `all` into
+ * `app` for a resource that offers both. The URL never names All logs, so
+ * All logs picked in the dropdown lasts until a reload, as on Render.
+ */
+export function withOpeningLogType(
+  filters: LogFilters,
+  servesRequests: boolean,
+): LogFilters {
+  return servesRequests && filters.type === LOG_TYPE_ALL
+    ? { ...filters, type: LOG_TYPE_APP }
+    : filters;
+}
+
+// Whether a search or a structured filter narrows the lines: the no-match
+// copy and its Clear filters. A log type alone is not a search, as in
+// Render's "No matching logs" (its search value or labels, w3/101).
+export function hasLogSearch(f: LogFilters): boolean {
+  return f.text !== "" || STRUCTURED_FILTER_KEYS.some((key) => f[key] !== "");
+}
+
+// Whether any filter, the log type included, narrows the visible log set:
+// what offers View in context, as Render's `hasActiveSearchFilters` does.
 export function hasActiveLogFilters(f: LogFilters): boolean {
-  return (
-    f.type !== LOG_TYPE_ALL ||
-    f.text !== "" ||
-    STRUCTURED_FILTER_KEYS.some((key) => f[key] !== "")
-  );
+  return f.type !== LOG_TYPE_ALL || hasLogSearch(f);
 }
 
 /** Render's eight levels (render.com/docs/logging), in its order: the values

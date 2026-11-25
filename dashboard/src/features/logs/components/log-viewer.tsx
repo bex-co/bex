@@ -37,10 +37,12 @@ import {
   LOG_TEXT_MODE_DISPLAY,
   STRUCTURED_FILTER_KEYS,
   hasActiveLogFilters,
+  hasLogSearch,
   lineFilterKey,
   liveTailUnsupported,
   type LogFilters,
   type LogLine,
+  withOpeningLogType,
   withoutRequestFilters,
 } from "../types";
 import { LogClearedState, LogExplorerActions } from "./log-explorer";
@@ -94,7 +96,8 @@ interface LogViewerProps {
   /**
    * False for a service with no public requests: every view, whether from
    * the URL or typed, drops the request type and request-line filters
-   * (LogFilterBar.servesRequests, w4/613).
+   * (LogFilterBar.servesRequests, w4/613). True opens a URL naming no type
+   * on Application logs (w3/101).
    */
   servesRequests?: boolean;
   /** The line a View in context link marks (w3/m528). */
@@ -129,7 +132,9 @@ export function LogViewer({
   useOpenDocked(frameRef);
   const { t } = useTranslations();
   const urlKey = logStateKey(urlFilters);
-  const [state, setState] = useState(() => viewFromUrl(urlFilters));
+  const [state, setState] = useState(() =>
+    viewFromUrl(urlFilters, servesRequests),
+  );
   const urlEcho = useUrlEcho(urlKey);
 
   // Adopt a foreign URL during render, and use the adopted state for the rest
@@ -138,7 +143,7 @@ export function LogViewer({
   // would query them against the destination's range.
   let shown = state;
   if (urlEcho.foreign) {
-    shown = viewFromUrl(urlFilters);
+    shown = viewFromUrl(urlFilters, servesRequests);
     setState(shown);
   }
   const filters = servesRequests
@@ -331,6 +336,9 @@ export function LogViewer({
   });
 
   const filtered = hasActiveLogFilters(queryFilters);
+  // The no-match copy: a log type alone, a web service's opening
+  // Application logs included, is not a search (w3/101).
+  const searched = hasLogSearch(queryFilters);
 
   // Render's row menu (w3/m528): View in context while a search or filter
   // narrows the view, SSH into instance where the Shell can open.
@@ -403,12 +411,12 @@ export function LogViewer({
       <LogEmptyState
         reason="empty"
         fillViewport
-        filtered={filtered}
+        filtered={searched}
         emptyTitle={t("logs.emptyTitle")}
         emptyBody={t("logs.emptyBodyRange")}
         pages={history}
         action={
-          filtered ? (
+          searched ? (
             <Button
               variant="outline"
               size="sm"
@@ -559,7 +567,11 @@ interface LogViewState {
   committed: { text: string; path: string; host: string };
 }
 
-function viewFromUrl(filters: LogFilters): LogViewState {
+// A web service opens on Application logs when the URL names no type
+// (w3/101). Only an adopted URL goes through this, never the URL's key: All
+// logs writes no type, and must still read as the view's own write.
+function viewFromUrl(url: LogFilters, servesRequests: boolean): LogViewState {
+  const filters = withOpeningLogType(url, servesRequests);
   return {
     filters,
     committed: { text: filters.text, path: filters.path, host: filters.host },

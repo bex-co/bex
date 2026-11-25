@@ -15,10 +15,7 @@ import {
   serviceLogRange,
   type LogSearch,
 } from "@/features/logs/lib/log-search";
-import {
-  logRangeToSearch,
-  type LogRange,
-} from "@/features/logs/lib/log-range";
+import { logRangeToSearch, type LogRange } from "@/features/logs/lib/log-range";
 import type { LogFilters, LogLine } from "@/features/logs/types";
 import { useServer } from "@/features/services/hooks/use-server";
 import { useServiceInstances } from "@/features/services/hooks/use-service-instances";
@@ -113,7 +110,8 @@ function RouteComponent() {
 // prop (like the Overview page) so the routing test can mount it under a
 // reconstructed router without the file Route's param context. A pure
 // passthrough apart from the service type, which decides whether request
-// logs are offered; the optional props default inside LogViewer.
+// logs are offered and so whether the tab opens on Application logs (w3/101);
+// the optional props default inside LogViewer.
 //
 // Behind the role's logs gate (w9/145): a Viewer or a Billing member gets the
 // role's reason, and neither the history read nor the live tail opens.

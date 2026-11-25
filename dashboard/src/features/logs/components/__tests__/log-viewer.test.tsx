@@ -20,7 +20,8 @@ import userEvent from "@testing-library/user-event";
 import { LogViewer } from "../log-viewer";
 import type { UseLogHistoryResult } from "../../hooks/use-log-history";
 import { RANGE_PRESETS, type RangeBound } from "@/features/metrics/lib/range";
-import { EMPTY_LOG_FILTERS, type LogLine } from "../../types";
+import { EMPTY_LOG_FILTERS, type LogFilters, type LogLine } from "../../types";
+import { logFiltersFromSearch, logFiltersToSearch } from "../../lib/log-search";
 import {
   DEFAULT_LOG_RANGE,
   LIVE_TAIL,
@@ -106,6 +107,10 @@ function Viewer({
 
 const rangePicker = () =>
   screen.getByRole("combobox", { name: "Log history range" });
+
+// What a web service's Logs opens on when its URL names no type (w3/101):
+// Application logs, as Render's explorer opens a resource with request logs.
+const WEB_OPENING = { ...EMPTY_LOG_FILTERS, type: "app" as const };
 
 beforeEach(() => {
   historyState.lines = [];
@@ -483,7 +488,7 @@ describe("LogViewer URL-backed filter state (w7/m42)", () => {
     );
     await waitFor(() =>
       expect(onFiltersChange).toHaveBeenCalledWith({
-        ...EMPTY_LOG_FILTERS,
+        ...WEB_OPENING,
         text: "boom",
       }),
     );
@@ -518,12 +523,12 @@ describe("LogViewer URL-backed filter state (w7/m42)", () => {
 
     await waitFor(() =>
       expect(useHistorySpy.mock.calls.at(-1)?.[1]).toEqual({
-        ...EMPTY_LOG_FILTERS,
+        ...WEB_OPENING,
         instance,
       }),
     );
     expect(onFiltersChange).toHaveBeenCalledWith({
-      ...EMPTY_LOG_FILTERS,
+      ...WEB_OPENING,
       instance,
     });
   });
@@ -564,6 +569,102 @@ describe("LogViewer zero-result empty state (w6/m47, w6/m111)", () => {
       screen.queryByText("This service hasn't produced any logs yet."),
     ).not.toBeInTheDocument();
   });
+
+  // Render's "No matching logs" is a search or a label miss; a log type
+  // alone, a web service's opening Application logs included, is not one,
+  // and Clear filters would have nothing to clear (w3/101).
+  it.each([
+    ["Application logs a web service opens on", EMPTY_LOG_FILTERS],
+    ["Request logs", { ...EMPTY_LOG_FILTERS, type: "request" as const }],
+  ])(
+    "reports an empty %s as an empty range, with no Clear filters",
+    (_, url) => {
+      render(<LogViewer resource="web" urlFilters={url} />);
+      expect(
+        screen.getByText("No logs in this time range"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("No matching logs")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Clear filters" }),
+      ).toBeNull();
+    },
+  );
+});
+
+// w3/101: Render's explorer turns its initial `all` into `app` for a resource
+// that offers both app and request logs, so a web service's Logs opens on
+// Application logs; a worker, cron job or private service keeps All logs.
+describe("LogViewer opening log type (w3/101)", () => {
+  const typePicker = () => screen.getByRole("combobox", { name: "Log type" });
+  const historyFilters = () => useHistorySpy.mock.calls.at(-1)?.[1];
+  const pickType = async (name: string) => {
+    await userEvent.click(typePicker());
+    await userEvent.click(screen.getByRole("option", { name }));
+  };
+  // A route-like host: each report becomes the next URL through the route's
+  // own spelling, which names no type for All logs.
+  function Host({ url: initial }: { url: LogFilters }) {
+    const [url, setUrl] = useState(initial);
+    return (
+      <LogViewer
+        resource="web"
+        urlFilters={url}
+        onFiltersChange={(filters) =>
+          setUrl(logFiltersFromSearch(logFiltersToSearch(filters)))
+        }
+      />
+    );
+  }
+
+  it("opens a web service on Application logs when its URL names no type", () => {
+    render(<LogViewer resource="web" />);
+    expect(typePicker()).toHaveTextContent("Application logs");
+    expect(historyFilters()).toEqual(WEB_OPENING);
+    expect(useLiveLogsSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+      type: "app",
+    });
+  });
+
+  it("keeps All logs on a service without request logs", () => {
+    render(<LogViewer resource="worker" servesRequests={false} />);
+    expect(typePicker()).toHaveTextContent("All logs");
+    expect(historyFilters()).toEqual(EMPTY_LOG_FILTERS);
+  });
+
+  it("opens a link naming a type on it", () => {
+    render(
+      <LogViewer
+        resource="web"
+        urlFilters={{ ...EMPTY_LOG_FILTERS, type: "request" }}
+      />,
+    );
+    expect(typePicker()).toHaveTextContent("Request logs");
+    expect(historyFilters()).toEqual({ ...EMPTY_LOG_FILTERS, type: "request" });
+  });
+
+  it.each([
+    ["a URL naming no type", EMPTY_LOG_FILTERS],
+    ["a Request logs link", { ...EMPTY_LOG_FILTERS, type: "request" as const }],
+  ])(
+    "keeps All logs picked from %s, though its URL then names no type",
+    async (_, url) => {
+      render(<Host url={url} />);
+      await pickType("All logs");
+      await waitFor(() => expect(historyFilters()).toEqual(EMPTY_LOG_FILTERS));
+      expect(typePicker()).toHaveTextContent("All logs");
+      // A search written after it keeps it too.
+      fireEvent.change(screen.getByLabelText("Search logs"), {
+        target: { value: "boom" },
+      });
+      await waitFor(() =>
+        expect(historyFilters()).toEqual({
+          ...EMPTY_LOG_FILTERS,
+          text: "boom",
+        }),
+      );
+      expect(typePicker()).toHaveTextContent("All logs");
+    },
+  );
 });
 
 describe("LogViewer populated background failures", () => {
@@ -675,7 +776,7 @@ describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
     fireEvent.change(search(), { target: { value } });
   const settle = (ms = 300) => act(() => vi.advanceTimersByTime(ms));
 
-  it("means all logs and no search once a clean Live tail link is followed", () => {
+  it("means Application logs and no search once a clean Live tail link is followed", () => {
     const onFiltersChange = vi.fn();
     const { rerender } = render(
       <LogViewer
@@ -697,12 +798,13 @@ describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
       />,
     );
 
-    // No pass after the navigation queries or tails with the source's filters.
+    // No pass after the navigation queries or tails with the source's
+    // filters; a web service's clean link opens Application logs (w3/101).
     for (const [, filters] of useHistorySpy.mock.calls) {
-      expect(filters).toEqual(EMPTY_LOG_FILTERS);
+      expect(filters).toEqual(WEB_OPENING);
     }
     for (const [options] of useLiveLogsSpy.mock.calls) {
-      expect(options).toMatchObject({ enabled: true, type: "all", text: "" });
+      expect(options).toMatchObject({ enabled: true, type: "app", text: "" });
     }
     expect(useHistorySpy).toHaveBeenCalled();
     expect(search().value).toBe("");
@@ -712,9 +814,9 @@ describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
     // Nothing written back but the destination itself, now or after a debounce.
     settle(1000);
     for (const call of onFiltersChange.mock.calls) {
-      expect(call).toEqual([EMPTY_LOG_FILTERS]);
+      expect(call).toEqual([WEB_OPENING]);
     }
-    expect(historyFilters()).toEqual(EMPTY_LOG_FILTERS);
+    expect(historyFilters()).toEqual(WEB_OPENING);
   });
 
   it("adopts every filter field of a filtered destination", () => {
@@ -754,7 +856,7 @@ describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
     rerender(<LogViewer resource="web" onFiltersChange={onFiltersChange} />);
     settle(1000);
     expect(search().value).toBe("");
-    expect(historyFilters()).toEqual(EMPTY_LOG_FILTERS);
+    expect(historyFilters()).toEqual(WEB_OPENING);
     expect(onFiltersChange).not.toHaveBeenCalledWith(
       expect.objectContaining({ text: "qa-alpha-and-more" }),
     );
@@ -847,10 +949,12 @@ describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
 
   it("keeps a change made before an earlier write echoes, and re-reports it", () => {
     const onFiltersChange = vi.fn();
+    // The URL the route writes for each report: a web service's carries its
+    // Application logs (w3/101).
     const view = (text: string) => (
       <LogViewer
         resource="web"
-        urlFilters={{ ...EMPTY_LOG_FILTERS, text }}
+        urlFilters={{ ...WEB_OPENING, text }}
         onFiltersChange={onFiltersChange}
       />
     );
@@ -860,8 +964,8 @@ describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
     type("");
     settle(); // cleared before the echo
     expect(onFiltersChange.mock.calls).toEqual([
-      [{ ...EMPTY_LOG_FILTERS, text: "a" }],
-      [EMPTY_LOG_FILTERS],
+      [{ ...WEB_OPENING, text: "a" }],
+      [WEB_OPENING],
     ]);
     onFiltersChange.mockClear();
 
@@ -870,7 +974,7 @@ describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
     expect(search().value).toBe("");
     expect(historyFilters()).toMatchObject({ text: "" });
     // The URL is told the current state again, so it converges on the view.
-    expect(onFiltersChange).toHaveBeenLastCalledWith(EMPTY_LOG_FILTERS);
+    expect(onFiltersChange).toHaveBeenLastCalledWith(WEB_OPENING);
     rerender(view(""));
     expect(search().value).toBe("");
   });
@@ -975,11 +1079,11 @@ describe("LogViewer search committed while paused (w4/306)", () => {
       <LogViewer
         resource="worker"
         range={hour}
-        urlFilters={{ ...EMPTY_LOG_FILTERS, type: "app" }}
+        urlFilters={{ ...EMPTY_LOG_FILTERS, type: "request" }}
       />,
     );
     expect(queries().at(-1)).toMatchObject({
-      type: "app",
+      type: "request",
       endTime: at(10_000),
     });
   });
@@ -1282,7 +1386,7 @@ describe("LogViewer row menu and new-log buttons (w3/m528)", () => {
     expect(watchArgs().since).toBe(history.endTime);
     expect(watchArgs().subscription).toMatchObject({
       resource: "web",
-      type: "all",
+      type: "app",
       textMode: "display",
     });
     // Live tail: the tail itself streams.
@@ -1387,8 +1491,15 @@ describe("LogViewer row menu and new-log buttons (w3/m528)", () => {
     historyState.lines = lines(0, 3);
     const contextHref = vi.fn((line: LogLine) => `/ctx/${line.key}`);
     const shell = vi.fn(() => ({ href: "/services/web/shell?instance=x" }));
+    // A worker opens on All logs, which narrows nothing; a web service's
+    // opening Application logs is a narrowed view, as on Render (w3/101).
     const { container, rerender } = render(
-      <LogViewer resource="web" contextHref={contextHref} shell={shell} />,
+      <LogViewer
+        resource="web"
+        servesRequests={false}
+        contextHref={contextHref}
+        shell={shell}
+      />,
     );
     const openMenu = async () => {
       fireEvent.pointerEnter(container.querySelector('[data-index="0"]')!);

@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   act,
+  cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   Link,
   Outlet,
@@ -27,6 +29,8 @@ const reads = vi.hoisted(
   () => [] as { type: string; text: string; level: string }[],
 );
 const tails = vi.hoisted(() => [] as { enabled: boolean; text: string }[]);
+// The service the Logs tab belongs to: a web service has request logs.
+const served = vi.hoisted(() => ({ type: "web_service" }));
 
 vi.mock("@/features/logs/hooks/use-log-history", () => ({
   useLogHistory: (
@@ -77,7 +81,7 @@ vi.mock("@/features/logs/hooks/use-log-label-values", () => ({
 }));
 vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: () => ({
-    service: { id: "srv-one", type: "web_service" },
+    service: { id: "srv-one", type: served.type },
     loading: false,
   }),
 }));
@@ -116,31 +120,33 @@ const searchBox = () =>
   screen.findByLabelText("Search logs", undefined, { timeout: 5000 });
 // A link written before w3/m537, with the Live switch's `live=0`: it opens
 // paused on the range it names, as every range but Live tail is now.
-const FILTERED = "/services/srv-one/logs?type=app&live=0&text=qa-alpha";
+const FILTERED = "/services/srv-one/logs?type=request&live=0&text=qa-alpha";
 
 beforeEach(() => {
   reads.length = 0;
   tails.length = 0;
+  served.type = "web_service";
 });
 
 describe("service Logs follows navigation it did not write (w4/m204)", () => {
   it("shows the clean destination after its nav link clears a filtered URL", async () => {
     const router = renderAt(FILTERED);
     expect(await searchBox()).toHaveValue("qa-alpha");
-    expect(reads.at(-1)).toMatchObject({ type: "app", text: "qa-alpha" });
+    expect(reads.at(-1)).toMatchObject({ type: "request", text: "qa-alpha" });
     expect(tails.at(-1)).toMatchObject({ enabled: false });
 
     fireEvent.click(screen.getByText("Logs nav"));
 
-    await waitFor(() => expect(router.state.location.search).toEqual({}));
     await waitFor(async () => expect(await searchBox()).toHaveValue(""));
-    expect(reads.at(-1)).toEqual({ type: "all", text: "", level: "" });
-    // The clean tab opens on Last hour, as Render's service Logs does.
+    // The clean tab opens on Application logs (w3/101) and Last hour, as
+    // Render's web service Logs does.
+    expect(reads.at(-1)).toEqual({ type: "app", text: "", level: "" });
     expect(tails.at(-1)).toEqual({ enabled: false, text: "" });
-    // Nothing writes the source's filters back once a debounce has passed.
+    // Nothing writes the source's filters back once a debounce has passed;
+    // the URL names the type it opened on, as Render's (`t=app`) does.
     await act(() => new Promise((resolve) => setTimeout(resolve, 400)));
-    expect(router.state.location.search).toEqual({});
-    expect(reads.at(-1)).toEqual({ type: "all", text: "", level: "" });
+    expect(router.state.location.search).toEqual({ type: "app" });
+    expect(reads.at(-1)).toEqual({ type: "app", text: "", level: "" });
   });
 
   it("restores each history entry's filters and range on Back and Forward", async () => {
@@ -154,16 +160,16 @@ describe("service Logs follows navigation it did not write (w4/m204)", () => {
       }),
     );
     await waitFor(() =>
-      expect(reads.at(-1)).toEqual({ type: "all", text: "", level: "error" }),
+      expect(reads.at(-1)).toEqual({ type: "app", text: "", level: "error" }),
     );
-    // A level tails on Live tail on the all view (w8/m147); the paused entry
-    // below gets its own range back.
+    // A level tails on Live tail on the Application logs view (w8/m147); the
+    // paused entry below gets its own range back.
     expect(tails.at(-1)).toMatchObject({ enabled: true });
 
     act(() => router.history.back());
     await waitFor(() =>
       expect(reads.at(-1)).toEqual({
-        type: "app",
+        type: "request",
         text: "qa-alpha",
         level: "",
       }),
@@ -173,7 +179,7 @@ describe("service Logs follows navigation it did not write (w4/m204)", () => {
 
     act(() => router.history.forward());
     await waitFor(() =>
-      expect(reads.at(-1)).toEqual({ type: "all", text: "", level: "error" }),
+      expect(reads.at(-1)).toEqual({ type: "app", text: "", level: "error" }),
     );
     expect(await searchBox()).toHaveValue("");
   });
@@ -184,6 +190,7 @@ describe("service Logs follows navigation it did not write (w4/m204)", () => {
     await waitFor(() =>
       expect(router.state.location.search).toEqual({
         range: "live",
+        type: "app",
         text: "boom",
       }),
     );
@@ -202,9 +209,75 @@ describe("service Logs follows navigation it did not write (w4/m204)", () => {
     await waitFor(() =>
       expect(router.state.location.search).toEqual({
         range: "4h",
+        type: "app",
         text: "boom",
       }),
     );
     expect(tails.at(-1)).toMatchObject({ enabled: false, text: "boom" });
   });
+});
+
+// w3/101: Render's explorer opens a resource with both app and request logs
+// on Application logs unless its URL names another type, and its URL writer
+// never names All logs (`t` is deleted for it).
+describe("a web service's Logs opens on Application logs (w3/101)", () => {
+  const typePicker = () => screen.getByRole("combobox", { name: "Log type" });
+
+  it.each([
+    ["names no type", "/services/srv-one/logs", "app", "Application logs"],
+    [
+      "is Render's t=all",
+      "/services/srv-one/logs?t=all",
+      "app",
+      "Application logs",
+    ],
+    [
+      "names request",
+      "/services/srv-one/logs?type=request",
+      "request",
+      "Request logs",
+    ],
+    [
+      "is Render's t=request",
+      "/services/srv-one/logs?t=request",
+      "request",
+      "Request logs",
+    ],
+    ["names app", "/services/srv-one/logs?type=app", "app", "Application logs"],
+  ])("opens a link that %s on its type", async (_, href, type, label) => {
+    renderAt(href);
+    await searchBox();
+    expect(reads.at(-1)).toEqual({ type, text: "", level: "" });
+    expect(typePicker()).toHaveTextContent(label);
+  });
+
+  it("keeps All logs picked with no type in the URL, and opens Application logs again on reload", async () => {
+    const router = renderAt("/services/srv-one/logs?type=request");
+    await searchBox();
+    await userEvent.click(typePicker());
+    await userEvent.click(screen.getByRole("option", { name: "All logs" }));
+    await waitFor(() =>
+      expect(reads.at(-1)).toEqual({ type: "all", text: "", level: "" }),
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 400)));
+    expect(router.state.location.search).toEqual({});
+    expect(typePicker()).toHaveTextContent("All logs");
+
+    cleanup();
+    reads.length = 0;
+    renderAt(router.state.location.href);
+    await searchBox();
+    expect(reads.at(-1)).toEqual({ type: "app", text: "", level: "" });
+  });
+
+  it.each(["background_worker", "private_service", "cron_job"])(
+    "keeps a %s, which has no request logs, on All logs",
+    async (type) => {
+      served.type = type;
+      renderAt("/services/srv-one/logs");
+      await searchBox();
+      expect(reads.at(-1)).toEqual({ type: "all", text: "", level: "" });
+      expect(typePicker()).toHaveTextContent("All logs");
+    },
+  );
 });
