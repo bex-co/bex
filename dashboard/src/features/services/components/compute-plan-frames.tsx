@@ -7,7 +7,11 @@ import {
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { LegacyFreeNotice } from "@/features/services/components/instance-type-groups";
+import {
+  CronBillingHint,
+  InstanceTypeGroupsSkeleton,
+  LegacyFreeNotice,
+} from "@/features/services/components/instance-type-groups";
 
 // The Compute section's frame and its current-plan row, in a module light
 // enough for the route skeletons' entry chunk, so the Compute page's pending
@@ -82,6 +86,35 @@ export function ComputePlanSectionSkeleton({
           <Skeleton className="h-8 w-[4.25rem] max-lg:h-11 pointer-coarse:h-11" />
         }
       />
+    </ComputePlanSectionFrame>
+  );
+}
+
+/**
+ * A cron job's plan page before the service is known (w3/105): the Compute
+ * section with its editor open, the billing hint, the cards' groups and the
+ * Cancel and Save row where InstanceTypePicker draws them.
+ */
+export function ComputePlanPickerSkeleton({
+  serviceType,
+  currentPlan,
+}: {
+  serviceType: string | null;
+  currentPlan?: string | null;
+}) {
+  return (
+    <ComputePlanSectionFrame
+      serviceType={serviceType}
+      currentPlan={currentPlan}
+    >
+      <div className="space-y-6">
+        <CronBillingHint serviceType={serviceType} />
+        <InstanceTypeGroupsSkeleton serviceType={serviceType} />
+        <div className="flex justify-end gap-2 border-t pt-4">
+          <Skeleton className="h-9 w-[4.625rem] max-lg:h-11 pointer-coarse:h-11" />
+          <Skeleton className="h-9 w-[3.625rem] max-lg:h-11 pointer-coarse:h-11" />
+        </div>
+      </div>
     </ComputePlanSectionFrame>
   );
 }

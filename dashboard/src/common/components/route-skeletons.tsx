@@ -191,7 +191,10 @@ import {
   CHART_FRAME_STYLE,
   PROJECT_LEGEND_ROW_CLASS,
 } from "@/features/metrics/components/chart-layout";
-import { ComputePlanSectionSkeleton } from "@/features/services/components/compute-plan-frames";
+import {
+  ComputePlanPickerSkeleton,
+  ComputePlanSectionSkeleton,
+} from "@/features/services/components/compute-plan-frames";
 import {
   AutoscalingLoadingCard,
   ManualScalingSkeleton,
@@ -3284,6 +3287,28 @@ export function ServiceSettingsSkeleton({
           </Region>
         ))}
       </div>
+    </PendingFrame>
+  );
+}
+
+/**
+ * A cron job's plan page, Render's `/cron/<id>/plan` (w3/105): its Compute
+ * section with the plan cards open, as CronPlanPage draws it.
+ */
+export function ServiceCronPlanSkeleton({
+  currentPlan,
+}: {
+  /** Undefined while unknown. */
+  currentPlan?: string | null;
+}) {
+  return (
+    <PendingFrame route="cron-plan">
+      <Region name="plan-picker">
+        <ComputePlanPickerSkeleton
+          serviceType="cron_job"
+          currentPlan={currentPlan}
+        />
+      </Region>
     </PendingFrame>
   );
 }

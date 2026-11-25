@@ -7,10 +7,12 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
+import type { RouterContext } from "@/common/types/router-context";
 import {
   MANUAL_SCALING_ANCHOR,
   redirectToComputePage,
 } from "@/features/services/lib/compute-page";
+import { redirectPlanByType } from "@/features/services/lib/service-root-redirect";
 import { Route as PlanRoute } from "../services.$serviceId.plan";
 import { Route as ScalingRoute } from "../services.$serviceId.scaling";
 
@@ -19,20 +21,25 @@ import { Route as ScalingRoute } from "../services.$serviceId.scaling";
  * Bookmarks and links minted before land there with their query: the Plan URL
  * on the page, the Scaling URL on its Manual Scaling section ("open your
  * service's Compute page and scroll down to the Manual Scaling section",
- * render.com/docs/scaling).
+ * render.com/docs/scaling). A cron job's Plan URL is its own page instead
+ * (w3/105, services.$serviceId.cron-routes.test.tsx).
  *
  * A file route's beforeLoad is typed against the registered root and cannot
  * join a synthetic tree, so the synthetic routes call the same production
- * helper the two files do (the billing-redirects.test.tsx pattern), and the
- * files are checked to be redirect-only.
+ * helpers the two files do (the billing-redirects.test.tsx pattern), and the
+ * files are checked to call them.
  */
+const webService = {
+  query: async () => ({ data: { server: { type: "web_service" } } }),
+} as unknown as RouterContext["client"];
+
 async function landingFor(initialPath: string): Promise<string> {
   const rootRoute = createRootRoute();
   const plan = createRoute({
     getParentRoute: () => rootRoute,
     path: "/services/$serviceId/plan",
     beforeLoad: ({ params, location }) =>
-      redirectToComputePage(params.serviceId, location),
+      redirectPlanByType(webService, params.serviceId, location),
   });
   const scaling = createRoute({
     getParentRoute: () => rootRoute,
@@ -76,16 +83,17 @@ describe("Plan and Scaling URLs open the Compute page (w6/m483)", () => {
     expect(await landingFor(from)).toBe(to);
   });
 
-  it("keeps both files redirect-only, through the same helper", () => {
-    for (const route of [PlanRoute, ScalingRoute]) {
-      expect(route.options.component).toBeUndefined();
-      expect(route.options.pendingComponent).toBeUndefined();
-      expect(String(route.options.beforeLoad)).toContain(
-        "redirectToComputePage",
-      );
-    }
+  it("keeps Scaling redirect-only, and both files on their helpers", () => {
+    expect(ScalingRoute.options.component).toBeUndefined();
+    expect(ScalingRoute.options.pendingComponent).toBeUndefined();
+    expect(String(ScalingRoute.options.beforeLoad)).toContain(
+      "redirectToComputePage",
+    );
     expect(String(ScalingRoute.options.beforeLoad)).toContain(
       "MANUAL_SCALING_ANCHOR",
+    );
+    expect(String(PlanRoute.options.beforeLoad)).toContain(
+      "redirectPlanByType",
     );
   });
 });

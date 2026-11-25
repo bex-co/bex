@@ -94,7 +94,9 @@ vi.mock("@/features/services/hooks/use-cached-service-type", () => ({
   useCachedServiceType: () => cachedType.value,
 }));
 
-const updatePlan = vi.fn(async () => true);
+const updatePlan = vi.fn(
+  async (): Promise<{ deployId: string | null } | null> => ({ deployId: null }),
+);
 vi.mock("@/features/services/hooks/use-update-plan", () => ({
   useUpdatePlan: () => ({ updatePlan, busy: false }),
 }));
@@ -212,7 +214,7 @@ beforeEach(() => {
   scaleService.mockClear();
   scaleService.mockResolvedValue(true);
   updatePlan.mockClear();
-  updatePlan.mockResolvedValue(true);
+  updatePlan.mockResolvedValue({ deployId: null });
   metricsState.clear();
   metricReads.mockClear();
 });
@@ -778,7 +780,7 @@ describe("ServiceComputePage Compute section (w6/m483)", () => {
   });
 
   it("keeps the cards open when the change is refused", async () => {
-    updatePlan.mockResolvedValueOnce(false);
+    updatePlan.mockResolvedValueOnce(null);
     serverState.service = svc({ plan: "starter" });
     renderCompute();
 

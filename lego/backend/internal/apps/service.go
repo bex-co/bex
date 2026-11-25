@@ -829,9 +829,10 @@ type AppView struct {
 	// value. The Settings → Maintenance Mode section reads it and writes it via
 	// SetMaintenanceMode. See docs/render-artifacts/maintenance-mode.md.
 	MaintenanceMode MaintenanceModeView `json:"maintenanceMode"`
-	// LatestDeployID is the id of the first deploy row, populated by Create only
-	// (w3/m14). The dashboard uses it to navigate to the in-flight deploy page
-	// immediately after a git-sourced service is created. Empty on Get/List.
+	// LatestDeployID is the id of the deploy row a write just opened: Create's
+	// first deploy (w3/m14), a deploying source change (w4/m593), and a plan
+	// change (SetPlan, w3/105). The dashboard uses it to navigate to that
+	// in-flight deploy's page. Empty on Get/List.
 	//
 	// Both surfaces must keep that emptiness INVISIBLE rather than render it as
 	// a value: `omitempty` drops the key from REST (which carries the id in the
@@ -4926,6 +4927,10 @@ func (s *Service) Resume(ctx context.Context, name string) (AppView, error) {
 // render.com/docs/compute-plans: "The Update service endpoint does not
 // trigger a new deploy"), and the service keeps running, and being billed
 // on, the plan it runs until a deploy applies it.
+//
+// The deploy a plan change opens is returned as LatestDeployID, so a cron
+// job's plan page can open it as Render's opens the new build (w3/105). A held
+// change opens none, and leaves it empty.
 func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, error) {
 	_, a, err := s.authorizeToChange(ctx, name, false)
 	if err != nil {
@@ -4958,6 +4963,7 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 		running.Tier, next.Tier = a.RunningTier(), tier
 		edgeCacheTo = planEdgeCacheToggle(&running, &next)
 	}
+	ctx, openedDeploy := rollout.WithOpenedDeploy(ctx)
 	result, err := s.writeThroughStoreFetched(ctx, a,
 		func(ctx context.Context, id string) error {
 			_, err := s.Store.SetAppTier(ctx, id, tier)
@@ -4976,6 +4982,7 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 	if tier != fromTier {
 		s.RecordPlanChanged(ctx, a, renderPlanName(fromTier), renderPlanName(tier), edgeCacheTo)
 	}
+	result.LatestDeployID = openedDeploy()
 	return result, nil
 }
 

@@ -351,25 +351,53 @@ func TestSurfaceSaveSemantics(t *testing.T) {
 	// Render: the dashboard's plan change "automatically triggers a deploy to
 	// apply the new compute plan", while "the Update service endpoint does not
 	// trigger a new deploy" (render.com/docs/compute-plans, w6/m609).
+	// The deploy it opens comes back as latestDeployId, which a cron job's
+	// plan page opens as Render's opens the new build (w3/105).
 	t.Run("graphql updateServicePlan saves and deploys", func(t *testing.T) {
 		st := &recordingStore{}
 		svc, _ := newService(st, managedRepoApp("web"))
-		if _, err := svc.SetPlan(ctx, "web", "standard"); err != nil {
+		v, err := svc.SetPlan(ctx, "web", "standard")
+		if err != nil {
 			t.Fatalf("SetPlan: %v", err)
 		}
 		if len(st.deployCalls) != 1 || st.deployCalls[0].Trigger != store.TriggerSettingsChange {
 			t.Fatalf("produced %d rows %+v, want exactly one settings_change deploy", len(st.deployCalls), st.deployCalls)
+		}
+		if v.LatestDeployID != st.deployCalls[0].ID {
+			t.Fatalf("LatestDeployID = %q, want the opened deploy %q", v.LatestDeployID, st.deployCalls[0].ID)
+		}
+	})
+	t.Run("a cron job's updateServicePlan answers the deploy it opened", func(t *testing.T) {
+		st := &recordingStore{}
+		cron := managedRepoApp("nightly")
+		cron.Spec.Type = appv1alpha1.TypeCronJob
+		cron.Spec.Schedule = "0 3 * * *"
+		cron.Spec.Command = "./report"
+		svc, _ := newService(st, cron)
+		res := execGQL(t, sourceSwapSchema(t, svc), `mutation {
+			updateServicePlan(id: "nightly", plan: "standard") { plan latestDeployId }
+		}`, nil)
+		if len(res.Errors) > 0 {
+			t.Fatalf("updateServicePlan errors: %v", res.Errors)
+		}
+		got := res.Data.(map[string]any)["updateServicePlan"].(map[string]any)
+		if len(st.deployCalls) != 1 || got["latestDeployId"] != st.deployCalls[0].ID {
+			t.Fatalf("latestDeployId = %v with rows %+v, want the one opened deploy's id", got["latestDeployId"], st.deployCalls)
 		}
 	})
 	t.Run("rest/mcp plan saves only", func(t *testing.T) {
 		st := &recordingStore{}
 		svc, cl := newService(st, managedRepoApp("web"))
 		plan := "standard"
-		if _, err := svc.ApplyServicePatch(ctx, "web", ServicePatch{Plan: &plan}); err != nil {
+		v, err := svc.ApplyServicePatch(ctx, "web", ServicePatch{Plan: &plan})
+		if err != nil {
 			t.Fatalf("ApplyServicePatch: %v", err)
 		}
 		if len(st.deployCalls) != 0 {
 			t.Fatalf("produced %d rows %+v, want none", len(st.deployCalls), st.deployCalls)
+		}
+		if v.LatestDeployID != "" {
+			t.Fatalf("LatestDeployID = %q, want none for a held plan", v.LatestDeployID)
 		}
 		a := getApp(t, cl, "web")
 		if a.Spec.Tier != plan {

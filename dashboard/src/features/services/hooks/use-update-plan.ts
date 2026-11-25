@@ -7,13 +7,20 @@ import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 
+/** A plan change the server accepted. */
+export interface SavedPlan {
+  /** The deploy the change opened (w3/105); null when it opened none. */
+  deployId: string | null;
+}
+
 export interface UseUpdatePlanResult {
-  /** Fires updateServicePlan; resolves true on success (toasted either way). */
+  /** Fires updateServicePlan; resolves the saved change, or null on failure
+   *  (toasted either way). */
   updatePlan: (
     id: string,
     plan: string,
     displayName: string,
-  ) => Promise<boolean>;
+  ) => Promise<SavedPlan | null>;
   busy: boolean;
 }
 
@@ -33,13 +40,17 @@ export function useUpdatePlan(): UseUpdatePlanResult {
     async (id: string, plan: string, displayName: string) => {
       setBusy(true);
       try {
-        await paymentGate.run(() => mutate({ variables: { id, plan } }));
+        const result = await paymentGate.run(() =>
+          mutate({ variables: { id, plan } }),
+        );
         toast.success(t("services.planPickerSuccess", { name: displayName }));
-        return true;
+        return {
+          deployId: result?.data?.updateServicePlan?.latestDeployId ?? null,
+        };
       } catch (error) {
-        if (isPaymentOnboardingCancelled(error)) return false;
+        if (isPaymentOnboardingCancelled(error)) return null;
         toast.error(mutationErrorMessage(error, t("services.planPickerError")));
-        return false;
+        return null;
       } finally {
         setBusy(false);
       }

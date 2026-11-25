@@ -711,9 +711,10 @@ export const ROUTE_SKELETON_MANIFEST = {
     regions: ["metrics-filters", "application-metrics", "network-metrics"],
   },
   "/services/$serviceId/plan": {
-    kind: "redirect",
+    kind: "render",
     owner: "routes/services.$serviceId.plan.tsx",
-    destination: "/services/$serviceId/compute",
+    shape: "cron-plan",
+    regions: ["plan-picker"],
   },
   "/services/$serviceId/redirects": {
     kind: "render",

@@ -43,6 +43,8 @@ type fakeDeployStore struct {
 	created []store.Deploy
 	// adopted is each CreateDeploy's store.AdoptedRelease.
 	adopted []int64
+	// err fails every CreateDeploy.
+	err error
 }
 
 func (f *fakeDeployStore) LatestDeployCommit(_ context.Context, _ string) (store.CommitInfo, error) {
@@ -51,6 +53,9 @@ func (f *fakeDeployStore) LatestDeployCommit(_ context.Context, _ string) (store
 
 func (f *fakeDeployStore) CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string, clearCache ...bool) (store.Deploy, error) {
 	f.adopted = append(f.adopted, store.AdoptedRelease(ctx))
+	if f.err != nil {
+		return store.Deploy{}, f.err
+	}
 	d := store.Deploy{
 		ID: "dep-recorded", AppID: appID, Trigger: trigger, Image: image, Generation: generation,
 		Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy,
@@ -101,6 +106,32 @@ func TestOpenNamesTheReleaseTheAppAdopted(t *testing.T) {
 	(&Tracker{Store: ds}).Open(context.Background(), Snapshot{appID: "srv-web", generation: 3, rolls: true}, a, store.TriggerConfigChange)
 	if len(ds.adopted) != 1 || ds.adopted[0] != 3 {
 		t.Fatalf("adopted releases named = %v, want [3]", ds.adopted)
+	}
+}
+
+// w3/105: Open reports the row it opened through WithOpenedDeploy, so a verb
+// can hand its caller the deploy to open, and reports nothing for a write that
+// opened none: one that does not roll, or a row the store refused.
+func TestOpenReportsTheDeployItOpened(t *testing.T) {
+	a := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Generation: 2}, Spec: appv1alpha1.AppSpec{Image: "web:v1"}}
+	cases := []struct {
+		name  string
+		rolls bool
+		err   error
+		want  string
+	}{
+		{"a rolling write", true, nil, "dep-recorded"},
+		{"a write that does not roll", false, nil, ""},
+		{"a row the store refused", true, errors.New("control plane unavailable"), ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, opened := WithOpenedDeploy(context.Background())
+			(&Tracker{Store: &fakeDeployStore{err: tc.err}}).Open(ctx, Snapshot{appID: "srv-web", generation: 1, rolls: tc.rolls}, a, store.TriggerSettingsChange)
+			if got := opened(); got != tc.want {
+				t.Fatalf("opened deploy = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
 

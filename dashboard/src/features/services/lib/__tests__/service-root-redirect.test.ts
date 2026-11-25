@@ -3,6 +3,7 @@ import { isRedirect } from "@tanstack/react-router";
 import {
   redirectBuildsByType,
   redirectCronCompute,
+  redirectPlanByType,
   redirectRunsByType,
   redirectServiceRoot,
 } from "../service-root-redirect";
@@ -54,9 +55,14 @@ describe("redirectServiceRoot", () => {
 });
 
 /** A router client whose ServerDocument read answers `type`. */
-function clientFor(type: string | null): RouterContext["client"] {
+function clientFor(
+  type: string | null,
+  suspended = false,
+): RouterContext["client"] {
   return {
-    query: async () => ({ data: type === null ? null : { server: { type } } }),
+    query: async () => ({
+      data: type === null ? null : { server: { type, suspended } },
+    }),
   } as unknown as RouterContext["client"];
 }
 
@@ -177,6 +183,45 @@ describe("a cron job's Runs, Deploys and Compute URLs (w3/m554)", () => {
       expect(
         await thrown(redirectCronCompute(clientFor(type), "srv-1")),
       ).toBeNull();
+    }
+  });
+});
+
+describe("a Plan URL (w3/105)", () => {
+  const plan = (client: RouterContext["client"], hash = "") =>
+    thrown(redirectPlanByType(client, "srv-1", { hash }));
+
+  it("renders a cron job's plan page, Render's /cron/<id>/plan", async () => {
+    expect(await plan(clientFor("cron_job"))).toBeNull();
+  });
+
+  it("sends a suspended cron job's to Settings with its query, as Render's redirects", async () => {
+    const error = await plan(clientFor("cron_job", true));
+    expect(isRedirect(error)).toBe(true);
+    expect(error).toMatchObject({
+      options: {
+        to: "/services/$serviceId/settings",
+        params: { serviceId: "srv-1" },
+        replace: true,
+      },
+    });
+    const { options } = error as {
+      options: { hash?: unknown; search: (prev: unknown) => unknown };
+    };
+    expect(options.hash).toBeUndefined();
+    expect(options.search({ lang: "de" })).toEqual({ lang: "de" });
+  });
+
+  it("sends every other type's, and an unknown one's, to its Compute page", async () => {
+    for (const type of ["web_service", "background_worker", null]) {
+      expect(await plan(clientFor(type), "top")).toMatchObject({
+        options: {
+          to: "/services/$serviceId/compute",
+          params: { serviceId: "srv-1" },
+          hash: "top",
+          replace: true,
+        },
+      });
     }
   });
 });

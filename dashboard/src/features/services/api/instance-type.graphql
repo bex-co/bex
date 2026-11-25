@@ -6,7 +6,9 @@
 # shared lego/types/tiers catalog — never a second hardcoded ladder here.
 #
 # updateServicePlan (w1/m8) resizes the App's pod (new requests==limits) and
-# rolls it — the same restart-shaped cost as Render's own plan changes.
+# rolls it — the same restart-shaped cost as Render's own plan changes. The
+# deploy that roll opened comes back in latestDeployId, which a cron job's plan
+# page opens, as Render's opens the new build (w3/105).
 
 query InstanceTypes {
   instanceTypes {
@@ -27,5 +29,6 @@ mutation UpdateServicePlan($id: String!, $plan: String!) {
   updateServicePlan(id: $id, plan: $plan) {
     id
     plan
+    latestDeployId
   }
 }

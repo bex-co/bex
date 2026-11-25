@@ -624,9 +624,10 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 				return a.MaintenanceMode
 			}),
 		},
-		// latestDeployId is the id of the first deploy row, populated on Create
-		// only (w3/m14). The dashboard uses it to navigate straight to the
-		// in-flight deploy page after a git-sourced service is created.
+		// latestDeployId is the id of the deploy row the mutation just opened:
+		// Create's first deploy (w3/m14), setRepo/setImage with deploy, and
+		// updateServicePlan (w3/105). The dashboard uses it to navigate straight
+		// to that in-flight deploy's page.
 		//
 		// Null — never "" — on every other path, which is w4/131 and the third
 		// member of the url (w4/124) / maintenanceMode (w4/125) family: a
@@ -1715,7 +1716,10 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// restartServer moved to deploys.GraphQLMutation (w2/m30): routing through
 		// deploys.Restart ensures every restart opens a deploy-history row.
 		// updateServicePlan: a bex extension (naming unconfirmed against a live
-		// Render dashboard capture — see the "plan" field comment above).
+		// Render dashboard capture — see the "plan" field comment above). It
+		// returns the deploy the change opened in latestDeployId, which a cron
+		// job's plan page opens, as Render's updateCronJobPlan returns its build
+		// (w3/105).
 		"updateServicePlan": gqlutil.PlanMutation(serviceGQLType, s.SetPlan, s.SetPlanDryRun),
 		// setDisplayName relabels a service for humans while leaving its immutable
 		// App name/id, platform hostname, and derived Kubernetes resources alone.

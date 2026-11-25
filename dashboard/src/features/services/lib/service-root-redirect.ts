@@ -1,8 +1,11 @@
-import { redirect } from "@tanstack/react-router";
+import { redirect, type ParsedLocation } from "@tanstack/react-router";
 import { ServerDocument } from "@/graphql/definitions";
 import type { RouterContext } from "@/common/types/router-context";
 import { isCronType } from "@/features/services/lib/service-type";
-import { COMPUTE_SECTION_ANCHOR } from "@/features/services/lib/compute-page";
+import {
+  COMPUTE_SECTION_ANCHOR,
+  redirectToComputePage,
+} from "@/features/services/lib/compute-page";
 
 /**
  * Land the bare service URL on its type's primary tab, under its canonical base
@@ -30,17 +33,21 @@ function primaryTab(type?: string | null) {
   return "/services/$serviceId/deploys" as const;
 }
 
-async function serviceType(
-  client: RouterContext["client"],
-  serviceId: string,
-): Promise<string | null> {
+async function serverRead(client: RouterContext["client"], serviceId: string) {
   const result = await client.query({
     query: ServerDocument,
     variables: { id: serviceId },
     fetchPolicy: "cache-first",
     errorPolicy: "all",
   });
-  return result.data?.server?.type ?? null;
+  return result.data?.server ?? null;
+}
+
+async function serviceType(
+  client: RouterContext["client"],
+  serviceId: string,
+): Promise<string | null> {
+  return (await serverRead(client, serviceId))?.type ?? null;
 }
 
 /**
@@ -106,6 +113,32 @@ export async function redirectCronCompute(
     hash: COMPUTE_SECTION_ANCHOR,
     replace: true,
   });
+}
+
+/**
+ * A cron job's Plan URL renders its plan page, Render's `/cron/<id>/plan`
+ * (w3/105, docs/render-artifacts/cron-dashboard.md), and a suspended one's
+ * lands on Settings with its query, as Render's redirects there. Every other
+ * type's lands on its Compute page with its query and hash (w6/m483), and so
+ * does an unknown one, whose Compute URL then decides.
+ */
+export async function redirectPlanByType(
+  client: RouterContext["client"],
+  serviceId: string,
+  location: Pick<ParsedLocation, "hash">,
+): Promise<void> {
+  const server = await serverRead(client, serviceId);
+  if (!server?.type || !isCronType(server.type)) {
+    redirectToComputePage(serviceId, location);
+  }
+  if (server.suspended) {
+    throw redirect({
+      to: "/services/$serviceId/settings",
+      params: { serviceId },
+      search: (prev) => prev,
+      replace: true,
+    });
+  }
 }
 
 /**

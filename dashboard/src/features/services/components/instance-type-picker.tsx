@@ -41,6 +41,9 @@ export interface InstanceTypePickerProps {
   live?: boolean;
   /** Leaves edit mode: Cancel, or a change the server accepted. */
   onDone: () => void;
+  /** Takes a change the server accepted, with the deploy it opened, instead
+   *  of onDone (a cron job's plan page opens that deploy, w3/105). */
+  onSaved?: (deployId: string | null) => void;
   /** The id of the legacy-Free notice above the picker, when one is shown. */
   describedBy?: string;
 }
@@ -60,6 +63,7 @@ export function InstanceTypePicker({
   serviceType,
   live = true,
   onDone,
+  onSaved,
   describedBy,
 }: InstanceTypePickerProps) {
   const { t } = useTranslations();
@@ -109,12 +113,14 @@ export function InstanceTypePicker({
   async function handleConfirm() {
     setConfirming(false);
     if (!selectedType?.available) return;
-    const ok = await updatePlan(
+    const saved = await updatePlan(
       serviceId,
       selectedType.id,
       computePlanLabel(selectedType),
     );
-    if (ok) onDone();
+    if (!saved) return;
+    if (onSaved) onSaved(saved.deployId);
+    else onDone();
   }
 
   return (

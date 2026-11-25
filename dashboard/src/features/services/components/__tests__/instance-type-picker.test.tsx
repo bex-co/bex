@@ -96,7 +96,7 @@ beforeEach(() => {
   instanceTypesState.loading = false;
   instanceTypesState.error = undefined;
   updatePlan.mockReset();
-  updatePlan.mockResolvedValue(true);
+  updatePlan.mockResolvedValue({ deployId: null });
 });
 
 describe("InstanceTypePicker", () => {
@@ -372,7 +372,7 @@ describe("InstanceTypePicker", () => {
   });
 
   it("keeps the cards open when the mutation fails", async () => {
-    updatePlan.mockResolvedValue(false);
+    updatePlan.mockResolvedValue(null);
     const user = userEvent.setup();
     await renderPicker("standard");
 

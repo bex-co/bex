@@ -214,6 +214,18 @@ func SaveOnly(ctx context.Context) bool {
 	return held
 }
 
+type openedDeployKey struct{}
+
+// WithOpenedDeploy gives ctx a slot that Open fills with the id of the deploy
+// row it opens, and returns ctx with a reader for it: "" when no row opened (a
+// held or non-rolling write, or a failed insert). A verb whose dashboard caller
+// then opens that deploy runs its write under it, as a cron job's plan page
+// opens the new build on Render (apps.SetPlan, w3/105).
+func WithOpenedDeploy(ctx context.Context) (context.Context, func() string) {
+	opened := new(string)
+	return context.WithValue(ctx, openedDeployKey{}, opened), func() string { return *opened }
+}
+
 // beforeIn captures a for a write made under ctx, which may be save-only.
 // Callers take it before mutating, exactly where they take the merge-patch
 // base.
@@ -411,7 +423,12 @@ func (t *Tracker) Open(ctx context.Context, snapshot Snapshot, a *appv1alpha1.Ap
 	}
 	// A waiting deploy the patched App reports adopted is in flight, so this
 	// release waits behind it rather than replacing it (w8/396).
-	if _, err := t.Store.CreateDeploy(store.WithAdoptedRelease(ctx, a), snapshot.appID, trigger, image, generation, commit, core.SubjectFrom(ctx), false); err != nil {
+	d, err := t.Store.CreateDeploy(store.WithAdoptedRelease(ctx, a), snapshot.appID, trigger, image, generation, commit, core.SubjectFrom(ctx), false)
+	if err != nil {
 		log.Printf("rollout: record %s deploy for %s: %v", trigger, a.Name, err)
+		return
+	}
+	if opened, ok := ctx.Value(openedDeployKey{}).(*string); ok {
+		*opened = d.ID
 	}
 }

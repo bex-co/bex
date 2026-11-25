@@ -10,10 +10,10 @@ import {
 } from "@tanstack/react-router";
 import type { RouterContext } from "@/common/types/router-context";
 import { redirectRenderAlias, splatParts } from "@/common/lib/render-alias";
-import { redirectToComputePage } from "@/features/services/lib/compute-page";
 import {
   redirectBuildsByType,
   redirectCronCompute,
+  redirectPlanByType,
   redirectRunsByType,
   redirectServiceRootByType,
 } from "@/features/services/lib/service-root-redirect";
@@ -21,23 +21,25 @@ import { Route as BuildsRoute } from "../services.$serviceId.builds.$";
 import { Route as ComputeRoute } from "../services.$serviceId.compute";
 import { Route as DeploysRoute } from "../services.$serviceId.deploys.index";
 import { Route as IndexRoute } from "../services.$serviceId.index";
+import { Route as PlanRoute } from "../services.$serviceId.plan";
 import { Route as RunsRoute } from "../services.$serviceId.runs";
 
 /**
  * w3/m554: a cron job's URLs land where Render's do. Render shows Runs at
  * `/cron/<id>`, replaces `/cron/<id>/builds` with `…/deploys`, keeps a build's
  * detail at `…/builds/<id>`, and has no Compute page for a cron job (its plan is
- * `settings#compute`); docs/render-artifacts/cron-dashboard.md. Every other
- * type keeps its pages.
+ * `settings#compute`); docs/render-artifacts/cron-dashboard.md. Its `/plan`
+ * renders a plan page, and a suspended one's lands on Settings (w3/105). Every
+ * other type keeps its pages.
  *
  * A file route's beforeLoad is typed against the registered root and cannot
  * join a synthetic tree, so the synthetic routes call the production helpers
  * the files call (the compute-redirects test's pattern), and the files are
  * checked to call them.
  */
-function clientFor(type: string): RouterContext["client"] {
+function clientFor(type: string, suspended = false): RouterContext["client"] {
   return {
-    query: async () => ({ data: { server: { type } } }),
+    query: async () => ({ data: { server: { type, suspended } } }),
   } as unknown as RouterContext["client"];
 }
 
@@ -45,7 +47,11 @@ function page(text: string) {
   return () => <div>{text}</div>;
 }
 
-async function landingFor(type: string, initialPath: string) {
+async function landingFor(
+  type: string,
+  initialPath: string,
+  suspended = false,
+) {
   const rootRoute = createRootRouteWithContext<RouterContext>()();
   const cronAlias = createRoute({
     getParentRoute: () => rootRoute,
@@ -106,8 +112,9 @@ async function landingFor(type: string, initialPath: string) {
   const plan = createRoute({
     getParentRoute: () => service,
     path: "plan",
-    beforeLoad: ({ params, location }) =>
-      redirectToComputePage(params.serviceId, location),
+    beforeLoad: ({ context, params, location }) =>
+      redirectPlanByType(context.client, params.serviceId, location),
+    component: page("plan page"),
   });
   const settings = createRoute({
     getParentRoute: () => service,
@@ -134,7 +141,7 @@ async function landingFor(type: string, initialPath: string) {
       staticEvents,
     ]),
     history: createMemoryHistory({ initialEntries: [initialPath] }),
-    context: { client: clientFor(type), session: null },
+    context: { client: clientFor(type, suspended), session: null },
   });
   render(<RouterProvider router={router} />);
   const text = await screen.findByText(/ page$|^deploy /);
@@ -173,13 +180,21 @@ describe("a cron job's URLs (w3/m554)", () => {
       "/services/srv-1/settings?lang=de#compute",
       "settings page",
     ],
-    [
-      "/services/srv-1/plan",
-      "/services/srv-1/settings#compute",
-      "settings page",
-    ],
+    // Render's standalone plan page (w3/105).
+    ["/services/srv-1/plan", "/services/srv-1/plan", "plan page"],
+    ["/cron/srv-1/plan?lang=de", "/services/srv-1/plan?lang=de", "plan page"],
   ])("%s lands on %s", async (from, href, shown) => {
     expect(await landingFor("cron_job", from)).toEqual({ href, page: shown });
+  });
+
+  it.each([
+    ["/services/srv-1/plan", "/services/srv-1/settings"],
+    ["/cron/srv-1/plan?lang=de", "/services/srv-1/settings?lang=de"],
+  ])("a suspended cron job's %s lands on %s", async (from, href) => {
+    expect(await landingFor("cron_job", from, true)).toEqual({
+      href,
+      page: "settings page",
+    });
   });
 });
 
@@ -216,6 +231,12 @@ describe("every other type keeps its pages (w3/m554)", () => {
       "compute page",
     ],
     [
+      "private_service",
+      "/services/srv-1/plan?lang=de#top",
+      "/services/srv-1/compute?lang=de#top",
+      "compute page",
+    ],
+    [
       "static_site",
       "/services/srv-1/runs",
       "/static/srv-1/events",
@@ -232,6 +253,7 @@ describe("the route files call those helpers", () => {
     [RunsRoute, "redirectRunsByType"],
     [BuildsRoute, "redirectBuildsByType"],
     [ComputeRoute, "redirectCronCompute"],
+    [PlanRoute, "redirectPlanByType"],
   ] as const)("%#", (route, helper) => {
     expect(String(route.options.beforeLoad)).toContain(helper);
   });
