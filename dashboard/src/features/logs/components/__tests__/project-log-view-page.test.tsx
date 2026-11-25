@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { ProjectLogViewPage } from "../project-log-view-page";
 import type { ProjectLogViewType } from "../../lib/project-log-views";
 import type { ProjectLogViewerProps } from "../project-log-viewer";
@@ -68,13 +68,15 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
     params,
     search,
     children,
+    ...rest
   }: {
     to: string;
     params: Record<string, string>;
     search: Record<string, string>;
     children: ReactNode;
-  }) => (
+  } & ComponentProps<"a">) => (
     <a
+      {...rest}
       href={`${to.replace(/\$(\w+)/g, (_, key: string) => params[key])}?savedSearchId=${search.savedSearchId}`}
     >
       {children}
@@ -180,12 +182,14 @@ describe("ProjectLogViewPage", () => {
       />,
     );
     expect(screen.getByText("View not found")).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Open Request Logs" }),
-    ).toHaveAttribute(
+    const open = screen.getByRole("link", { name: "Open Request Logs" });
+    expect(open).toHaveAttribute(
       "href",
       "/project/prj-observed/observability/logs/request?savedSearchId=svs-req",
     );
+    // A Button-slotted link, which the layout's touch region grows to 44px
+    // on a phone (w3/099).
+    expect(open).toHaveAttribute("data-slot", "button");
     expect(viewerProps).toHaveLength(0);
   });
 

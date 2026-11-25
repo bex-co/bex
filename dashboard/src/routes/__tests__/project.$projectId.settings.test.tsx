@@ -240,9 +240,15 @@ function stripReserve(classes: string) {
     .join(" ");
 }
 
-/** A ready button's classes, or a reserved slot's invisible button box. */
+/**
+ * A ready button's classes, or a reserved slot's invisible button box. The
+ * project layout's touch region grows a ready button to 44px below 64rem or
+ * on a coarse pointer (w3/099), which its reservation draws with classes.
+ */
 function buttonBox(element: Element): string | undefined {
-  if (element.matches("button")) return element.className;
+  if (element.matches("button")) {
+    return `${element.className} max-lg:h-11 pointer-coarse:h-11`;
+  }
   const reserved = element.querySelector(":scope > span.invisible");
   return reserved ? stripReserve(reserved.className) : undefined;
 }

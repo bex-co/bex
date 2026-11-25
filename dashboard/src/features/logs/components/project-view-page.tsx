@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { EmptyState } from "@/common/components/empty-state";
-import { buttonVariants } from "@/common/components/ui/button";
+import { Button } from "@/common/components/ui/button";
 import { PageFrame } from "@/common/components/page-frame";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { SavedSearchType } from "@/graphql/definitions";
@@ -89,13 +89,12 @@ export function ProjectViewPage({
             description={t("logs.viewNotFoundBody")}
             action={
               fallbackView ? (
-                <ProjectViewLink
-                  projectId={projectId}
-                  view={fallbackView}
-                  className={buttonVariants({ variant: "outline", size: "sm" })}
-                >
-                  {t("logs.viewOpen", { name: fallbackView.name })}
-                </ProjectViewLink>
+                // A Button-slotted link, so the touch region sizes it.
+                <Button asChild variant="outline" size="sm">
+                  <ProjectViewLink projectId={projectId} view={fallbackView}>
+                    {t("logs.viewOpen", { name: fallbackView.name })}
+                  </ProjectViewLink>
+                </Button>
               ) : undefined
             }
           />

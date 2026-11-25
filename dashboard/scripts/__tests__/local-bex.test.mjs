@@ -563,3 +563,74 @@ describe("local-bex.mjs API keys", () => {
     expect(offered).toContain("services");
   });
 });
+
+// A project's observability views (w3/m505, w3/m508) run offline: the seeded
+// project has Render's three default views and its Service Metrics charts
+// answer one series per service, labelled RESOURCE (w3/099's touch-target
+// walk was taken on these pages).
+describe("local-bex.mjs project observability views", () => {
+  it("lists the seeded project's default views, by type, and none for an unknown project", async () => {
+    const query = `
+      query SavedSearches($projectId: String!, $type: SavedSearchType) {
+        savedSearches(projectId: $projectId, type: $type) { id name type filters }
+      }
+    `;
+    const all = await graphql("SavedSearches", query, {
+      projectId: "prj-local0001",
+    });
+    expect(all.data.savedSearches.map((v) => [v.type, v.name])).toEqual([
+      ["APPLICATION_LOGS", "Application Logs"],
+      ["REQUEST_LOGS", "Request Logs"],
+      ["METRICS", "Service Metrics"],
+    ]);
+    expect(all.data.savedSearches[0].filters).toEqual({
+      filters: [],
+      version: 1,
+    });
+    const metrics = await graphql("SavedSearches", query, {
+      projectId: "prj-local0001",
+      type: "METRICS",
+    });
+    expect(metrics.data.savedSearches.map((v) => v.type)).toEqual(["METRICS"]);
+    const unknown = await graphql("SavedSearches", query, {
+      projectId: "prj-missing",
+    });
+    expect(unknown.data.savedSearches).toEqual([]);
+  });
+
+  it("charts each of the project's services as its own RESOURCE series", async () => {
+    const result = await graphql(
+      "ProjectMetrics",
+      `
+        query ProjectMetrics($query: ProjectMetricsQueryInput!) {
+          projectMetrics(query: $query) {
+            series {
+              unit
+              labels {
+                field
+                value
+              }
+              values {
+                time
+                value
+              }
+            }
+            resources {
+              id
+              name
+              type
+              status
+            }
+          }
+        }
+      `,
+      { query: { project: "prj-local0001", name: "CPU" } },
+    );
+    const { series, resources } = result.data.projectMetrics;
+    expect(resources.length).toBeGreaterThan(0);
+    expect(
+      series.map((s) => s.labels.map(({ field, value }) => [field, value])),
+    ).toEqual(resources.map((r) => [["RESOURCE", r.id]]));
+    expect(series.every((s) => s.values.length > 0)).toBe(true);
+  });
+});

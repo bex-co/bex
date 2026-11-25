@@ -77,6 +77,10 @@ import {
 } from "@/common/components/section-navigation";
 import { cn } from "@/common/lib/utils/utils";
 import {
+  TOUCH_TARGET_HEIGHT,
+  TOUCH_TARGET_SIZE,
+} from "@/common/lib/touch-target";
+import {
   arrangeSsoProviders,
   rememberedSsoProviders,
   ssoRowColumns,
@@ -183,7 +187,10 @@ import {
   DEPLOY_BODY_CLASS,
   DEPLOY_PAGE_TOP_CLASS,
 } from "@/features/deploys/components/deploy-page-layout";
-import { CHART_FRAME_STYLE } from "@/features/metrics/components/chart-layout";
+import {
+  CHART_FRAME_STYLE,
+  PROJECT_LEGEND_ROW_CLASS,
+} from "@/features/metrics/components/chart-layout";
 import { ComputePlanSectionSkeleton } from "@/features/services/components/compute-plan-frames";
 import {
   AutoscalingLoadingCard,
@@ -569,15 +576,22 @@ export function OverviewEmptySkeleton() {
  * second row in both states (36 + 8 + 32px), rather than the ready card
  * pushing its table 40px down.
  */
-function SelectionToolbarSkeleton() {
+function SelectionToolbarSkeleton({
+  touch = false,
+}: {
+  /** In a touch region (a project's environment card, w3/099): the picker
+   *  and Move are 44px below 64rem or on a coarse pointer. */
+  touch?: boolean;
+}) {
+  const touchHeight = touch && TOUCH_TARGET_HEIGHT;
   return (
     <div
       data-skeleton-item="selection-toolbar"
       className="flex flex-wrap items-center gap-2"
     >
       <Skeleton className="h-3.5 w-[4.5625rem]" />
-      <Skeleton className="h-9 w-48" />
-      <Skeleton className="h-8 w-[3.875rem]" />
+      <Skeleton className={cn("h-9 w-48", touchHeight)} />
+      <Skeleton className={cn("h-8 w-[3.875rem]", touchHeight)} />
     </div>
   );
 }
@@ -1257,8 +1271,9 @@ export function WebhookCreatePageSkeleton() {
 
 /**
  * The project page while its route loads (w4/715): the eyebrow's own 16px
- * line over the 32px name row (the ready header is 48px), then the
- * environments section and card at their ready heights.
+ * line over the 32px name row (44px on a touch layout; the ready header is
+ * 48px, or 60px), then the environments section and card at their ready
+ * heights.
  */
 export function ProjectOverviewPageSkeleton() {
   const { t } = useTranslations();
@@ -1271,7 +1286,7 @@ export function ProjectOverviewPageSkeleton() {
           </p>
           <div className="flex items-center gap-2">
             <Skeleton className="h-6 w-48" />
-            <Skeleton className="size-8" />
+            <Skeleton className={cn("size-8", TOUCH_TARGET_SIZE)} />
           </div>
         </Region>
         <ProjectEnvironmentsSkeleton />
@@ -1294,14 +1309,22 @@ export function ProjectEnvironmentsSkeleton() {
           <div className="flex h-7 items-center">
             <Skeleton className="h-5 w-32" />
           </div>
-          <Skeleton className="h-9 w-64" />
+          <Skeleton className={cn("h-9 w-64", TOUCH_TARGET_HEIGHT)} />
         </div>
         <div className="flex flex-wrap gap-2">
-          <ReservedButton variant="default" size="sm">
+          <ReservedButton
+            variant="default"
+            size="sm"
+            className={TOUCH_TARGET_HEIGHT}
+          >
             <Plus />
             {t("projects.newService")}
           </ReservedButton>
-          <ReservedButton variant="outline" size="sm">
+          <ReservedButton
+            variant="outline"
+            size="sm"
+            className={TOUCH_TARGET_HEIGHT}
+          >
             <Plus />
             {t("environments.newButton")}
           </ReservedButton>
@@ -1334,18 +1357,22 @@ export function ProjectEnvironmentCardSkeleton() {
         }
         actions={
           <>
-            <ReservedButton variant="outline" size="sm">
+            <ReservedButton
+              variant="outline"
+              size="sm"
+              className={TOUCH_TARGET_HEIGHT}
+            >
               <Settings2 />
               {t("environments.manageButton")}
             </ReservedButton>
-            <Skeleton className="size-8" />
+            <Skeleton className={cn("size-8", TOUCH_TARGET_SIZE)} />
           </>
         }
       />
       <CardContent className="space-y-4">
         <ProjectResourceFiltersSkeleton />
         <div className="space-y-3">
-          <SelectionToolbarSkeleton />
+          <SelectionToolbarSkeleton touch />
           <TableRowsSkeleton rows={3} columns={5} />
         </div>
       </CardContent>
@@ -1382,8 +1409,14 @@ export function ProjectSettingsPageSkeleton() {
               data-skeleton-region="project-name-row"
               className="flex items-center gap-2"
             >
-              <Skeleton className="h-9 min-w-0 flex-1" />
-              <ReservedButton variant="outline" size="sm">
+              <Skeleton
+                className={cn("h-9 min-w-0 flex-1", TOUCH_TARGET_HEIGHT)}
+              />
+              <ReservedButton
+                variant="outline"
+                size="sm"
+                className={TOUCH_TARGET_HEIGHT}
+              >
                 <Pencil />
                 {t("projects.editNameButton")}
               </ReservedButton>
@@ -1402,7 +1435,10 @@ export function ProjectSettingsPageSkeleton() {
             </CardDescription>
           </CardHeader>
           <CardContent data-skeleton-region="project-delete-action">
-            <ReservedButton variant="destructive">
+            <ReservedButton
+              variant="destructive"
+              className={TOUCH_TARGET_HEIGHT}
+            >
               {t("projects.deleteCardButton")}
             </ReservedButton>
           </CardContent>
@@ -1435,7 +1471,9 @@ export function ProjectRouteSkeleton() {
       route="project-active-child"
       className="flex min-h-0 flex-1 flex-col"
     >
-      <Region name="active-child" className="contents">
+      {/* The layout's touch region (w3/099), which this frame stands in
+          for while the project loads. */}
+      <Region name="active-child" className="contents" data-touch-region="">
         {child}
       </Region>
     </PendingFrame>
@@ -1467,8 +1505,18 @@ export function ProjectLogViewPageSkeleton() {
           name="log-toolbar"
           className="flex flex-wrap items-center gap-3 max-sm:gap-2"
         >
-          <Skeleton className="h-9 min-w-48 flex-1 max-sm:min-w-0 max-sm:basis-full" />
-          <Skeleton className="h-8 w-40 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1" />
+          <Skeleton
+            className={cn(
+              "h-9 min-w-48 flex-1 max-sm:min-w-0 max-sm:basis-full",
+              TOUCH_TARGET_HEIGHT,
+            )}
+          />
+          <Skeleton
+            className={cn(
+              "h-8 w-40 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1",
+              TOUCH_TARGET_HEIGHT,
+            )}
+          />
           <div className={LOG_ACTIONS_CLASS}>
             <Skeleton className={LOG_ICON_BUTTON_CLASS} />
             <Skeleton className={LOG_ICON_BUTTON_CLASS} />
@@ -1530,14 +1578,14 @@ export function ProjectMetricsViewPageSkeleton() {
           name="metrics-toolbar"
           className="flex flex-wrap items-center gap-3"
         >
-          <Skeleton className="h-8 w-40" />
+          <Skeleton className={cn("h-8 w-40", TOUCH_TARGET_HEIGHT)} />
         </Region>
-        <Region
-          name="metrics-legend"
-          className="flex min-h-7 flex-wrap items-center gap-2"
-        >
+        <Region name="metrics-legend" className={PROJECT_LEGEND_ROW_CLASS}>
           {["w-24", "w-20", "w-28"].map((width) => (
-            <Skeleton key={width} className={`h-7 ${width}`} />
+            <Skeleton
+              key={width}
+              className={cn("h-7", width, TOUCH_TARGET_HEIGHT)}
+            />
           ))}
         </Region>
         {cards.map((card) => (
@@ -1555,7 +1603,13 @@ export function ProjectMetricsViewPageSkeleton() {
                         {chart.title}
                       </div>
                       {chart.control ? (
-                        <Skeleton className={`h-8 ${chart.control}`} />
+                        <Skeleton
+                          className={cn(
+                            "h-8",
+                            chart.control,
+                            TOUCH_TARGET_HEIGHT,
+                          )}
+                        />
                       ) : null}
                     </div>
                     <Skeleton

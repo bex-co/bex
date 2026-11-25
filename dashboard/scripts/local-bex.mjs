@@ -1405,6 +1405,25 @@ const PROJECTS = [
   },
 ];
 
+// A project's Render default views (w3/m505): Application Logs, Request Logs
+// and Service Metrics, each with Render's empty filter document. An unknown
+// project has none.
+const DEFAULT_SAVED_SEARCHES = [
+  ["APPLICATION_LOGS", "Application Logs"],
+  ["REQUEST_LOGS", "Request Logs"],
+  ["METRICS", "Service Metrics"],
+];
+function savedSearchesFor(projectId) {
+  if (!PROJECTS.some((p) => p.id === projectId)) return [];
+  return DEFAULT_SAVED_SEARCHES.map(([type, name], i) => ({
+    __typename: "SavedSearch",
+    id: `svs-${projectId}-${i + 1}`,
+    name,
+    type,
+    filters: { filters: [], version: 1 },
+  }));
+}
+
 // Environments (w1/m32, bex extension — docs/ADR032-environments.md): named
 // subsets of all supported Project resources. Two populated rows make the
 // selected-Environment table, metadata, contextual creation, and mixed-kind
@@ -2987,6 +3006,47 @@ function resolveGraphQL({ operationName, variables = {} }) {
       return { projects: byOwner(PROJECTS, variables.ownerId) };
     case "Project":
       return { project: PROJECTS.find((p) => p.id === variables.id) ?? null };
+    // A project's observability views (w3/m505, Render's saved searches):
+    // every seeded project has Render's three default views, so its
+    // Application Logs, Request Logs and Service Metrics pages run offline.
+    case "SavedSearches":
+      return {
+        savedSearches: savedSearchesFor(variables.projectId).filter(
+          (view) => !variables.type || view.type === variables.type,
+        ),
+      };
+    // A Service Metrics view's chart (w3/m508): one series per service of
+    // the project, labelled RESOURCE as bex-api groups them by default.
+    case "ProjectMetrics": {
+      const project = PROJECTS.find((p) => p.id === variables.query?.project);
+      const services = SERVICES.filter((s) =>
+        project?.serviceIds.includes(s.id),
+      );
+      return {
+        projectMetrics: {
+          __typename: "ProjectMetrics",
+          series: services.flatMap((s) =>
+            syntheticMetrics({
+              ...variables.query,
+              filters: [{ field: "RESOURCE", values: [s.id] }],
+            }).map((series) => ({
+              ...series,
+              labels: [
+                { __typename: "MetricLabel", field: "RESOURCE", value: s.id },
+              ],
+            })),
+          ),
+          resources: services.map((s) => ({
+            __typename: "ProjectMetricResource",
+            id: s.id,
+            name: s.name,
+            type: s.type,
+            environmentId: null,
+            status: "CHARTED",
+          })),
+        },
+      };
+    }
     case "CreateProject": {
       const created = {
         __typename: "Project",

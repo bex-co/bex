@@ -31,6 +31,16 @@ export const CHART_FRAME_STYLE = {
   maxHeight: CHART_MAX_HEIGHT,
 } as const;
 
+/**
+ * A project Service Metrics view's legend row (w3/m508): one toggle per
+ * resource, its height reserved before the first answer names them. The
+ * project layout is a touch region (w3/099), so below 64rem or on a coarse
+ * pointer each toggle is 44px tall and the row reserves that. The view's
+ * loading frame draws the same row.
+ */
+export const PROJECT_LEGEND_ROW_CLASS =
+  "flex min-h-7 flex-wrap items-center gap-2 max-lg:min-h-11 pointer-coarse:min-h-11";
+
 /** The size a chart's SVG box draws in. */
 export interface ChartBox {
   width: number;

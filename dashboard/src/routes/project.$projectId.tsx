@@ -70,9 +70,15 @@ function RouteComponent() {
     projectId,
     projectResult.state === "ready" ? projectResult.resource.ownerId : null,
   );
+  // Every project page is a touch region, as a service's pages are (w3/099):
+  // below the desktop layout or on a coarse pointer its buttons, selects and
+  // inputs take the 44px target (style.css). `contents` keeps the child's
+  // scroller a flex item of the shell's column.
   return (
     <DashboardLayout>
-      {adopting ? <ProjectRouteSkeleton /> : <Outlet />}
+      <div data-touch-region="" className="contents">
+        {adopting ? <ProjectRouteSkeleton /> : <Outlet />}
+      </div>
     </DashboardLayout>
   );
 }

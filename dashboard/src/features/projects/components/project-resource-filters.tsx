@@ -4,6 +4,8 @@ import { Button } from "@/common/components/ui/button";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { ReservedButton } from "@/common/components/reserved-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { TOUCH_TARGET_HEIGHT } from "@/common/lib/touch-target";
+import { cn } from "@/common/lib/utils/utils";
 import type {
   ProjectResourceDisplayCounts,
   ProjectResourceFilterState,
@@ -87,7 +89,8 @@ export function ProjectResourceFilters({
 /**
  * The filters' loading preview (w4/715): the five type pills at their ready
  * boxes, each count reserved as one digit, so they wrap onto the same rows
- * (two at 390px), over the full-width search box.
+ * (two at 390px), over the full-width search box, at the project layout's
+ * touch size (w3/099).
  */
 export function ProjectResourceFiltersSkeleton() {
   const { t } = useTranslations();
@@ -95,12 +98,17 @@ export function ProjectResourceFiltersSkeleton() {
     <div className="space-y-3">
       <div className="flex flex-wrap gap-1">
         {KIND_KEYS.map(({ kind, key }) => (
-          <ReservedButton key={kind} variant="outline" size="sm">
+          <ReservedButton
+            key={kind}
+            variant="outline"
+            size="sm"
+            className={TOUCH_TARGET_HEIGHT}
+          >
             {t(key)} (0)
           </ReservedButton>
         ))}
       </div>
-      <Skeleton className="h-9 w-full" />
+      <Skeleton className={cn("h-9 w-full", TOUCH_TARGET_HEIGHT)} />
     </div>
   );
 }

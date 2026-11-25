@@ -20,6 +20,7 @@ import { graphQLErrorExtensions } from "@/common/lib/graphql-error";
 import { cn } from "@/common/lib/utils/utils";
 import { useWorkspace } from "@/features/workspaces/context";
 import { proFeaturesPlan } from "@/features/workspaces/types";
+import { PROJECT_LEGEND_ROW_CLASS } from "@/features/metrics/components/chart-layout";
 import { MetricSection } from "@/features/metrics/components/metric-section";
 import { RangeSelect } from "@/features/metrics/components/range-select";
 import {
@@ -301,7 +302,7 @@ function ProjectLegend({
     <div
       role="group"
       aria-label={t("metrics.projectLegendLabel")}
-      className="flex min-h-7 flex-wrap items-center gap-2"
+      className={PROJECT_LEGEND_ROW_CLASS}
     >
       {legend.map((entry) => {
         const shown = !hidden.has(entry.id);
