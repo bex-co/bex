@@ -15,6 +15,7 @@ import {
   type LogThemeSetting,
   type ThemeSettings,
 } from "./settings.ts";
+import { applyThemeColor } from "./theme-color.ts";
 import { getSystemTheme, SYSTEM_DARK_QUERY } from "./utils.ts";
 
 /** `?theme=light|dark|system` wins over the stored theme, for this page. */
@@ -44,7 +45,9 @@ const pick = (source: ThemeSettings, keys: string[]): Partial<ThemeSettings> =>
  * the next, so two answers can never land out of order; each change resolves
  * to whether the account kept it. A preview (`previewTheme`: Appearance's
  * Dashboard Theme row being edited, w3/097) shows a theme on the page and is
- * written neither to the browser's copy nor to the account.
+ * written neither to the browser's copy nor to the account. The theme shown
+ * also gives `<meta name="theme-color">` its page colour (w3/098), as
+ * Render's provider does.
  */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Read after hydration, so the server's render and the first client render
@@ -117,6 +120,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         root.classList.add(target);
       }
       root.classList.toggle(HIGH_CONTRAST_CLASS, highContrast);
+      applyThemeColor(target);
     };
     apply();
     // "System" follows the preference while the page is open, not only the

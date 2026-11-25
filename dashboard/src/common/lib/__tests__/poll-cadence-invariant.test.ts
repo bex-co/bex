@@ -22,6 +22,8 @@ const ALLOWED: Record<string, string> = {
     "a snapshot freshness bound that outlives one baseline poll, not a request",
   "features/router/page.tsx: 30_000": "a local clock tick, no network",
   "common/lib/polling.ts: 29_000": "the timeout itself",
+  "test/theme-tokens.ts: 0031308":
+    "the sRGB transfer function's threshold (0.0031308), not a time",
 };
 
 function readSources(): Map<string, string> {

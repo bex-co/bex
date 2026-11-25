@@ -3,6 +3,7 @@ import { act, render } from "@testing-library/react";
 import { useContext } from "react";
 import { ThemeProvider } from "../index";
 import { ThemeProviderContext } from "../context";
+import { THEME_COLORS } from "../theme-color";
 import { SYSTEM_DARK_QUERY, THEME_STORAGE_KEY } from "../utils";
 
 // A controllable prefers-color-scheme query: `prefer` flips it and delivers a
@@ -51,6 +52,8 @@ const applied = () => {
       ? "light"
       : null;
 };
+const themeColor = () =>
+  document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.content;
 
 let setThemeRef: ((t: "light" | "dark" | "system") => void) | null = null;
 function Capture() {
@@ -74,6 +77,7 @@ describe("System theme follows preference changes (w4/315)", () => {
       value: originalMatchMedia,
     });
     document.documentElement.classList.remove("light", "dark");
+    document.querySelector('meta[name="theme-color"]')?.remove();
   });
 
   it("switches light → dark → light while the choice stays system", () => {
@@ -85,8 +89,11 @@ describe("System theme follows preference changes (w4/315)", () => {
     expect(applied()).toBe("light");
     media.prefer("dark");
     expect(applied()).toBe("dark");
+    // The browser bar's colour follows too (w3/098).
+    expect(themeColor()).toBe(THEME_COLORS.dark);
     media.prefer("light");
     expect(applied()).toBe("light");
+    expect(themeColor()).toBe(THEME_COLORS.light);
     // A preference change never persists a resolved color as the choice.
     expect(localStorage.setItem).not.toHaveBeenCalled();
   });

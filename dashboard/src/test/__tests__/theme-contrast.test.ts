@@ -1,6 +1,20 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import {
+  blockAfter,
+  css,
+  DARK,
+  DARK_HC,
+  DARK_HC_OVERRIDES,
+  LIGHT,
+  LIGHT_HC,
+  LIGHT_HC_OVERRIDES,
+  oklch,
+  parseOklch,
+  read,
+  type Colour,
+  type Rgb,
+  type Tokens,
+} from "@/test/theme-tokens";
 
 // The colour pairs the dashboard actually uses, in both themes, against WCAG
 // 2.1 AA: 4.5:1 for text, 3:1 for the part of a control that identifies it (the
@@ -10,36 +24,8 @@ import { describe, expect, it } from "vitest";
 // 7:1 for text (WCAG AAA) and 4.5:1 for the focus ring and for the borders and
 // inputs that identify a control.
 
-const ROOT = resolve(import.meta.dirname, "../../..");
-const read = (path: string) => readFileSync(resolve(ROOT, path), "utf8");
-
-// ---- colour maths ----------------------------------------------------------
-
-type Rgb = [number, number, number]; // sRGB, 0..1, gamma-encoded
-interface Colour {
-  rgb: Rgb;
-  alpha: number;
-}
-
-const clamp = (x: number) => Math.min(1, Math.max(0, x));
-const encode = (x: number) =>
-  x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055;
 const decode = (x: number) =>
   x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
-
-/** CSS `oklch(L C H)` to gamma-encoded sRGB, out-of-gamut values clipped. */
-function oklch(lightness: number, chroma: number, hue: number): Rgb {
-  const a = chroma * Math.cos((hue * Math.PI) / 180);
-  const b = chroma * Math.sin((hue * Math.PI) / 180);
-  const l = (lightness + 0.3963377774 * a + 0.2158037573 * b) ** 3;
-  const m = (lightness - 0.1055613458 * a - 0.0638541728 * b) ** 3;
-  const s = (lightness - 0.0894841775 * a - 1.291485548 * b) ** 3;
-  return [
-    encode(clamp(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s)),
-    encode(clamp(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s)),
-    encode(clamp(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s)),
-  ];
-}
 
 function luminance([r, g, b]: Rgb): number {
   return 0.2126 * decode(r) + 0.7152 * decode(g) + 0.0722 * decode(b);
@@ -57,57 +43,7 @@ function over(top: Colour, bottom: Rgb): Rgb {
   ) as Rgb;
 }
 
-// `oklch(0.52 0.16 138.3)`, `oklch(76.9% 0.188 70.08)`, `oklch(0.5 0.1 20 / 15%)`
-function parseOklch(value: string): Colour {
-  const match = value
-    .trim()
-    .match(
-      /^oklch\(\s*([\d.]+)(%?)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+)(%?))?\s*\)$/,
-    );
-  if (!match) throw new Error(`not an oklch() colour: ${value}`);
-  const lightness = Number(match[1]) / (match[2] ? 100 : 1);
-  const alpha =
-    match[5] === undefined ? 1 : Number(match[5]) / (match[6] ? 100 : 1);
-  return { rgb: oklch(lightness, Number(match[3]), Number(match[4])), alpha };
-}
-
-// ---- the stylesheet's tokens and Tailwind's palette -------------------------
-
-type Tokens = Record<string, string>;
-
-function declarations(block: string): Tokens {
-  const tokens: Tokens = {};
-  for (const match of block.matchAll(
-    /--([a-z0-9-]+):\s*(oklch\([^)]*\))\s*;/g,
-  )) {
-    tokens[match[1]] = match[2];
-  }
-  return tokens;
-}
-
-function blockAfter(css: string, selector: RegExp): string {
-  const start = css.search(selector);
-  if (start < 0) throw new Error(`style.css has no ${selector}`);
-  const open = css.indexOf("{", start);
-  const close = css.indexOf("\n}", open);
-  return css.slice(open + 1, close);
-}
-
-const css = read("src/style.css");
-const LIGHT: Tokens = declarations(blockAfter(css, /\n:root,\n\.light \{/));
-const DARK: Tokens = {
-  ...LIGHT,
-  ...declarations(blockAfter(css, /\n\.dark \{/)),
-};
-// High Contrast Mode's twins: each theme with its high-contrast overrides.
-const LIGHT_HC_OVERRIDES = declarations(
-  blockAfter(css, /\n\.light\.high-contrast \{/),
-);
-const DARK_HC_OVERRIDES = declarations(
-  blockAfter(css, /\n\.dark\.high-contrast \{/),
-);
-const LIGHT_HC: Tokens = { ...LIGHT, ...LIGHT_HC_OVERRIDES };
-const DARK_HC: Tokens = { ...DARK, ...DARK_HC_OVERRIDES };
+// ---- Tailwind's palette -----------------------------------------------------
 
 const palette: Tokens = {};
 for (const match of read("node_modules/tailwindcss/theme.css").matchAll(
@@ -474,8 +410,8 @@ interface Source {
   text: string;
 }
 
-// The stylesheet is the one `css` above: Vitest hands a `?raw` CSS import back
-// empty.
+// The stylesheet is the `css` theme-tokens reads from disk: Vitest hands a
+// `?raw` CSS import back empty.
 const SOURCES: Source[] = [
   ...Object.entries(
     import.meta.glob<string>(

@@ -41,6 +41,17 @@
     }
     root.classList.toggle("high-contrast", highContrast);
 
+    // The theme's page colour on <meta name="theme-color"> (w3/098), for a
+    // phone's browser bar. ThemeScript fills in the colours from
+    // theme-provider/theme-color.ts, which the ThemeProvider applies too.
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "theme-color";
+      document.head.appendChild(meta);
+    }
+    meta.content = __THEME_COLORS__[theme];
+
     // Persist via cookie (for SSR)
     document.cookie =
       "vite-ui-theme=" + theme + "; path=/; max-age=31536000; SameSite=Lax";
