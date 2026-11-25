@@ -22,7 +22,7 @@
 
 ## Outcome (2026-08-19)
 
-Implemented in one session. **Backend suite green on a pristine Postgres (`go test ./...` exit 0), backend lint 0 issues, dashboard suite green (2357 tests), typecheck + lint clean; uncommitted pending `/ship`.**
+Implemented in one session. **Backend suite green on a pristine Postgres (`go test ./...` exit 0), backend lint 0 issues, dashboard suite green (2357 tests), typecheck + lint clean; uncommitted pending `/land`.**
 
 **Root cause had two halves, and the deeper one was deliberate-turned-dangerous.** `members.Invite` never checked whether the address already belonged to a member, so it minted a pending invite; the auth gate then redeemed it by email match on the victim's next request, where `store.redeemInvite` ran `INSERT … ON CONFLICT (tenant_id, subject) DO UPDATE SET role = EXCLUDED.role`. That upsert was **intentional** — three comments described it as letting an invite "UPGRADE an existing membership's role" — but the identical write silently **downgrades**, which is how re-inviting a live admin at the dialog's default role demoted them.
 

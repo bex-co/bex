@@ -334,7 +334,7 @@ class CLIAnalyticsTest(unittest.TestCase):
         types = ["timestamptz"] + ["text"] * 5 + ["boolean", "bigint"] + ["text"] * 5 + [
             "boolean", "text[]", "text[]", "text"]
         # An explicit length check, not zip(strict=True): that needs Python 3.10,
-        # and macOS ships 3.9, where /ship's gate runs this suite.
+        # and macOS ships 3.9, where /land's gate runs this suite.
         self.assertEqual(len(released), len(types))
         shape = ", ".join(f"NULL::{t} AS {c}" for c, t in zip(released, types))
         self.psql(f"DROP VIEW cli_analytics.events; CREATE VIEW cli_analytics.events AS SELECT {shape}")

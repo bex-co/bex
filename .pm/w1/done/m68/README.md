@@ -52,7 +52,7 @@
 
 **Parity (t008).** All changes are one core verb each, so REST/GraphQL/MCP move together by construction. Render's CONTRIBUTOR descriptions are **not capturable** from this workspace's tier (Scale+-gated), so ADR024 now records bex's boundary as a deliberate, possibly-divergent choice with the evidence that would settle it — rather than claiming a parity match nobody verified. The dashboard has no role-awareness at all, so the newly-refused controls render and then fail; filed as `w1/047` instead of built here.
 
-**Uncommitted pending `/ship`.**
+**Uncommitted pending `/land`.**
 
 ## Source + Goal linkage
 

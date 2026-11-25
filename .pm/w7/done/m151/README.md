@@ -32,7 +32,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** Approved by `$pm all for w7 and $ship` after the additional w7 brainstorm (2026-09-17); source review at d7ea2ac52. These are source-backed findings, not newly reproduced production failures. Environment deletion in environments/service.go explicitly retains datastore labels; keyvalue.Service.SetProjectID and its Postgres counterpart change the project without clearing an incompatible environment. Views expose these labels directly.
+- **Source:** Approved by `$pm all for w7 and $land` after the additional w7 brainstorm (2026-09-17); source review at d7ea2ac52. These are source-backed findings, not newly reproduced production failures. Environment deletion in environments/service.go explicitly retains datastore labels; keyvalue.Service.SetProjectID and its Postgres counterpart change the project without clearing an incompatible environment. Views expose these labels directly.
 - **Goal linkage:** ADR008 deterministic, machine-readable resource state; ADR018 Projects & environments (grouping).
 - **Expected outcome:** Coherent datastore placement after moves and deletion. The acceptance matrix above defines the observable result.
 - **Why now / deduplication:** Ordinary grouping operations expose raw datastore labels and can leave contradictory placement or obsolete inherited policy. w4/m32 repaired App departures and deletion-time IP clearing; w6/m20 added datastore membership but neither establishes this complete datastore lifecycle invariant.

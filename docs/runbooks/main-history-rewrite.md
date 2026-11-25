@@ -1,6 +1,6 @@
 # Runbook: rewrite `main`'s history on purpose
 
-`main` cannot be deleted or force-pushed: the repository ruleset **`main history`** (id `27183382`, w3/m365) carries `deletion` and `non_fast_forward` rules with no bypass actor. Ordinary fast-forward pushes — every `/ship`, the image-pin bot's `chore(deploy): pin platform images` commits — are unaffected, and no pull request or status check is required.
+`main` cannot be deleted or force-pushed: the repository ruleset **`main history`** (id `27183382`, w3/m365) carries `deletion` and `non_fast_forward` rules with no bypass actor. Ordinary fast-forward pushes — every `/land`, the image-pin bot's `chore(deploy): pin platform images` commits — are unaffected, and no pull request or status check is required.
 
 A rewrite is sometimes the right call. On 2026-11-04 `main` was rewritten twice to purge build artifacts and evidence dumps (AGENTS.md, `.pm/DO_NOT_DO.md` #NO-ARTIFACTS-IN-GIT). This is the only sanctioned path for the next one. Never rewrite `main` to remove a credential that has been rotated: a revoked credential in history is harmless, and rotation is the fix (ADR019 §Decision 6).
 

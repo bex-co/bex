@@ -57,7 +57,7 @@ Attempted the outstanding manual check with Playwright driving a real Chrome ses
 
 **Why WebAuthn was never caught broken until now:** every prior verification pass (t002's original work, the 2026-07-11 prod smoke) exercised TOTP/recovery-codes end-to-end but explicitly deferred WebAuthn as "can't be scripted over curl" — nobody had driven an actual browser through the ceremony against the real deployed stack until this session.
 
-**Status:** both fixes are source-only, **not deployed**. Per this repo's rules only `/ship` commits/pushes, so getting them live (and re-verifying the full enroll → logout → aal2-challenge ceremony in a real browser) is the one thing left. See `t009` for the full writeup.
+**Status:** both fixes are source-only, **not deployed**. Per this repo's rules only `/land` commits/pushes, so getting them live (and re-verifying the full enroll → logout → aal2-challenge ceremony in a real browser) is the one thing left. See `t009` for the full writeup.
 
 ## Closeout (2026-07-14)
 

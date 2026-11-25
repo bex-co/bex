@@ -27,5 +27,5 @@ All five fixes land as described; `TestGraphQLSetAutoscalingMutation`/`TestGraph
 - **Source:** `w6/003.md`, `w6/004.md`, `w6/005.md`, `w6/007.md`, `w6/008.md` — all filed from `w6/m6`'s security review (2026-07-11/12), grouped via `/pm-brainstorm` 2026-07-12 per the sizing rule (each individually sub-hour); notes moved to `done/`.
 - **Goal linkage:** `GOAL.md` #7, clearing the `w6/m6` audit's low-priority backlog before it goes stale.
 - **Expected outcome:** PKCE mandated for every authorization_code client, two timing side-channels closed, no upstream error-text leakage, CRD-level input validation for hand-applied Apps, and the pre-existing autoscaling-mutation test break fixed.
-- **Why now:** each item is sub-hour and homeless (the sizing rule keeps them out of their own milestones); t005 in particular is an urgent pre-existing test break the audit flagged "fix before the next `/ship` that touches `internal/apps`."
+- **Why now:** each item is sub-hour and homeless (the sizing rule keeps them out of their own milestones); t005 in particular is an urgent pre-existing test break the audit flagged "fix before the next `/land` that touches `internal/apps`."
 - **Render parity closing task: included** — t004/t005 touch validation error shape and a GraphQL mutation, both user-facing.

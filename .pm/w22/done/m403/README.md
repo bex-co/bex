@@ -102,7 +102,7 @@ Run on `dev-10` (w22 has no slot) with the agent leg and the `agent-stub` test d
   1. 装 `kind`、`clusterctl`（brew，或带 sha256 校验的二进制，worker 选）。
   2. colima 默认 profile 改成 8 CPU / 16 GiB 并启动（`bex-w21` 共用这个 Docker，启动前看一眼 `docker ps`）。
   3. 跑 `bash scripts/mock-cluster.sh`、`scripts/dev-env.sh <N> up` 和 `agent-up`。N 只能是 1 到 10，w22 没有自己的槽：先 `status` 选一个没起来的，用完 `down`；agent 腿是集群级独占。
-  4. 模型只用 `agent-stub` 测试替身（固定回复，不花钱）；worker 要扩展它（`scripts/dev-env/agent/model-stub.py`），让 turn 能停留到被 Stop，这是代码，单独 `/ship`。**没有批准** `agent-openrouter`。
+  4. 模型只用 `agent-stub` 测试替身（固定回复，不花钱）；worker 要扩展它（`scripts/dev-env/agent/model-stub.py`），让 turn 能停留到被 Stop，这是代码，单独 `/land`。**没有批准** `agent-openrouter`。
   5. 护栏（worker 的）：数据卷剩余磁盘低于 25 GiB 就停下，把读数写进新闸门。
   6. 结束：`dev-N down`；`docker ps` 没有别的容器时 `colima stop`。
 - **对 t011 步骤 3 的修订（有依据）：** 替身只服务 Anthropic 端点（claude profile）。codex、gemini、muse 需要真实 key，而花钱的 key 没有批准，所以这几个引擎的"进程树被杀"记为 **not run**，写进 "Live check"，不假装验证过。要补，需要用户另批一次真实 key。其余步骤（排队、位置、重排、编辑、删除、send now、Stop 后续发、bex-api 重启后队列仍只执行一次）都在本地做。

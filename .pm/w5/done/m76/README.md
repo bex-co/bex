@@ -54,7 +54,7 @@ On a live environment: a repo-backed service's Settings page shows its Source (`
 
 ### Closeout gates recorded on 2026-09-04 (resolved below)
 
-1. Ship the local access-validation fix and its tests, then verify its production rollout. The repository requires an explicit `$ship` invocation before commit/push.
+1. Ship the local access-validation fix and its tests, then verify its production rollout. The repository requires an explicit `$land` invocation before commit/push.
 2. Re-run the live rejected-private/missing and accepted-public cases after rollout; confirm the error is visible and the rejected save leaves source/deploy history unchanged.
 3. Start with a healthy scratch service, repeat repo↔image saves, and prove the healthy active artifact stays in place until a manual deploy successfully activates the new source. The prior audit's 503 cannot satisfy this gate.
 4. Complete the desktop/mobile pending-versus-ready geometry check and record the final evidence, then move t006 and the milestone to `done/`.

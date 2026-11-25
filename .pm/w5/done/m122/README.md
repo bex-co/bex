@@ -86,5 +86,5 @@ Skipped:
 
 - `scripts/test_log_shipper.py`: 7 tests pass in the chart's pinned Alloy image (Docker).
 - `scripts/gitops-validate.sh` passes.
-- The backend suite on fresh Postgres, OpenFGA and OpenBao is green (68 packages); `/ship`'s gate runs it again before the push.
+- The backend suite on fresh Postgres, OpenFGA and OpenBao is green (68 packages); `/land`'s gate runs it again before the push.
 - `make lint`: 0 issues in all four modules, including the whole-program dead-code pass.

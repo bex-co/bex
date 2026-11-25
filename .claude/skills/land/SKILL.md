@@ -1,23 +1,23 @@
 ---
-name: ship
+name: land
 metadata:
   internal: "true"
 description: >-
-  Safely bring main up to date, commit intended pending changes, and push to origin/main — resolving any rebase conflicts autonomously and stopping only when a decision genuinely needs a human. Use when the user explicitly asks to ship the current main branch or invokes the repository's ship workflow.
+  Safely bring main up to date, commit intended pending changes, and push to origin/main — resolving any rebase conflicts autonomously and stopping only when a decision genuinely needs a human. Use when the user explicitly asks to land the current main branch or invokes the repository's land workflow (`/land` in Claude Code, `$land` in Codex). Not Claude Code's built-in /ship, which opens a pull request instead of pushing to main.
 
 
 allowed-tools: Bash(git status:*), Bash(git pull:*), Bash(git fetch:*), Bash(git diff:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git rebase:*), Bash(git show:*), Bash(git checkout:*), Bash(git reset:*), Bash(bash scripts/ship-gates.sh:*), Bash(gh run view:*), Bash(gh run rerun:*), Read, Edit, Grep, Glob
 ---
 
-# Task: Ship the current main branch
+# Task: Land the current main branch
 
-Bring the local `main` up to date, commit any pending work, pass the pre-push gates (Step 5), and push to `origin/main`. A successful push is the end of the ship — do not watch CI, do not monitor the deploy, do not chase runs to green. Report the pushed HEAD and stop.
+Bring the local `main` up to date, commit any pending work, pass the pre-push gates (Step 5), and push to `origin/main`. A successful push is the end of the landing — do not watch CI, do not monitor the deploy, do not chase runs to green. Report the pushed HEAD and stop.
 
 ## Conflicts are yours to resolve — do not hand them back
 
-A rebase or merge conflict is a normal part of shipping, **not** a reason to stop. When one appears, resolve it yourself using the procedure in Step 3, validate the result, continue the rebase, and push. Never pause at a conflict to ask "how should I resolve this?", never list the conflicted files and wait, and never leave the rebase half-finished for the user to pick up.
+A rebase or merge conflict is a normal part of landing, **not** a reason to stop. When one appears, resolve it yourself using the procedure in Step 3, validate the result, continue the rebase, and push. Never pause at a conflict to ask "how should I resolve this?", never list the conflicted files and wait, and never leave the rebase half-finished for the user to pick up.
 
-The **only** conditions under which /ship stops before the push are:
+The **only** conditions under which /land stops before the push are:
 
 1. Not on `main` (Step 1).
 2. Two sides of a conflict encode **materially different behavior** (not just different text), repository evidence — surrounding code, tests, docs, the commits on each side — cannot tell you which one is intended, and picking wrong would ship a real bug. Text-only disagreements, docs, comments, formatting, imports, generated output, lockfiles, and changes that simply coexist are never in this category.
@@ -70,7 +70,7 @@ If the working tree is clean and there's nothing to commit, skip Step 4: still d
 git pull --rebase origin main
 ```
 
-If the pull/rebase has conflicts, resolve them yourself and continue shipping:
+If the pull/rebase has conflicts, resolve them yourself and continue landing:
 
 1. Inspect `git status`, the unmerged-file list (`git diff --name-only --diff-filter=U`), each combined diff, and relevant surrounding code/history. For difficult cases, inspect both index stages (`git show :2:<path>` and `git show :3:<path>`) and the commits being replayed.
 2. Infer the intent of both sides and produce the smallest coherent merge that preserves both whenever possible. Follow current repository conventions and update dependent code, tests, generated outputs, or documentation when the combined result requires it.
@@ -109,8 +109,8 @@ bash scripts/ship-gates.sh origin/main
 They report main's CI status and gate this push's own code. The code gates run in a detached worktree at `HEAD`, so uncommitted or in-progress edits neither break nor rescue the commit being pushed (the first run in a checkout builds that worktree from scratch):
 
 - **Main is red: a warning, never a stop** (user decision 2026-10-21; see `AGENTS.md` Rules). When the newest completed run on `main` of `deploy (bex via Argo)` or of a test suite (`test (backend)`, `test (operator)`, `test (dashboard)`, `test (OpenSandbox controller patches)`, each run on every push touching its inputs) failed, the gate names it and still exits 0. Handle it this way, and never wait:
-  1. **Fix CI first if you can.** Pause the work in hand, diagnose the red run (`gh run view <id> --log-failed`), and make the smallest correct fix. Commit it alone as `fix(ci): …` saying it fixes red main, run its gate as `bash scripts/ship-gates.sh --fixes-red-main origin/main` (the flag belongs to the gate script, not to `git push`), push it, then resume and ship the paused work.
-  2. **If it cannot be fixed now, ship anyway.** That covers a fix that needs credentials, runner or host access, or a user decision; a red signal that is stale (already fixed, later runs cancelled); or an infra flake (rerun the failed jobs in the background, but do not wait for them). Say in the report what was red and what you tried.
+  1. **Fix CI first if you can.** Pause the work in hand, diagnose the red run (`gh run view <id> --log-failed`), and make the smallest correct fix. Commit it alone as `fix(ci): …` saying it fixes red main, run its gate as `bash scripts/ship-gates.sh --fixes-red-main origin/main` (the flag belongs to the gate script, not to `git push`), push it, then resume and land the paused work.
+  2. **If it cannot be fixed now, land anyway.** That covers a fix that needs credentials, runner or host access, or a user decision; a red signal that is stale (already fixed, later runs cancelled); or an infra flake (rerun the failed jobs in the background, but do not wait for them). Say in the report what was red and what you tried.
   3. **Never wait for CI and never hold commits locally because main is red.**
 - **The real-DB backend suite fails: a stop.** For a push touching `lego/backend/**`, `lego/types/**` or the seeded authz model (markdown excluded), the gate brings up the CI-pinned Postgres + OpenFGA + OpenBao (`scripts/backend-test-deps.sh`) and runs `go test -p 1 ./...` with `BEX_TEST_REQUIRE_DEPS=1`. Locally those tests otherwise skip, and only CI ran them. A failure here is this push's own defect: fix it properly, commit the fix, and run the gate again before pushing. If it cannot be fixed in this session, stop and report it.
 - **The dashboard checks fail: a stop.** For a push touching `dashboard/**` (markdown excluded), the gate runs the dashboard's own CI checks, `yarn lint` (typecheck, eslint, knip) and `yarn test`, in about two minutes. A failure here is this push's own defect, handled like the backend suite (w6/m159).
@@ -120,7 +120,7 @@ They report main's CI status and gate this push's own code. The code gates run i
 - **A pushed commit looks like it carries a credential: a stop.** Every push runs `scripts/gitleaks.sh` (the pinned gitleaks CLI with `.gitleaks.toml`) over `origin/main..HEAD`, and the findings print redacted. Remove the value from your unpushed commits, as for push protection below, and rotate it if it is real. If its shape is never a credential (an id, a digest, a protocol nonce), allowlist that shape in `.gitleaks.toml` with the reason, scoped to the rule that fired; never a path or a whole rule. A scan that cannot run is also a stop, because the repository is public and an unscanned push cannot be taken back.
 - **A pushed commit's message carries a skip-CI marker: a stop.** `[skip ci]`, `[ci skip]`, `[no ci]`, `[skip actions]` or `[actions skip]` anywhere in a message, even quoted in the body, makes GitHub run no workflow for the whole push, so the secret scan and the test suites never see it. Rewrite your unpushed commits without it (for example `git reset --soft origin/main` and commit again).
 - **A pushed backend migration numbers at or below `origin/main`'s highest: a stop.** `scripts/migration_order_guard.py` names each one. A rebase over a teammate's newer migration keeps yours at its old number, every fresh database still applies it, and a database already past that number (production) skips it for good (w4/701). Rename your unpushed migration's `.up.sql`/`.down.sql` pair above the highest on `origin/main`, update any test that reads it by name, and run the gates again. Never renumber a migration already on `origin/main`: repeat its DDL idempotently in a new, higher migration instead.
-- **A pushed line names a workspace that is not bex's own: a warning, never a stop.** `scripts/workspace_id_guard.py` lists each `tea-` id the push adds under `.pm/` or `docs/` that `scripts/lib/first_party_workspaces.txt` does not hold and its line does not mark `(disposable)`. The repository is public ([the rule](../../../.pm/AGENTS.md#the-board-is-public)), so before the push mark a disposable QA or drill workspace, add a new bex fixture to the list, or hash or drop another tenant's id in your unpushed commits. Then ship.
+- **A pushed line names a workspace that is not bex's own: a warning, never a stop.** `scripts/workspace_id_guard.py` lists each `tea-` id the push adds under `.pm/` or `docs/` that `scripts/lib/first_party_workspaces.txt` does not hold and its line does not mark `(disposable)`. The repository is public ([the rule](../../../.pm/AGENTS.md#the-board-is-public)), so before the push mark a disposable QA or drill workspace, add a new bex fixture to the list, or hash or drop another tenant's id in your unpushed commits. Then land.
 
 ```bash
 git push origin main
@@ -136,14 +136,14 @@ If the push is rejected by **push protection** (`GH013: Repository rule violatio
 4. If it is a test fixture or a published test vector, change the fixture so it no longer matches the provider's format.
 5. Run the gates and push again.
 
-`main` itself refuses deletion and non-fast-forward pushes (ruleset `main history`). A deliberate history rewrite follows `docs/runbooks/main-history-rewrite.md`; it is never part of a ship.
+`main` itself refuses deletion and non-fast-forward pushes (ruleset `main history`). A deliberate history rewrite follows `docs/runbooks/main-history-rewrite.md`; it is never part of a landing.
 
 ## Step 6 — Report
 
-Once the push succeeds, the ship is done. Print one line — the shipped `HEAD` SHA + subject:
+Once the push succeeds, the landing is done. Print one line — the landed `HEAD` SHA + subject:
 
 ```
-Shipped: a1b2c3d feat: add tp-backend IDL + CLI
+Landed: a1b2c3d feat: add tp-backend IDL + CLI
 ```
 
 Do not watch CI runs, monitor the deploy, or report on them.

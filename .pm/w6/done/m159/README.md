@@ -9,7 +9,7 @@
 | t001 | [Measure local typecheck, lint, knip and related-test run times and pick the gate's scope](done/t001.md) — **DONE** | 30m | — |
 | t002 | [Run the dashboard checks in ship-gates for pushes that touch dashboard/](done/t002.md) — **DONE** | 60m | t001 |
 | t003 | [Self-test the dashboard gate with a stubbed yarn](done/t003.md) — **DONE** | 40m | t002 |
-| t004 | [Document the dashboard gate in /ship and AGENTS.md](done/t004.md) — **DONE** | 20m | t002 |
+| t004 | [Document the dashboard gate in /land and AGENTS.md](done/t004.md) — **DONE** | 20m | t002 |
 | t005 | [Simplify](done/t005.md) — **DONE** | 15m | t003, t004 |
 | t006 | [Test coverage](done/t006.md) — **DONE** | 20m | t005 |
 | t007 | [Closeout](done/t007.md) — **DONE** | 10m | t006 |

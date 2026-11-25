@@ -81,7 +81,7 @@ Either way the worker's first step is t008 step 1; t009 closes the milestone aft
   1. 装 `kind`、`clusterctl`（brew，或带 sha256 校验的二进制放进 scratchpad，worker 选）。除此之外不装别的。
   2. colima 默认 profile 改成 8 CPU / 16 GiB 并启动。`bex-w21` 工作树共用这个 Docker，启动前看一眼 `colima list` 和 `docker ps`。
   3. 跑 `bash scripts/mock-cluster.sh` 和 `scripts/dev-env.sh <N> up`、`agent-up`（AGENTS.md 已预批准）。`dev-env.sh` 的 N 只能是 1 到 10，w22 没有自己的槽：先 `status` 选一个没起来的 N，用完 `down`；agent 腿是集群级独占。
-  4. 模型只用 `agent-stub` 测试替身（固定回复，不花钱）。它现在不会调用工具、也不会放慢输出，所以 worker 要先扩展它（`scripts/dev-env/agent/model-stub.py`），让一个 turn 能写出文件、能停留到被 Stop；这是代码，单独走 `/ship`，是 worker 的技术判断。**没有批准** `agent-openrouter`（会花 OpenRouter 余额）。
+  4. 模型只用 `agent-stub` 测试替身（固定回复，不花钱）。它现在不会调用工具、也不会放慢输出，所以 worker 要先扩展它（`scripts/dev-env/agent/model-stub.py`），让一个 turn 能写出文件、能停留到被 Stop；这是代码，单独走 `/land`，是 worker 的技术判断。**没有批准** `agent-openrouter`（会花 OpenRouter 余额）。
   5. 护栏（worker 的，不是用户说的）：数据卷剩余磁盘低于 25 GiB 就停下，把读数写进新闸门；验证期间不开 Xcode 和 iOS Simulator（内存）。
   6. 结束：`dev-N down`；`docker ps` 没有别的容器时 `colima stop`；保留工具和 16 GiB 配置。
 - **批准的范围，生产探针部分（超出 D1，所以单独记）：**
@@ -89,7 +89,7 @@ Either way the worker's first step is t008 step 1; t009 closes the milestone aft
   - 一个 agent session，占位 key，把 turn 挂住（现有 agent 腿的做法：没有模型请求离开集群）；在挂住的 turn 上 Stop 一次；在 sandbox 里写一个文件；发一条后续消息，在新 sandbox 里读到这个文件；然后取消 session。
   - 这会在生产 Zot 里多存一个保留镜像。探针必须确认取消之后它被释放（registry 里没有残留），并清理一次性 workspace。
   - **没有批准：** 改保留时间的设置、重启 bex-api、在生产开 2FA 强制、对生产做队列操作（m403）。
-  - 这条探针的代码是 `scripts/verify-sandbox-isolation.sh` agent 腿的扩展，单独走 `/ship`，先本地后生产：本地发现的缺陷先修，不把坏探针放到生产。
+  - 这条探针的代码是 `scripts/verify-sandbox-isolation.sh` agent 腿的扩展，单独走 `/land`，先本地后生产：本地发现的缺陷先修，不把坏探针放到生产。
 - **闸门已清除，哪里没清：** 授权已给，机器经核实够用，所以不再有外部闸门。如果 bring-up 失败（ghcr 再次拉不下来、磁盘低于护栏、等待超时），把精确的失败原因写成新闸门再停靠，不要猜。
 - **worker 的下一步（顺序）：** 搭环境一次，服务 m402 t006、m403 t011 和本项；然后 t008 的本地部分：步骤 1 用扩展后的替身，步骤 2 把 `BEX_AGENT_INTERRUPT_RETENTION` 缩短后等过期，看到丢失提示、文件没了（生产不能缩短保留时间，所以这一步只在本地）；然后生产探针只验步骤 1；再 t009 收尾。
 - **验收：** t008 的两个结果在真实栈上看到（步骤 1 在本地和生产各一次，步骤 2 在本地）；证据只写摘要（`#NO-ARTIFACTS-IN-GIT`）。

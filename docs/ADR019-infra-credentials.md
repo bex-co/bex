@@ -146,7 +146,7 @@ All workflows target operator-custodied ARM64 self-hosted runners. Since 2026-09
 
 ### 6. Credentials are refused at push time — secret scanning and push protection on the public repository (2026-11-13, w3/m365)
 
-`bex-co/bex` is public and most of its commits come from agents whose sessions hold `.env`, kubeconfigs and provider tokens. A credential that reaches public history cannot be taken back, so the repository refuses it before it lands: GitHub **secret scanning** and **push protection** are enabled, and a push carrying a recognized credential format is refused with `GH013`. The response is always to remove the value and rotate it if it is real — never the bypass link (ship skill, AGENTS.md). Rotation, not a history rewrite, is the fix for an exposed credential.
+`bex-co/bex` is public and most of its commits come from agents whose sessions hold `.env`, kubeconfigs and provider tokens. A credential that reaches public history cannot be taken back, so the repository refuses it before it lands: GitHub **secret scanning** and **push protection** are enabled, and a push carrying a recognized credential format is refused with `GH013`. The response is always to remove the value and rotate it if it is real — never the bypass link (land skill, AGENTS.md). Rotation, not a history rewrite, is the fix for an exposed credential.
 
 - **Layers** (generic patterns amended 2026-11-15). Push protection only knows provider formats, so generic patterns are caught by gitleaks, run through `scripts/gitleaks.sh` (one checksum-pinned CLI) with `.gitleaks.toml`:
   - **Before the push:** `scripts/ship-gates.sh` scans `origin/main..HEAD`, and a finding stops the push. This is the only gitleaks layer that runs before the credential is public.

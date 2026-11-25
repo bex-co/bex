@@ -31,7 +31,7 @@ import (
 // response. That divergence is gone, and its entry must go too, or it would
 // silently excuse the next regression at the same pointer. The tally is only
 // complete when every test ran with its dependencies — a full run (no -run or
-// -skip) against the real test Postgres, which CI's backend job and /ship
+// -skip) against the real test Postgres, which CI's backend job and /land
 // provide — so other runs skip the check.
 func RunSuite(m *testing.M, suite string) int {
 	code := m.Run()

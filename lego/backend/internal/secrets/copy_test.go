@@ -130,7 +130,7 @@ func TestEnvCopierSkipsAnOptionalCopyWhoseSourceIsUnset(t *testing.T) {
 	}
 }
 
-// The same against a real OpenBao (CI and /ship's gate provide one): the
+// The same against a real OpenBao (CI and /land's gate provide one): the
 // copy's read, compare and seed run over the store production writes to.
 func TestEnvCopierAgainstOpenBao(t *testing.T) {
 	bao := realBatchBao(t)

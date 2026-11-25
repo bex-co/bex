@@ -1197,7 +1197,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 | 旧静态站迁移 | w8/192 | 全量 inventory / 必需 rewrite 真实完成后再恢复 cutoff 移除，due 2026-11-22 |
 | 构建 narration 缺行 | w8/069 | 保留 recurrence gate，下一次先留 Job/pod/source/Loki 证据，无需用户选择 |
 
-**交接状态：** 17 项已在活跃路径；当前 D1/D2/D3 尚未收到答案，按 unblock 技能不提前启动 loopx。决策批次结束后 `$loopx w8` 会处理全部开放队列（包括原 active 223），不只本次恢复项。本轮 `$unblock` 没有新增 commit/push 权限；仓库要求用户明确 `$ship`。未提交或发布任何改动。
+**交接状态：** 17 项已在活跃路径；当前 D1/D2/D3 尚未收到答案，按 unblock 技能不提前启动 loopx。决策批次结束后 `$loopx w8` 会处理全部开放队列（包括原 active 223），不只本次恢复项。本轮 `$unblock` 没有新增 commit/push 权限；仓库要求用户明确 `$land`。未提交或发布任何改动。
 
 证据入口：Render [原生工具表](https://render.com/docs/native-runtimes#tools-and-utilities)、[Postgres 扩展表](https://render.com/docs/postgresql-extensions)；GitHub [Bex v0.3.3](https://github.com/bex-co/bex/releases/tag/bex-cli/v0.3.3)、[上游 PR #54](https://github.com/render-oss/cli/pull/54)、[#55](https://github.com/render-oss/cli/pull/55)、[#56](https://github.com/render-oss/cli/pull/56)、[#57](https://github.com/render-oss/cli/pull/57)；[w7/m156 生产验收](../w7/done/m156/README.md)。
 

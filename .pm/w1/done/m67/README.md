@@ -50,7 +50,7 @@ The design decision worth recording: **it meters failures, not traffic.** A per-
 
 **Lint note.** `make lint` reports 18 pre-existing operator-module issues in files this milestone never touched; the backend module lints clean.
 
-**Uncommitted pending `/ship`.**
+**Uncommitted pending `/land`.**
 
 ## Source + Goal linkage
 

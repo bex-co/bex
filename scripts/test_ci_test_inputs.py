@@ -343,7 +343,7 @@ class Affected(unittest.TestCase):
 
 
 class Triggered(unittest.TestCase):
-    """What a push runs, for /ship's gate: the workflow's own push paths decide, so no copy drifts."""
+    """What a push runs, for /land's gate: the workflow's own push paths decide, so no copy drifts."""
 
     def test_a_push_runs_the_workflow_on_the_paths_it_lists(self):
         filters = cti.path_filters(workflow(["pr/**"], ["lego/cli/**", "docs/untracked-guide.md", "scripts/bex-cli-*.sh"]))
@@ -412,7 +412,7 @@ class RealTree(unittest.TestCase):
 
     def test_every_suite_fails_its_own_run_when_its_paths_drop_a_read(self):
         # The seven script-running suites once relied on scripts.yml and the
-        # ship gate alone, so a push that bypassed /ship drifted their lists.
+        # ship gate alone, so a push that bypassed /land drifted their lists.
         repo, tracked = HERE.parent, cti._tracked(HERE.parent)
         step = re.compile(r"^\s*(?:-\s+)?run:\s*python3 -B scripts/ci_test_inputs\.py (\S+)\s*$", re.M)
         real = cti.path_filters

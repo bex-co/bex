@@ -8,7 +8,7 @@ description: >-
 
 # Task: File a proposal, ship it, drain the workstream
 
-`/pmx [<selection>] to <wN> [--no-listen]` runs three steps back to back, without pausing between them: `/pm <selection> to <wN>` → `/ship` the filing → `/loopx <wN>`.
+`/pmx [<selection>] to <wN> [--no-listen]` runs three steps back to back, without pausing between them: `/pm <selection> to <wN>` → `/land` the filing → `/loopx <wN>`.
 
 ## Arguments
 
@@ -28,7 +28,7 @@ Parse from `$ARGUMENTS`:
 
 [`.claude/skills/pm/SKILL.md`](../pm/SKILL.md) is canonical — read it and `.pm/DO_NOT_DO.md`, and apply their rules exactly; do not restate or diverge from them here.
 
-1. **Sync first.** On `main`, `git fetch origin main` and `git pull --ff-only origin main`. If the fast-forward is refused, keep the local tree and let step 3's `/ship` rebase. Then rescan numbering (next free `mN` across `.pm`, next free `NNN` in `<wN>`): the proposal's numbers are provisional.
+1. **Sync first.** On `main`, `git fetch origin main` and `git pull --ff-only origin main`. If the fast-forward is refused, keep the local tree and let step 3's `/land` rebase. Then rescan numbering (next free `mN` across `.pm`, next free `NNN` in `<wN>`): the proposal's numbers are provisional.
 2. **Re-check each selected item at write time.** Another session may have filed or shipped it since the proposal, or it may now conflict with `DO_NOT_DO.md`. Skip such an item and report why; never file it twice.
 3. **Run the matching `/pm` subcommand per item, in priority order:** `new milestone` (the proposal's implementation tasks with their titles, estimates and `depends_on`; task files filled from the proposal's evidence — concrete paths, steps, acceptance criteria; then the standing closing tasks, with Render parity included or omitted as the proposal flagged), `add` for inbox notes, `promote` for an existing note, `unblock` for a recorded gate-cleared finding.
 4. **Record decision state honestly.** Selecting an item is approval to schedule it, not sign-off on a divergence. Write the proposal's recommendation for an open decision as the proposal's recommendation and the rule it rests on (e.g. ADR008 Render parity first), never as a user decision. Where the repository rules make that recommendation the default (parity work is never parked on an optional decision), the tasks implement it and name the still-open sign-off in the milestone's `## Source + Goal linkage`.
@@ -36,9 +36,9 @@ Parse from `$ARGUMENTS`:
 
 ## 3. Ship the filing
 
-Invoke `/ship` for this board-only change, staging only the files step 2 wrote: one `docs(pm): file <ids> (from /pm-brainstorm for <wN>)` commit. Invoking `/pmx` is the user's explicit request to ship this filing and the items `/loopx` lands. Shipping before the drain puts the items on `origin/main` where other sessions see them, and keeps `/loopx`'s per-item commits free of filing noise.
+Invoke `/land` for this board-only change, staging only the files step 2 wrote: one `docs(pm): file <ids> (from /pm-brainstorm for <wN>)` commit. Invoking `/pmx` is the user's explicit request to ship this filing and the items `/loopx` lands. Shipping before the drain puts the items on `origin/main` where other sessions see them, and keeps `/loopx`'s per-item commits free of filing noise.
 
-If `/ship` stops on something it cannot resolve, stop here and report: a filing that cannot land is a hard stop, as in `/loopx`.
+If `/land` stops on something it cannot resolve, stop here and report: a filing that cannot land is a hard stop, as in `/loopx`.
 
 ## 4. Drain
 

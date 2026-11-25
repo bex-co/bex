@@ -66,4 +66,4 @@ Compared against Render's live-captured role docs (`docs/render-artifacts/{team-
 - **Docs:** ADR012 (matrix enforcement + audit tier), ADR024 (billing role now live), ADR040 (authorization prose ×3 + Render-parity), ADR018 (parity ledger), `render-artifacts/billing-onboarding.md` (authorization row + flagged developer-view residual). `w7/014` closed in `w7/done/014.md`.
 - **Gates green:** backend `go test -p 1 ./...` against ephemeral Postgres + OpenFGA (all packages ok); backend `make lint-backend` 0 issues; dashboard `yarn test` (1767 tests), `yarn typecheck`, `yarn lint`; markdown prettier clean.
 - **Flagged residual (deliberate, recorded — not silently accepted):** Render lets a *developer* view the billing readiness panel; bex gates `Status` on `can_manage_billing`, so a developer sees invoice data via the usage `billing` object but not the onboarding readiness. A `can_view_billing` split is a possible future refinement, out of m60 scope. Documented in `render-artifacts/billing-onboarding.md`.
-- **Not committed** — awaiting `/ship` per repo rules.
+- **Not committed** — awaiting `/land` per repo rules.

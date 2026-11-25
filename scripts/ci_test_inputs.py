@@ -58,8 +58,8 @@ sample path a tracked file turned the operator suite red
 Every suite with tests or scripts to scan runs `python3 -B
 scripts/ci_test_inputs.py <its workflow>` as a step, so a push that drops a
 read from its paths fails that suite's own run as well as scripts.yml's
-real-tree test and /ship's gate (the seven script-running suites had no such
-step, so a push that bypassed /ship drifted their lists silently). This file
+real-tree test and /land's gate (the seven script-running suites had no such
+step, so a push that bypassed /land drifted their lists silently). This file
 is no suite's read: a change to it runs scripts.yml, whose real-tree test
 checks every suite.
 

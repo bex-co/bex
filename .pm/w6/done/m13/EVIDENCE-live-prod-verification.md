@@ -2,7 +2,7 @@
 
 Captured against **real prod** (`api.bex.co` / `dashboard.bex.co` + `kubectl` on the Hetzner app cluster via `scripts/fetch-app-kubeconfig.sh`). This is the first of two independent verification passes this milestone ran (see `README.md`'s "Two independent verification passes" for how they were reconciled); a second pass reproduced every result below with its own scratch identities/screenshots and additionally found BUG 3 (documented in `README.md`, not here).
 
-**Update — BUG 1 and BUG 2 below are now fixed and regression-tested**, contradicting this file's original "both unfixed" framing (left below for the historical repro detail, which is still accurate): `store.AcceptInvitesForEmail` enforces plan limits at accept time (`lego/backend/internal/store/members.go`), and `deploy/gitops/base/bex-api-apps-rbac.yaml` grants the missing `jobs.batch` read. Both are written to the working tree, uncommitted, awaiting `/ship` — see `README.md` for the full fix description and regression tests.
+**Update — BUG 1 and BUG 2 below are now fixed and regression-tested**, contradicting this file's original "both unfixed" framing (left below for the historical repro detail, which is still accurate): `store.AcceptInvitesForEmail` enforces plan limits at accept time (`lego/backend/internal/store/members.go`), and `deploy/gitops/base/bex-api-apps-rbac.yaml` grants the missing `jobs.batch` read. Both are written to the working tree, uncommitted, awaiting `/land` — see `README.md` for the full fix description and regression tests.
 
 ## t001 — ship gate: **already shipped; prod IS running the fixes** (board premise was stale)
 
@@ -16,7 +16,7 @@ The task assumed `42e139f` was undeployed and the m12 diff uncommitted. Neither 
   - `BEX_KRATOS_ADMIN_URL=http://kratos-admin.auth.svc:80` on the running `bex-api` (was the broken `:4434`).
   - `kubectl auth can-i list|delete keyvalues.app.bex.co --as=…:bex-api` → **yes / yes** (was the 403).
 
-No `/ship` was needed. ✅
+No `/land` was needed. ✅
 
 ## t002 — orphaned `m11-purge-test`: deleted
 

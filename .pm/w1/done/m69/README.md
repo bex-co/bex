@@ -29,7 +29,7 @@
 
 ## Notes
 
-- Repo rule: work stays uncommitted until the user runs `/ship`.
+- Repo rule: work stays uncommitted until the user runs `/land`.
 - The identity-less arm of `AuthorizeLabeled`/`GetApp` itself is pre-existing intentional design for the HMAC redeploy path (which only patches repo-matched Apps) — this milestone binds the Blueprint sync to a real tenant rather than narrowing that arm, unless implementation reveals the narrowing is required.
 
 ## Outcome (2026-08-18)

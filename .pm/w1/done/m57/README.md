@@ -1,6 +1,6 @@
 # w1 · m57 — Codify static-site's manual prod fixes into gitops
 
-**Worker:** worker1 **Goal:** the three hand-applied `kubectl` fixes keeping prod static sites alive (re-minted `bex-registry-pull`, the static-server ClusterRoleBinding, the hand-patched static-server Deployment) become git-owned — Argo-managed or bootstrap-codified — so a redeploy can no longer silently regress them **Status:** done (2026-07-30) — codification shipped to the tree + live prod residue removed; the ConfigMap adoption + `samples-lifecycle.sh static-site` through-a-redeploy is the post-`/ship` acceptance gate (see Closeout below)
+**Worker:** worker1 **Goal:** the three hand-applied `kubectl` fixes keeping prod static sites alive (re-minted `bex-registry-pull`, the static-server ClusterRoleBinding, the hand-patched static-server Deployment) become git-owned — Argo-managed or bootstrap-codified — so a redeploy can no longer silently regress them **Status:** done (2026-07-30) — codification shipped to the tree + live prod residue removed; the ConfigMap adoption + `samples-lifecycle.sh static-site` through-a-redeploy is the post-`/land` acceptance gate (see Closeout below)
 
 ## Tasks (in order)
 
@@ -23,11 +23,11 @@ The evidence line from `w9/014`, verified live on prod: Argo shows the static-se
 **DoD status against live prod** (read-only snapshot via `scripts/fetch-app-kubeconfig.sh`, 2026-07-30):
 
 - ✅ **One** static-server (`bex-system/bex-static-server`), Argo **Synced/Healthy**, tracking the **CI-pinned digest** — no orphan/duplicate, no hand-set image. (The 2026-07-18 `default/bex-static-server` orphan is already gone; the topology moved to a single bex-system server + ExternalName aliases.)
-- ✅ **Config-complete**: `BEX_BASE_DOMAIN` present via `bex-static-config`. The ConfigMap is now **git-owned** (`lego/operator/config/prod/static-config.yaml`), byte-identical to the (previously hand-applied) live one → Argo **adopts** it on the next `/ship` with no value change. `config/default` (local) deliberately renders none, so the credential-less CAPD static-server stays degraded-503, never CrashLoops.
+- ✅ **Config-complete**: `BEX_BASE_DOMAIN` present via `bex-static-config`. The ConfigMap is now **git-owned** (`lego/operator/config/prod/static-config.yaml`), byte-identical to the (previously hand-applied) live one → Argo **adopts** it on the next `/land` with no value change. `config/default` (local) deliberately renders none, so the credential-less CAPD static-server stays degraded-503, never CrashLoops.
 - ✅ **No hand-applied residue**: `bex-registry-pull` authenticates as `bex-builder` (custody in `scripts/registry-secrets.sh`); the two hand-applied `*-apps-reader` CRBs + the `bex-static-server-apps-reader` ClusterRole were **deleted on prod** after proving the shipped Argo-managed `bex-static-server` CRB grants the SA the same `apps get/list/watch` (backup captured first). Both `hello-static.onbex.co` and `static-site.onbex.co` serve **HTTP 200** post-cleanup.
 - ✅ **CI guard**: `scripts/gitops-validate.sh` now pins the singular config-complete static-server, serve==publish origin parity, local origin-freeness, and the pull-secret identity (negative-tested).
 
-**Post-`/ship` acceptance gate (the one live item that needs a redeploy):** run `scripts/samples-lifecycle.sh static-site` green through an actual Argo redeploy. The ConfigMap becomes Argo-**owned** on ship; a redeploy then structurally cannot regress the fixes. Current prod state is already the fixed end-state (verified above), so this is confirmation, not remediation.
+**Post-`/land` acceptance gate (the one live item that needs a redeploy):** run `scripts/samples-lifecycle.sh static-site` green through an actual Argo redeploy. The ConfigMap becomes Argo-**owned** on ship; a redeploy then structurally cannot regress the fixes. Current prod state is already the fixed end-state (verified above), so this is confirmation, not remediation.
 
 **Prod intervention log:** deleted `clusterrolebinding/bex-static-server-apps-reader`, `clusterrolebinding/bex-static-server-default-apps-reader`, `clusterrole/bex-static-server-apps-reader` (all hand-applied, non-Argo, superseded). No credential values printed or committed.
 

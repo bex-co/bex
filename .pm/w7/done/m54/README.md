@@ -22,7 +22,7 @@ PSL membership is an explicitly accepted non-goal: real-browser evidence must re
 
 ## Source + Goal linkage
 
-- **Source:** User `$ship` then `$pm` handoff on 2026-07-28 after repairing `srv-d9e5sbd5qe4s73b1mjq0`; the security review found that browser-to-tenant-private-network routing remains closed, while browser-domain behavior, ExternalName authority, and shared S3 credential boundaries needed explicit decisions.
+- **Source:** User `$land` then `$pm` handoff on 2026-07-28 after repairing `srv-d9e5sbd5qe4s73b1mjq0`; the security review found that browser-to-tenant-private-network routing remains closed, while browser-domain behavior, ExternalName authority, and shared S3 credential boundaries needed explicit decisions.
 - **Goal linkage:** Advances `GOAL.md` V0 #7 (security review) and the w7 tenant-isolation charter by protecting the public static-site edge and its platform-side credentials without changing the operator → types ← backend architecture.
 - **Expected outcome:** The accepted browser divergence remains explicit and reproducible; tenant static sites cannot turn Traefik's ExternalName support into an internal routing primitive or expose Terraform state or other buckets through a compromised static serving/publishing component.
 - **Why now:** The production repair activated cross-namespace ExternalName routing and exposed the build-namespace static credential path. The milestone closed the controllable cluster/object-store risks and forced an explicit owner decision on the remaining shared-cookie behavior.

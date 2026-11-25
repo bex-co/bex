@@ -6,7 +6,7 @@ name: release (bex mobile)
 # is published only after every build finishes and every submission completes,
 # so a release page never describes a binary the stores did not receive.
 # The tag carries the version; mobile/app.json must already match it
-# (`yarn bump`, landed through /ship) because the store binary reads it there.
+# (`yarn bump`, pushed to main through /land) because the store binary reads it there.
 # eas-cli and its whole dependency graph come from tools/eas/package-lock.json
 # through `npm ci`, so a release never resolves a fresh npm graph next to
 # EXPO_TOKEN. The build job holds a read-only token; only the separate
@@ -99,7 +99,7 @@ jobs:
           APP_VERSION="$(jq -r '.expo.version' app.json)"
           PACKAGE_VERSION="$(jq -r '.version' package.json)"
           if [ "$VERSION" != "$APP_VERSION" ] || [ "$VERSION" != "$PACKAGE_VERSION" ]; then
-            echo "tag $VERSION, app.json $APP_VERSION, package.json $PACKAGE_VERSION differ — run yarn bump and /ship first" >&2
+            echo "tag $VERSION, app.json $APP_VERSION, package.json $PACKAGE_VERSION differ — run yarn bump and /land first" >&2
             exit 1
           fi
       - name: install dependencies

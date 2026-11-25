@@ -31,7 +31,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** Approved by `$pm all for w7 and $ship` after the additional w7 brainstorm (2026-09-17); source review at d7ea2ac52. These are source-backed findings, not newly reproduced production failures. environments/service.go SetDatabases/SetKeyValues, setResourceMembers, clearMembersForProject and clearEnvironmentMembers; projects/service.go setResourceMembers and Delete.
+- **Source:** Approved by `$pm all for w7 and $land` after the additional w7 brainstorm (2026-09-17); source review at d7ea2ac52. These are source-backed findings, not newly reproduced production failures. environments/service.go SetDatabases/SetKeyValues, setResourceMembers, clearMembersForProject and clearEnvironmentMembers; projects/service.go setResourceMembers and Delete.
 - **Goal linkage:** ADR008 predictable agent operations; ADR018 Projects & environments (grouping).
 - **Expected outcome:** Validate grouping mutations before changing members. The acceptance matrix above defines the observable result.
 - **Why now / deduplication:** Environment datastore membership uses ignoreUnknownIDs while env groups reject unknown IDs before writing. Project deletion authorizes and clears one environment at a time, so later refusal can follow earlier changes. Current grouping milestones implement assignment and ACL checks, not whole-request admission.

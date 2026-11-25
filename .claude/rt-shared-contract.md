@@ -4,9 +4,9 @@ Every `.claude/skills/rt-*/SKILL.md` routine follows this shared contract. Each 
 
 ## Execution & Shipping
 
-- A user request to run a routine authorizes the full cycle: plan, fix, verify, then invoke `$ship` (Codex) or `/ship` (Claude) directly in the same run. Honor explicit user limits such as audit-only or no-ship. A request to edit a skill does not authorize running the routine.
+- A user request to run a routine authorizes the full cycle: plan, fix, verify, then invoke `$land` (Codex) or `/land` (Claude) directly in the same run. Honor explicit user limits such as audit-only or no-ship. A request to edit a skill does not authorize running the routine.
 - Keep a concise execution plan in the conversation and update it as findings are confirmed. Continue into implementation without a planning approval pause. Do not create or file a `.pm` milestone/task as a prerequisite or substitute for fixing; use the board only if the user requests it.
-- After verification passes, follow the skill's ship phase without asking the user to invoke ship separately. Preserve the ship skill's branch, conflict-resolution, and safety rules.
+- After verification passes, follow the skill's land phase without asking the user to invoke land separately. Preserve the land skill's branch, conflict-resolution, and safety rules.
 - Fix confirmed findings directly in the working tree. If a fix cannot be finished safely in this run, revert only your partial work for that fix and record it under **Deferred** in the report — never leave the tree half-refactored.
 
 ## Value Bar & Anti-Noise Discipline

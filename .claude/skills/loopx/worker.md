@@ -8,10 +8,10 @@ Your job ends when the item has reached exactly one outcome and that outcome is 
 
 - Do not pick another item. Do not touch other items' board entries except to record your own verdict on this one.
 - Do not run any `scripts/loopx-guard.py` mode other than `outcome` (`start`, `end`, `board`, `wait`, `dispatch`, `settle`, `routine-due`, `routine-done` belong to the orchestrator).
-- Run your checks in the foreground and wait for them, with a long timeout where they need one (`/ship`'s gates can take 30 minutes). Never end your turn while a command of yours is still running in the background: the orchestrator would be woken by a result that is not one.
-- Load `/ship` and read the `/pm` skill once each. After that, follow the instructions already in your context instead of loading them again.
+- Run your checks in the foreground and wait for them, with a long timeout where they need one (`/land`'s gates can take 30 minutes). Never end your turn while a command of yours is still running in the background: the orchestrator would be woken by a result that is not one.
+- Load `/land` and read the `/pm` skill once each. After that, follow the instructions already in your context instead of loading them again.
 - Never ask the user, and never wait for a confirmation. A question you cannot settle from evidence is a **block**, with exactly what is needed from whom as its gate.
-- Work in this checkout. Do not create a git worktree for the item or for a subagent: `/ship` pushes `main` from here.
+- Work in this checkout. Do not create a git worktree for the item or for a subagent: `/land` pushes `main` from here.
 - **You share this working tree with teammate sessions.**
   - Start from `main`. Uncommitted `.pm` board work you did not write is a teammate's filing, not a problem. If your item is itself such a filing, or one is still uncommitted when you land your outcome, commit it first as its own `docs(pm): file <items>` commit, separate from yours, so authorship stays legible. Never edit the content of an item you did not file except to record your verdict on it.
   - Before each board write, re-read the file you are about to edit (it may have changed since you last read it) and apply the smallest edit that lands your verdict.
@@ -110,23 +110,23 @@ Then run `npx prettier@3.4.2 --write` on the markdown you touched outside `.pm/`
 
 ## 4. Ship it
 
-Invoke **`/ship`** ([`.claude/skills/ship/SKILL.md`](../ship/SKILL.md)). Because you made the changes this session, `/ship` runs session-aware: it stages exactly what you touched and writes the commit message from your knowledge.
+Invoke **`/land`** ([`.claude/skills/land/SKILL.md`](../land/SKILL.md)). Because you made the changes this session, `/land` runs session-aware: it stages exactly what you touched and writes the commit message from your knowledge.
 
 - **One outcome per ship.** Code and the item's own board move ship together; an outcome with no code (already met, blocked, deleted, promoted) ships alone as `docs(pm): <close|park|drop|promote> <target> — <one line>`. Never fold two items into one commit. A milestone large enough to need it may ship at task boundaries, provided every ship passes its gates and is self-contained.
-- `/ship` ends at a successful push. It does not watch CI or the deploy, and neither do you: the orchestrator reads CI for your commits afterwards, and a workflow your push turns red comes back to the loop as a fix.
-- If `/ship` surfaces a failure it cannot fix (a rebase conflict that needs the user, a rejected push), that is a block: report `outcome: blocked` with the failure in `notes`, and leave the board change unshipped in a named stash.
+- `/land` ends at a successful push. It does not watch CI or the deploy, and neither do you: the orchestrator reads CI for your commits afterwards, and a workflow your push turns red comes back to the loop as a fix.
+- If `/land` surfaces a failure it cannot fix (a rebase conflict that needs the user, a rejected push), that is a block: report `outcome: blocked` with the failure in `notes`, and leave the board change unshipped in a named stash.
 
-What stops a ship is the push's **own** defect: `/ship`'s real-DB backend suite or dashboard checks failing on your change. Fix that properly before pushing; it is never waived, and never worked around with `--no-verify` or by deleting, skipping, or weakening a check.
+What stops a ship is the push's **own** defect: `/land`'s real-DB backend suite or dashboard checks failing on your change. Fix that properly before pushing; it is never waived, and never worked around with `--no-verify` or by deleting, skipping, or weakening a check.
 
 ### Main is red: fix CI first, then resume
 
-A red main is never a reason to stop or to hold commits locally (user decision 2026-10-21; `AGENTS.md` Rules). `/ship`'s gate only warns about it. Unpushed commits in a checkout other sessions share look like unexplained divergence, and a teammate's `git reset` can discard them, so the paused item ships in the same run either way:
+A red main is never a reason to stop or to hold commits locally (user decision 2026-10-21; `AGENTS.md` Rules). `/land`'s gate only warns about it. Unpushed commits in a checkout other sessions share look like unexplained divergence, and a teammate's `git reset` can discard them, so the paused item ships in the same run either way:
 
 1. **Pause the item and diagnose the red run.** Commit the item locally. Read the failing job's log (`gh run view <id> --log-failed`) and compare it with the last green run (`gh run list --workflow deploy.yml`), including what changed between the two SHAs. Also check whether main already contains a fix: a red verdict can be stale when every later run was cancelled.
 2. **Fix it if you can, whatever the cause.** Fixing main is in scope for every workstream.
    - **Code or test failure** (yours or anyone's): make the smallest correct fix, with a regression test where one fits. Ship it alone as `fix(ci): …`, saying in the commit that it fixes red main, with `--fixes-red-main`.
    - **Flake or infra fault** (runner crash, emulation SIGSEGV, network, setup failure): rerun only the failed jobs (`gh run rerun <id> --failed`) in the background, and **do not wait for it**. If the same failure has repeated, land a repo-side root-cause fix: a retry, a pinned toolchain or runner setting, or splitting or caching the failing step. Ship that as `fix(ci): …` with `--fixes-red-main`. Never fix it by weakening a gate, deleting a test, skipping a job or changing a job's `runs-on` away from the GitHub-hosted labels `ubuntu-24.04-arm` and `ubuntu-latest` (`DO_NOT_DO.md` #CI-RUNNERS).
-3. **Resume immediately.** Ship the paused item's commits through `/ship` right after the fix is pushed. Do not wait for the fix's own CI run.
+3. **Resume immediately.** Ship the paused item's commits through `/land` right after the fix is pushed. Do not wait for the fix's own CI run.
 4. **If it cannot be fixed now, ship anyway.** That covers a fix that needs credentials, runner or host access, or a decision only the user has; a stale red that has nothing left to fix; or a flake still in flight. Ship the paused item's commits without waiting, and record the red run, its cause and what you tried in `notes`.
 
 List a `fix(ci)` commit in `commits` like any other, so the orchestrator watches its CI too.
@@ -134,12 +134,12 @@ List a `fix(ci)` commit in `commits` like any other, so the orchestrator watches
 ## Guardrails
 
 - **Triage before code.** Write down an evidence-backed verdict before changing anything.
-- **Never ship your own red.** Run the suites as their own command and read the result before you commit. Chaining `&& git commit` onto the end of a test command is exactly how a red push happens. `/ship`'s gate backs this up; don't route around it.
+- **Never ship your own red.** Run the suites as their own command and read the result before you commit. Chaining `&& git commit` onto the end of a test command is exactly how a red push happens. `/land`'s gate backs this up; don't route around it.
 - **Never ship half-work.** If an item can't be finished, it becomes **blocked** with the implementable part complete, not a partial "done".
 - **Deletion is a claim, not a shortcut.** Every deleted item costs you a sentence of evidence. If you can't write that sentence, it isn't invalid. Never delete an item to avoid the work in it.
 - **The tree is shared.** Stage by name; a teammate's files are never yours to stage, stash, or discard.
 - **No evidence dumps in git.** Raw run output stays out of `.pm/` (`.pm/AGENTS.md`); write the conclusion and how to reproduce it into the item.
-- **The board is public** ([rule](../../../.pm/AGENTS.md#the-board-is-public)). The evidence you write into an item names only bex's own fixture workspaces and services, with a workspace a run creates and deletes marked `(disposable)`. Hash another tenant's ids, service or app names, emails and metering with `scripts/lib/public_log.py`, or leave them out. `/ship`'s gate warns about an added workspace id it cannot place.
+- **The board is public** ([rule](../../../.pm/AGENTS.md#the-board-is-public)). The evidence you write into an item names only bex's own fixture workspaces and services, with a workspace a run creates and deletes marked `(disposable)`. Hash another tenant's ids, service or app names, emails and metering with `scripts/lib/public_log.py`, or leave them out. `/land`'s gate warns about an added workspace id it cannot place.
 - **Report honestly.** If you skipped a task, mocked something, or a suite was flaky, say so in `notes`. Do not present partial work as complete, or a close-by-triage as work you did. The orchestrator checks your claim against `origin/main`.
 
 ## Routine runs
@@ -152,7 +152,7 @@ When the dispatch says you are a **routine worker**, there is no board item. You
 
 The triage and landing sections above do not apply, except where the task itself is about board items. Whatever the command is:
 
-- Run the checks for every module you change (step 2's list) and ship each change through `/ship` ([Main is red](#main-is-red-fix-ci-first-then-resume) applies). Never ship your own red.
+- Run the checks for every module you change (step 2's list) and ship each change through `/land` ([Main is red](#main-is-red-fix-ci-first-then-resume) applies). Never ship your own red.
 - Write the board only when the command itself does so (a QA skill filing its findings through `/pm`, a sweep of parked items). List the item ids it filed, extended, or moved in `notes`.
 - Anything else that needs board work goes into `followups`: a STOP that needs a person, a finding outside the command's scope, a candidate too large for one run. The orchestrator files each one as an inbox note. Write each one so it stands alone: the problem, the evidence, the paths, and a testable end state. It becomes a public board item, so **The board is public** applies to it too.
 - `result: found` means the run shipped at least one commit (code, or board items filed or extended). `empty` means it ran and had nothing to ship. `failed` means the command could not run at all: missing credentials, a tool or service that is down, a skill that refuses to start. Say why in `notes`, and do not retry in a loop.
@@ -176,7 +176,7 @@ When the dispatch says you are a **CI-fix worker**, there is no board item eithe
 
 - Read the failure first: `gh run view <run id> --log-failed`, where the run id is the last part of the URL. Check whether main already contains a fix. Then reproduce it locally when the environment allows. Some jobs cannot be reproduced on this machine (another architecture, the real cluster, a built image): work from the log.
 - Fix the cause in the code or the test that is wrong, with a regression test where one fits. Never delete, skip, or weaken the failing check, never move a job off the GitHub-hosted runners, and never revert someone else's commit to get to green.
-- Run the checks for every module you change (step 2's list), then ship the fix alone through `/ship` as `fix(ci): …` with `--fixes-red-main`. Do not wait for CI: the orchestrator reads the result of your push and comes back if it is still red.
+- Run the checks for every module you change (step 2's list), then ship the fix alone through `/land` as `fix(ci): …` with `--fixes-red-main`. Do not wait for CI: the orchestrator reads the result of your push and comes back if it is still red.
 - A flake or infra fault has no code to fix on the first occurrence: rerun the failed jobs in the background (`gh run rerun <id> --failed`), do not wait, and report `outcome: shipped` with no commits and the rerun in `notes`. If it has repeated, land the repo-side root-cause fix instead.
 - If the cause is outside this repository (an expired secret, runner or host access, an upstream release, a decision only the user has), there is nothing to fix here. File one inbox note with `/pm add` in the dispatching workstream, with the run URL and what a person has to do, ship it, and report `outcome: blocked`.
 

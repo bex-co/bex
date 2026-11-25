@@ -14,7 +14,7 @@ Implemented and verified on the local `dev:local` + `local-bex` stack — dashbo
 - **t006 (Render parity):** zero changes under `lego/`, zero GraphQL document changes, no ADR018 row affected — confirmed by `git status`.
 - **Coverage moved, not dropped:** the retired `session-sidebar.test.tsx`'s component cases are re-hosted in `dashboard-layout/__tests__/agent-sessions-nav-section.test.tsx` (8 tests, incl. contextual scoping across four non-agent routes and a single-poller assertion); its `agentSessionStatusPhraseKey` block moved to `features/agent-sessions/lib/__tests__/mapper.test.ts`.
 
-**Open (t009):** the defect was reported against deployed `dashboard.bex.co/agents`, and the fix is uncommitted — the live confirmation can only happen after `/ship` + a green deploy.
+**Open (t009):** the defect was reported against deployed `dashboard.bex.co/agents`, and the fix is uncommitted — the live confirmation can only happen after `/land` + a green deploy.
 
 ## Tasks (in order)
 

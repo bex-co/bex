@@ -56,7 +56,7 @@ The missing-Secret loading failure is fixed in the working tree. [Pinned provide
 
 ## Ship authorization — 2026-10-28
 
-The user explicitly requested `ship`, clearing the commit/push gate. The prepared fix is being landed through the ship workflow. The remaining owner is the release pipeline for the production operator rollout, followed by QA for t005's owned Cloudflare replay and cleanup. No production acceptance is claimed by the ship.
+The user explicitly requested `land`, clearing the commit/push gate. The prepared fix is being landed through the land workflow. The remaining owner is the release pipeline for the production operator rollout, followed by QA for t005's owned Cloudflare replay and cleanup. No production acceptance is claimed by the ship.
 
 
 ## 解除阻塞记录（2026-10-29，`/unblock w8`）

@@ -40,7 +40,7 @@ For a requested loop, repeat hunt → reproduce/research → dedupe/file → cle
 
 At the start of the hunt and between loop sweeps, automatically pull the latest code with `git pull --rebase origin main` when on `main`. Preserve pending edits with a scoped stash (including owned untracked files when needed), restore them afterward, and resolve routine conflicts while retaining both intents. Never discard edits, force-push, or commit just to sync. On another branch, fetch `origin/main` for current diagnosis without silently switching branches or rebasing unrelated work. Record the pre-sync and post-sync HEADs and inspect changes relevant to the next journey.
 
-Record branch, HEAD, initial `git status --porcelain`, executable path, Bex release/build identity, upstream pin, API origin, and date. Record deployed revision only if observable; do not assume it equals HEAD. A hunt need not switch branches. If shipping is authorized later, follow the ship skill's branch rules then.
+Record branch, HEAD, initial `git status --porcelain`, executable path, Bex release/build identity, upstream pin, API origin, and date. Record deployed revision only if observable; do not assume it equals HEAD. A hunt need not switch branches. If shipping is authorized later, follow the land skill's branch rules then.
 
 Use the installed customer binary first when available. If building from `lego/cli`, put the binary in a private temporary directory and label all evidence as a checkout build. A release-only failure must be compared with HEAD before filing. Do not install over the user's binary.
 
@@ -143,7 +143,7 @@ Search `.pm/` open **and done** with `rg` for distinctive symptoms, endpoints, a
 
 Unless `DRY_RUN=1` or audit-only, use `../pm/SKILL.md` to file researched, non-duplicate findings (default `w6`). File only through `/pm`; do not hand-edit `.pm/`. Use an inbox note for ≤ ~1 hour; a milestone requires > ~1 hour across multiple tasks. Supply source/goal linkage, one task per bug, estimates/dependencies, explicit observable CLI acceptance commands and target results, and unverified areas. Shared-code blast-radius verification gets its own task. Let `/pm` allocate numbering and standing closing tasks, including parity when applicable. Verify status/frontmatter consistency and required Markdown formatting.
 
-**Commit/push only with explicit user `/ship` or `$ship` authorization.** Invoking this QA skill alone does not override the repository's commit rule. When authorized, read `../ship/SKILL.md` and ship only this hunt's board filing; exclude pre-existing changes and secret/raw artifacts. Otherwise leave the filing reviewable and uncommitted. Creating or editing this skill does not authorize running a live hunt or shipping it.
+**Commit/push only with explicit user `/land` or `$land` authorization.** Invoking this QA skill alone does not override the repository's commit rule. When authorized, read `../land/SKILL.md` and ship only this hunt's board filing; exclude pre-existing changes and secret/raw artifacts. Otherwise leave the filing reviewable and uncommitted. Creating or editing this skill does not authorize running a live hunt or shipping it.
 
 ## 6 — Cleanup and report
 

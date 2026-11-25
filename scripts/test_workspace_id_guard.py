@@ -1,7 +1,7 @@
 """Tests for scripts/workspace_id_guard.py against throwaway git repositories.
 
 The guard warns when a push adds a workspace id to the public board that is not
-one of bex's own fixtures; /ship prints the list and ships anyway.
+one of bex's own fixtures; /land prints the list and ships anyway.
 """
 
 import contextlib

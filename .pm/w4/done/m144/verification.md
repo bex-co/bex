@@ -152,7 +152,7 @@ and PVC identity, then:
    boundaries, rule evaluation, Grafana source and collector health. Record
    unverified cases explicitly; do not infer billing repair.
 
-The ship workflow ends at a successful push and prohibits watching CI/deployment;
+The land workflow ends at a successful push and prohibits watching CI/deployment;
 this run therefore records the release/operational gate rather than asserting
 post-push recovery. This item created no production fixtures or QA session, so
 there is no drill-specific credential or resource cleanup outstanding.

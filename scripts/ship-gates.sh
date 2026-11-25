@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ship-gates.sh — the checks /ship runs after committing and before pushing
+# ship-gates.sh — the checks /land runs after committing and before pushing
 # (w5/m112). Exits non-zero only when THIS push's own code fails:
 #
 #   1. Main's CI status is reported, never enforced (user decision

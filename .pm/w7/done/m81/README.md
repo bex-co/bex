@@ -22,7 +22,7 @@ The t004 sweep caught one real stale contract m80 missed: `AppView.HealthCheckPa
 
 t005's `/simplify` (three reviewers) found the diff itself clean apart from two consistency fixes it applied (the derived `livenessRestartWindowSeconds / healthCheckPeriodSeconds` threshold replacing a literal 6, matching the startup threshold's idiom; the `healthCheckHandler` "both probes" comment) — and surfaced one **pre-existing** defect on the same seam: the Deployment `CreateOrUpdate` PUTs every reconcile and self-retriggers through `Owns(..., ResourceVersionChangedPredicate{})`, because the mutate output can never DeepEqual the server-defaulted object (the w9/m57 Service bug, unspotted on the Deployment path). Filed as inbox `w7/028.md`; m81 neither introduces nor worsens it.
 
-Verification: `make test` (operator, incl. envtest) green, `go test ./internal/apps/...` green, dashboard settings-page vitest green; anti-tautology proven — deleting the probe turns all three new assertions red. Not verified in production: the code is uncommitted, per the repo rule that only `/ship` commits.
+Verification: `make test` (operator, incl. envtest) green, `go test ./internal/apps/...` green, dashboard settings-page vitest green; anti-tautology proven — deleting the probe turns all three new assertions red. Not verified in production: the code is uncommitted, per the repo rule that only `/land` commits.
 
 ## Definition of done
 

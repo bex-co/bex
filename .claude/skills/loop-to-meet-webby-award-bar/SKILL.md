@@ -103,11 +103,11 @@ The last two end in a **bar not met** report. Never lower the threshold, drop a 
    - what changed, by file, and any other page a shared change touches;
    - findings still open, and those parked as **needs user decision** (parity);
    - before and after screenshot names;
-   - gate results, and that the changes are uncommitted and waiting for `/ship`.
+   - gate results, and that the changes are uncommitted and waiting for `/land`.
 
 ## Non-negotiables
 
-- Only `/ship` commits. Invoking this skill does not authorize a commit or push.
+- Only `/land` commits. Invoking this skill does not authorize a commit or push.
 - Screenshots stay in `.playwright-mcp/` under bare filenames and never enter git.
 - The QA password never enters the transcript, a file, a screenshot, or a commit.
 - Production is read-only for this skill: look, do not create, change or delete anything there.

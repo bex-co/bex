@@ -22,7 +22,7 @@
 - **t004** — `dashboard-test.yml` runs `yarn npm audit` twice after install: HIGH reports via `continue-on-error` (currently a transitive `brace-expansion` advisory, recorded for `w1/006`), CRITICAL gates the job. Exit semantics verified against the real `yarn.lock` (HIGH→1, CRITICAL→0). Because `deploy.yml` calls this workflow via `workflow_call`, the gate transitively blocks image build/push — its `needs:`/`uses:` wiring confirmed intact, no deploy change needed.
 - **t005** — `/simplify` ran 4 parallel review agents (reuse/simplification/efficiency/altitude). Reuse + efficiency clean; applied the redundant grep-prefilter collapse in `third_party_refs()` (6→5 stages) and the honest-seam refactor (fixture mode keys on "was an override supplied?", not a path string-compare).
 - **t006** — Durable dashboard-gate structural check (deletion / severity-downgrade / inline `|| true` neuter all turn the self-test red) added; every shipped guard spot-checked red-on-regression via a throwaway workflow file (SHA-pin, inventory-diff both directions, Node 20). No tautologies.
-- **t007** — DoD verified against the real tree; all 14 pinned SHAs confirmed real commits, validator + self-test green, YAML parses. Final CI-green-on-`main` lands with the next `/ship` (push-gated).
+- **t007** — DoD verified against the real tree; all 14 pinned SHAs confirmed real commits, validator + self-test green, YAML parses. Final CI-green-on-`main` lands with the next `/land` (push-gated).
 
 ## Definition of done
 

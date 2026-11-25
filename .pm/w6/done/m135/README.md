@@ -37,4 +37,4 @@
 - **Executable matrix:** managed pending and verified claims, apex-first and `www`-first adds, canonical and generated deletes, explicit sibling preservation, and idempotent retry are covered in `TestManagedDomainPairDeletionMatrix` and adjacent storeless/Postgres tests.
 - **Surface evidence:** REST, GraphQL, MCP, and dashboard regression tests assert the same cascade and disclosed survivor behavior.
 - **Green gates:** `cd lego/backend && go test ./...`; the real `TestPGStore` suite against disposable Postgres 17; `make lint-backend`; `dashboard/yarn typecheck`; `dashboard/yarn lint`; `dashboard/yarn test` (379 files, 2,780 tests).
-- **Remaining for t007:** deploy through the authorized ship workflow, then repeat the live pending/verified apex-first and `www`-first matrix. No commit, push, or production deploy was performed in this worktree-only implementation pass.
+- **Remaining for t007:** deploy through the authorized land workflow, then repeat the live pending/verified apex-first and `www`-first matrix. No commit, push, or production deploy was performed in this worktree-only implementation pass.

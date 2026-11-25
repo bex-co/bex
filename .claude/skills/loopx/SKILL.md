@@ -11,7 +11,7 @@ Usage: `/loopx <wN> [--no-listen]`
 
 `/loopx <wN>` repeats one cycle until an exit: pick the next **actionable open item** in workstream `<wN>`, hand it to a **worker** with a fresh context, verify the outcome it claims against `origin/main`, and continue. An item is an open **milestone** `wN/mN/` (with all of its tasks) or an open **inbox note** `wN/NNN.md` (a sub-hour task). When nothing is actionable, the loop does not end. Next it runs any due [routine](#routines) from the workstream's schedule, returning to the board after each one. When no routine is due, it **listens**: a background process polls `origin/main` with exponential backoff, costs no model tokens, and wakes the loop when new items land or when the next routine is due. After 24 idle hours with no routine scheduled it stops. With `--no-listen`, drained means done. Before every pick it also checks whether one of its own pushes turned CI red, and fixes that first.
 
-This session is the **orchestrator**. It owns the queue, the guard, the listener, and the verification. It does not read code or implement anything. Every item's triage, implementation, board moves, and `/ship` belong to the worker, whose full contract is [`worker.md`](worker.md). The split exists because each item needs its own context: a milestone's history is noise to the next one, and a session cannot clear itself. Fresh workers keep the orchestrator small, so it stays cheap even after a long idle wait has expired the prompt cache.
+This session is the **orchestrator**. It owns the queue, the guard, the listener, and the verification. It does not read code or implement anything. Every item's triage, implementation, board moves, and `/land` belong to the worker, whose full contract is [`worker.md`](worker.md). The split exists because each item needs its own context: a milestone's history is noise to the next one, and a session cannot clear itself. Fresh workers keep the orchestrator small, so it stays cheap even after a long idle wait has expired the prompt cache.
 
 Parse the workstream and the optional `--no-listen` from `$ARGUMENTS` (e.g. `w1`, `w1 --no-listen`). If no workstream is given, **STOP** and ask which one to drain. Never guess.
 
@@ -19,7 +19,7 @@ Invoking `/loopx` is the user's explicit request to ship what the loop lands: ev
 
 ## Preconditions (verify once, up front)
 
-1. `git branch --show-current` is `main`. If not, STOP and ask (same rule as `/ship`).
+1. `git branch --show-current` is `main`. If not, STOP and ask (same rule as `/land`).
 2. `git status`: note pre-existing uncommitted changes, then keep going. Teammate sessions share this working tree.
    - **Uncommitted `.pm` board work is never a reason to stop.** A teammate filing milestones and notes into the workstream mid-run is a queue refresh, not a dirty tree: `board` reads the working tree, so those items are picked like any other.
    - Only genuinely foreign **source** changes are worth surfacing: uncommitted edits under `lego/`, `dashboard/`, `infra/`, `scripts/` that no `.pm` item explains. Say what they are, leave them alone, and drain around them. `dispatch` records what is already uncommitted, so a worker is never blamed for it.
@@ -92,7 +92,7 @@ A verified outcome clears the in-flight mark (`settled: true`) and remembers the
 
 If the check fails, or the result block is missing, send the **same** worker one follow-up (SendMessage in Claude Code) that states exactly what does not match, and verify again. If the only thing still wrong is `leftover` paths that a teammate put there during the run (the worker did not write them), the outcome stands: leave those files where they are, run `python3 scripts/loopx-guard.py settle`, and name them in your next report.
 
-If it still fails, stop trusting the worker. Keep the changes it left in a named stash (`git stash push -u -m "loopx/<wN>/<id>" -- <leftover paths>`); never stash, stage, or discard a teammate's files. Park the item yourself the way [`worker.md`](worker.md#3-land-the-outcome) lands a **blocked** outcome, with the gate `worker did not reach a verified outcome: <what is wrong>; needs <the concrete fix>`. Ship that move alone with `/ship`, then run `python3 scripts/loopx-guard.py settle`. If the item ended up shipped but red or half-done, record the commits in the gate; do not revert them yourself.
+If it still fails, stop trusting the worker. Keep the changes it left in a named stash (`git stash push -u -m "loopx/<wN>/<id>" -- <leftover paths>`); never stash, stage, or discard a teammate's files. Park the item yourself the way [`worker.md`](worker.md#3-land-the-outcome) lands a **blocked** outcome, with the gate `worker did not reach a verified outcome: <what is wrong>; needs <the concrete fix>`. Ship that move alone with `/land`, then run `python3 scripts/loopx-guard.py settle`. If the item ended up shipped but red or half-done, record the commits in the gate; do not revert them yourself.
 
 Record one line per item: id, verified outcome, SHAs, and for parked items the gate. That run-local list is all the orchestrator keeps, together with the decisions below. Do not paste worker reports into the conversation.
 
@@ -108,7 +108,7 @@ When an item is parked, keep going. Milestones that depend on it show up under `
 
 ## Own CI failures
 
-`/ship` ends at the push. Its gate names a red `deploy` or test suite at the _next_ ship, but nothing reads CI for the commit a worker just pushed, and nothing reads it at all while the loop idles. The guard does: it records the commits of every verified worker and asks `gh` about them, on each `board` call and on each poll while listening. It reports a workflow only when the first failing push run of its current red streak is on one of this loop's commits. Red that began on someone else's commit is not listed here. A worker meets it at ship time and handles it under [`worker.md`](worker.md#main-is-red-fix-ci-first-then-resume): fix it if it can, ship either way, never wait.
+`/land` ends at the push. Its gate names a red `deploy` or test suite at the _next_ ship, but nothing reads CI for the commit a worker just pushed, and nothing reads it at all while the loop idles. The guard does: it records the commits of every verified worker and asks `gh` about them, on each `board` call and on each poll while listening. It reports a workflow only when the first failing push run of its current red streak is on one of this loop's commits. Red that began on someone else's commit is not listed here. A worker meets it at ship time and handles it under [`worker.md`](worker.md#main-is-red-fix-ci-first-then-resume): fix it if it can, ship either way, never wait.
 
 CI takes ten minutes to an hour, and the loop never waits for it. A failure therefore surfaces one or two items after the push that caused it. When `board` lists one, it comes before any board item:
 

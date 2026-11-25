@@ -46,7 +46,7 @@ All owned test containers and volumes were removed after the stopped runs. A fre
 
 ## Remaining production acceptance
 
-After the operator/CRD and dashboard release, the release/QA owner must replay both README Free/public UI sequences against a fresh own fixture through the actual external TLS endpoint. Verify baseline and new keys, counter 23, unchanged expiration deadlines, SAVE/ordinary restart, final runtime `appendonly`, fresh REST/GraphQL/MCP/UI state, rename identity/credentials, and complete deletion/session revocation. Paid production purchases and another tenant's data are outside authorization. No post-push CI or deployment monitoring is part of `/ship`.
+After the operator/CRD and dashboard release, the release/QA owner must replay both README Free/public UI sequences against a fresh own fixture through the actual external TLS endpoint. Verify baseline and new keys, counter 23, unchanged expiration deadlines, SAVE/ordinary restart, final runtime `appendonly`, fresh REST/GraphQL/MCP/UI state, rename identity/credentials, and complete deletion/session revocation. Paid production purchases and another tenant's data are outside authorization. No post-push CI or deployment monitoring is part of `/land`.
 
 The milestone must remain blocked until those deployed observations exist. Passing local tests or accepting a mode PATCH does not close the live data-survival gate.
 

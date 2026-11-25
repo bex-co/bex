@@ -35,7 +35,7 @@
 
 ## Superseded local work (2026-10-03)
 
-A parallel t001–t003 implementation was made before upstream's (below) landed. On /ship rebase, upstream's t001 backend fix and t002 deferral (`rolloutAwaitingVerdict`) were kept; the local t001 test `TestStallReasonClearsOnProgressAndReadyDiagnosisWins` (`failed_rollout_reason_test.go`) was kept as extra coverage. The local t003 fix (skip the Deploying stamp on parking passes, `TestParkingPassNeverWritesDeploying`) was dropped and is not on upstream — see `t003.md`.
+A parallel t001–t003 implementation was made before upstream's (below) landed. On /land rebase, upstream's t001 backend fix and t002 deferral (`rolloutAwaitingVerdict`) were kept; the local t001 test `TestStallReasonClearsOnProgressAndReadyDiagnosisWins` (`failed_rollout_reason_test.go`) was kept as extra coverage. The local t003 fix (skip the Deploying stamp on parking passes, `TestParkingPassNeverWritesDeploying`) was dropped and is not on upstream — see `t003.md`.
 
 ## Not fixed by
 

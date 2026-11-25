@@ -26,7 +26,7 @@ Zero unaddressed critical/high Dependabot alerts on the default branch: each one
 
 ## Source + Goal linkage
 
-- **Source:** observed during the round-9 `/ship` (2026-07-15): the push banner went from 4 alerts (3 moderate, 1 low) to 18 (7 critical, 3 high) within the hour the SSH-gateway wave landed, then to 31 when GitHub attached the same `x/crypto` advisory set to the operator manifest. Triage found no vendored CLI manifest. Precedent: `w1/006` → `m23` → `m30` (triage → safe batch → residual watch).
+- **Source:** observed during the round-9 `/land` (2026-07-15): the push banner went from 4 alerts (3 moderate, 1 low) to 18 (7 critical, 3 high) within the hour the SSH-gateway wave landed, then to 31 when GitHub attached the same `x/crypto` advisory set to the operator manifest. Triage found no vendored CLI manifest. Precedent: `w1/006` → `m23` → `m30` (triage → safe batch → residual watch).
 - **Goal linkage:** GOAL.md #7 security posture; supply-chain hygiene (docs/ADR028-security-review.md follow-up register).
 - **Expected outcome:** the alert page is green or explainable; no critical CVE sits silently on a multi-tenant platform's default branch.
 - **Why now:** 14 criticals appeared this week from freshly-added dependency surface — the cheapest moment to fix is before anything builds on them.

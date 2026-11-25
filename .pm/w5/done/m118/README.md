@@ -133,7 +133,7 @@ Skipped:
 - Backend unit suite, operator controller tests and types tests green.
 - `make lint` clean on all four modules.
 - Dashboard: 4212 tests, typecheck and lint green.
-- `/ship` runs the real-dependency backend suite before the push.
+- `/land` runs the real-dependency backend suite before the push.
 
 ## Live check — 2026-10-06 (w4 `/qa-find-bugs` loop69, pin `7e1ae3642` ⊇ `a006a7e32`)
 

@@ -1,6 +1,6 @@
 # w6 · m46 — Private services publicly exposed via platform subdomain; first-time deploys wrongly marked Canceled with a stuck status pill
 
-**Worker:** worker6 **Goal:** a Private Service is actually unreachable from the public internet, matching its own advertised guarantee; and a brand-new service's first deploy reports a status the dashboard, the deploy list, and the backend all agree on — never a false `Canceled` with a header pill stuck on a phase the deploy already left. **Status:** done (closed unshipped — the live `curl` / first-deploy probes are owed by whoever runs `/ship`; see Outcome)
+**Worker:** worker6 **Goal:** a Private Service is actually unreachable from the public internet, matching its own advertised guarantee; and a brand-new service's first deploy reports a status the dashboard, the deploy list, and the backend all agree on — never a false `Canceled` with a header pill stuck on a phase the deploy already left. **Status:** done (closed unshipped — the live `curl` / first-deploy probes are owed by whoever runs `/land`; see Outcome)
 
 ## Tasks (in order)
 
@@ -45,7 +45,7 @@ This also explains the affected set exactly: `web_service`/`static_site` agree w
 
 Every regression test was proven red against pre-fix code and green after (ledger in the commit): 3 projector-exposure subtests, the resync no-write assertion, the store-row type subtests, the real-Postgres migration round-trip, 5 operator envtest specs (which write bad `Expose`/`Host`/`Hosts` values directly onto the CR, bypassing bex-api entirely), the 4 domain-gate subtests that were genuinely wrong, the two first-deploy pins, and 7 dashboard poll/gating specs. All four Go suites, the operator envtest suite (108 specs), `make lint` (4 modules), and `dashboard/yarn test` (2542 tests) pass. The migration was applied, rolled back, and re-applied against a real Postgres 17.
 
-**Owed at `/ship`** — these DoD bullets are inherently production checks and cannot be run from a working tree:
+**Owed at `/land`** — these DoD bullets are inherently production checks and cannot be run from a working tree:
 
 - `curl -sSI https://<name>.onbex.co` against a freshly created `private_service`, immediately after it reaches `Live` — must be a routing/TLS failure, never the app's 200.
 - A fresh service's first-ever deploy reaching `Live` (or a genuine build failure), never `Canceled`.

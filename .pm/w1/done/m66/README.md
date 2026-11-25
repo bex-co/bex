@@ -48,7 +48,7 @@
 
 **Lint note.** `make lint` reports 18 pre-existing issues in the operator module (`internal/controller/`, `cmd/activator`, `cmd/kv-sni-proxy`, `internal/sniproxy`, `internal/staticserver`) — none in any file this milestone touched; the backend module lints clean. Not introduced here and not fixed here.
 
-**Uncommitted pending `/ship`.**
+**Uncommitted pending `/land`.**
 
 ## Source + Goal linkage
 

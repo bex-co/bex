@@ -91,5 +91,5 @@ Skipped:
 
 - Operator `make test` green (controller 95 s, coverage 86.1%, was 85.9%).
 - `make lint`: 0 issues in all four modules, including the whole-program dead-code pass.
-- bex-api's store tests pass; `/ship`'s gate runs the real-dependency backend suite before the push.
+- bex-api's store tests pass; `/land`'s gate runs the real-dependency backend suite before the push.
 - t001 depended on w5/m114's closeout. m114's code, the one release-ending verb, shipped; only its live replay is parked, and this refactor does not touch it.

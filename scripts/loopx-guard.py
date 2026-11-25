@@ -83,7 +83,7 @@ that fails three runs in a row drops to one try a day until a run succeeds.
 while the board poll is backed off; board work still wins whenever both are
 ready. Run state stays in `.git/loopx/`, never on the public board.
 
-`/ship` ends at the push and nobody reads CI for that commit afterwards, so
+`/land` ends at the push and nobody reads CI for that commit afterwards, so
 the guard does: `outcome` records the commits a worker pushed, and `board` and
 `wait` ask `gh` whether one of those commits is where a workflow on main first
 went red. Only push-triggered runs are read: a scheduled run's head is

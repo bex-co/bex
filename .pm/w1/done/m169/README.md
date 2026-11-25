@@ -1,6 +1,6 @@
 # w1 · m169 — Buildpack Node services start on current Node: a run image with libatomic
 
-**Worker:** worker1 **Goal:** A `builder: buildpack` Node app with an open `engines.node` range (Render resolves it to the latest Node) builds and then starts. Today it crash-loops on `libatomic.so.1`. **Status:** done (2026-10-04): the DoD holds live on production; t004–t007 are done. The t006 regression-test edits (`scripts/gitops-validate.sh`, `scripts/build-toolchain-freshness.test.sh`) are local and await /ship.
+**Worker:** worker1 **Goal:** A `builder: buildpack` Node app with an open `engines.node` range (Render resolves it to the latest Node) builds and then starts. Today it crash-loops on `libatomic.so.1`. **Status:** done (2026-10-04): the DoD holds live on production; t004–t007 are done. The t006 regression-test edits (`scripts/gitops-validate.sh`, `scripts/build-toolchain-freshness.test.sh`) are local and await /land.
 
 ## Tasks (in order)
 

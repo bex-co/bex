@@ -1,6 +1,6 @@
 # w2 · m66 — RequiresSshKey: SSH-key onboarding gate for SSH affordances
 
-**Worker:** worker2 **Goal:** no SSH affordance ever hands a user a doomed action — a `RequiresSshKey` gate detects zero registered keys and swaps the raw ssh/`zed://` payload for an in-product "add your key" CTA (with a browser-terminal alternative where one exists), turning the off-surface `Permission denied (publickey)` dead-end into a ~20s round-trip. **Status:** done (2026-08-10 — all tasks DONE; dashboard 300 test files + lint + typecheck green; live Playwright walk confirmed no-key → CTA → deep-linked add-key form; shipped via `/ship`).
+**Worker:** worker2 **Goal:** no SSH affordance ever hands a user a doomed action — a `RequiresSshKey` gate detects zero registered keys and swaps the raw ssh/`zed://` payload for an in-product "add your key" CTA (with a browser-terminal alternative where one exists), turning the off-surface `Permission denied (publickey)` dead-end into a ~20s round-trip. **Status:** done (2026-08-10 — all tasks DONE; dashboard 300 test files + lint + typecheck green; live Playwright walk confirmed no-key → CTA → deep-linked add-key form; shipped via `/land`).
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Funnel instrumentation + document the gateway `rejected_key`/`accepted` proxy metric       | 30m | t003, t004          | — **DONE** |
 | t006 | Simplify pass over the milestone's changes                                                 | 30m | t005                | — **DONE** (shared `AddSshKeyCta`; effect-free SSR-safe open; fail-open-on-no-client) |
 | t007 | Test coverage for gate states + deep-link round-trip + fail-open                           | 40m | t005                | — **DONE** |
-| t008 | Closeout (on `/ship`)                                                                      | 15m | t007                | — **DONE** |
+| t008 | Closeout (on `/land`)                                                                      | 15m | t007                | — **DONE** |
 
 ## Definition of done
 

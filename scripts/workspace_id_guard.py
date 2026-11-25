@@ -10,7 +10,7 @@ Every `tea-<xid>` id on a line the push adds under .pm/ or docs/ is listed,
 unless it is in scripts/lib/first_party_workspaces.txt (read at <head>), the
 same line marks it `(disposable)`, or the push also removes a line naming it
 (an edited or moved line adds nothing new). Most ids a push adds are
-disposable QA or drill workspaces, so this only warns: /ship's gate prints
+disposable QA or drill workspaces, so this only warns: /land's gate prints
 the list and ships anyway.
 
     python3 -B scripts/workspace_id_guard.py <base> [<head>]

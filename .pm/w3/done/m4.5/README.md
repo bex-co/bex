@@ -1,6 +1,6 @@
 # w3 · m4.5 — Metrics page parity: application charts, limits, network filters
 
-**Worker:** worker3 **Goal:** close the visible gaps between bex's metrics page and Render's — draw the (now Prometheus-backed) CPU/memory/instances history as real charts with limit labels, wire the network-metric filters the backend already supports, and make the longer time ranges actually hold data. **Status:** done (2026-07-07; implemented + verified locally against prod data — prod rollout itself awaits the next `/ship`)
+**Worker:** worker3 **Goal:** close the visible gaps between bex's metrics page and Render's — draw the (now Prometheus-backed) CPU/memory/instances history as real charts with limit labels, wire the network-metric filters the backend already supports, and make the longer time ranges actually hold data. **Status:** done (2026-07-07; implemented + verified locally against prod data — prod rollout itself awaits the next `/land`)
 
 ## Tasks (in order)
 
@@ -18,7 +18,7 @@
 - Application Metrics render as real charts now: `SvgLineChart` grew multi-series (one line per instance, x mapped by timestamp so late-starting pods align), a dashed limit reference line, and a shared frame/tooltip/legend layer in `chart-layout.ts`; `SvgBarChart` stacks grouped series per time bucket. Both charts converged on a single `series` prop API.
 - Group-by needed a small backend parity fix: GraphQL's `aggregateBy` (`STATUS_CODE`/`METHOD`) now maps onto Core's `GroupBy` exactly like REST's `groupBy` param (`lego/backend/internal/metrics/graphql.go` + test).
 - Live-verified via the dev-server tunnels against prod data (`beancount-cms`): all three application charts drew 121-point history, the Status Code dropdown populated with real discovered codes (200/301/304/307/403/404/405/500) and filtering to 404 visibly re-scoped requests+latency (bandwidth deliberately unfiltered — no `code` label on Traefik's bytes counter); limit values (0.5 CPU / 512 MiB) verified against the local cluster's `metrics-demo`, which has tier limits. Screenshot: `.playwright-mcp/m45-metrics-parity.png`.
-- Group-by's visual (stacked+legend) is unit-tested; its live check needs the shipped backend (prod ignores `aggregateBy` until deployed). Same for prod retention (3h → 3d + 8Gi PV) — both land with the next `/ship` + Argo sync.
+- Group-by's visual (stacked+legend) is unit-tested; its live check needs the shipped backend (prod ignores `aggregateBy` until deployed). Same for prod retention (3h → 3d + 8Gi PV) — both land with the next `/land` + Argo sync.
 - `/simplify` (2 reviewers) drove: `useMemo` on the hook's series mapping (the chart memos now actually cache), one page-level live-range timer, limit queries riding the same tick (no stray 30s Apollo poll), shared `MetricSection`/frame-builder/palette, dead `StatTile` deleted.
 
 ## Definition of done

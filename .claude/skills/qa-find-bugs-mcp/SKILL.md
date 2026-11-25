@@ -104,7 +104,7 @@ Research each finding as `../qa-find-bugs-cli/SKILL.md` § 4 does, and write one
 
 The evidence rules of that § 4 apply, including that the board is public ([rule](../../../.pm/AGENTS.md#the-board-is-public)): a list or search answer can carry other tenants' ids and names, which are hashed or left out of the record.
 
-Dedupe, filing and shipping follow `../qa-find-bugs-cli/SKILL.md` § 5: search `.pm/` open and done, `.pm/DO_NOT_DO.md`, ADR018 (`docs/ADR018/`) and `git log -S`; file only through `/pm` into the target workstream (default `w6`); a deploy-lag result is reported, not filed. **Commit or push only with an explicit `/ship`/`$ship`**, or when a `/loopx` routine runs this skill, which is that authorization; ship only this hunt's filing.
+Dedupe, filing and shipping follow `../qa-find-bugs-cli/SKILL.md` § 5: search `.pm/` open and done, `.pm/DO_NOT_DO.md`, ADR018 (`docs/ADR018/`) and `git log -S`; file only through `/pm` into the target workstream (default `w6`); a deploy-lag result is reported, not filed. **Commit or push only with an explicit `/land`/`$land`**, or when a `/loopx` routine runs this skill, which is that authorization; ship only this hunt's filing.
 
 ## 5 — Cleanup and report
 

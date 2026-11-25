@@ -301,7 +301,7 @@ Runs (2026-09-30): `cd lego/backend && BEX_TEST_DB_URI=<ephemeral postgres:17> g
 
 ## t008 — remaining (blocked on ship)
 
-1. `/ship` this work; 2. `gh workflow run render-schema-drift.yml`, record the run id:
+1. `/land` this work; 2. `gh workflow run render-schema-drift.yml`, record the run id:
 `render-mcp` green, `render-schema` red **only** with the Blueprint drift above; 3. narrow
 issue #74 to that legible drift (→ `w1/117`); 4. move t008 to `done/`, this milestone to
 `w1/done/m165/`, tick the w1 README box.

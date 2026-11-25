@@ -50,7 +50,7 @@ Approved second-round priority 1; keep existing m154–m157 work intact. The fir
 
 ## Unblock execution — 2026-10-25 America/Los_Angeles
 
-The user instructed “go clear them”, delegating execution of the proposed unblock work. The original product/upgrade decision gate is resolved. No commit or push was made because the repository requires an explicit `$ship` invocation. Production access also failed closed: one discovered control-plane node disagrees with the local pinned SSH key, and two others have no trusted entry. No pin was replaced and no host-key check was disabled.
+The user instructed “go clear them”, delegating execution of the proposed unblock work. The original product/upgrade decision gate is resolved. No commit or push was made because the repository requires an explicit `$land` invocation. Production access also failed closed: one discovered control-plane node disagrees with the local pinned SSH key, and two others have no trusted entry. No pin was replaced and no host-key check was disabled.
 
 Full local evidence, tested digests, reproduction commands and remaining production acceptance are in [the upgrade drill](../../../../docs/drills/2026-10-25-w7-infrastructure-upgrades.md). This milestone remains blocked on rollout and production evidence, not on the former optional choice.
 

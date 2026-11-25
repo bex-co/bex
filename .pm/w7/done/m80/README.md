@@ -26,7 +26,7 @@ Shipped 2026-08-10. Both premises the milestone was written on survived; two thi
 
 Two incidental findings, neither introduced here: `make lint` was already failing on the clean tree (18 issues, none in files this milestone touches — this diff reduces it to 16 by removing two repeated `"/"` literals), and `config/crd/bases/app.bex.co_databases.yaml` was stale against its types (`DeletedUsers`, added by `eab1799d`, never regenerated). Codegen corrected the latter; production's CRD already carried the field, so nothing was broken by it.
 
-Not verified in production: the code is uncommitted, per the repo rule that only `/ship` commits. The observable proof is in test, as the DoD requires.
+Not verified in production: the code is uncommitted, per the repo rule that only `/land` commits. The observable proof is in test, as the DoD requires.
 
 ## Definition of done
 

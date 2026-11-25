@@ -3,10 +3,10 @@ name: qa-find-bugs
 metadata:
   internal: "true"
 description: >-
-  Drive the live product at https://dashboard.bex.co as a signed-in QA user (QA_EMAIL / QA_PASSWORD from .env or muse.env), hunt real bugs across the hosting features, research each fix down to file:line, file the non-duplicate findings to the w6 board through /pm, and /ship the scheduled milestone. Use when the user asks to QA the dashboard, try the product and find bugs, or run a live hosting bug hunt.
+  Drive the live product at https://dashboard.bex.co as a signed-in QA user (QA_EMAIL / QA_PASSWORD from .env or muse.env), hunt real bugs across the hosting features, research each fix down to file:line, file the non-duplicate findings to the w6 board through /pm, and /land the scheduled milestone. Use when the user asks to QA the dashboard, try the product and find bugs, or run a live hosting bug hunt.
 ---
 
-# Task: live QA hunt of bex hosting → researched fixes → `/pm` filing → `/ship`
+# Task: live QA hunt of bex hosting → researched fixes → `/pm` filing → `/land`
 
 Use the product the way a paying customer would, on **production** (`https://dashboard.bex.co`), find bugs in the **hosting features**, work out the actual fix in this repo, file only what is not already filed, and land the board entry.
 
@@ -14,7 +14,7 @@ Parse `$ARGUMENTS`:
 
 - `wN` — target workstream for the filing. **Default `w6`.**
 - surface names (`services`, `deploys`, `env`, `domains`, `scaling`, `logs`, `metrics`, `shell`, `static`, `cron`, `databases`, `keyvalue`, `blueprints`, `projects`) — restrict the sweep. Default: the whole hosting sweep in Phase 2.
-- `DRY_RUN=1` — run Phases 0–5 and report; write nothing to `.pm/`, do not `/ship`.
+- `DRY_RUN=1` — run Phases 0–5 and report; write nothing to `.pm/`, do not `/land`.
 
 ## Phase 0 — Preflight
 
@@ -186,9 +186,9 @@ File through `/pm`: invoke it, and do not hand-edit the board.
 - Let `/pm` own numbering and the standing closing tasks (Render parity → Simplify → Test coverage → Closeout). Never hand-roll them.
 - Confirm afterwards that `.pm/<wN>/README.md`, the milestone `README.md`, and each task's frontmatter agree, and that `npx prettier@3.4.2 --write "**/*.md"` has run.
 
-## Phase 7 — `/ship` the scheduled milestone
+## Phase 7 — `/land` the scheduled milestone
 
-Invoke `/ship` so the newly scheduled work lands on `main` and is visible to whoever picks it up. Invoking `/qa-find-bugs` is the user's explicit request to ship this filing, and only this filing (`AGENTS.md` Rules).
+Invoke `/land` so the newly scheduled work lands on `main` and is visible to whoever picks it up. Invoking `/qa-find-bugs` is the user's explicit request to ship this filing, and only this filing (`AGENTS.md` Rules).
 
 - Scope the commit to the `.pm/` files this run created. Anything that was already dirty in Phase 0 stays out — surface it to the user instead of sweeping it in.
 - `.playwright-mcp/` is gitignored: evidence stays local and is referenced by path from the milestone, exactly as `w9/m89` does.
@@ -219,6 +219,6 @@ Then report:
 
 - The QA password never enters the transcript, a file, a screenshot, a `.pm` note, or a commit.
 - Production is real: create only in the QA workspace, prefixed, and clean up.
-- File only through `/pm`; commit only through `/ship`.
+- File only through `/pm`; commit only through `/land`.
 - Bare filenames for screenshots (they land in `.playwright-mcp/`).
 - Prettier every touched markdown file before finishing.

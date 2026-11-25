@@ -21,14 +21,14 @@ A fresh autoscaler-minted tenant node joins with no runc/containerd/kubelet down
 
 ## What landed (code) vs. what's operator-gated
 
-**Landed in the repo (this branch, uncommitted pending `/ship`):**
+**Landed in the repo (this branch, uncommitted pending `/land`):**
 
 - **Bake recipe (t001):** [`infra/packer/bex-worker.pkr.hcl`](../../../infra/packer/bex-worker.pkr.hcl) — a Packer template baking runc `1.2.5` + containerd `1.7.26` + kubelet/kubeadm/kubectl `1.31.0` (byte-identical download/verify to the old `preKubeadmCommands`) into a `caph-image-name: bex-worker`-labelled snapshot. Runs in CI ([`.github/workflows/snapshot.yml`](../../../.github/workflows/snapshot.yml), `workflow_dispatch`), never a laptop. Recipe + bump procedure + roll runbook in [`infra/packer/README.md`](../../../infra/packer/README.md). Validated locally: `packer fmt`/`init`/`validate` all clean.
 - **Overlay (t001/t002/t003):** worker `HCloudMachineTemplate`s rotated to `bex-tenant-0-baked` / `bex-platform-baked` at `imageName: bex-worker` (spec is immutable — CAPH v1.1.7 — so a rename + `infrastructureRef` repoint is what rolls the pool); worker `preKubeadmCommands` stripped of the runc/containerd/kubelet downloads, the `kubeadm config images pull`, and the whole boot-time apt install (socat/logrotate baked; at/jq/unzip/mtr/apt-transport-https dropped). Control-plane deliberately untouched (still `ubuntu-24.04`).
 - **clusterctl cache (t004):** `actions/cache` keyed on `CLUSTERCTL_VERSION` in [`app-cluster.yml`](../../../.github/workflows/app-cluster.yml).
 - **Structural guard (t007):** [`scripts/clusterapi-validate.sh`](../../../scripts/clusterapi-validate.sh) + [`.github/workflows/clusterapi-validate.yml`](../../../.github/workflows/clusterapi-validate.yml) — fails CI if a worker template drifts back to `ubuntu-24.04` or a worker `preKubeadmCommands` re-adds a download / images-pull / pkgs.k8s.io install / trimmed package. Negative-tested.
 
-**Operator-gated (billed prod ops + `/ship`; cannot run from a laptop):** run `snapshot.yml`, verify one node provisions clean, `/ship` the overlay to roll both pools, measure, then close out. Full runbook: [`infra/packer/README.md`](../../../infra/packer/README.md) § "Ordering — bake before you roll".
+**Operator-gated (billed prod ops + `/land`; cannot run from a laptop):** run `snapshot.yml`, verify one node provisions clean, `/land` the overlay to roll both pools, measure, then close out. Full runbook: [`infra/packer/README.md`](../../../infra/packer/README.md) § "Ordering — bake before you roll".
 
 ## Measurements (t005 — fill on the live roll)
 
