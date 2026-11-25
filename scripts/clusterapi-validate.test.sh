@@ -86,6 +86,9 @@ assert "a containerd 1.x bake" 1 "$d" "packer containerd_version '1.7.22' is not
 # ── RED (w6/m624): ImageVolume stays on where the helper's image volume runs ──
 # The API server drops an image volume's source without the gate, and a kubelet
 # without it cannot mount one, so the health-probe helper's pods would fail.
+d="$(fixture image-volume-apiserver)"
+yq -i '(select(.kind=="KubeadmControlPlane") | .spec.kubeadmConfigSpec.clusterConfiguration.apiServer.extraArgs."feature-gates") = "UserNamespacesSupport=true"' "$d/cluster.yaml"
+assert "an API server without ImageVolume" 1 "$d" "KubeadmControlPlane/bex-control-plane .spec.kubeadmConfigSpec.clusterConfiguration.apiServer.extraArgs feature-gates"
 d="$(fixture image-volume-tenant-0)"
 yq -i '(select(.kind=="KubeadmConfigTemplate" and .metadata.name=="bex-tenant-0") | .spec.template.spec.joinConfiguration.nodeRegistration.kubeletExtraArgs."feature-gates") = "UserNamespacesSupport=true"' "$d/cluster.yaml"
 assert "a bex-tenant-0 kubelet without ImageVolume" 1 "$d" "KubeadmConfigTemplate/bex-tenant-0 .spec.template.spec.joinConfiguration.nodeRegistration.kubeletExtraArgs feature-gates"
@@ -94,9 +97,9 @@ assert "a bex-tenant-0 kubelet without ImageVolume" 1 "$d" "KubeadmConfigTemplat
 d="$(fixture image-volume-xxl)"
 yq -i '(select(.kind=="KubeadmConfigTemplate" and .metadata.name=="bex-tenant-xxl") | .spec.template.spec.joinConfiguration.nodeRegistration.kubeletExtraArgs."feature-gates") = "UserNamespacesSupport=true"' "$d/cluster.yaml"
 assert "a serving pool's kubelet without ImageVolume" 1 "$d" "KubeadmConfigTemplate/bex-tenant-xxl .spec.template.spec.joinConfiguration.nodeRegistration.kubeletExtraArgs feature-gates"
-d="$(fixture image-volume-tenant-0-off)"
-yq -i '(select(.kind=="KubeadmConfigTemplate" and .metadata.name=="bex-tenant-0") | .spec.template.spec.joinConfiguration.nodeRegistration.kubeletExtraArgs."feature-gates") = "UserNamespacesSupport=true,ImageVolume=false"' "$d/cluster.yaml"
-assert "a bex-tenant-0 kubelet with ImageVolume=false" 1 "$d" "KubeadmConfigTemplate/bex-tenant-0 .spec.template.spec.joinConfiguration.nodeRegistration.kubeletExtraArgs feature-gates"
+d="$(fixture image-volume-cp-kubelet)"
+yq -i '(select(.kind=="KubeadmControlPlane") | .spec.kubeadmConfigSpec.joinConfiguration.nodeRegistration.kubeletExtraArgs."feature-gates") = "UserNamespacesSupport=true,ImageVolume=false"' "$d/cluster.yaml"
+assert "a control-plane kubelet with ImageVolume=false" 1 "$d" "KubeadmControlPlane/bex-control-plane .spec.kubeadmConfigSpec.joinConfiguration.nodeRegistration.kubeletExtraArgs feature-gates"
 
 # ── RED (t003): the exact production regression measured 2026-08-17 ──────────
 d="$(fixture no-toleration)"
