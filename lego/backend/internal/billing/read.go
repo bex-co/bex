@@ -102,6 +102,12 @@ type Invoice struct {
 	Currency          string `json:"currency"`
 	PeriodStart       string `json:"periodStart"`
 	PeriodEnd         string `json:"periodEnd"`
+	// HostedInvoiceURL is Stripe's hosted invoice page, where the invoice is
+	// viewed and, while it is open, paid: the Billing page's Pay Now, as
+	// Render's (w6/m625). InvoicePDFURL is Stripe's PDF of it: Download PDF.
+	// Each is Stripe's own link, empty (omitted) when Stripe gives none.
+	HostedInvoiceURL string `json:"hostedInvoiceUrl,omitempty"`
+	InvoicePDFURL    string `json:"invoicePdfUrl,omitempty"`
 }
 
 // The kinds of invoice a workspace's billing history lists.
@@ -453,6 +459,8 @@ func (c *StripeClient) listInvoices(ctx context.Context, customerID, subscriptio
 			Currency:          "USD",
 			PeriodStart:       unixOrFallback(inv.PeriodStart, time.Time{}),
 			PeriodEnd:         unixOrFallback(inv.PeriodEnd, time.Time{}),
+			HostedInvoiceURL:  inv.HostedInvoiceURL,
+			InvoicePDFURL:     inv.InvoicePDF,
 		})
 	}
 	if err := iter.Err(); err != nil {

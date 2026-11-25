@@ -294,6 +294,10 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "金额",
     description: "Table column header for an invoice's amount",
   },
+  "usage.colInvoiceActions": {
+    message: "操作",
+    description: "Screen-reader header of the invoice table's row-menu column",
+  },
   "usage.billingSetupTitle": {
     message: "账单设置",
     description: "Customer billing onboarding card title",
@@ -700,6 +704,39 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "智能体模型扣款",
     description:
       "Label on an invoice-history row for a charge made when agent model spend reached its threshold",
+  },
+  "usage.invoiceActionsMenu": {
+    message: "{period} 发票的操作",
+    description:
+      "Accessible label of an invoice row's three-dot menu; {period} is the invoice's month",
+  },
+  "usage.invoicePayNow": {
+    message: "立即支付",
+    description:
+      "Invoice row menu item that opens Stripe's hosted page to pay an unpaid invoice (Render's Pay Now)",
+  },
+  "usage.invoiceDownloadPdf": {
+    message: "下载 PDF",
+    description: "Invoice row menu item that downloads the invoice as a PDF",
+  },
+  "usage.invoiceStatusOpen": {
+    message: "未支付",
+    description:
+      "Status of an invoice that is finalized and not yet paid (Stripe: open)",
+  },
+  "usage.invoiceStatusPaid": {
+    message: "已支付",
+    description: "Status of a paid invoice (Stripe: paid)",
+  },
+  "usage.invoiceStatusVoid": {
+    message: "已作废",
+    description:
+      "Status of a voided invoice, which is owed no longer (Stripe: void)",
+  },
+  "usage.invoiceStatusUncollectible": {
+    message: "无法收回",
+    description:
+      "Status of an invoice written off as uncollectible, which can still be paid (Stripe: uncollectible)",
   },
   "usage.invoiceHistoryChargesNote": {
     message: "当月产生的智能体模型扣款，会从当月的账单中扣除。",

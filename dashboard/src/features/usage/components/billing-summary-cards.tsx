@@ -13,6 +13,12 @@
 // limitations under the License.
 
 import {
+  CreditCard,
+  Download,
+  ExternalLink,
+  MoreHorizontal,
+} from "lucide-react";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -20,11 +26,23 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Badge } from "@/common/components/ui/badge";
+import { Button } from "@/common/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/common/components/ui/dropdown-menu";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatDateISO } from "@/common/lib/format";
+import { safeHttpHref } from "@/common/lib/external-url";
 import { periodLabel } from "@/features/usage/lib/period";
 import { money, usd } from "@/features/usage/lib/charges";
-import type { Billing, BillingCredits } from "../hooks/use-usage";
+import type {
+  Billing,
+  BillingCredits,
+  BillingInvoice,
+} from "../hooks/use-usage";
 
 /**
  * The two money cards that read straight off Stripe: remaining credit, and the
@@ -100,6 +118,78 @@ function isAgentModelCharge(inv: { kind?: string | null }): boolean {
   return inv.kind === "agent_model_charge";
 }
 
+/** The label key of each Stripe status a finalized invoice can carry. */
+const INVOICE_STATUS_KEYS = {
+  OPEN: "usage.invoiceStatusOpen",
+  PAID: "usage.invoiceStatusPaid",
+  VOID: "usage.invoiceStatusVoid",
+  UNCOLLECTIBLE: "usage.invoiceStatusUncollectible",
+} as const;
+
+/**
+ * The invoice's links the row menu offers: Download PDF wherever Stripe gave
+ * a PDF, and Pay Now, Stripe's hosted invoice page, while the invoice still
+ * owes (open, or uncollectible, which Stripe still collects), as Render's
+ * three-dot menu does (w6/m625). A link that is not plain http(s) is dropped.
+ */
+function invoiceLinks(inv: BillingInvoice): {
+  pdf: string | undefined;
+  pay: string | undefined;
+} {
+  const owes = inv.status === "OPEN" || inv.status === "UNCOLLECTIBLE";
+  return {
+    pdf: safeHttpHref(inv.invoicePdfUrl),
+    pay: owes ? safeHttpHref(inv.hostedInvoiceUrl) : undefined,
+  };
+}
+
+/** The row's three-dot menu; nothing when Stripe gave the invoice no link. */
+function InvoiceRowMenu({
+  invoice,
+  period,
+}: {
+  invoice: BillingInvoice;
+  period: string;
+}) {
+  const { t } = useTranslations();
+  const { pdf, pay } = invoiceLinks(invoice);
+  if (!pdf && !pay) return null;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          // A 44px hit area on a phone without growing the row.
+          className="relative max-lg:after:absolute max-lg:after:-inset-1.5 max-lg:after:content-[''] pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5 pointer-coarse:after:content-['']"
+          aria-label={t("usage.invoiceActionsMenu", { period })}
+        >
+          <MoreHorizontal />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {pay ? (
+          <DropdownMenuItem asChild>
+            <a href={pay} target="_blank" rel="noopener noreferrer">
+              <CreditCard />
+              <span className="flex-1">{t("usage.invoicePayNow")}</span>
+              <ExternalLink aria-hidden />
+            </a>
+          </DropdownMenuItem>
+        ) : null}
+        {pdf ? (
+          <DropdownMenuItem asChild>
+            <a href={pdf} target="_blank" rel="noopener noreferrer">
+              <Download />
+              <span className="flex-1">{t("usage.invoiceDownloadPdf")}</span>
+            </a>
+          </DropdownMenuItem>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 /**
  * Finalized invoice history. Renders only with real invoices: a workspace on
  * the price-sheet estimate alone has none, and an empty table would imply
@@ -132,34 +222,52 @@ export function InvoiceHistoryCard({ billing }: { billing: Billing | null }) {
               <th scope="col" className="py-2 text-right font-medium">
                 {t("usage.colInvoiceAmount")}
               </th>
+              <th scope="col" className="w-10 py-2">
+                <span className="sr-only">{t("usage.colInvoiceActions")}</span>
+              </th>
             </tr>
           </thead>
           <tbody>
-            {invoices.map((inv) => (
-              <tr key={inv.id} className="border-b last:border-b-0">
-                <td className="py-2.5 font-medium">
-                  {invoiceMonth(inv.periodStart, i18n.language) || "—"}
-                  {isAgentModelCharge(inv) ? (
-                    <Badge variant="outline" className="ml-2 font-normal">
-                      {t("usage.invoiceKindAgentModelCharge")}
+            {invoices.map((inv) => {
+              const period = invoiceMonth(inv.periodStart, i18n.language);
+              const statusKey =
+                INVOICE_STATUS_KEYS[
+                  inv.status as keyof typeof INVOICE_STATUS_KEYS
+                ];
+              return (
+                <tr key={inv.id} className="border-b last:border-b-0">
+                  <td className="py-2.5 font-medium">
+                    {period || "—"}
+                    {isAgentModelCharge(inv) ? (
+                      <Badge variant="outline" className="ml-2 font-normal">
+                        {t("usage.invoiceKindAgentModelCharge")}
+                      </Badge>
+                    ) : null}
+                  </td>
+                  <td className="py-2.5">
+                    <Badge
+                      variant={inv.status === "PAID" ? "secondary" : "outline"}
+                    >
+                      {statusKey ? t(statusKey) : inv.status}
                     </Badge>
-                  ) : null}
-                </td>
-                <td className="py-2.5">
-                  <Badge
-                    variant={inv.status === "paid" ? "secondary" : "outline"}
-                  >
-                    {inv.status}
-                  </Badge>
-                </td>
-                <td className="py-2.5 text-right font-mono tabular-nums">
-                  {/* What Stripe collected, not the gross charge: `amountUsd`
+                  </td>
+                  <td className="py-2.5 text-right font-mono tabular-nums">
+                    {/* What Stripe collected, not the gross charge: `amountUsd`
                       is now pre-credit, and a credited invoice would otherwise
                       read as money the workspace never paid (w6/m98). */}
-                  {money(usd(inv.amountDueUsd), i18n.language)}
-                </td>
-              </tr>
-            ))}
+                    {money(usd(inv.amountDueUsd), i18n.language)}
+                  </td>
+                  {/* The menu's 32px trigger, laid out as a block, fits the
+                      status badge's line, so a row with no menu is as tall as
+                      one with it. */}
+                  <td className="py-1 pl-2">
+                    <div className="flex justify-end">
+                      <InvoiceRowMenu invoice={inv} period={period || inv.id} />
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </CardContent>

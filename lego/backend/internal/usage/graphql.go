@@ -177,6 +177,10 @@ var billingInvoiceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"currency":          gqlutil.StrField(func(i billing.Invoice) any { return i.Currency }),
 		"periodStart":       gqlutil.StrField(func(i billing.Invoice) any { return i.PeriodStart }),
 		"periodEnd":         gqlutil.StrField(func(i billing.Invoice) any { return i.PeriodEnd }),
+		// Stripe's hosted invoice page (Pay Now) and PDF (Download PDF),
+		// null where Stripe gives none, as REST and MCP omit them (w6/m625).
+		"hostedInvoiceUrl": gqlutil.OptionalStrField(func(i billing.Invoice) any { return i.HostedInvoiceURL }),
+		"invoicePdfUrl":    gqlutil.OptionalStrField(func(i billing.Invoice) any { return i.InvoicePDFURL }),
 	},
 })
 

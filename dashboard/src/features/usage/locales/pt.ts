@@ -303,6 +303,10 @@ const ptUsage: Record<string, TranslationEntry> = {
     message: "Valor",
     description: "Table column header for an invoice's amount",
   },
+  "usage.colInvoiceActions": {
+    message: "Ações",
+    description: "Screen-reader header of the invoice table's row-menu column",
+  },
   "usage.billingSetupTitle": {
     message: "Configuração de faturamento",
     description: "Customer billing onboarding card title",
@@ -717,6 +721,39 @@ const ptUsage: Record<string, TranslationEntry> = {
     message: "Cobrança de modelo de agente",
     description:
       "Label on an invoice-history row for a charge made when agent model spend reached its threshold",
+  },
+  "usage.invoiceActionsMenu": {
+    message: "Ações da fatura de {period}",
+    description:
+      "Accessible label of an invoice row's three-dot menu; {period} is the invoice's month",
+  },
+  "usage.invoicePayNow": {
+    message: "Pagar agora",
+    description:
+      "Invoice row menu item that opens Stripe's hosted page to pay an unpaid invoice (Render's Pay Now)",
+  },
+  "usage.invoiceDownloadPdf": {
+    message: "Baixar PDF",
+    description: "Invoice row menu item that downloads the invoice as a PDF",
+  },
+  "usage.invoiceStatusOpen": {
+    message: "Não paga",
+    description:
+      "Status of an invoice that is finalized and not yet paid (Stripe: open)",
+  },
+  "usage.invoiceStatusPaid": {
+    message: "Paga",
+    description: "Status of a paid invoice (Stripe: paid)",
+  },
+  "usage.invoiceStatusVoid": {
+    message: "Anulada",
+    description:
+      "Status of a voided invoice, which is owed no longer (Stripe: void)",
+  },
+  "usage.invoiceStatusUncollectible": {
+    message: "Incobrável",
+    description:
+      "Status of an invoice written off as uncollectible, which can still be paid (Stripe: uncollectible)",
   },
   "usage.invoiceHistoryChargesNote": {
     message:

@@ -104,6 +104,7 @@ export interface BillingAmount {
 /** One finalized Stripe invoice (m48/m50); same three-figure split. */
 export interface BillingInvoice {
   id: string;
+  /** Stripe's status, upper-cased: OPEN, PAID, VOID or UNCOLLECTIBLE. */
   status: string;
   /** "cycle" or "agent_model_charge" (a charge made when agent model spend reached its threshold). */
   kind: string;
@@ -113,6 +114,10 @@ export interface BillingInvoice {
   currency: string;
   periodStart: string;
   periodEnd: string;
+  /** Stripe's hosted invoice page, where an open invoice is paid (Pay Now); null when Stripe gives none (w6/m625). */
+  hostedInvoiceUrl: string | null;
+  /** Stripe's PDF of the invoice (Download PDF); null when Stripe gives none. */
+  invoicePdfUrl: string | null;
 }
 
 /** One active credit grant's remaining balance (w5/m70). */
@@ -357,6 +362,8 @@ export function useUsage(
                       currency: i!.currency ?? "USD",
                       periodStart: i!.periodStart ?? "",
                       periodEnd: i!.periodEnd ?? "",
+                      hostedInvoiceUrl: i!.hostedInvoiceUrl ?? null,
+                      invoicePdfUrl: i!.invoicePdfUrl ?? null,
                     })),
                   credits: raw.billing.credits
                     ? {

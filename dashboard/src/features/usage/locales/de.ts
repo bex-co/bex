@@ -305,6 +305,10 @@ const deUsage: Record<string, TranslationEntry> = {
     message: "Betrag",
     description: "Table column header for an invoice's amount",
   },
+  "usage.colInvoiceActions": {
+    message: "Aktionen",
+    description: "Screen-reader header of the invoice table's row-menu column",
+  },
   "usage.billingSetupTitle": {
     message: "Abrechnungseinrichtung",
     description: "Customer billing onboarding card title",
@@ -720,6 +724,39 @@ const deUsage: Record<string, TranslationEntry> = {
     message: "Agent-Modellkosten",
     description:
       "Label on an invoice-history row for a charge made when agent model spend reached its threshold",
+  },
+  "usage.invoiceActionsMenu": {
+    message: "Aktionen für die Rechnung {period}",
+    description:
+      "Accessible label of an invoice row's three-dot menu; {period} is the invoice's month",
+  },
+  "usage.invoicePayNow": {
+    message: "Jetzt bezahlen",
+    description:
+      "Invoice row menu item that opens Stripe's hosted page to pay an unpaid invoice (Render's Pay Now)",
+  },
+  "usage.invoiceDownloadPdf": {
+    message: "PDF herunterladen",
+    description: "Invoice row menu item that downloads the invoice as a PDF",
+  },
+  "usage.invoiceStatusOpen": {
+    message: "Unbezahlt",
+    description:
+      "Status of an invoice that is finalized and not yet paid (Stripe: open)",
+  },
+  "usage.invoiceStatusPaid": {
+    message: "Bezahlt",
+    description: "Status of a paid invoice (Stripe: paid)",
+  },
+  "usage.invoiceStatusVoid": {
+    message: "Storniert",
+    description:
+      "Status of a voided invoice, which is owed no longer (Stripe: void)",
+  },
+  "usage.invoiceStatusUncollectible": {
+    message: "Uneinbringlich",
+    description:
+      "Status of an invoice written off as uncollectible, which can still be paid (Stripe: uncollectible)",
   },
   "usage.invoiceHistoryChargesNote": {
     message:

@@ -1094,7 +1094,9 @@ export type BillingInvoice = {
   amountUsd: Maybe<Scalars['String']['output']>;
   creditsAppliedUsd: Maybe<Scalars['String']['output']>;
   currency: Maybe<Scalars['String']['output']>;
+  hostedInvoiceUrl: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
+  invoicePdfUrl: Maybe<Scalars['String']['output']>;
   kind: Maybe<Scalars['String']['output']>;
   periodEnd: Maybe<Scalars['String']['output']>;
   periodStart: Maybe<Scalars['String']['output']>;

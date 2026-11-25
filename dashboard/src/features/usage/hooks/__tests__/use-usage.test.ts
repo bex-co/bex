@@ -242,6 +242,20 @@ describe("useUsage", () => {
                 periodEnd: "2026-07-01T00:00:00Z",
               },
               null, // a null invoice is filtered out
+              {
+                id: "inv_2",
+                status: "OPEN",
+                kind: "cycle",
+                amountUsd: "5.00",
+                creditsAppliedUsd: "0.00",
+                amountDueUsd: "5.00",
+                currency: "USD",
+                periodStart: "2026-07-01T00:00:00Z",
+                periodEnd: "2026-08-01T00:00:00Z",
+                hostedInvoiceUrl: "https://invoice.stripe.com/i/acct_1/test_2",
+                invoicePdfUrl:
+                  "https://pay.stripe.com/invoice/acct_1/test_2/pdf",
+              },
             ],
             credits: {
               availableUsd: "25.00",
@@ -281,6 +295,22 @@ describe("useUsage", () => {
           currency: "USD",
           periodStart: "2026-06-01T00:00:00Z",
           periodEnd: "2026-07-01T00:00:00Z",
+          // A server that predates the links (w6/m625) maps to null.
+          hostedInvoiceUrl: null,
+          invoicePdfUrl: null,
+        },
+        {
+          id: "inv_2",
+          kind: "cycle",
+          status: "OPEN",
+          amountUsd: "5.00",
+          creditsAppliedUsd: "0.00",
+          amountDueUsd: "5.00",
+          currency: "USD",
+          periodStart: "2026-07-01T00:00:00Z",
+          periodEnd: "2026-08-01T00:00:00Z",
+          hostedInvoiceUrl: "https://invoice.stripe.com/i/acct_1/test_2",
+          invoicePdfUrl: "https://pay.stripe.com/invoice/acct_1/test_2/pdf",
         },
       ],
       credits: {

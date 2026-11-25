@@ -29,7 +29,10 @@ import { FreeHoursCard } from "@/features/usage/components/free-hours-card";
 import { BuildMinutesCard } from "@/features/usage/components/build-minutes-card";
 import { IncludedBandwidthCard } from "@/features/usage/components/included-bandwidth-card";
 import { CustomDomainsCard } from "@/features/usage/components/custom-domains-card";
-import { CreditBalanceCard } from "@/features/usage/components/billing-summary-cards";
+import {
+  CreditBalanceCard,
+  InvoiceHistoryCard,
+} from "@/features/usage/components/billing-summary-cards";
 import type { BillingReadiness } from "@/features/usage/hooks/use-billing-onboarding";
 import type { CustomDomainsUsage } from "@/features/usage/hooks/use-usage";
 import type { WorkspaceView } from "@/features/workspaces/types";
@@ -273,4 +276,63 @@ describe("BillingPageSkeleton (w4/707)", () => {
       ready.unmount();
     },
   );
+});
+
+/**
+ * The invoice table's geometry: its header and body rows, each cell's box
+ * classes, and in each row's last cell the 32px menu trigger (w6/m625).
+ */
+function invoiceTable(root: Element) {
+  const cellClasses = (row: Element) =>
+    [...row.children].map((cell) => [cell.tagName, cell.className]);
+  return {
+    cards: root.querySelectorAll("[data-slot='card']").length,
+    titles: [...root.querySelectorAll("[data-slot='card-title']")].map(text),
+    descriptions: [
+      ...root.querySelectorAll("[data-slot='card-description']"),
+    ].map(text),
+    table: root.querySelector("table")?.className,
+    head: [...root.querySelectorAll("thead tr")].map((row) => [
+      row.className,
+      cellClasses(row),
+    ]),
+    rows: [...root.querySelectorAll("tbody tr")].map((row) => [
+      row.className,
+      cellClasses(row),
+      row.lastElementChild?.querySelector(".size-8") != null,
+    ]),
+  };
+}
+
+describe("BillingPageSkeleton's invoice history (w6/m625)", () => {
+  it("previews three ready invoice rows, each with its row menu", () => {
+    const invoice = {
+      kind: "cycle",
+      status: "PAID",
+      amountUsd: "40.00",
+      creditsAppliedUsd: "0.00",
+      amountDueUsd: "40.00",
+      currency: "USD",
+      periodEnd: "2026-11-01T00:00:00Z",
+      hostedInvoiceUrl: "https://invoice.stripe.com/i/acct_1/test",
+      invoicePdfUrl: "https://pay.stripe.com/invoice/acct_1/test/pdf",
+    };
+    const ready = render(
+      <InvoiceHistoryCard
+        billing={{
+          currentCost: null,
+          credits: null,
+          invoices: ["2026-10", "2026-09", "2026-08"].map((month) => ({
+            ...invoice,
+            id: `in_${month}`,
+            periodStart: `${month}-01T00:00:00Z`,
+          })),
+        }}
+      />,
+    );
+    const pending = invoiceTable(skeletonRegion("invoice-history"));
+    expect(pending.rows).toHaveLength(3);
+    expect(pending).toEqual(invoiceTable(ready.container));
+    ready.unmount();
+  });
 });

@@ -6,19 +6,19 @@
 
 Render documents billing as a workspace-dashboard workflow. Its [Dashboard guide](https://render.com/docs/render-dashboard#manage-billing) says the Billing page can update a payment method, show current accrued usage, and show past invoices. Its [workspace roles guide](https://render.com/docs/team-members#role-permissions) grants payment-method editing to Admin and Billing roles, while Developers may view billing details but cannot edit the payment method. The public docs link general resource management to Render's API/CLI, but do not publish a billing-onboarding endpoint or official MCP action.
 
-## bex contract and deliberate differences
+## bex contract and differences
 
 | Concern | Render public contract | bex m51 contract |
 | --- | --- | --- |
 | Payment setup | Dashboard Billing page | Stripe-hosted setup-mode Checkout launched from dashboard, REST, GraphQL, or MCP; since 2026-08-29 also collected at sign-up on `/setup/payment`, driven by readiness `paymentMethodOnboardingRequired` (ADR075 D7 rev.) |
-| Invoice self-service | Dashboard Billing page | Stripe-hosted Customer Portal plus normalized invoice reads on every API surface |
-| Authorization | Admin and Billing can edit; Developer view only | Billing role or admin (`can_manage_billing`, w1/m60) for onboarding readiness and both hosted actions; billing/invoice **visibility** stays open to any `can_view` member via the usage `billing` object |
+| Invoice self-service | Dashboard Billing page: past invoices, a PDF per invoice, Pay Now on an unpaid one ([capture](billing-invoices.md)) | Was a parity gap, not a deliberate difference: until w6/m625 a PDF or a payment meant opening the Stripe Customer Portal. Since [w6/m625](../../.pm/w6/m625/README.md) each invoice on the Billing page has Download PDF and, when open, Pay Now (Stripe's hosted invoice page), and REST, GraphQL and MCP carry the same `invoicePdfUrl` and `hostedInvoiceUrl` |
+| Authorization | Admin and Billing can edit; Admin, Developer and Billing view | Billing role or admin (`can_manage_billing`, w1/m60) for both hosted actions; readiness and the usage `billing` object, invoice links included, need `can_view_billing` (Admin, Developer, Billing; w9/m620) |
 | Machine surface | No public billing-onboarding verb found | Shared core with three thin adapters; dashboard consumes GraphQL |
 | Provider details | Not specified publicly | Test/live mode, Customer/Subscription/payment readiness, and fail-closed Tax state are explicit; provider IDs stay private |
 
 The API-first expansion is intentional under ADR008, not a claim that Render exposes matching endpoints. **Billing-management authorization reaches Render parity as of w1/m60:** the billing verbs gate on a dedicated, now-consumed `can_manage_billing` relation (`billing or admin`), so Render's **Billing** role manages billing without full workspace-admin — matching Render's payment-method edit split (admin + billing edit; others cannot). The earlier admin-only narrowing (a product-policy residual until the relation had a Go consumer and tests, never adapter drift) is closed; the reach is proven end-to-end against a real OpenFGA store (`TestMultiWorkspaceTargetingE2E`).
 
-**Flagged residual divergence (deliberate, not silently accepted):** Render lets a **developer** _view_ billing details (invoices, accrued usage) but not edit. bex has no separate "view billing" relation; the onboarding **readiness** verb (`Status`) is gated on `can_manage_billing`, so a developer cannot open the onboarding readiness panel. It is a narrow gap, not a visibility hole: the billing/invoice **data** Render surfaces to a developer — the Stripe invoice preview + finalized invoices — is exposed to any `can_view` member (developer included) through the usage `billing` object (`GET /v1/usage`, `usage.billing`, `get_usage`; [ADR040 § Render parity](../ADR040-billing-metronome.md)). Only the setup/management readiness state is management-gated. A finer split (a `can_view_billing` relation opening `Status` to developers) is a possible future refinement, tracked as a follow-up rather than expanded into w1/m60.
+**Viewing billing matches Render since w9/m620.** This paragraph once flagged that a developer could not open the readiness panel while any `can_view` member, Contributor and Viewer included, read the invoices through the usage `billing` object. w9/m620 added `can_view_billing` (Admin, Developer and Billing, Render's "View billing details"): it gates readiness and the usage `billing` object on REST, GraphQL and MCP, so Contributor and Viewer see neither, and a developer sees both. The invoice links of w6/m625 ride the same gate.
 
 ## Cross-surface evidence
 

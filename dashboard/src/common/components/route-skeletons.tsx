@@ -148,6 +148,7 @@ import {
 import { AgentModelCardSkeleton } from "@/features/usage/components/agent-model-card-skeleton";
 import {
   CreditBalanceCardSkeleton,
+  InvoiceHistoryCardSkeleton,
   IncludedUsageSkeleton,
   PaymentMethodCardSkeleton,
   PlanCardSkeleton,
@@ -670,7 +671,8 @@ export function OverviewPageSkeleton() {
 /**
  * The Billing page's pending frame (w4/707): each region down to Charges keeps
  * its ready card's structure and height for the current month at every width,
- * read from the workspace the shell already holds.
+ * read from the workspace the shell already holds. Invoice history keeps its
+ * ready table's header and row geometry for three invoices (w6/m625).
  */
 export function BillingPageSkeleton() {
   const { t } = useTranslations();
@@ -707,7 +709,7 @@ export function BillingPageSkeleton() {
         <CreditBalanceCardSkeleton />
       </Region>
       <Region name="invoice-history">
-        <TableCardSkeleton rows={3} columns={3} description action={false} />
+        <InvoiceHistoryCardSkeleton />
       </Region>
     </PageFrame>
   );

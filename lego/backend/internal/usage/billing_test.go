@@ -22,10 +22,12 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -368,5 +370,180 @@ func TestBillingCrossSurfaceParity(t *testing.T) {
 	restGrant0 := rest.Billing.Credits.Grants[0]
 	if gqlGrant0["name"] != restGrant0.Name || gqlGrant0["remainingUsd"] != restGrant0.RemainingUSD || gqlGrant0["expiresAt"] != restGrant0.ExpiresAt {
 		t.Errorf("GraphQL grant %v vs REST %+v (surfaces disagree)", gqlGrant0, restGrant0)
+	}
+}
+
+// invoiceLinksBilling is a history with one open invoice Stripe gave both
+// links and one void invoice it gave none (w6/m625).
+func invoiceLinksBilling() *billing.Billing {
+	return &billing.Billing{
+		Invoices: []billing.Invoice{
+			{ID: "in_open", Kind: billing.InvoiceKindCycle, Status: "OPEN", AmountUSD: "40.00", CreditsAppliedUSD: "0.00", AmountDueUSD: "40.00", Currency: "USD",
+				HostedInvoiceURL: "https://invoice.stripe.com/i/acct_1/test_open", InvoicePDFURL: "https://pay.stripe.com/invoice/acct_1/test_open/pdf"},
+			{ID: "in_void", Kind: billing.InvoiceKindCycle, Status: "VOID", AmountUSD: "5.00", CreditsAppliedUSD: "0.00", AmountDueUSD: "5.00", Currency: "USD"},
+		},
+	}
+}
+
+// usageOverMCP calls get_usage on svc over an in-memory MCP transport.
+func usageOverMCP(t *testing.T, ctx context.Context, svc *Service) *mcp.CallToolResult {
+	t.Helper()
+	srv := mcp.NewServer(&mcp.Implementation{Name: "usage-test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("MCP server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "usage-test-client", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("MCP client connect: %v", err)
+	}
+	t.Cleanup(func() { _ = cs.Close() })
+	result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "get_usage"})
+	if err != nil {
+		t.Fatalf("MCP get_usage: %v", err)
+	}
+	return result
+}
+
+// rawInvoices is the billing.invoices array of a usage response body, each
+// invoice as the JSON object a client decodes.
+func rawInvoices(t *testing.T, body []byte) []map[string]any {
+	t.Helper()
+	var resp struct {
+		Billing *struct {
+			Invoices []map[string]any `json:"invoices"`
+		} `json:"billing"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		t.Fatalf("decode %s: %v", body, err)
+	}
+	if resp.Billing == nil {
+		t.Fatalf("no billing object in %s", body)
+	}
+	return resp.Billing.Invoices
+}
+
+// TestInvoiceLinksAgreeAcrossSurfaces is w6/m625's adapter contract: REST
+// GET /v1/usage, GraphQL BillingInvoice and MCP get_usage carry the same
+// hostedInvoiceUrl and invoicePdfUrl for the same invoice, and a link Stripe
+// did not give is absent on REST and MCP and null on GraphQL, never "".
+func TestInvoiceLinksAgreeAcrossSurfaces(t *testing.T) {
+	newSvc := func() *Service {
+		s := svcWithTenant(seedStore(), "tea-001")
+		s.Billing = &fakeBillingReader{result: invoiceLinksBilling()}
+		return s
+	}
+	ctx := withIdentity(context.Background())
+	want := invoiceLinksBilling().Invoices
+
+	checkJSON := func(surface string, invoices []map[string]any) {
+		t.Helper()
+		if len(invoices) != 2 {
+			t.Fatalf("%s invoices = %v, want 2", surface, invoices)
+		}
+		if invoices[0]["hostedInvoiceUrl"] != want[0].HostedInvoiceURL || invoices[0]["invoicePdfUrl"] != want[0].InvoicePDFURL {
+			t.Errorf("%s open invoice = %v, want Stripe's two links", surface, invoices[0])
+		}
+		for _, key := range []string{"hostedInvoiceUrl", "invoicePdfUrl"} {
+			if v, ok := invoices[1][key]; ok {
+				t.Errorf("%s void invoice carries %s = %q, want it omitted", surface, key, v)
+			}
+		}
+	}
+
+	mux := http.NewServeMux()
+	newSvc().RegisterREST(mux)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, httptest.NewRequest("GET", "/v1/usage", nil).WithContext(ctx))
+	if w.Code != http.StatusOK {
+		t.Fatalf("REST %d: %s", w.Code, w.Body.String())
+	}
+	checkJSON("REST", rawInvoices(t, w.Body.Bytes()))
+
+	result := usageOverMCP(t, ctx, newSvc())
+	if result.IsError {
+		t.Fatalf("MCP get_usage error: %+v", result.Content)
+	}
+	rawMCP, err := json.Marshal(result.StructuredContent)
+	if err != nil {
+		t.Fatalf("MCP marshal: %v", err)
+	}
+	checkJSON("MCP", rawInvoices(t, rawMCP))
+
+	schema, err := buildTestSchema(newSvc())
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	res := graphql.Do(graphql.Params{
+		Schema:        schema,
+		Context:       ctx,
+		RequestString: `{ usage { billing { invoices { id hostedInvoiceUrl invoicePdfUrl } } } }`,
+	})
+	if len(res.Errors) > 0 {
+		t.Fatalf("graphql errors: %v", res.Errors)
+	}
+	gql := res.Data.(map[string]any)["usage"].(map[string]any)["billing"].(map[string]any)["invoices"].([]any)
+	open, void := gql[0].(map[string]any), gql[1].(map[string]any)
+	if open["hostedInvoiceUrl"] != want[0].HostedInvoiceURL || open["invoicePdfUrl"] != want[0].InvoicePDFURL {
+		t.Errorf("GraphQL open invoice = %v, want Stripe's two links", open)
+	}
+	if void["hostedInvoiceUrl"] != nil || void["invoicePdfUrl"] != nil {
+		t.Errorf("GraphQL void invoice = %v, want both links null", void)
+	}
+}
+
+// TestInvoiceLinksWithheldFromMembersWhoCannotViewBilling: a Contributor and a
+// Viewer, who Render says "can't view sensitive fields (billing info, …)",
+// read neither invoice link on REST, GraphQL or MCP (w9/m620, w6/m625).
+func TestInvoiceLinksWithheldFromMembersWhoCannotViewBilling(t *testing.T) {
+	links := invoiceLinksBilling().Invoices[0]
+	for _, role := range []string{"contributor", "viewer"} {
+		t.Run(role, func(t *testing.T) {
+			newSvc := func() *Service {
+				s := svcWithTenant(seedStore(), "tea-001")
+				s.Base.Authz = billingRoleChecker{role: role}
+				s.Billing = &fakeBillingReader{result: invoiceLinksBilling()}
+				return s
+			}
+			ctx := withIdentity(context.Background())
+			leaks := func(surface, out string) {
+				t.Helper()
+				if strings.Contains(out, links.HostedInvoiceURL) || strings.Contains(out, links.InvoicePDFURL) {
+					t.Errorf("%s gave a %s an invoice link: %s", surface, role, out)
+				}
+			}
+
+			mux := http.NewServeMux()
+			newSvc().RegisterREST(mux)
+			w := httptest.NewRecorder()
+			mux.ServeHTTP(w, httptest.NewRequest("GET", "/v1/usage", nil).WithContext(ctx))
+			if w.Code != http.StatusForbidden {
+				t.Errorf("REST %d for a %s, want 403", w.Code, role)
+			}
+			leaks("REST", w.Body.String())
+
+			schema, err := buildTestSchema(newSvc())
+			if err != nil {
+				t.Fatalf("schema: %v", err)
+			}
+			res := graphql.Do(graphql.Params{
+				Schema:        schema,
+				Context:       ctx,
+				RequestString: `{ usage { billing { invoices { hostedInvoiceUrl invoicePdfUrl } } } }`,
+			})
+			if len(res.Errors) == 0 {
+				t.Errorf("GraphQL gave a %s no error", role)
+			}
+			gqlOut, _ := json.Marshal(res)
+			leaks("GraphQL", string(gqlOut))
+
+			result := usageOverMCP(t, ctx, newSvc())
+			if !result.IsError {
+				t.Errorf("MCP get_usage succeeded for a %s", role)
+			}
+			mcpOut, _ := json.Marshal(result)
+			leaks("MCP", string(mcpOut))
+		})
 	}
 }

@@ -21,10 +21,12 @@ import {
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
+  ReservedBadge,
   ReservedButton,
   ReservedText,
 } from "@/common/components/reserved-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { periodLabel } from "@/features/usage/lib/period";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { OrganizationPlanNote } from "@/features/workspaces/components/organization-plan-note";
 import {
@@ -311,6 +313,77 @@ export function CreditBalanceCardSkeleton() {
         <p className="relative mt-2 text-xs text-muted-foreground">
           <ReservedText>{t("usage.creditsCardStillRequired")}</ReservedText>
         </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** A table cell's line of copy, reserved: its own text laid out invisibly. */
+function ReservedCell({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="relative inline-block">
+      <ReservedText>{children}</ReservedText>
+    </span>
+  );
+}
+
+/**
+ * Mirrors `InvoiceHistoryCard` with three invoices, each with its row menu
+ * (w6/m625): the header cells' own copy, then per row the month, a status
+ * badge, the amount and the menu's 32px trigger, in the ready row's padding,
+ * so each row is the ready row's height. The month's invoices themselves, and
+ * the agent-model note a charge adds to the description, are the data.
+ */
+export function InvoiceHistoryCardSkeleton() {
+  const { t, i18n } = useTranslations();
+  const month = periodLabel("2026-10", i18n.language);
+  return (
+    <Card>
+      <CardHeader>
+        <ReservedTitle>{t("usage.invoiceHistoryTitle")}</ReservedTitle>
+        <ReservedDescription>
+          {t("usage.invoiceHistoryDescription")}
+        </ReservedDescription>
+      </CardHeader>
+      <CardContent>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-xs tracking-wide text-muted-foreground uppercase">
+              <th scope="col" className="py-2 text-left font-medium">
+                <ReservedCell>{t("usage.colInvoicePeriod")}</ReservedCell>
+              </th>
+              <th scope="col" className="py-2 text-left font-medium">
+                <ReservedCell>{t("usage.colInvoiceStatus")}</ReservedCell>
+              </th>
+              <th scope="col" className="py-2 text-right font-medium">
+                <ReservedCell>{t("usage.colInvoiceAmount")}</ReservedCell>
+              </th>
+              <th scope="col" className="w-10 py-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {[0, 1, 2].map((row) => (
+              <tr key={row} className="border-b last:border-b-0">
+                <td className="py-2.5 font-medium">
+                  <ReservedCell>{month}</ReservedCell>
+                </td>
+                <td className="py-2.5">
+                  <ReservedBadge variant="secondary">
+                    {t("usage.invoiceStatusPaid")}
+                  </ReservedBadge>
+                </td>
+                <td className="py-2.5 text-right font-mono tabular-nums">
+                  <ReservedCell>$40.00</ReservedCell>
+                </td>
+                <td className="py-1 pl-2">
+                  <div className="flex justify-end">
+                    <Skeleton className="size-8" />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </CardContent>
     </Card>
   );

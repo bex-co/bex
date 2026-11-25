@@ -842,7 +842,9 @@ type BillingInvoice {
   amountUsd: String
   creditsAppliedUsd: String
   currency: String
+  hostedInvoiceUrl: String
   id: String
+  invoicePdfUrl: String
   kind: String
   periodEnd: String
   periodStart: String

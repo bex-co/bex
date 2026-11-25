@@ -299,6 +299,10 @@ const koUsage: Record<string, TranslationEntry> = {
     message: "금액",
     description: "Table column header for an invoice's amount",
   },
+  "usage.colInvoiceActions": {
+    message: "작업",
+    description: "Screen-reader header of the invoice table's row-menu column",
+  },
   "usage.billingSetupTitle": {
     message: "결제 설정",
     description: "Customer billing onboarding card title",
@@ -708,6 +712,39 @@ const koUsage: Record<string, TranslationEntry> = {
     message: "에이전트 모델 요금",
     description:
       "Label on an invoice-history row for a charge made when agent model spend reached its threshold",
+  },
+  "usage.invoiceActionsMenu": {
+    message: "{period} 청구서 작업",
+    description:
+      "Accessible label of an invoice row's three-dot menu; {period} is the invoice's month",
+  },
+  "usage.invoicePayNow": {
+    message: "지금 결제",
+    description:
+      "Invoice row menu item that opens Stripe's hosted page to pay an unpaid invoice (Render's Pay Now)",
+  },
+  "usage.invoiceDownloadPdf": {
+    message: "PDF 다운로드",
+    description: "Invoice row menu item that downloads the invoice as a PDF",
+  },
+  "usage.invoiceStatusOpen": {
+    message: "미결제",
+    description:
+      "Status of an invoice that is finalized and not yet paid (Stripe: open)",
+  },
+  "usage.invoiceStatusPaid": {
+    message: "결제 완료",
+    description: "Status of a paid invoice (Stripe: paid)",
+  },
+  "usage.invoiceStatusVoid": {
+    message: "무효",
+    description:
+      "Status of a voided invoice, which is owed no longer (Stripe: void)",
+  },
+  "usage.invoiceStatusUncollectible": {
+    message: "회수 불가",
+    description:
+      "Status of an invoice written off as uncollectible, which can still be paid (Stripe: uncollectible)",
   },
   "usage.invoiceHistoryChargesNote": {
     message:

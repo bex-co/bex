@@ -129,6 +129,9 @@ query Usage($period: String, $ownerId: String) {
         periodStart
         periodEnd
       }
+      # hostedInvoiceUrl and invoicePdfUrl: Stripe's hosted invoice page (Pay
+      # Now on an open invoice) and its PDF (Download PDF); null where Stripe
+      # gives none (w6/m625).
       invoices {
         id
         status
@@ -139,6 +142,8 @@ query Usage($period: String, $ownerId: String) {
         currency
         periodStart
         periodEnd
+        hostedInvoiceUrl
+        invoicePdfUrl
       }
       # credits: remaining Stripe billing-credit balance (w5/m70). Absent when
       # zero or the read degrades; never derived from the invoice preview.

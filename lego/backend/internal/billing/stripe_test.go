@@ -609,6 +609,53 @@ func TestStripeBillingForReadsPreviewAndFinalizedInvoices(t *testing.T) {
 	}
 }
 
+// Each finalized invoice carries Stripe's own hosted invoice page and PDF links
+// (w6/m625: the Billing page's Pay Now and Download PDF); an invoice Stripe
+// gave neither keeps both empty, which the JSON omits, never a made-up link.
+func TestStripeBillingForCarriesStripesInvoiceLinks(t *testing.T) {
+	const (
+		hosted = "https://invoice.stripe.com/i/acct_1/test_YWNjdF8x"
+		pdf    = "https://pay.stripe.com/invoice/acct_1/test_YWNjdF8x/pdf?s=ap"
+	)
+	c, _ := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && path == "/v1/subscriptions":
+			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
+		case method == http.MethodPost && path == "/v1/invoices/create_preview":
+			return 200, `{"id":"upcoming_in_1","object":"invoice","currency":"usd","subtotal":0,"total":0,"amount_due":0,"status":"draft"}`
+		case method == http.MethodGet && path == "/v1/invoices":
+			return 200, `{"object":"list","data":[` +
+				`{"id":"in_open","object":"invoice","currency":"usd","subtotal":4000,"total":4000,"amount_due":4000,"period_start":1782864000,"period_end":1785542400,"status":"open",` +
+				`"hosted_invoice_url":"` + hosted + `","invoice_pdf":"` + pdf + `"},` +
+				`{"id":"in_void","object":"invoice","currency":"usd","subtotal":500,"total":500,"amount_due":500,"period_start":1780272000,"period_end":1782864000,"status":"void",` +
+				`"hosted_invoice_url":null,"invoice_pdf":null}],"has_more":false,"url":"/v1/invoices"}`
+		default:
+			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+		}
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	b, err := c.BillingFor(context.Background(), "tea-a", time.Time{}, time.Time{})
+	if err != nil {
+		t.Fatalf("BillingFor: %v", err)
+	}
+	if len(b.Invoices) != 2 || b.Invoices[0].ID != "in_open" || b.Invoices[1].ID != "in_void" {
+		t.Fatalf("invoices = %+v, want in_open then in_void", b.Invoices)
+	}
+	if open := b.Invoices[0]; open.HostedInvoiceURL != hosted || open.InvoicePDFURL != pdf || open.Status != "OPEN" {
+		t.Fatalf("open invoice = %+v, want Stripe's hosted page and PDF", open)
+	}
+	if void := b.Invoices[1]; void.HostedInvoiceURL != "" || void.InvoicePDFURL != "" {
+		t.Fatalf("void invoice = %+v, want no links", void)
+	}
+	raw, err := json.Marshal(b.Invoices[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "hostedInvoiceUrl") || strings.Contains(string(raw), "invoicePdfUrl") {
+		t.Fatalf("void invoice JSON = %s, want both links omitted", raw)
+	}
+}
+
 // A threshold charge (a standalone invoice on the customer) is listed beside
 // the cycle invoices, labelled as an agent-model charge, newest first, and is
 // never listed twice.

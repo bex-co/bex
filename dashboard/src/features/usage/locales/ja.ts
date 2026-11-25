@@ -300,6 +300,10 @@ const jaUsage: Record<string, TranslationEntry> = {
     message: "金額",
     description: "Table column header for an invoice's amount",
   },
+  "usage.colInvoiceActions": {
+    message: "操作",
+    description: "Screen-reader header of the invoice table's row-menu column",
+  },
   "usage.billingSetupTitle": {
     message: "請求の設定",
     description: "Customer billing onboarding card title",
@@ -714,6 +718,39 @@ const jaUsage: Record<string, TranslationEntry> = {
     message: "エージェントモデルの料金",
     description:
       "Label on an invoice-history row for a charge made when agent model spend reached its threshold",
+  },
+  "usage.invoiceActionsMenu": {
+    message: "{period}の請求書の操作",
+    description:
+      "Accessible label of an invoice row's three-dot menu; {period} is the invoice's month",
+  },
+  "usage.invoicePayNow": {
+    message: "今すぐ支払う",
+    description:
+      "Invoice row menu item that opens Stripe's hosted page to pay an unpaid invoice (Render's Pay Now)",
+  },
+  "usage.invoiceDownloadPdf": {
+    message: "PDFをダウンロード",
+    description: "Invoice row menu item that downloads the invoice as a PDF",
+  },
+  "usage.invoiceStatusOpen": {
+    message: "未払い",
+    description:
+      "Status of an invoice that is finalized and not yet paid (Stripe: open)",
+  },
+  "usage.invoiceStatusPaid": {
+    message: "支払い済み",
+    description: "Status of a paid invoice (Stripe: paid)",
+  },
+  "usage.invoiceStatusVoid": {
+    message: "無効",
+    description:
+      "Status of a voided invoice, which is owed no longer (Stripe: void)",
+  },
+  "usage.invoiceStatusUncollectible": {
+    message: "回収不能",
+    description:
+      "Status of an invoice written off as uncollectible, which can still be paid (Stripe: uncollectible)",
   },
   "usage.invoiceHistoryChargesNote": {
     message:

@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { act, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import i18n from "@/i18n/init";
 import {
   CreditBalanceCard,
   InvoiceHistoryCard,
 } from "@/features/usage/components/billing-summary-cards";
-import type { Billing } from "@/features/usage/hooks/use-usage";
+import type { Billing, BillingInvoice } from "@/features/usage/hooks/use-usage";
 
 // The live w6/m98 shape: a $1,000 grant absorbed the whole $74.78 period, so
 // Stripe's invoice collects nothing while the charge itself is real.
@@ -117,13 +119,15 @@ describe("grouped money amounts", () => {
         {
           id: "in_big",
           kind: "cycle",
-          status: "paid",
+          status: "PAID",
           amountUsd: "1234.50",
           creditsAppliedUsd: "0.00",
           amountDueUsd: "1234.50",
           currency: "USD",
           periodStart: "2026-07-01T00:00:00Z",
           periodEnd: "2026-08-01T00:00:00Z",
+          hostedInvoiceUrl: null,
+          invoicePdfUrl: null,
         },
       ],
     });
@@ -154,13 +158,15 @@ describe("InvoiceHistoryCard", () => {
             {
               id: "in_1",
               kind: "cycle",
-              status: "paid",
+              status: "PAID",
               amountUsd: "74.78",
               creditsAppliedUsd: "74.78",
               amountDueUsd: "0.00",
               currency: "USD",
               periodStart: "2026-07-01T00:00:00Z",
               periodEnd: "2026-08-01T00:00:00Z",
+              hostedInvoiceUrl: null,
+              invoicePdfUrl: null,
             },
           ],
         })}
@@ -176,6 +182,8 @@ describe("InvoiceHistoryCard", () => {
       creditsAppliedUsd: "0.00",
       currency: "USD",
       periodEnd: "2026-11-13T00:00:00Z",
+      hostedInvoiceUrl: null,
+      invoicePdfUrl: null,
     };
     render(
       <InvoiceHistoryCard
@@ -184,7 +192,7 @@ describe("InvoiceHistoryCard", () => {
             {
               ...row,
               id: "in_charge",
-              status: "paid",
+              status: "PAID",
               kind: "agent_model_charge",
               amountUsd: "10.00",
               amountDueUsd: "10.00",
@@ -193,7 +201,7 @@ describe("InvoiceHistoryCard", () => {
             {
               ...row,
               id: "in_cycle",
-              status: "paid",
+              status: "PAID",
               kind: "cycle",
               amountUsd: "40.00",
               amountDueUsd: "40.00",
@@ -217,7 +225,7 @@ describe("InvoiceHistoryCard", () => {
           invoices: [
             {
               id: "in_cycle",
-              status: "paid",
+              status: "PAID",
               kind: "cycle",
               amountUsd: "40.00",
               creditsAppliedUsd: "0.00",
@@ -225,6 +233,8 @@ describe("InvoiceHistoryCard", () => {
               currency: "USD",
               periodStart: "2026-10-01T00:00:00Z",
               periodEnd: "2026-11-01T00:00:00Z",
+              hostedInvoiceUrl: null,
+              invoicePdfUrl: null,
             },
           ],
         })}
@@ -233,5 +243,147 @@ describe("InvoiceHistoryCard", () => {
 
     expect(screen.queryByText("Agent model charge")).not.toBeInTheDocument();
     expect(screen.queryByText(/deducted/)).not.toBeInTheDocument();
+  });
+});
+
+// w6/m625: each invoice's row menu offers Stripe's PDF, and Pay Now (Stripe's
+// hosted invoice page) while the invoice still owes, as Render's Billing page
+// does; statuses read in the dashboard's language, not Stripe's raw words.
+describe("InvoiceHistoryCard row menu (w6/m625)", () => {
+  const PDF = "https://pay.stripe.com/invoice/acct_1/test_1/pdf?s=ap";
+  const HOSTED = "https://invoice.stripe.com/i/acct_1/test_1";
+
+  function invoice(over: Partial<BillingInvoice>): BillingInvoice {
+    return {
+      id: "in_1",
+      kind: "cycle",
+      status: "PAID",
+      amountUsd: "40.00",
+      creditsAppliedUsd: "0.00",
+      amountDueUsd: "40.00",
+      currency: "USD",
+      periodStart: "2026-10-01T00:00:00Z",
+      periodEnd: "2026-11-01T00:00:00Z",
+      hostedInvoiceUrl: HOSTED,
+      invoicePdfUrl: PDF,
+      ...over,
+    };
+  }
+
+  function renderInvoices(invoices: BillingInvoice[]) {
+    return render(
+      <InvoiceHistoryCard billing={creditedPeriod({ invoices })} />,
+    );
+  }
+
+  /** The items of the row menu for `period`, opened as a user opens it. */
+  async function menuItems(period: string) {
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", {
+        name: `Actions for the ${period} invoice`,
+      }),
+    );
+    return within(await screen.findByRole("menu")).getAllByRole("menuitem");
+  }
+
+  afterEach(async () => {
+    await act(async () => {
+      await i18n.changeLanguage("en");
+    });
+  });
+
+  it("offers a paid invoice its PDF only", async () => {
+    renderInvoices([invoice({ status: "PAID" })]);
+    const items = await menuItems("October 2026");
+    expect(items.map((item) => item.textContent)).toEqual(["Download PDF"]);
+    expect(items[0]).toHaveAttribute("href", PDF);
+    expect(items[0]).toHaveAttribute("target", "_blank");
+    expect(items[0]).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it.each(["OPEN", "UNCOLLECTIBLE"])(
+    "offers an %s invoice Pay Now on Stripe's hosted page, then its PDF",
+    async (status) => {
+      renderInvoices([invoice({ status })]);
+      const items = await menuItems("October 2026");
+      expect(items.map((item) => item.textContent)).toEqual([
+        "Pay Now",
+        "Download PDF",
+      ]);
+      expect(items[0]).toHaveAttribute("href", HOSTED);
+      expect(items[0]).toHaveAttribute("target", "_blank");
+      expect(items[0]).toHaveAttribute("rel", "noopener noreferrer");
+    },
+  );
+
+  it("offers no Pay Now on a void invoice, which owes nothing", async () => {
+    renderInvoices([invoice({ status: "VOID" })]);
+    const items = await menuItems("October 2026");
+    expect(items.map((item) => item.textContent)).toEqual(["Download PDF"]);
+  });
+
+  it("offers Pay Now alone when Stripe gave an open invoice no PDF", async () => {
+    renderInvoices([invoice({ status: "OPEN", invoicePdfUrl: null })]);
+    const items = await menuItems("October 2026");
+    expect(items.map((item) => item.textContent)).toEqual(["Pay Now"]);
+  });
+
+  it("draws no menu for an invoice Stripe gave no link", () => {
+    renderInvoices([
+      invoice({ status: "OPEN", hostedInvoiceUrl: null, invoicePdfUrl: null }),
+    ]);
+    expect(screen.getByText("$40.00")).toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("refuses a link that is not http(s)", () => {
+    renderInvoices([
+      invoice({
+        status: "OPEN",
+        hostedInvoiceUrl: "javascript:alert(1)",
+        invoicePdfUrl: "data:text/html,hi",
+      }),
+    ]);
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("gives each row its own menu", async () => {
+    renderInvoices([
+      invoice({
+        id: "in_open",
+        status: "OPEN",
+        periodStart: "2026-10-01T00:00:00Z",
+      }),
+      invoice({
+        id: "in_paid",
+        status: "PAID",
+        periodStart: "2026-09-01T00:00:00Z",
+      }),
+    ]);
+    const items = await menuItems("September 2026");
+    expect(items.map((item) => item.textContent)).toEqual(["Download PDF"]);
+  });
+
+  it("translates each status instead of showing Stripe's word", async () => {
+    renderInvoices([
+      invoice({ id: "a", status: "OPEN" }),
+      invoice({ id: "b", status: "PAID" }),
+      invoice({ id: "c", status: "VOID" }),
+      invoice({ id: "d", status: "UNCOLLECTIBLE" }),
+    ]);
+    for (const label of ["Unpaid", "Paid", "Void", "Uncollectible"]) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
+    for (const raw of ["OPEN", "PAID", "VOID", "UNCOLLECTIBLE"]) {
+      expect(screen.queryByText(raw)).not.toBeInTheDocument();
+    }
+
+    await act(async () => {
+      await i18n.changeLanguage("zh");
+    });
+    for (const label of ["未支付", "已支付", "已作废", "无法收回"]) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
   });
 });

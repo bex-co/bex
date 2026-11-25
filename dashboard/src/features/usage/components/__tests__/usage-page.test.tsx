@@ -224,13 +224,15 @@ describe("UsagePage", () => {
             {
               id: "inv_1",
               kind: "cycle",
-              status: "paid",
+              status: "PAID",
               amountUsd: "75.48",
               creditsAppliedUsd: "0.00",
               amountDueUsd: "75.48",
               currency: "USD",
               periodStart: "2026-07-01T00:00:00Z",
               periodEnd: "2026-08-01T00:00:00Z",
+              hostedInvoiceUrl: null,
+              invoicePdfUrl: null,
             },
           ],
         },
@@ -240,7 +242,7 @@ describe("UsagePage", () => {
 
     expect(screen.getByText("Invoice history")).toBeInTheDocument();
     expect(screen.getByText("$75.48")).toBeInTheDocument();
-    expect(screen.getByText("paid")).toBeInTheDocument();
+    expect(screen.getByText("Paid")).toBeInTheDocument();
   });
 });
 
