@@ -23,11 +23,25 @@ import (
 	"github.com/stripe/stripe-go/v86"
 )
 
+// workspaceBillingEmail is the workspace's billing email in effect (w6/179),
+// the address every Customer bex creates for it takes. Empty when bex cannot
+// name one, and with no reader (isolated tests).
+func (c *StripeClient) workspaceBillingEmail(ctx context.Context, workspaceID string) (string, error) {
+	if c.billingEmail == nil {
+		return "", nil
+	}
+	email, err := c.billingEmail(ctx, workspaceID)
+	if err != nil {
+		return "", fmt.Errorf("stripe: read the billing email of workspace %s: %w", workspaceID, err)
+	}
+	return email, nil
+}
+
 // SetCustomerEmail sets the email of workspaceID's Stripe Customer (w6/m627):
 // the address Stripe sends the workspace's receipts and finalized invoices to,
 // where the account's customer-email settings send them. A workspace with no
 // Customer, or whose Customer is gone, has nothing to update; one created
-// later takes the email its Checkout collects.
+// later takes the billing email in effect then (workspaceBillingEmail).
 func (c *StripeClient) SetCustomerEmail(ctx context.Context, workspaceID, email string) error {
 	customerID, found, err := c.findCustomer(ctx, workspaceID)
 	if err != nil || !found {

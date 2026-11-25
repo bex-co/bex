@@ -85,33 +85,56 @@ func (c *StripeClient) FollowWorkspaceRename(ctx context.Context, workspaceID, p
 	return nil
 }
 
-// nameCheckoutCustomer names a Customer Checkout created after its
-// workspace, as EnsureCustomer and workspace creation name theirs: Checkout
-// names it after what it collected. A business name Checkout collected with a
-// tax ID (only once Stripe Tax is configured) is the member's company name,
-// so it stays and is marked as one. Every delivery of the event runs it, and
-// it changes nothing once the name is set.
-func (c *StripeClient) nameCheckoutCustomer(ctx context.Context, checkout verifiedCheckout) error {
+// fillCheckoutCustomer gives a Customer Checkout created what one
+// EnsureCustomer or workspace creation creates has: the workspace's name
+// (nameCheckoutCustomer) and its billing email in effect (w6/179). Checkout
+// named it after what it collected, and gave it the email bex sent or, where
+// bex could not name one when the session opened, the one the member typed;
+// with no email bex can name now, that one stays. Every delivery of the
+// event runs it, and it changes nothing once both are set.
+func (c *StripeClient) fillCheckoutCustomer(ctx context.Context, checkout verifiedCheckout) error {
 	customer, gone, err := c.liveCustomer(ctx, checkout.customerID)
-	if err != nil || gone || customer.Metadata[companyNameMetadataKey] != "" {
+	if err != nil || gone {
 		return err
 	}
 	params := &stripe.CustomerParams{}
-	if checkout.businessName != "" && customer.Name == checkout.businessName {
+	if err := c.nameCheckoutCustomer(ctx, checkout, customer, params); err != nil {
+		return err
+	}
+	email, err := c.workspaceBillingEmail(ctx, checkout.workspaceID)
+	if err != nil {
+		return err
+	}
+	if email != "" && customer.Email != email {
+		params.Email = stripe.String(email)
+	}
+	if params.Name == nil && params.Email == nil && len(params.Metadata) == 0 {
+		return nil
+	}
+	params.Context = ctx
+	if _, err := c.sc.Customers.Update(checkout.customerID, params); err != nil {
+		return fmt.Errorf("stripe: name and email Checkout Customer %s of %s: %w", checkout.customerID, checkout.workspaceID, err)
+	}
+	return nil
+}
+
+// nameCheckoutCustomer adds to params the name a Checkout Customer bills:
+// its workspace's. A business name Checkout collected with a tax ID (only
+// once Stripe Tax is configured) is the member's company name, so it stays
+// and is marked as one, and a name already marked as one is left alone.
+func (c *StripeClient) nameCheckoutCustomer(ctx context.Context, checkout verifiedCheckout, customer *stripe.Customer, params *stripe.CustomerParams) error {
+	switch {
+	case customer.Metadata[companyNameMetadataKey] != "":
+	case checkout.businessName != "" && customer.Name == checkout.businessName:
 		params.AddMetadata(companyNameMetadataKey, "true")
-	} else {
+	default:
 		name, err := c.workspaceName(ctx, checkout.workspaceID)
 		if err != nil {
 			return err
 		}
-		if customer.Name == name {
-			return nil
+		if customer.Name != name {
+			params.Name = stripe.String(name)
 		}
-		params.Name = stripe.String(name)
-	}
-	params.Context = ctx
-	if _, err := c.sc.Customers.Update(checkout.customerID, params); err != nil {
-		return fmt.Errorf("stripe: name Checkout Customer %s of %s: %w", checkout.customerID, checkout.workspaceID, err)
 	}
 	return nil
 }

@@ -1261,6 +1261,10 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 				t, err := st.GetTenant(ctx, workspaceID)
 				return t.Label(), err
 			},
+			// w6/179: a Customer Checkout or EnsureCustomer creates takes
+			// the workspace's billing email, as one workspace creation makes
+			// does.
+			BillingEmail: workspaces.BillingEmailsInEffect(st, deps.Identities),
 		})
 		thresholds.Stripe = stripeClient
 		go thresholds.Run(ctx)

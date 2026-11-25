@@ -78,6 +78,9 @@ type adoptionStub struct {
 	// businessName is what Checkout collected with a tax ID, and so the
 	// name it gave the Customer (w6/m628); empty without Stripe Tax.
 	businessName string
+	// email is the address the Customer was created with: Checkout's
+	// customer_email, or what the member typed (w6/179).
+	email string
 }
 
 func (a *adoptionStub) route(method, path string) (int, string) {
@@ -93,7 +96,7 @@ func (a *adoptionStub) route(method, path string) (int, string) {
 		if a.customerOwner != "" {
 			meta = `{"bex_workspace":"` + a.customerOwner + `"}`
 		}
-		return 200, `{"id":"cus_new","object":"customer","livemode":false,"name":"` + a.businessName + `","metadata":` + meta + `}`
+		return 200, `{"id":"cus_new","object":"customer","livemode":false,"name":"` + a.businessName + `","email":"` + a.email + `","metadata":` + meta + `}`
 	case method == http.MethodPost && path == "/v1/customers/cus_new":
 		a.customerOwner = "tea-new"
 		return 200, `{"id":"cus_new","object":"customer","livemode":false,"metadata":{"bex_workspace":"tea-new"}}`

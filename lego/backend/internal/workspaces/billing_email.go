@@ -18,6 +18,7 @@ package workspaces
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 
@@ -72,6 +73,37 @@ func (s *Service) BillingEmail(ctx context.Context, workspaceID string) (Billing
 	if err != nil {
 		return BillingEmailView{}, err
 	}
+	return s.billingEmailView(ctx, id)
+}
+
+// BillingEmailsInEffect reads BillingEmail's address without an
+// authorization check, for the Stripe Customer bex creates for a workspace
+// through Checkout or usage (w6/179): the usage emitter creates one with no
+// caller to authorize, before the request-serving Service exists. The
+// composition root wires it into billing, which cannot import this package.
+func BillingEmailsInEffect(st WorkspaceStore, identities IdentityReader) func(ctx context.Context, workspaceID string) (string, error) {
+	return (&Service{Store: st, Identities: identities}).billingEmailInEffect
+}
+
+// billingEmailInEffect is empty when bex cannot name a valid address: the
+// workspace is gone, or it stored none and its owner's account email cannot
+// be read.
+func (s *Service) billingEmailInEffect(ctx context.Context, workspaceID string) (string, error) {
+	view, err := s.billingEmailView(ctx, workspaceID)
+	if errors.Is(err, core.ErrNotFound) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	// An address Stripe would refuse is none: Checkout then asks for one.
+	if email, err := normalizeBillingEmail(view.Email); err == nil {
+		return email, nil
+	}
+	return "", nil
+}
+
+func (s *Service) billingEmailView(ctx context.Context, id string) (BillingEmailView, error) {
 	st, err := s.billingEmailStore()
 	if err != nil {
 		return BillingEmailView{}, err

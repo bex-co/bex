@@ -206,3 +206,39 @@ func TestBillingEmailNeedsTheStore(t *testing.T) {
 		t.Fatalf("write = %v, want ErrWorkspacesUnavailable", err)
 	}
 }
+
+// w6/179: a Stripe Customer bex creates through Checkout or usage takes the
+// address BillingEmail reads, resolved with no caller (the usage emitter has
+// none) from the store and the identity provider alone, as cmd/api wires it.
+func TestBillingEmailsInEffectAreTheAddressesBillingEmailReads(t *testing.T) {
+	for name, tc := range map[string]struct {
+		plan, stored string
+		ownerKnown   bool
+		want         string
+	}{
+		"Hobby: the owner's account email":                   {"hobby", "stale@example.com", true, "owner@example.com"},
+		"Pro with no address of its own: the owner's":        {"pro", "", true, "owner@example.com"},
+		"Pro: its own address":                               {"pro", "finance@example.com", true, "finance@example.com"},
+		"Hobby, owner unreadable: the address from creation": {"hobby", "created@example.com", false, "created@example.com"},
+		"Pro, owner unreadable and none stored: none":        {"pro", "", false, ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			svc, st, _, ws := billingEmailFixture(t, tc.plan)
+			st.emails[ws] = tc.stored
+			identities := svc.Identities
+			if !tc.ownerKnown {
+				identities = fakeIdentities{}
+			}
+			got, err := BillingEmailsInEffect(st, identities)(context.Background(), ws)
+			if err != nil || got != tc.want {
+				t.Fatalf("in effect = %q, %v; want %q", got, err, tc.want)
+			}
+		})
+	}
+	t.Run("a workspace that is gone has none", func(t *testing.T) {
+		svc, st, _, _ := billingEmailFixture(t, "pro")
+		if got, err := BillingEmailsInEffect(st, svc.Identities)(context.Background(), "tea-gone"); err != nil || got != "" {
+			t.Fatalf("in effect = %q, %v; want none", got, err)
+		}
+	})
+}

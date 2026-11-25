@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"slices"
 	"strings"
@@ -29,12 +30,15 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	stripe "github.com/stripe/stripe-go/v86"
 
 	"github.com/bex-co/bex/lego/backend/internal/authz"
+	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/tenancy"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
+	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 )
 
 // customerEmails stands in for the Stripe Customer: the email each
@@ -282,4 +286,134 @@ func TestBillingEmailOnEverySurfaceE2E(t *testing.T) {
 	if email, configurable, _ := read("hobby admin", owner, hobby); email != hobbyAdmin+"@example.com" || configurable {
 		t.Fatalf("after the downgrade = %q (configurable %v), want the owner's, not configurable", email, configurable)
 	}
+}
+
+// TestNewCustomersTakeTheBillingEmailE2E is w6/179's proof against REAL
+// Postgres, with the real Stripe client over a stand-in and the billing email
+// read composed as cmd/api composes it (workspaces.BillingEmailsInEffect). The
+// Customer a workspace's first Checkout
+// will create, and the one EnsureCustomer creates for its usage, take its
+// billing email in effect: on Hobby its owner's account email, whatever
+// address is stored; on Pro the address it set. A workspace whose owner's
+// email cannot be read still opens Checkout, which then asks for one.
+//
+//	BEX_TEST_DB_URI=postgres://…/postgres?sslmode=disable \
+//	  go test ./internal/api -run TestNewCustomersTakeTheBillingEmailE2E -v
+func TestNewCustomersTakeTheBillingEmailE2E(t *testing.T) {
+	dbURI := os.Getenv("BEX_TEST_DB_URI")
+	if dbURI == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := store.Migrate(dbURI); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, dbURI)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := store.NewPGStore(pool)
+
+	run := uniqueRunSuffix()
+	workspace := func(name, plan, owner, stored string) store.Tenant {
+		t.Helper()
+		ws, err := st.CreateWorkspace(ctx, name+"-"+run, plan, owner)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), ws.ID) })
+		if err := st.SetWorkspaceBillingEmail(ctx, ws.ID, stored); err != nil {
+			t.Fatal(err)
+		}
+		return ws
+	}
+	hobbyOwner := "hobbyowner-" + run
+	hobby := workspace("newcustomerhobby", store.PlanHobby, hobbyOwner, "stale@example.com")
+	pro := workspace("newcustomerpro", store.PlanPro, "proowner-"+run, "finance@example.com")
+	// Its owner has no identity the provider can read, and it stored none.
+	unknown := workspace("newcustomerunknown", store.PlanPro, "unknownowner-"+run, "")
+
+	var mu sync.Mutex
+	checkouts, creates := map[string]url.Values{}, map[string]url.Values{}
+	stripeAPI := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		mu.Lock()
+		defer mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v1/customers/search":
+			fmt.Fprint(w, `{"object":"search_result","data":[],"has_more":false,"url":"/v1/customers/search"}`)
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/checkout/sessions":
+			checkouts[r.PostForm.Get("client_reference_id")] = r.PostForm
+			fmt.Fprint(w, `{"id":"cs_test_1","object":"checkout.session","mode":"setup","livemode":false,"expires_at":1785200000,"url":"https://checkout.stripe.com/c/pay/cs_test_1"}`)
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/customers":
+			creates[r.PostForm.Get("metadata[bex_workspace]")] = r.PostForm
+			fmt.Fprint(w, `{"id":"cus_`+r.PostForm.Get("metadata[bex_workspace]")+`","object":"customer"}`)
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, `{"error":{"type":"api_error","message":"unexpected `+r.Method+" "+r.URL.Path+`"}}`)
+		}
+	}))
+	defer stripeAPI.Close()
+	stripeClient := billing.NewStripe(billing.StripeConfig{
+		SecretKey: "sk_test_x", HTTPClient: stripeAPI.Client(), BaseURL: stripeAPI.URL, MaxNetworkRetries: stripe.Int64(0),
+		DashboardURL: "https://dashboard.bex.co",
+		BillingEmail: workspaces.BillingEmailsInEffect(st, ownerIdentities{unreadable: "unknownowner-" + run}),
+	})
+
+	for _, tc := range []struct {
+		name string
+		ws   store.Tenant
+		want string // "" when none is sent
+	}{
+		{"Hobby: its owner's account email", hobby, hobbyOwner + "@example.com"},
+		{"Pro: the address it set", pro, "finance@example.com"},
+		{"an owner whose email cannot be read", unknown, ""},
+	} {
+		if _, err := stripeClient.CreateCheckoutSession(ctx, tc.ws.ID, billing.CheckoutRequest{
+			SuccessURL: "https://dashboard.bex.co/billing?billing=success", CancelURL: "https://dashboard.bex.co/billing?billing=cancelled",
+		}); err != nil {
+			t.Fatalf("%s: Checkout: %v", tc.name, err)
+		}
+		if err := stripeClient.EnsureCustomer(ctx, tc.ws.ID); err != nil {
+			t.Fatalf("%s: EnsureCustomer: %v", tc.name, err)
+		}
+		mu.Lock()
+		checkout, created := checkouts[tc.ws.ID], creates[tc.ws.ID]
+		mu.Unlock()
+		if checkout.Get("customer_creation") != "always" || checkout.Has("customer_email") != (tc.want != "") || checkout.Get("customer_email") != tc.want {
+			t.Errorf("%s: Checkout = %v, want customer_email %q", tc.name, checkout, tc.want)
+		}
+		if created.Has("email") != (tc.want != "") || created.Get("email") != tc.want {
+			t.Errorf("%s: the created Customer = %v, want email %q", tc.name, created, tc.want)
+		}
+	}
+}
+
+// ownerIdentities is metadataIdentities (<subject>@example.com) for every
+// subject but unreadable, which the identity provider cannot read.
+type ownerIdentities struct{ unreadable string }
+
+func (o ownerIdentities) Lookup(ctx context.Context, subject string) (workspaces.IdentityAttrs, bool) {
+	if subject == o.unreadable {
+		return workspaces.IdentityAttrs{}, false
+	}
+	return metadataIdentities{}.Lookup(ctx, subject)
+}
+
+func (o ownerIdentities) LookupMany(ctx context.Context, subjects []string) map[string]workspaces.IdentityAttrs {
+	out := metadataIdentities{}.LookupMany(ctx, subjects)
+	delete(out, o.unreadable)
+	return out
+}
+
+func (o ownerIdentities) LookupEmails(ctx context.Context, subjects []string) (map[string]string, error) {
+	out, err := metadataIdentities{}.LookupEmails(ctx, subjects)
+	delete(out, o.unreadable)
+	return out, err
+}
+
+func (o ownerIdentities) MFAEnrolled(ctx context.Context, id string) (bool, bool, error) {
+	return metadataIdentities{}.MFAEnrolled(ctx, id)
 }

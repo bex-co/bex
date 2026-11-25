@@ -152,6 +152,14 @@ func (c *StripeClient) CreateCheckoutSession(ctx context.Context, workspaceID st
 		params.Customer = stripe.String(customerID)
 	} else {
 		params.CustomerCreation = stripe.String(string(stripe.CheckoutSessionCustomerCreationAlways))
+		// The Customer Checkout creates takes the workspace's billing email,
+		// as one created any other way does (w6/179). Where bex cannot name
+		// it, Stripe asks for one, and completion corrects it once it can.
+		if email, err := c.workspaceBillingEmail(ctx, workspaceID); err != nil {
+			log.Printf("billing: open Checkout for %s without its billing email: %v", workspaceID, err)
+		} else if email != "" {
+			params.CustomerEmail = stripe.String(email)
+		}
 	}
 	// A setup session has no taxable transaction. Once the operator tax gate is
 	// valid, Checkout collects and saves the location/tax-id inputs that the
@@ -278,13 +286,14 @@ func (c *StripeClient) CompleteCheckoutSession(ctx context.Context, eventSession
 	// Last, once nothing above can fail the event: the new card pays what
 	// dunning holds the workspace for (w6/m626, overdue.go).
 	c.payOverdueInvoices(ctx, checkout.workspaceID, checkout.customerID, checkout.subscription.ID, paymentMethod)
-	// A Customer this Checkout created bills the workspace's name, as every
-	// other Customer does (w6/m628). Best-effort: the card is bound, and a
-	// name is not worth failing the event for.
+	// A Customer this Checkout created bills the workspace's name and emails
+	// its billing email, as every other Customer does (w6/m628, w6/179).
+	// Best-effort: the card is bound, and neither is worth failing the event
+	// for.
 	if checkout.checkoutCreatedCustomer {
-		if err := c.nameCheckoutCustomer(ctx, checkout); err != nil {
-			c.metrics.Operation("checkout_customer_name", "error")
-			log.Printf("billing: name the Checkout Customer of %s: %v", checkout.workspaceID, err)
+		if err := c.fillCheckoutCustomer(ctx, checkout); err != nil {
+			c.metrics.Operation("checkout_customer_details", "error")
+			log.Printf("billing: name and email the Checkout Customer of %s: %v", checkout.workspaceID, err)
 		}
 	}
 	return nil

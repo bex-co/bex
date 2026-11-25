@@ -175,6 +175,12 @@ type StripeConfig struct {
 	// WorkspaceLabel reads the name a workspace's invoices bill: its display
 	// name, else its slug (w6/m628). Nil (isolated tests) bills its id.
 	WorkspaceLabel func(ctx context.Context, workspaceID string) (string, error)
+	// BillingEmail reads a workspace's billing email in effect (w6/179): its
+	// own address on Pro and higher, else its owner's account email. A
+	// Customer Checkout or EnsureCustomer creates takes it, as workspace
+	// creation's does. An empty answer, or nil (isolated tests), leaves the
+	// email to Checkout, which asks for one.
+	BillingEmail func(ctx context.Context, workspaceID string) (string, error)
 }
 
 // BillingStateStore is the narrow persistence seam the Stripe client needs.
@@ -230,6 +236,7 @@ type StripeClient struct {
 	cards                 CardScreenStore
 	overdue               *OverduePayments
 	workspaceLabel        func(ctx context.Context, workspaceID string) (string, error)
+	billingEmail          func(ctx context.Context, workspaceID string) (string, error)
 	settleWait            time.Duration
 	audit                 core.AuditSink
 	metrics               *Metrics
@@ -275,6 +282,7 @@ func NewStripe(cfg StripeConfig) *StripeClient {
 		cards:                 cfg.Cards,
 		overdue:               cfg.Overdue,
 		workspaceLabel:        cfg.WorkspaceLabel,
+		billingEmail:          cfg.BillingEmail,
 		settleWait:            cfg.SettleWait,
 		audit:                 cfg.Audit,
 		metrics:               cfg.Metrics,
@@ -299,16 +307,25 @@ func (c *StripeClient) EnsureCustomer(ctx context.Context, tenantID string) erro
 	} else if found {
 		return nil
 	}
-	// None exists — create one tagged with the workspace id and named after
-	// the workspace, the Bill-to of its invoices (w6/m628). The idempotency
-	// key closes concurrent create races while Customer Search catches restarts.
+	// None exists — create one tagged with the workspace id, named after the
+	// workspace, the Bill-to of its invoices (w6/m628), and sending its
+	// receipts and invoices to the workspace's billing email (w6/179). The
+	// idempotency key closes concurrent create races while Customer Search
+	// catches restarts.
 	name, err := c.workspaceName(ctx, tenantID)
+	if err != nil {
+		return err
+	}
+	email, err := c.workspaceBillingEmail(ctx, tenantID)
 	if err != nil {
 		return err
 	}
 	cp := &stripe.CustomerParams{
 		Name:     stripe.String(name),
 		Metadata: map[string]string{workspaceMetadataKey: tenantID},
+	}
+	if email != "" {
+		cp.Email = stripe.String(email)
 	}
 	cp.Context = ctx
 	cp.SetIdempotencyKey("bex-customer-" + tenantID)
