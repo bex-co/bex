@@ -1,6 +1,6 @@
 # w6 · m634 — A failed health check says what the check got back, in Render's words, on every surface
 
-**Worker:** worker6 **Goal:** when an instance fails its health check, at deploy or while live, every surface names what the check got back in Render's words: the status code, the 5-second timeout, `connection refused` or `i/o timeout`. The surfaces are the `server_failed` event's `failureReason.unhealthy` on REST, GraphQL, MCP and webhooks, the deploy's failure reason, and the dashboard. **Status:** todo (t001–t006, t009 and t010 done)
+**Worker:** worker6 **Goal:** when an instance fails its health check, at deploy or while live, every surface names what the check got back in Render's words: the status code, the 5-second timeout, `connection refused` or `i/o timeout`. The surfaces are the `server_failed` event's `failureReason.unhealthy` on REST, GraphQL, MCP and webhooks, the deploy's failure reason, and the dashboard. **Status:** blocked (t001–t006, t009 and t010 done; t007 waits for a production pin carrying `e3a1842c94`)
 
 ## Tasks (in order)
 
