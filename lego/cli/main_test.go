@@ -1327,23 +1327,23 @@ func TestBexLoginReportsBexReleaseNotRenderCLI(t *testing.T) {
 // workspace still refuses (w8/064).
 func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 	const (
-		teamID = "tea-12345678901234567890"
-		dbID   = "dpg-12345678901234567890"
-		kvID   = "red-12345678901234567890"
-		srvID  = "srv-12345678901234567890"
-		sbgID  = "sbg-12345678901234567890"
-		sbbID  = "sbb-12345678901234567890"
-		crdID  = "crd-12345678901234567890"
-		exsID  = "exs-12345678901234567890"
-		agsID  = "ags-12345678901234567890"
-		sbxID  = "sbx-12345678901234567890"
-		snpID  = "snp-12345678901234567890"
-		evmID  = "evm-12345678901234567890"
-		autID  = "aut-12345678901234567890"
-		sklID  = "skl-12345678901234567890"
-		secID  = "sec-12345678901234567890"
-		objID  = "obj-12345678901234567890"
-		bktID  = "bkt-12345678901234567890"
+		teamID  = "tea-12345678901234567890"
+		dbID    = "dpg-12345678901234567890"
+		kvID    = "red-12345678901234567890"
+		srvID   = "srv-12345678901234567890"
+		sbgID   = "sbg-12345678901234567890"
+		sbbID   = "sbb-12345678901234567890"
+		crdSlug = "inference-key"
+		exsID   = "exs-12345678901234567890"
+		agsID   = "ags-12345678901234567890"
+		sbxID   = "sbx-12345678901234567890"
+		snpID   = "snp-12345678901234567890"
+		evmID   = "evm-12345678901234567890"
+		autID   = "aut-12345678901234567890"
+		sklID   = "skl-12345678901234567890"
+		secID   = "sec-12345678901234567890"
+		objID   = "obj-12345678901234567890"
+		bktID   = "bkt-12345678901234567890"
 	)
 	var mu sync.Mutex
 	var nameLookups, sentOwners, leakedOwners []string
@@ -1379,16 +1379,29 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 			_, _ = w.Write([]byte(`{"id":"` + teamID + `","name":"known","type":"team"}`))
 		case "/v1/users":
 			_, _ = w.Write([]byte(`{"id":"usr-12345678901234567890","email":"qa@example.test","name":"qa"}`))
-		case "/v1/postgres/" + dbID:
-			_, _ = w.Write([]byte(`{"id":"` + dbID + `","name":"db","plan":"free","version":"18","status":"available","databaseName":"d","databaseUser":"u","ipAllowList":[],"readReplicas":[],"suspended":"not_suspended"}`))
+		case "/v1/postgres/" + dbID, "/v1/postgres/" + dbID + "-a":
+			_, _ = w.Write([]byte(`{"id":"` + strings.TrimPrefix(r.URL.Path, "/v1/postgres/") + `","name":"db","plan":"free","version":"18","status":"available","databaseName":"d","databaseUser":"u","ipAllowList":[],"readReplicas":[],"suspended":"not_suspended"}`))
 		case "/v1/key-value/" + kvID:
 			_, _ = w.Write([]byte(`{"id":"` + kvID + `","name":"kv","plan":"free","status":"available","ipAllowList":[],"suspended":"not_suspended"}`))
+		case "/v1/services/" + srvID:
+			_, _ = w.Write([]byte(`{"id":"` + srvID + `","name":"site","type":"static_site","serviceDetails":{"publishPath":"."}}`))
 		case "/v1/sandbox-groups/" + sbgID:
 			_, _ = w.Write([]byte(`{"id":"` + sbgID + `","name":"extra","isDefault":false}`))
+		case "/v1/sandbox-groups/" + sbgID + "/builds":
+			if r.Method == http.MethodPost {
+				w.WriteHeader(http.StatusCreated)
+				_, _ = w.Write([]byte(`{"id":"` + sbbID + `","name":"alp","status":"queued","sandboxGroupId":"` + sbgID + `"}`))
+				return
+			}
+			_, _ = w.Write([]byte(`[]`))
 		case "/v1/sandbox-groups/" + sbgID + "/builds/" + sbbID:
 			_, _ = w.Write([]byte(`{"id":"` + sbbID + `","name":"img","status":"succeeded","sandboxGroupId":"` + sbgID + `"}`))
-		case "/v1/sandbox-groups/" + sbgID + "/credentials/" + crdID:
-			_, _ = w.Write([]byte(`{"id":"` + crdID + `","domain":"api.example.com","enabled":true,"injection":{"type":"header","name":"Authorization"}}`))
+		case "/v1/sandbox-groups/" + sbgID + "/credentials":
+			_, _ = w.Write([]byte(`[]`))
+		case "/v1/sandbox-groups/" + sbgID + "/credentials/" + crdSlug:
+			_, _ = w.Write([]byte(`{"id":"` + crdSlug + `","domain":"api.example.com","enabled":true,"injection":{"type":"header","name":"Authorization"}}`))
+		case "/v1/sandbox-groups/" + sbgID + "/credentials/" + crdSlug + "/versions":
+			_, _ = w.Write([]byte(`[]`))
 		case "/v1/agent-sessions/" + agsID:
 			_, _ = w.Write([]byte(`{"id":"` + agsID + `","ownerId":"` + teamID + `","state":"completed","turns":1}`))
 		case "/v1/blueprints/" + exsID + "/plan":
@@ -1575,17 +1588,24 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 	}
 
 	for _, workspace := range []string{"stale-ws", "dup-ws"} {
-		// Direct-ID commands whose API route does not read config.WorkspaceID()
-		// try the name once but are not blocked by an unresolvable one (w8/064, w32/117).
+		// Direct-address commands whose API route does not read config.WorkspaceID()
+		// try the name once but are not blocked by an unresolvable one (w8/064, w32/117, w32/118).
 		for _, args := range [][]string{
 			{"pg", "get", "-o", "json", dbID},
+			{"pg", "get", "-o", "json", dbID + "-a"},
 			{"kv", "get", "-o", "json", kvID},
 			{"deploys", "list", srvID, "-o", "json"},
 			{"sandbox-groups", "delete", sbgID, "-o", "json"},
+			{"sandbox-groups", "images", "list", "--group", sbgID, "-o", "json"},
+			{"sandbox-groups", "images", "import", "alpine:3.20", "--name", "alp", "--group", sbgID, "-o", "json"},
 			{"sandbox-groups", "images", "get", sbbID, "--group", sbgID, "-o", "json"},
+			{"sandbox-groups", "builds", "create", "alpine:3.20", "--name", "alp", "--group", sbgID, "-o", "json"},
 			{"sandbox-groups", "builds", "get", sbbID, "--group", sbgID, "-o", "json"},
-			{"sandbox-groups", "credentials", "get", crdID, "--group", sbgID, "-o", "json"},
+			{"sandbox-groups", "credentials", "list", "--group", sbgID, "-o", "json"},
+			{"sandbox-groups", "credentials", "get", crdSlug, "--group", sbgID, "-o", "json"},
+			{"sandbox-groups", "credentials", "versions", crdSlug, "--group", sbgID, "-o", "json"},
 			{"agent", "get", agsID, "-o", "json"},
+			{"agent", "get", "https://dashboard.bex.co/agents/" + agsID, "-o", "json"},
 		} {
 			if code, stderr := run(workspace, args...); code != 0 {
 				t.Errorf("BEX_WORKSPACE=%s bex %v exited %d: %s", workspace, args, code, stderr)
@@ -1594,12 +1614,22 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 				t.Errorf("BEX_WORKSPACE=%s direct-id %v made %d name lookups, want it to try once", workspace, args, n)
 			}
 		}
-		// `ea blueprints plan <exs-id>` also addresses the blueprint directly without ownerId.
-		if code, stderr := run(workspace, "ea", "blueprints", "plan", exsID, "-o", "json"); code == 0 || strings.Contains(stderr, "BEX_WORKSPACE") {
-			t.Errorf("BEX_WORKSPACE=%s bex ea blueprints plan %s = %d %q, want direct blueprint error (not BEX_WORKSPACE)", workspace, exsID, code, stderr)
-		}
-		if n := lookups(); n != 1 {
-			t.Errorf("BEX_WORKSPACE=%s ea blueprints plan made %d name lookups, want 1", workspace, n)
+		// Direct-address commands that reach the API and surface their own
+		// resource error (not a BEX_WORKSPACE refusal) without reading ownerId.
+		for _, tc := range []struct {
+			args    []string
+			wantErr string
+		}{
+			{args: []string{"ea", "blueprints", "plan", exsID, "-o", "json"}, wantErr: ""},
+			{args: []string{"ssh", srvID + "-inst123", "-o", "json"}, wantErr: "no live deploys"},
+		} {
+			code, stderr := run(workspace, tc.args...)
+			if code == 0 || strings.Contains(stderr, "BEX_WORKSPACE") || (tc.wantErr != "" && !strings.Contains(stderr, tc.wantErr)) {
+				t.Errorf("BEX_WORKSPACE=%s bex %v = %d %q, want %q (not BEX_WORKSPACE)", workspace, tc.args, code, stderr, tc.wantErr)
+			}
+			if n := lookups(); n != 1 {
+				t.Errorf("BEX_WORKSPACE=%s %v made %d name lookups, want 1", workspace, tc.args, n)
+			}
 		}
 	}
 
@@ -1670,19 +1700,27 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 		{args: []string{"sandboxes", "stop", sbxID, "--confirm", "-o", "json"}},
 		{args: []string{"sandboxes", "exec", sbxID, "--", "true"}},
 		{args: []string{"sandboxes", "snapshots", "create", sbxID, "--kind", "filesystem", "-o", "json"}},
+		{args: []string{"sandboxes", "snapshots", "list", "--group", sbgID, "-o", "json"}},
 		{args: []string{"sandboxes", "snapshots", "get", snpID, "-o", "json"}},
 		{args: []string{"sandboxes", "snapshots", "get", snpID, "--group", sbgID, "-o", "json"}},
 		{args: []string{"sandboxes", "snapshots", "delete", snpID, "--confirm", "-o", "json"}},
 		{args: []string{"sandboxes", "snapshots", "delete", snpID, "--group", sbgID, "--confirm", "-o", "json"}},
+		{args: []string{"sandbox-groups", "images", "list", "-o", "json"}},
+		{args: []string{"sandbox-groups", "images", "list", "--group", "not-an-id", "-o", "json"}},
+		{args: []string{"sandbox-groups", "images", "import", "alpine:3.20", "--name", "alp", "-o", "json"}},
 		{args: []string{"sandbox-groups", "images", "get", sbbID, "-o", "json"}},
 		{args: []string{"sandbox-groups", "images", "delete", sbbID, "--confirm", "-o", "json"}},
+		{args: []string{"sandbox-groups", "builds", "create", "alpine:3.20", "--name", "alp", "-o", "json"}},
 		{args: []string{"sandbox-groups", "builds", "get", sbbID, "-o", "json"}},
-		{args: []string{"sandbox-groups", "credentials", "get", crdID, "-o", "json"}},
+		{args: []string{"sandbox-groups", "credentials", "list", "-o", "json"}},
+		{args: []string{"sandbox-groups", "credentials", "get", crdSlug, "-o", "json"}},
+		{args: []string{"sandbox-groups", "credentials", "get", crdSlug, "--group", "not-an-id", "-o", "json"}},
 		{args: []string{"sandbox-groups", "environment", "set", sbgID, evmID, "-o", "json"}},
 		{args: []string{"pg", "get", dbID, "--project", "proj", "-o", "json"}},
 		{args: []string{"pg", "get", dbID, "--environment", "prod", "-o", "json"}},
 		{args: []string{"kv", "get", kvID, "--project", "proj", "-o", "json"}},
 		{args: []string{"kv", "get", kvID, "--environment", "prod", "-o", "json"}},
+		{args: []string{"agent", "get", "https://dashboard.bex.co/services/" + srvID, "-o", "json"}},
 		{args: []string{"agent", "automations", "get", autID, "-o", "json"}},
 		{args: []string{"agent", "skills", "get", sklID, "-o", "json"}},
 		{args: []string{"agent", "secrets", "delete", secID, "--confirm", "-o", "json"}},

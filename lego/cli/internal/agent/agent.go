@@ -236,6 +236,13 @@ func isSessionID(s string) bool {
 	return ok && rest != "" && strings.Trim(rest, "abcdefghijklmnopqrstuvwxyz0123456789") == ""
 }
 
+// IsSessionRef reports whether arg names an agent session: an ags- id or a
+// dashboard session URL (…/agents/ags-…).
+func IsSessionRef(arg string) bool {
+	_, err := sessionRef(arg)
+	return err == nil
+}
+
 // sessionRef is the session an argument names: an ags- id, or a dashboard
 // session URL (…/agents/ags-…, on any dashboard origin) as Devin's CLI
 // takes a session URL (ADR106 D3).

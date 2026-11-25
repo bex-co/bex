@@ -29,6 +29,7 @@ import (
 	"github.com/bex-co/bex/lego/cli/internal/usage"
 	"github.com/render-oss/cli/cmd"
 	"github.com/render-oss/cli/pkg/cfg"
+	"github.com/render-oss/cli/pkg/validate"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
@@ -318,35 +319,49 @@ func stringFlagValue(c *cobra.Command, name string) string {
 	return flag.Value.String()
 }
 
-// directResourceIDCommand reports whether path (below the root) addresses a
-// typed resource ID directly without reading the active workspace (ownerId).
-// Commands that read config.WorkspaceID() even with a typed ID — sandboxes,
-// sandbox snapshots, ea objects, s3, agent automations/skills/secrets,
-// sandbox-groups environment set, postgres/keyvalues with --project or
-// --environment, and sandbox-groups images/builds/credentials without --group —
-// return false so a stale BEX_WORKSPACE name fails fast instead of leaking as
-// a raw ownerId (w32/117).
-func directResourceIDCommand(path string, target *cobra.Command) bool {
+// usesDirectResourceAddress reports whether path (below the root) addresses a
+// resource directly — by typed ID, service-instance ID, Postgres ID, --group
+// sandbox-group ID, or agent session URL — without reading the active workspace
+// (ownerId). Commands that read config.WorkspaceID() even with a typed ID —
+// sandboxes, sandboxes snapshots, ea objects, s3, agent
+// automations/skills/secrets, sandbox-groups environment set,
+// postgres/keyvalues with --project or --environment, and sandbox-groups
+// images/builds/credentials without a typed --group sbg-… ID — return false so
+// a stale BEX_WORKSPACE name fails fast instead of leaking as a raw ownerId
+// (w32/117, w32/118).
+func usesDirectResourceAddress(path string, target *cobra.Command, arg string) bool {
 	switch path {
-	case "services update", "services delete", "services instances",
-		"deploys list", "deploys create", "deploys cancel",
-		"jobs list", "jobs create", "jobs cancel",
-		"restart", "ssh", "psql", "pgcli", "kv-cli", "environments",
-		"ea blueprints plan", "ea blueprints approve", "ea blueprints update",
-		"sandbox-groups delete", "sandbox-groups default set", "sandbox-groups environment remove",
-		"agent get", "agent logs", "agent files", "agent send", "agent wait",
+	case "sandbox-groups credentials list", "sandbox-groups credentials create",
+		"sandbox-groups credentials get", "sandbox-groups credentials update",
+		"sandbox-groups credentials delete", "sandbox-groups credentials versions",
+		"sandbox-groups credentials restore",
+		"sandbox-groups images list", "sandbox-groups images import",
+		"sandbox-groups images get", "sandbox-groups images delete",
+		"sandbox-groups builds create", "sandbox-groups builds get":
+		group := strings.TrimSpace(stringFlagValue(target, "group"))
+		return strings.HasPrefix(group, "sbg-") && typedResourceID.MatchString(group)
+	case "ssh":
+		return typedResourceID.MatchString(arg) || validate.IsServiceInstanceID(arg)
+	case "agent get", "agent logs", "agent files", "agent send", "agent wait",
 		"agent cancel", "agent stop", "agent archive", "agent unarchive",
 		"agent delete", "agent tags", "agent tree", "agent cost", "agent open",
 		"agent pickup", "agent ssh", "agent update", "agent chat":
-		return true
-	case "postgres get", "postgres update", "postgres suspend", "postgres resume", "postgres delete",
-		"keyvalues get", "keyvalues update", "keyvalues suspend", "keyvalues resume", "keyvalues delete":
-		return stringFlagValue(target, "project") == "" && stringFlagValue(target, "environment") == ""
-	case "sandbox-groups images get", "sandbox-groups images delete", "sandbox-groups builds get",
-		"sandbox-groups credentials create", "sandbox-groups credentials get",
-		"sandbox-groups credentials update", "sandbox-groups credentials delete",
-		"sandbox-groups credentials versions", "sandbox-groups credentials restore":
-		return strings.TrimSpace(stringFlagValue(target, "group")) != ""
+		return agent.IsSessionRef(arg)
+	case "psql", "pgcli", "restart":
+		return typedResourceID.MatchString(arg) || validate.IsPostgresID(arg)
+	case "postgres get", "postgres update", "postgres suspend", "postgres resume", "postgres delete":
+		return stringFlagValue(target, "project") == "" && stringFlagValue(target, "environment") == "" &&
+			(typedResourceID.MatchString(arg) || validate.IsPostgresID(arg))
+	case "keyvalues get", "keyvalues update", "keyvalues suspend", "keyvalues resume", "keyvalues delete":
+		return stringFlagValue(target, "project") == "" && stringFlagValue(target, "environment") == "" &&
+			typedResourceID.MatchString(arg)
+	case "services update", "services delete", "services instances",
+		"deploys list", "deploys create", "deploys cancel",
+		"jobs list", "jobs create", "jobs cancel",
+		"kv-cli", "environments",
+		"ea blueprints plan", "ea blueprints approve", "ea blueprints update",
+		"sandbox-groups delete", "sandbox-groups default set", "sandbox-groups environment remove":
+		return typedResourceID.MatchString(arg)
 	default:
 		return false
 	}
@@ -376,9 +391,10 @@ func opensDashboard(root *cobra.Command, args []string) bool {
 // A group command that only prints help, a nonempty --workspace/-w selection,
 // the workspace-independent commands above, `workflows … --local` targeting the
 // local dev server, and `s3` S3-protocol commands with explicit env credentials
-// need no active workspace; a direct-ID command whose first positional is a
-// typed resource id reads that id directly without an active workspace
-// (w32/117). Everything else consumes it.
+// need no active workspace; a command addressing a resource directly by typed
+// ID, service-instance ID, Postgres ID, `--group sbg-…`, or agent session URL
+// reaches its route without an active workspace (w32/117, w32/118). Everything
+// else consumes it.
 func workspaceUse(root *cobra.Command, args []string) bridge.WorkspaceUse {
 	target, rest, err := root.Find(args)
 	if err != nil || target == nil {
@@ -406,11 +422,9 @@ func workspaceUse(root *cobra.Command, args []string) bridge.WorkspaceUse {
 	if stringFlagValue(target, "workspace") != "" {
 		return bridge.WorkspaceUnused
 	}
-	if directResourceIDCommand(path, target) {
-		arity := pgtrust.ArityOf(root.PersistentFlags(), target.InheritedFlags(), target.Flags())
-		if typedResourceID.MatchString(pgtrust.DatabaseArg(rest, arity)) {
-			return bridge.WorkspaceIfResolvable
-		}
+	arity := pgtrust.ArityOf(root.PersistentFlags(), target.InheritedFlags(), target.Flags())
+	if usesDirectResourceAddress(path, target, pgtrust.DatabaseArg(rest, arity)) {
+		return bridge.WorkspaceIfResolvable
 	}
 	return bridge.WorkspaceRequired
 }
