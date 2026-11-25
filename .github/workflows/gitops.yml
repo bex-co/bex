@@ -224,6 +224,11 @@ jobs:
           mkdir -p "$gopath/src/$module"
           cp "$plugin/s3metadatacase.go" "$plugin/s3metadatacase_test.go" "$gopath/src/$module/"
           cd "$gopath" && GOPATH="$gopath" GO111MODULE=off timeout 300 "$RUNNER_TEMP/bin/yaegi" test "$module"
+      # Render enforces no maximum duration for a WebSocket. The edge's 100-minute
+      # read deadline stays off an upgraded connection only because of how the
+      # pinned Traefik hijacks it, so a Traefik bump must keep that (w6/m639).
+      - name: WebSocket outlives the edge read deadline in the pinned Traefik image
+        run: timeout 600 python3 -m unittest scripts/test_edge_websocket.py -v
       - name: app log severity parsing in the pinned Alloy image
         run: python3 -m unittest scripts/test_log_shipper.py -v
       - name: log delivery failure and recovery in pinned Alloy and Loki
