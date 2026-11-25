@@ -113,6 +113,16 @@ const esCapabilities: Record<string, TranslationEntry> = {
       "El plan gratuito venció, por lo que este recurso sigue suspendido. Cambia a un plan de pago para reanudarlo.",
     description: "Blocked reason for expired precondition",
   },
+  "capabilities.blockedFreeHoursExhausted": {
+    message:
+      "Este espacio de trabajo agotó sus horas de instancia gratuitas del mes, por lo que este servicio sigue suspendido. Los servicios gratuitos se reanudan el próximo mes, o cambia a un plan de pago para ejecutarlo ahora.",
+    description: "Blocked reason for free_hours_exhausted precondition",
+  },
+  "capabilities.blockedBandwidthExhausted": {
+    message:
+      "Este espacio de trabajo agotó el ancho de banda incluido del mes, por lo que este servicio sigue suspendido. Los servicios se reanudan el próximo mes, o agrega un método de pago para ejecutarlos ahora.",
+    description: "Blocked reason for bandwidth_exhausted precondition",
+  },
   "capabilities.blockedUnavailable": {
     message:
       "El servidor no pudo confirmar esta acción en este momento. Inténtalo de nuevo.",

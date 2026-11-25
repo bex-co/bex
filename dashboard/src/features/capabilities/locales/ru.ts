@@ -111,6 +111,16 @@ const ruCapabilities: Record<string, TranslationEntry> = {
       "Срок бесплатного плана истёк, поэтому ресурс остаётся приостановленным. Перейдите на платный план, чтобы возобновить его.",
     description: "Blocked reason for expired precondition",
   },
+  "capabilities.blockedFreeHoursExhausted": {
+    message:
+      "Рабочая область израсходовала бесплатные часы инстансов за месяц, поэтому сервис остаётся приостановленным. Бесплатные сервисы возобновятся в следующем месяце, или перейдите на платный план, чтобы запустить его сейчас.",
+    description: "Blocked reason for free_hours_exhausted precondition",
+  },
+  "capabilities.blockedBandwidthExhausted": {
+    message:
+      "Рабочая область израсходовала включённую в план пропускную способность за месяц, поэтому сервис остаётся приостановленным. Сервисы возобновятся в следующем месяце, или добавьте способ оплаты, чтобы запустить их сейчас.",
+    description: "Blocked reason for bandwidth_exhausted precondition",
+  },
   "capabilities.blockedUnavailable": {
     message:
       "Сервер сейчас не смог подтвердить это действие. Повторите попытку.",

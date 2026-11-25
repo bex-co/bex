@@ -107,6 +107,16 @@ const enCapabilities: Record<string, TranslationEntry> = {
       "The free plan expired, so this resource stays suspended. Upgrade to a paid plan to resume it.",
     description: "Blocked reason for expired precondition",
   },
+  "capabilities.blockedFreeHoursExhausted": {
+    message:
+      "This workspace used its monthly Free instance hours, so this service stays suspended. Free services resume next month, or upgrade to a paid plan to run it now.",
+    description: "Blocked reason for free_hours_exhausted precondition",
+  },
+  "capabilities.blockedBandwidthExhausted": {
+    message:
+      "This workspace used its monthly included bandwidth, so this service stays suspended. Services resume next month, or add a payment method to run them now.",
+    description: "Blocked reason for bandwidth_exhausted precondition",
+  },
   "capabilities.blockedUnavailable": {
     message: "The server could not confirm this action right now. Try again.",
     description: "Blocked reason for unavailable precondition",

@@ -111,6 +111,16 @@ const jaCapabilities: Record<string, TranslationEntry> = {
       "無料プランの有効期限が切れたため、このリソースは一時停止のままです。再開するには有料プランにアップグレードしてください。",
     description: "Blocked reason for expired precondition",
   },
+  "capabilities.blockedFreeHoursExhausted": {
+    message:
+      "今月の無料インスタンス時間を使い果たしたため、このサービスは一時停止のままです。無料サービスは翌月に再開します。今すぐ実行するには有料プランにアップグレードしてください。",
+    description: "Blocked reason for free_hours_exhausted precondition",
+  },
+  "capabilities.blockedBandwidthExhausted": {
+    message:
+      "今月のプランに含まれる帯域を使い果たしたため、このサービスは一時停止のままです。サービスは翌月に再開します。今すぐ実行するにはお支払い方法を追加してください。",
+    description: "Blocked reason for bandwidth_exhausted precondition",
+  },
   "capabilities.blockedUnavailable": {
     message:
       "サーバーが現在、この操作を確認できませんでした。もう一度お試しください。",

@@ -170,6 +170,18 @@ const (
 	// upgraded (postgres free-expiry, ADR009). A billing-blocked resume names
 	// dunning instead — the verb checks billing before expiry.
 	PrecondExpired = "expired"
+	// The workspace used its monthly Free instance hours: a suspended free
+	// service stays suspended until the next month, a paid plan, or the deploy
+	// that applies a saved one (apps free-hours, ADR030 §10). A
+	// billing-blocked resume names dunning instead — the verb checks billing
+	// before the allowance.
+	PrecondFreeHoursExhausted = "free_hours_exhausted"
+	// The workspace used the outbound bandwidth its plan includes and has no
+	// payment method: a suspended service stays suspended until the next month
+	// or a bound payment method (apps bandwidth, ADR030 §14). A
+	// billing-blocked resume names dunning instead — the verb checks billing
+	// before the allowance.
+	PrecondBandwidthExhausted = "bandwidth_exhausted"
 	// The precondition itself could not be computed — blocked, not waived.
 	PrecondUnavailable = "unavailable"
 )

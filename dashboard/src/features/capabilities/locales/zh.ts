@@ -98,6 +98,14 @@ const zhCapabilities: Record<string, TranslationEntry> = {
     message: "免费套餐已过期，因此该资源保持暂停状态。请升级到付费套餐以恢复它。",
     description: "Blocked reason for expired precondition",
   },
+  "capabilities.blockedFreeHoursExhausted": {
+    message: "此工作区已用完本月免费实例时长，因此该服务保持暂停状态。免费服务将于下月恢复，或升级到付费套餐以立即运行。",
+    description: "Blocked reason for free_hours_exhausted precondition",
+  },
+  "capabilities.blockedBandwidthExhausted": {
+    message: "此工作区已用完本月套餐包含的带宽，因此该服务保持暂停状态。服务将于下月恢复，或添加付款方式以立即运行。",
+    description: "Blocked reason for bandwidth_exhausted precondition",
+  },
   "capabilities.blockedUnavailable": {
     message: "服务器暂时无法确认此操作。请稍后重试。",
     description: "Blocked reason for unavailable precondition",
