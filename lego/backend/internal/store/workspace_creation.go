@@ -177,6 +177,20 @@ func (s *PGStore) SetWorkspaceCreationSubscription(ctx context.Context, id, subj
 	return nil
 }
 
+// tenantBillingEmailAtFinalize is the billing email a finalized workspace
+// stores: none on Hobby — its billing email is its owner's account email
+// (w6/m627) — the attempt's address otherwise. Every move to Hobby clears it
+// the same way (updateTenantPlanTx), so an upgrade starts from the owner's
+// live account email instead of unmasking the creation-time address as one
+// the workspace set. The attempt itself keeps the address on every plan: the
+// Stripe setup correlates the workspace-create Customer against it.
+func tenantBillingEmailAtFinalize(plan, attemptEmail string) string {
+	if plan == PlanHobby {
+		return ""
+	}
+	return attemptEmail
+}
+
 // FinalizeWorkspaceCreation serializes finalizers on the attempt and inserts
 // the tenant, owner membership, provider mapping, payment marker, and healthy
 // lifecycle in one transaction. Replays return the already-created tenant.
@@ -216,7 +230,7 @@ func (s *PGStore) FinalizeWorkspaceCreation(ctx context.Context, id, subject str
 		t = Tenant{ID: a.WorkspaceID, Name: a.Name, Plan: a.Plan}
 		if err := tx.QueryRow(ctx, `
 			INSERT INTO tenants (id,name,plan,billing_email) VALUES ($1,$2,$3,$4)
-			RETURNING created_at`, t.ID, t.Name, t.Plan, a.BillingEmail).Scan(&t.CreatedAt); err != nil {
+			RETURNING created_at`, t.ID, t.Name, t.Plan, tenantBillingEmailAtFinalize(a.Plan, a.BillingEmail)).Scan(&t.CreatedAt); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO tenant_members (tenant_id,subject,role) VALUES ($1,$2,'admin')`, t.ID, subject); err != nil {
