@@ -47,7 +47,7 @@
 > "each has a **discovery hostname** that resolves to _all_ of its active instance IPs. By convention, this hostname has the format `[INTERNAL_HOSTNAME]-discovery` (e.g., `myapp-ne5j-discovery`)" "Each service exposes its discovery hostname to its own environment via the `RENDER_DISCOVERY_SERVICE` environment variable."
 
 - The plain internal hostname is the load-balanced address; `<hostname>-discovery` is the all-instances DNS name.
-- bex analog would be a **headless Service** named `<slug>-discovery` (per-pod A records) + a `RENDER_DISCOVERY_SERVICE` env injection — deferred in ADR041 (rejected options, per-instance DNS); recorded here so the deferral names the exact Render behavior it defers.
+- bex: a **headless Service** named `<slug>-discovery` (per-pod A records) and the same name in `RENDER_DISCOVERY_SERVICE`, for every web service, private service and background worker, shipped by w5/m148 (2026-10-20, `3cc1d7bd70`) and read live on production on 2026-11-17 ([default-env-live.md](default-env-live.md)). ADR041's first draft deferred it under its rejected options; it is now [ADR041 D6](../ADR041-service-addresses.md#d6--the-discovery-hostname-is-a-headless-slug-discovery-service-w5m148-2026-10-20).
 
 ## 6. Open questions (need a live account; docs don't answer)
 
