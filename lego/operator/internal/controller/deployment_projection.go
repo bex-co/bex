@@ -927,21 +927,25 @@ func storedIneffectiveHealthPath(stored corev1.PodSpec, app *appv1alpha1.App) st
 	return ""
 }
 
-// heldReleaseStrategy surges a held release's whole instance count and keeps
-// every serving pod until promotion (w4/571).
-func heldReleaseStrategy() appsv1.DeploymentStrategy {
-	surge, unavailable := intstr.FromString("100%"), intstr.FromInt32(0)
+// keepEveryInstanceStrategy starts surge of the instances at once and removes
+// no old one before a new one is available.
+func keepEveryInstanceStrategy(surge string) appsv1.DeploymentStrategy {
+	maxSurge, unavailable := intstr.FromString(surge), intstr.FromInt32(0)
 	return appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType,
-		RollingUpdate: &appsv1.RollingUpdateDeployment{MaxSurge: &surge, MaxUnavailable: &unavailable}}
+		RollingUpdate: &appsv1.RollingUpdateDeployment{MaxSurge: &maxSurge, MaxUnavailable: &unavailable}}
 }
 
-// defaultRollingUpdateStrategy is what the API server defaults an unset
-// strategy to, so a Deployment leaving the held strategy reads as one that
-// never had it.
+// heldReleaseStrategy surges a held release's whole instance count and keeps
+// every serving pod until promotion (w4/571).
+func heldReleaseStrategy() appsv1.DeploymentStrategy { return keepEveryInstanceStrategy("100%") }
+
+// defaultRollingUpdateStrategy is every other rolling App Deployment's: a
+// quarter of the instances (at least one) start at once, as Render keeps
+// every original instance serving until its replacement is healthy (w6/m633,
+// ADR004 § A rollout keeps every old instance). The API server's default, 25%
+// unavailable, removed 1 of 4 instances the moment a rollout started.
 func defaultRollingUpdateStrategy() appsv1.DeploymentStrategy {
-	quarter := intstr.FromString("25%")
-	return appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType,
-		RollingUpdate: &appsv1.RollingUpdateDeployment{MaxSurge: &quarter, MaxUnavailable: new(quarter)}}
+	return keepEveryInstanceStrategy("25%")
 }
 
 // projectRolloutHold writes the Deployment's minReadySeconds and strategy, the
@@ -952,16 +956,25 @@ func defaultRollingUpdateStrategy() appsv1.DeploymentStrategy {
 // it (w4/m320). It starts every new instance at once and removes no serving
 // one, so promotion moves traffic to a full set, as Render's zero-downtime
 // deploy does (w4/571). The pass that promotes it lifts the hold with this
-// same projection (releasePromotedHold, w4/672).
+// same projection (releasePromotedHold, w4/672). Every other diskless
+// Deployment rolls with defaultRollingUpdateStrategy, written on each pass so
+// a Deployment the API server defaulted adopts it at once; the strategy is not
+// part of the pod template, so writing it rolls nothing. A disk's Recreate is
+// applyDiskProjection's alone, so the two never write the same Deployment.
 func projectRolloutHold(dep *appsv1.Deployment, app *appv1alpha1.App) {
 	dep.Spec.MinReadySeconds = 0
 	if app.Spec.HasImagePorts() && changesImagePorts(app) {
 		dep.Spec.MinReadySeconds = portChangeHoldSeconds
 	}
-	if webImageReleaseHeld(app) {
+	held := webImageReleaseHeld(app)
+	if held {
 		dep.Spec.MinReadySeconds = webImageHTTPSelectionHoldSeconds
+	}
+	switch {
+	case app.Spec.Disk != nil: // Recreate, written by applyDiskProjection
+	case held:
 		dep.Spec.Strategy = heldReleaseStrategy()
-	} else if apiequality.Semantic.DeepEqual(dep.Spec.Strategy, heldReleaseStrategy()) {
+	default:
 		dep.Spec.Strategy = defaultRollingUpdateStrategy()
 	}
 }

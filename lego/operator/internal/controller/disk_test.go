@@ -26,6 +26,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -98,22 +99,22 @@ func TestApplyDiskProjectionLeavesADisklessDeploymentUntouched(t *testing.T) {
 
 func TestApplyDiskProjectionRestoresRollingDeploysWhenTheDiskIsDetached(t *testing.T) {
 	attached := diskApp("blog", &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10})
+	params := deploymentParams{image: "nginx:1", port: 3000, replicas: 1}
 	dep := &appsv1.Deployment{}
-	projectDisk(attached, dep)
+	applyDeploymentSpec(dep, attached, params)
 
 	// Same Deployment object, disk now gone from the spec — the shape the
 	// reconciler sees on the pass right after a detach.
-	detached := diskApp("blog", nil)
-	container := projectDisk(detached, dep)
+	applyDeploymentSpec(dep, diskApp("blog", nil), params)
 
-	if dep.Spec.Strategy.Type != "" {
-		t.Fatalf("strategy = %q, want cleared so the API server defaults it back to RollingUpdate", dep.Spec.Strategy.Type)
+	if !apiequality.Semantic.DeepEqual(dep.Spec.Strategy, defaultRollingUpdateStrategy()) {
+		t.Fatalf("strategy = %+v, want the rolling strategy that keeps every old instance (w6/m633)", dep.Spec.Strategy)
 	}
 	if _, ok := dep.Spec.Template.Annotations[diskSafeToEvictAnnotation]; ok {
 		t.Fatal("safe-to-evict survived detach; the pod would stay pinned against consolidation forever")
 	}
-	if len(container.VolumeMounts) != 0 {
-		t.Fatalf("volume mounts = %+v, want none after detach", container.VolumeMounts)
+	if mounts := appContainerOf(t, dep).VolumeMounts; len(mounts) != 0 {
+		t.Fatalf("volume mounts = %+v, want none after detach", mounts)
 	}
 }
 

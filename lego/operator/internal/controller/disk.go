@@ -113,14 +113,12 @@ func diskLUKSSecretName(appName string) string { return appv1alpha1.DiskLUKSSecr
 // detaching a disk restores rolling deploys and re-admits the pod to autoscaler
 // consolidation instead of leaving both pinned forever. move is where a disk
 // made before w6/m558 is in the service's tree now (diskMountPaths).
+//
+// It writes the strategy only with a disk. Without one the strategy is
+// projectRolloutHold's, so a detach lands on the rolling strategy that
+// projection writes, whichever of the two runs first (w6/m633).
 func applyDiskProjection(dep *appsv1.Deployment, container *corev1.Container, app *appv1alpha1.App, move diskMove) {
 	if app.Spec.Disk == nil {
-		// Touch the strategy only when a disk previously set it. A service that
-		// never had one keeps whatever the API server defaulted, so its stored
-		// Deployment stays byte-identical to a pre-disk operator's.
-		if dep.Spec.Strategy.Type == appsv1.RecreateDeploymentStrategyType {
-			dep.Spec.Strategy = appsv1.DeploymentStrategy{}
-		}
 		delete(dep.Spec.Template.Annotations, diskSafeToEvictAnnotation)
 		return
 	}

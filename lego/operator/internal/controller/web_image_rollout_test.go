@@ -768,17 +768,17 @@ func TestHeldWebImageReleasePromotesAFullSetOfInstances(t *testing.T) {
 	if _, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 80, *dep.Spec.Replicas); err != nil || app.Status.ServingNetwork.Revision != "rev-2" {
 		t.Fatalf("3 of 3 Ready: err=%v serving=%+v, want rev-2", err, app.Status.ServingNetwork)
 	}
-	// Promoted: the hold lifts, and the strategy is the API server's default
-	// again, so the old pods drain as in any rollout.
+	// Promoted: the hold lifts, and the strategy is every rolling
+	// Deployment's again, so the old pods drain as in any rollout.
 	released := dep.DeepCopy()
 	applyDeploymentSpec(released, app, params)
 	if !apiequality.Semantic.DeepEqual(released.Spec.Strategy, defaultRollingUpdateStrategy()) || released.Spec.MinReadySeconds != 0 {
 		t.Fatalf("after promotion strategy %+v minReadySeconds %d, want the default and 0", released.Spec.Strategy, released.Spec.MinReadySeconds)
 	}
-	// A service that never held keeps whatever the API server stored.
-	untouched := project(projectionApp(), webParams())
-	if !apiequality.Semantic.DeepEqual(untouched.Spec.Strategy, appsv1.DeploymentStrategy{}) {
-		t.Fatalf("an unheld Deployment's strategy = %+v, want it left to the API server", untouched.Spec.Strategy)
+	// A service that never held rolls with the same strategy (w6/m633).
+	unheld := project(projectionApp(), webParams())
+	if !apiequality.Semantic.DeepEqual(unheld.Spec.Strategy, defaultRollingUpdateStrategy()) {
+		t.Fatalf("an unheld Deployment's strategy = %+v, want %+v", unheld.Spec.Strategy, defaultRollingUpdateStrategy())
 	}
 
 	// The rest are slow: before the first Ready pod's hold would let the

@@ -1,18 +1,18 @@
 # w6 · m633 — A multi-instance service's deploy and restart keep every old instance serving until its replacement is healthy, as Render's zero-downtime deploy does
 
-**Worker:** worker6 **Goal:** no deploy or restart of a service with four or more instances takes an old instance out of service before a new one is healthy. Every RollingUpdate App Deployment rolls with `maxUnavailable: 0`, and a release that fails its health check leaves every old instance serving. **Status:** todo
+**Worker:** worker6 **Goal:** no deploy or restart of a service with four or more instances takes an old instance out of service before a new one is healthy. Every RollingUpdate App Deployment rolls with `maxUnavailable: 0`, and a release that fails its health check leaves every old instance serving. **Status:** todo (t001–t003, t006 and t007 done; t004 waits for a production pin carrying t002)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [ADR004 amendment: no old instance leaves before its replacement is healthy](t001.md) | 20m | — |
-| t002 | [The operator rolls every RollingUpdate App Deployment with `maxUnavailable: 0`](t002.md) | 45m | t001 |
-| t003 | [envtest: 4 and 100 instances keep every old instance ready through a deploy, a restart and a failing release](t003.md) | 45m | t002 |
+| t001 | [ADR004 amendment: no old instance leaves before its replacement is healthy](done/t001.md) — **DONE** | 20m | — |
+| t002 | [The operator rolls every RollingUpdate App Deployment with `maxUnavailable: 0`](done/t002.md) — **DONE** | 45m | t001 |
+| t003 | [envtest: 4 and 100 instances keep every old instance ready through a deploy, a restart and a failing release](done/t003.md) — **DONE** | 45m | t002 |
 | t004 | [Production check: a 4-instance web service in `bex-canary` never drops below 4 ready instances](t004.md) | 45m | t003 |
 | t005 | [ADR018 records the multi-instance rollout and its measurement](t005.md) | 15m | t004 |
-| t006 | [Simplify](t006.md) | 20m | t005 |
-| t007 | [Test coverage](t007.md) | 30m | t005 |
+| t006 | [Simplify](done/t006.md) — **DONE** | 20m | t005 |
+| t007 | [Test coverage](done/t007.md) — **DONE** | 30m | t005 |
 | t008 | [Closeout](t008.md) | 10m | t006, t007 |
 
 ## Definition of done
