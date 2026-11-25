@@ -250,25 +250,30 @@ func TestUpstreamReleaseCheckNeverAdvertisesRenderCLI(t *testing.T) {
 func TestBlockedOwnerRefusesTheBarredName(t *testing.T) {
 	// A direct-ID command leaves an unresolvable workspace name in
 	// RENDER_WORKSPACE; the transport must fail fast when a fallback search
-	// would send it as an ownerId, and forward everything else.
+	// would send it as an ownerId, omit it from X-Bex-Workspace, and forward
+	// everything else — including direct-ID routes whose static path segments
+	// happen to match the barred workspace name (e.g. "services").
 	var reached []string
+	var workspaceHeaders []string
 	transport := &controlPlaneTransport{
 		base: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 			reached = append(reached, r.URL.String())
+			workspaceHeaders = append(workspaceHeaders, r.Header.Get(WorkspaceHeader))
 			return &http.Response{StatusCode: http.StatusOK, Body: http.NoBody, Request: r}, nil
 		}),
-		version: "1.2.3",
-		hosts:   hostSet(t, "https://api.bex.co/v1/"),
-		blocked: func() string { return "stale-ws" },
+		version:   "1.2.3",
+		hosts:     hostSet(t, "https://api.bex.co/v1/"),
+		workspace: func() string { return "services" },
+		blocked:   func() blockedOwnerInfo { return blockedOwnerInfo{name: "services"} },
 	}
 	for _, tc := range []struct {
 		url     string
 		blocked bool
 	}{
-		{"https://api.bex.co/v1/postgres?name=dpg-00000000000000000000&ownerId=stale-ws", true},
-		{"https://api.bex.co/v1/postgres?ownerId=tea-12345678901234567890&ownerId=stale-ws", true},
-		{"https://api.bex.co/v1/owners/stale-ws", true},
-		{"https://api.bex.co/v1/owners?name=stale-ws", false},
+		{"https://api.bex.co/v1/postgres?name=dpg-00000000000000000000&ownerId=services", true},
+		{"https://api.bex.co/v1/postgres?ownerId=tea-12345678901234567890&ownerId=services", true},
+		{"https://api.bex.co/v1/owners/services", true},
+		{"https://api.bex.co/v1/owners?name=services", false},
 		{"https://api.bex.co/v1/postgres?ownerId=tea-12345678901234567890", false},
 		{"https://api.bex.co/v1/services/srv-00000000000000000000", false},
 	} {
@@ -291,6 +296,11 @@ func TestBlockedOwnerRefusesTheBarredName(t *testing.T) {
 	if len(reached) != 3 {
 		t.Errorf("forwarded %v, want the three unbarred requests", reached)
 	}
+	for i, hdr := range workspaceHeaders {
+		if hdr != "" {
+			t.Errorf("forwarded %s with %s=%q, want barred workspace omitted", reached[i], WorkspaceHeader, hdr)
+		}
+	}
 }
 
 func TestBlockedOwnerRefusalNamesTheWorkspace(t *testing.T) {
@@ -298,18 +308,40 @@ func TestBlockedOwnerRefusalNamesTheWorkspace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new request: %v", err)
 	}
-	resp := blockedOwnerRefusal(req, "stale-ws")
-	defer func() { _ = resp.Body.Close() }()
-	raw, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("read body: %v", err)
-	}
-	var decoded map[string]string
-	if err := json.Unmarshal(raw, &decoded); err != nil {
-		t.Fatalf("refusal body = %q, want JSON: %v", raw, err)
-	}
-	if !strings.Contains(decoded["message"], `no workspace named "stale-ws"`) {
-		t.Errorf("refusal message = %q, want the unknown-name wording", decoded["message"])
+	for _, tc := range []struct {
+		name string
+		info blockedOwnerInfo
+		want string
+	}{
+		{
+			name: "default unknown-name wording",
+			info: blockedOwnerInfo{name: "stale-ws"},
+			want: `no workspace named "stale-ws"`,
+		},
+		{
+			name: "preserves ambiguous-name startup error",
+			info: blockedOwnerInfo{
+				name:   "prod",
+				reason: `BEX_WORKSPACE: several workspaces are named "prod" (tea-a, tea-b); use the id`,
+			},
+			want: `several workspaces are named "prod"`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resp := blockedOwnerRefusal(req, tc.info)
+			defer func() { _ = resp.Body.Close() }()
+			raw, err := io.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatalf("read body: %v", err)
+			}
+			var decoded map[string]string
+			if err := json.Unmarshal(raw, &decoded); err != nil {
+				t.Fatalf("refusal body = %q, want JSON: %v", raw, err)
+			}
+			if !strings.Contains(decoded["message"], tc.want) {
+				t.Errorf("refusal message = %q, want substring %q", decoded["message"], tc.want)
+			}
+		})
 	}
 }
 

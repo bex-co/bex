@@ -60,9 +60,9 @@ type controlPlaneTransport struct {
 	version   string
 	hosts     func() map[string]struct{}
 	workspace func() string
-	// blocked is the unresolved workspace name barred from ownerId and
-	// owner path segments (see blockedOwner); nil bars nothing.
-	blocked func() string
+	// blocked is the unresolved workspace name barred from ownerId,
+	// /owners/{id} paths, and X-Bex-Workspace (see blockedOwner); nil bars nothing.
+	blocked func() blockedOwnerInfo
 }
 
 // RoundTrip adds the header only for the control plane. A request to any other
@@ -79,8 +79,10 @@ func (t *controlPlaneTransport) RoundTrip(req *http.Request) (*http.Response, er
 	}
 	// An unresolvable workspace name left in place for a direct-ID read must
 	// fail fast rather than ride along as an ownerId on a fallback search.
+	var barred blockedOwnerInfo
 	if t.blocked != nil {
-		if barred := t.blocked(); barred != "" && carriesBlockedOwner(req, barred) {
+		barred = t.blocked()
+		if barred.name != "" && carriesBlockedOwner(req, barred.name) {
 			return blockedOwnerRefusal(req, barred), nil
 		}
 	}
@@ -91,7 +93,7 @@ func (t *controlPlaneTransport) RoundTrip(req *http.Request) (*http.Response, er
 	// Read the selection fresh: an interactive command may change workspaces
 	// after an earlier request. Other API paths do not consume this header.
 	if t.workspace != nil && strings.HasPrefix(req.URL.Path, "/v1/services/") {
-		if selected := t.workspace(); selected != "" {
+		if selected := t.workspace(); selected != "" && selected != barred.name {
 			clone.Header.Set(WorkspaceHeader, selected)
 		}
 	}
@@ -99,17 +101,20 @@ func (t *controlPlaneTransport) RoundTrip(req *http.Request) (*http.Response, er
 }
 
 // carriesBlockedOwner reports whether req would send the barred workspace
-// name as an ownerId: an ownerId query value or an exact path segment equal
-// to it. Other uses of the value (the ?name= resolve lookup runs before the
-// bar is set) are untouched.
+// name as an ownerId: an ownerId query value or an /owners/{barred} path
+// segment. Matching only the owner-ID path position keeps valid direct-ID
+// routes like /v1/services/{id} working even when BEX_WORKSPACE is named
+// "services", "postgres", or "v1". Other uses of the value (the ?name=
+// resolve lookup runs before the bar is set) are untouched.
 func carriesBlockedOwner(req *http.Request, barred string) bool {
 	for _, v := range req.URL.Query()["ownerId"] {
 		if v == barred {
 			return true
 		}
 	}
-	for _, seg := range strings.Split(req.URL.Path, "/") {
-		if seg == barred {
+	segs := strings.Split(req.URL.Path, "/")
+	for i := 0; i+1 < len(segs); i++ {
+		if segs[i] == "owners" && segs[i+1] == barred {
 			return true
 		}
 	}
@@ -119,9 +124,13 @@ func carriesBlockedOwner(req *http.Request, barred string) bool {
 // blockedOwnerRefusal answers a request carrying the barred name locally, in
 // the words of the startup refusal, so the command fails fast instead of
 // sending the raw name.
-func blockedOwnerRefusal(req *http.Request, barred string) *http.Response {
+func blockedOwnerRefusal(req *http.Request, barred blockedOwnerInfo) *http.Response {
+	reason := barred.reason
+	if reason == "" {
+		reason = bexWorkspace + `: no workspace named "` + barred.name + `"; run ` + "`bex workspaces`" + ` to list yours`
+	}
 	msg, _ := json.Marshal(map[string]string{
-		"message": bexWorkspace + `: no workspace named "` + barred + `"; run ` + "`bex workspaces`" + ` to list yours`,
+		"message": reason,
 	})
 	return &http.Response{
 		Status:        "400 Bad Request",

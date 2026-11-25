@@ -54,9 +54,11 @@ func ResolveWorkspaceName(use WorkspaceUse) error {
 			// The raw name stays in RENDER_WORKSPACE so the direct read
 			// proceeds, but it must never reach the API as an ownerId —
 			// including through an id-or-name fallback search a 404
-			// triggers. Bar it at the control-plane transport (w32/117).
+			// triggers. Bar it at the control-plane transport (w32/117),
+			// keeping the startup error so ambiguous names stay distinct
+			// from unknown ones.
 			if name, _ := os.LookupEnv(renderWorkspace); name != "" {
-				blockedOwner.Store(name)
+				blockedOwner.Store(blockedOwnerInfo{name: name, reason: err.Error()})
 			}
 		}
 		return nil
@@ -64,16 +66,24 @@ func ResolveWorkspaceName(use WorkspaceUse) error {
 	return err
 }
 
+// blockedOwnerInfo pairs a barred RENDER_WORKSPACE name with the startup
+// resolution error (unknown or ambiguous workspace) to report if a fallback
+// search attempts to send it.
+type blockedOwnerInfo struct {
+	name   string
+	reason string
+}
+
 // blockedOwner is the RENDER_WORKSPACE value left in place after an
 // unresolvable lookup for a direct-ID command (see ResolveWorkspaceName).
 // One command runs per process, so it is stored at most once outside tests.
 var blockedOwner atomic.Value
 
-// loadBlockedOwner returns the barred workspace name, or "" when none was
-// barred.
-func loadBlockedOwner() string {
-	name, _ := blockedOwner.Load().(string)
-	return name
+// loadBlockedOwner returns the barred workspace name and refusal reason, or
+// the zero value when none was barred.
+func loadBlockedOwner() blockedOwnerInfo {
+	info, _ := blockedOwner.Load().(blockedOwnerInfo)
+	return info
 }
 
 // WorkspaceUse classifies how the invoked command uses the active workspace.
