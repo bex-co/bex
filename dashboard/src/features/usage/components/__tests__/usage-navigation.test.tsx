@@ -29,6 +29,8 @@ describe("UsageNavigation", () => {
     const expected: [string, string][] = [
       ["Plan", "#plan"],
       ["Payment method", "#payment-method"],
+      ["Billing email", "#billing-email"],
+      ["Billing info", "#billing-info"],
       ["Included usage", "#included-usage"],
       ["Charges", "#charges"],
       ["Credits remaining", "#credit-balance"],

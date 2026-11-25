@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -708,6 +709,44 @@ func TestRename_SetsAFreeformDisplayNameAndKeepsTheSlug(t *testing.T) {
 		if _, err := svc.Rename(ctxAs("user-a"), w.ID, bad); !errors.Is(err, core.ErrBadRequest) {
 			t.Errorf("rename to %q: want 400, got %v", bad, err)
 		}
+	}
+}
+
+// customerNames records each rename the Stripe Customer was asked to follow.
+type customerNames struct {
+	calls [][3]string // workspace, previous, name
+	err   error
+}
+
+func (c *customerNames) FollowWorkspaceRename(_ context.Context, workspaceID, previous, name string) error {
+	c.calls = append(c.calls, [3]string{workspaceID, previous, name})
+	return c.err
+}
+
+// w6/m628: a rename renames the Stripe Customer, the invoices' Bill-to, from
+// the name the workspace had to the one it has now. A Stripe failure does
+// not fail the rename, and a rename to the same name asks nothing.
+func TestRename_FollowsIntoTheStripeCustomer(t *testing.T) {
+	svc := allowSvc(newFakeStore(), &fakeGranter{}, nil, nil)
+	names := &customerNames{}
+	svc.CustomerName = names
+	w, err := svc.Create(ctxAs("user-a"), "acme", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Rename(ctxAs("user-a"), w.ID, "Acme Corp"); err != nil {
+		t.Fatal(err)
+	}
+	names.err = errors.New("stripe down")
+	if renamed, err := svc.Rename(ctxAs("user-a"), w.ID, "Acme Inc"); err != nil || renamed.Name != "Acme Inc" {
+		t.Fatalf("rename with Stripe down = (%+v, %v), want it renamed", renamed, err)
+	}
+	if _, err := svc.Rename(ctxAs("user-a"), w.ID, "Acme Inc"); err != nil {
+		t.Fatal(err)
+	}
+	want := [][3]string{{w.ID, "acme", "Acme Corp"}, {w.ID, "Acme Corp", "Acme Inc"}}
+	if !slices.Equal(names.calls, want) {
+		t.Fatalf("Customer renames = %v, want %v", names.calls, want)
 	}
 }
 

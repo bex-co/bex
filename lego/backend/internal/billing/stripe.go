@@ -172,6 +172,9 @@ type StripeConfig struct {
 	// dunning holds it, and records the recovery at once (w6/m626). Nil
 	// (dunning off, isolated tests) pays nothing at binding.
 	Overdue *OverduePayments
+	// WorkspaceLabel reads the name a workspace's invoices bill: its display
+	// name, else its slug (w6/m628). Nil (isolated tests) bills its id.
+	WorkspaceLabel func(ctx context.Context, workspaceID string) (string, error)
 }
 
 // BillingStateStore is the narrow persistence seam the Stripe client needs.
@@ -226,6 +229,7 @@ type StripeClient struct {
 	state                 BillingStateStore
 	cards                 CardScreenStore
 	overdue               *OverduePayments
+	workspaceLabel        func(ctx context.Context, workspaceID string) (string, error)
 	settleWait            time.Duration
 	audit                 core.AuditSink
 	metrics               *Metrics
@@ -270,6 +274,7 @@ func NewStripe(cfg StripeConfig) *StripeClient {
 		state:                 cfg.State,
 		cards:                 cfg.Cards,
 		overdue:               cfg.Overdue,
+		workspaceLabel:        cfg.WorkspaceLabel,
 		settleWait:            cfg.SettleWait,
 		audit:                 cfg.Audit,
 		metrics:               cfg.Metrics,
@@ -294,10 +299,15 @@ func (c *StripeClient) EnsureCustomer(ctx context.Context, tenantID string) erro
 	} else if found {
 		return nil
 	}
-	// None exists — create one tagged with the workspace id. The idempotency
+	// None exists — create one tagged with the workspace id and named after
+	// the workspace, the Bill-to of its invoices (w6/m628). The idempotency
 	// key closes concurrent create races while Customer Search catches restarts.
+	name, err := c.workspaceName(ctx, tenantID)
+	if err != nil {
+		return err
+	}
 	cp := &stripe.CustomerParams{
-		Name:     stripe.String(tenantID),
+		Name:     stripe.String(name),
 		Metadata: map[string]string{workspaceMetadataKey: tenantID},
 	}
 	cp.Context = ctx
@@ -655,9 +665,12 @@ func (c *StripeClient) storeCustomer(tenantID, customerID string) {
 
 // liveCustomer retrieves a Customer; gone reports one that is deleted or
 // missing, which callers treat as already reclaimed.
-func (c *StripeClient) liveCustomer(ctx context.Context, customerID string) (customer *stripe.Customer, gone bool, err error) {
+func (c *StripeClient) liveCustomer(ctx context.Context, customerID string, expand ...string) (customer *stripe.Customer, gone bool, err error) {
 	params := &stripe.CustomerParams{}
 	params.Context = ctx
+	for _, field := range expand {
+		params.AddExpand(field)
+	}
 	customer, err = c.sc.Customers.Get(customerID, params)
 	if resourceMissing(err) || (err == nil && customer.Deleted) {
 		return nil, true, nil

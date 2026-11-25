@@ -41,6 +41,8 @@ on:
       - "scripts/lib/stripe-billing.sh"
       - "scripts/stripe_orphan_audit.py"
       - "scripts/test_stripe_orphan_audit.py"
+      - "scripts/stripe-customer-names.py"
+      - "scripts/test_stripe_customer_names.py"
       - "scripts/ci-fetch-verified.sh"
       - "scripts/migration_order_guard.py"
       - ".github/workflows/backend-test.yml"
@@ -78,6 +80,8 @@ on:
       - "scripts/lib/stripe-billing.sh"
       - "scripts/stripe_orphan_audit.py"
       - "scripts/test_stripe_orphan_audit.py"
+      - "scripts/stripe-customer-names.py"
+      - "scripts/test_stripe_customer_names.py"
       - "scripts/ci-fetch-verified.sh"
       - "scripts/migration_order_guard.py"
       - ".github/workflows/backend-test.yml"
@@ -301,6 +305,7 @@ jobs:
           scripts/test_stripe_billing_operations.py
           scripts/test_stripe_billing_reconcile.py
           scripts/test_stripe_orphan_audit.py
+          scripts/test_stripe_customer_names.py
       - name: stop test Postgres, OpenBao and Loki
         if: always()
         run: docker rm -f backend-test-postgres backend-test-openbao backend-test-loki

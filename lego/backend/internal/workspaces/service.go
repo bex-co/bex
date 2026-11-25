@@ -74,6 +74,10 @@ type Service struct {
 	// email changes, and when a move to Hobby resets it (w6/m627). Nil (Stripe
 	// off) changes bex's own record alone.
 	CustomerEmail CustomerEmailSetter
+	// CustomerName renames the workspace's Stripe Customer, its invoices'
+	// Bill-to, when the workspace is renamed (w6/m628). Nil (Stripe off)
+	// renames the workspace alone.
+	CustomerName CustomerNameFollower
 	// Granter/Revoker keep OpenFGA membership in step with the tenant_members
 	// rows: an owner tuple on create, its removal on delete. Both nil when authz
 	// is disabled (the tuples don't exist to write) — the row is still the
@@ -189,7 +193,7 @@ type WorkspaceCreationStore interface {
 }
 
 type WorkspaceCreationBilling interface {
-	PrepareWorkspaceSetup(context.Context, string, string, string, string, string) (billing.WorkspaceSetup, error)
+	PrepareWorkspaceSetup(ctx context.Context, attemptID, workspaceID, workspaceName, billingEmail, customerID, setupIntentID string) (billing.WorkspaceSetup, error)
 	VerifyWorkspaceSetup(context.Context, string, string, string, string) (billing.VerifiedWorkspaceSetup, error)
 	PrepareWorkspaceContract(context.Context, string, string, string, string) (string, error)
 }
@@ -575,7 +579,7 @@ func (s *Service) PrepareWorkspaceCreation(ctx context.Context, name, plan, bill
 	if s.CreationBilling == nil {
 		return WorkspaceCreationAttemptView{}, fmt.Errorf("%w: workspace payment setup is unavailable", core.ErrBillingUnavailable)
 	}
-	setup, err := s.CreationBilling.PrepareWorkspaceSetup(ctx, attempt.ID, attempt.WorkspaceID, attempt.BillingEmail, attempt.ProviderCustomerID, attempt.ProviderSetupIntentID)
+	setup, err := s.CreationBilling.PrepareWorkspaceSetup(ctx, attempt.ID, attempt.WorkspaceID, attempt.Name, attempt.BillingEmail, attempt.ProviderCustomerID, attempt.ProviderSetupIntentID)
 	if err != nil {
 		return WorkspaceCreationAttemptView{}, core.HideCause(core.ErrBillingUnavailable, fmt.Errorf("workspace %s payment setup: %w", attempt.WorkspaceID, err))
 	}
@@ -603,7 +607,7 @@ func (s *Service) ResumeWorkspaceCreation(ctx context.Context, attemptID string)
 	}
 	result := creationAttemptView(attempt)
 	if attempt.State == store.WorkspaceCreationSetupPending && s.CreationBilling != nil {
-		setup, setupErr := s.CreationBilling.PrepareWorkspaceSetup(ctx, attempt.ID, attempt.WorkspaceID, attempt.BillingEmail, attempt.ProviderCustomerID, attempt.ProviderSetupIntentID)
+		setup, setupErr := s.CreationBilling.PrepareWorkspaceSetup(ctx, attempt.ID, attempt.WorkspaceID, attempt.Name, attempt.BillingEmail, attempt.ProviderCustomerID, attempt.ProviderSetupIntentID)
 		if setupErr != nil {
 			return WorkspaceCreationAttemptView{}, core.HideCause(core.ErrBillingUnavailable, fmt.Errorf("workspace %s resumed payment setup: %w", attempt.WorkspaceID, setupErr))
 		}
@@ -1245,11 +1249,38 @@ func (s *Service) Rename(ctx context.Context, id, name string) (WorkspaceView, e
 	if name == "" {
 		return WorkspaceView{}, core.NameRequiredError()
 	}
+	var previous string
+	if s.CustomerName != nil {
+		if before, err := s.Store.GetTenant(ctx, id); err == nil {
+			previous = before.Label()
+		}
+	}
 	t, err := s.Store.SetTenantDisplayName(ctx, id, name)
 	if err != nil {
 		return WorkspaceView{}, mapStoreErr(err)
 	}
+	s.followRenameInStripe(ctx, id, previous, t.Label())
 	return view(t, "admin"), nil
+}
+
+// CustomerNameFollower renames a workspace's Stripe Customer after a rename
+// (*billing.StripeClient), unless its name is a member's own: a company name
+// set in Billing info or one typed into the Stripe portal.
+type CustomerNameFollower interface {
+	FollowWorkspaceRename(ctx context.Context, workspaceID, previous, name string) error
+}
+
+// followRenameInStripe gives the workspace's Stripe Customer its new name, so
+// the next invoice bills it. The rename has happened by then, so a Stripe
+// failure is logged, not returned, as a move to Hobby's email reset is: the
+// client's own retries (stripe-go's network retries) are the only ones.
+func (s *Service) followRenameInStripe(ctx context.Context, workspaceID, previous, name string) {
+	if s.CustomerName == nil || previous == name {
+		return
+	}
+	if err := s.CustomerName.FollowWorkspaceRename(ctx, workspaceID, previous, name); err != nil {
+		log.Printf("workspaces: %s was renamed, but its Stripe Customer still bills its old name: %v", workspaceID, err)
+	}
 }
 
 // SetRequireTwoFactor turns a workspace's "require two-factor authentication"

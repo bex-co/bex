@@ -1058,6 +1058,25 @@ export type Billing = {
   invoices: Maybe<Array<Maybe<BillingInvoice>>>;
 };
 
+export type BillingAddress = {
+  __typename: 'BillingAddress';
+  city: Scalars['String']['output'];
+  country: Scalars['String']['output'];
+  line1: Scalars['String']['output'];
+  line2: Scalars['String']['output'];
+  postalCode: Scalars['String']['output'];
+  state: Scalars['String']['output'];
+};
+
+export type BillingAddressInput = {
+  city?: InputMaybe<Scalars['String']['input']>;
+  country: Scalars['String']['input'];
+  line1?: InputMaybe<Scalars['String']['input']>;
+  line2?: InputMaybe<Scalars['String']['input']>;
+  postalCode?: InputMaybe<Scalars['String']['input']>;
+  state?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type BillingAmount = {
   __typename: 'BillingAmount';
   amountDueUsd: Maybe<Scalars['String']['output']>;
@@ -1119,6 +1138,17 @@ export type BillingOverdueInvoice = {
   __typename: 'BillingOverdueInvoice';
   hostedInvoiceUrl: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
+};
+
+export type BillingTaxId = {
+  __typename: 'BillingTaxId';
+  type: Scalars['String']['output'];
+  value: Scalars['String']['output'];
+};
+
+export type BillingTaxIdInput = {
+  type: Scalars['String']['input'];
+  value: Scalars['String']['input'];
 };
 
 export type BillingTaxReadiness = {
@@ -2631,6 +2661,7 @@ export type Mutation = {
   setSubdomainPolicy: Maybe<Service>;
   setWebhookEndpointEnabled: Maybe<WebhookEndpoint>;
   setWorkspaceBillingEmail: Maybe<WorkspaceBillingEmail>;
+  setWorkspaceBillingInfo: Maybe<WorkspaceBillingInfo>;
   setWorkspaceIPAllowList: Maybe<Workspace>;
   setWorkspaceOverlappingDeployPolicy: Maybe<Workspace>;
   /** Set an organization workspace's privacy, public or invite_only (workspace admins). */
@@ -4170,6 +4201,14 @@ export type MutationSetWorkspaceBillingEmailArgs = {
 };
 
 
+export type MutationSetWorkspaceBillingInfoArgs = {
+  address?: InputMaybe<BillingAddressInput>;
+  companyName?: InputMaybe<Scalars['String']['input']>;
+  taxId?: InputMaybe<BillingTaxIdInput>;
+  workspaceId: Scalars['String']['input'];
+};
+
+
 export type MutationSetWorkspaceIpAllowListArgs = {
   id: Scalars['String']['input'];
   ipAllowList: Array<IpAllowListEntryInput>;
@@ -5055,6 +5094,7 @@ export type Query = {
   webhookEventTypes: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   workspace: Maybe<Workspace>;
   workspaceBillingEmail: Maybe<WorkspaceBillingEmail>;
+  workspaceBillingInfo: Maybe<WorkspaceBillingInfo>;
   workspaceBillingReadiness: Maybe<WorkspaceBillingReadiness>;
   workspaceCreationAttempt: Maybe<WorkspaceCreationAttempt>;
   workspaceCreationPolicy: Maybe<WorkspaceCreationPolicy>;
@@ -6055,6 +6095,11 @@ export type QueryWorkspaceBillingEmailArgs = {
 };
 
 
+export type QueryWorkspaceBillingInfoArgs = {
+  workspaceId: Scalars['String']['input'];
+};
+
+
 export type QueryWorkspaceBillingReadinessArgs = {
   workspaceId: Scalars['String']['input'];
 };
@@ -6821,6 +6866,17 @@ export type WorkspaceBillingEmail = {
   __typename: 'WorkspaceBillingEmail';
   configurable: Scalars['Boolean']['output'];
   email: Scalars['String']['output'];
+  workspaceId: Scalars['String']['output'];
+};
+
+/** The company name, address and VAT or tax ID a workspace's invoices carry, as Render's Billing page billing info. billTo is the name invoices bill: the company name, else the workspace's name. */
+export type WorkspaceBillingInfo = {
+  __typename: 'WorkspaceBillingInfo';
+  address: Maybe<BillingAddress>;
+  billTo: Scalars['String']['output'];
+  companyName: Scalars['String']['output'];
+  customerReady: Scalars['Boolean']['output'];
+  taxId: Maybe<BillingTaxId>;
   workspaceId: Scalars['String']['output'];
 };
 

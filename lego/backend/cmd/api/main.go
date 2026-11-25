@@ -1255,6 +1255,12 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 			Metrics:               billingMetrics,
 			HeldMeters:            held.LookupKeys,
 			AgentModelThreshold:   thresholds.Want,
+			// w6/m628: Customers are named after their workspace, the
+			// Bill-to of its invoices.
+			WorkspaceLabel: func(ctx context.Context, workspaceID string) (string, error) {
+				t, err := st.GetTenant(ctx, workspaceID)
+				return t.Label(), err
+			},
 		})
 		thresholds.Stripe = stripeClient
 		go thresholds.Run(ctx)
@@ -1263,6 +1269,8 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 		deps.BillingState = st
 		deps.BillingEligibility = st
 		deps.WorkspaceCustomerEmail = stripeClient
+		deps.WorkspaceCustomerName = stripeClient
+		deps.BillingInfo = stripeClient
 		if publishableKey != "" {
 			deps.WorkspaceCreationBilling = stripeClient
 			go (&billing.WorkspaceCreationCleaner{Store: st, Provider: stripeClient, Metrics: billingMetrics}).Run(ctx)

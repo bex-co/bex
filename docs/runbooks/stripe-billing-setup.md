@@ -32,6 +32,8 @@ It reads `pricing.yaml` and creates or validates:
 - deactivation of superseded kind-level shadow meters;
 - one metadata-tagged Customer Portal configuration with payment-method update, billing-information update (address, name and tax ID, never the email) and invoice history enabled, and Subscription cancellation/plan changes disabled.
 
+The portal's name, address and tax ID are the same Customer fields the Billing page's **Billing info** writes (w6/m628, [billing-info.md](../render-artifacts/billing-info.md)), so either path changes what every later invoice prints. A name set in the portal is kept when the workspace is renamed, as a company name set in Billing info is.
+
 The portal leaves out the email on purpose (w6/m627): a workspace's billing email is a plan-gated setting (Pro and higher; Hobby's is the owner's account email), changed only on the Billing page or over the API, where bex writes it to the Customer itself ([billing-email.md](../render-artifacts/billing-email.md)). After writing the configuration the script reads it back and stops if it still differs. `--check-portal` (add `--live` for production) is the read-only drift check: it reads only bex's tagged configuration, writes nothing, and exits 1 if, for example, the configuration still lets a customer change the email. `--portal-only --dashboard-url <origin>` updates that one configuration and runs no other setup step.
 
 Run it a second time. Every active object and the coupon must report `exists`; the script must not create duplicates. If an active Price with a required lookup key has the wrong meter, currency, cadence, or amount, the script stops. Correct/deactivate the stale Stripe object deliberately, then rerun—never work around a catalog mismatch in bex code.
@@ -86,7 +88,7 @@ Use a separate setup/admin credential for the script. For bex-api, create a Stri
 
 | Stripe resource | Runtime access | Why |
 | --- | --- | --- |
-| Customers | Write | search, create, and recover `bex_workspace=tea-…` Customers |
+| Customers | Write | search, create, and recover `bex_workspace=tea-…` Customers; name each after its workspace and rename it when the workspace is renamed; write the billing info a member sets on the Billing page (name, address, and the Customer's tax IDs: create and delete; w6/m628). If the key's permission UI lists Customer tax IDs apart from Customers, grant them Write too, or a billing info save with a tax ID answers 503 |
 | Subscriptions | Write | list/create the complete metered contract, bind its default payment method, enable gated automatic tax, apply the comp coupon, and reset the billing cycle anchor to invoice usage before a workspace is deleted (ADR091 D10.4) |
 | Prices | Read | validate/resolve all active lookup keys before subscription creation |
 | Products | Read | verify the operator-confirmed Product tax code when the Tax gate is configured |
@@ -283,6 +285,15 @@ scripts/stripe-billing-prod-test-fixtures.sh cleanup
 Use the exact paid/comp ids and one-hour window recorded in the state file; do not paste the file itself into evidence. Wait up to the documented emitter interval plus Stripe's eventual-consistency delay before declaring a reconciliation mismatch. Always restore `48` even if acceptance fails.
 
 The state file is created before the first workspace and atomically updated after each successful create, is mode `0600`, and is gitignored. A failed partial apply is therefore recoverable with `cleanup`. Exclusion is applied before provisioning or seeding can export, so it must have no Customer, Subscription, or events. Paid and comp objects are tagged `bex_fixture=m53` with owner/expiry metadata; comp retains rated lines but uses the perpetual 100%-off coupon. Cleanup validates `livemode=false`, deletes only the two fixture Customers and three exact tenant ids, proves absence, and retains catalog/invoice/audit evidence.
+
+### Customer names: the invoices' Bill-to (w6/m628)
+
+Stripe prints a Customer's name as its invoices' Bill-to. Before w6/m628 bex named every Customer by its workspace id; bex-api now names a new one after the workspace (its display name, else its slug) and renames it when the workspace is renamed, unless the name is a member's own (a company name set in Billing info, or a name typed into the portal). `scripts/stripe-customer-names.py` renames the Customers still named by their `tea-` id. It reads the workspaces' names from the control-plane database (`BEX_CP_DB_URI`, else `kubectl exec` into the CNPG primary of the cluster `KUBECONFIG` points at) and uses the `stripe` CLI's own key, test mode unless `--live`. It only ever considers a Customer tagged `bex_workspace`, since the account is shared, and prints Customer and workspace ids, never names, unless `--show-names`:
+
+```bash
+scripts/stripe-customer-names.py --live          # dry run: counts and the planned renames
+scripts/stripe-customer-names.py --live --apply  # rename them; a re-run is safe
+```
 
 ### Rotation and disable drill
 

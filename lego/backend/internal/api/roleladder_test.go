@@ -539,17 +539,20 @@ var representativeVerbRelations = map[string]string{
 	"*github.Service.StartConnect": core.RelCanManage,
 	// can_manage_billing — billing or admin (Render's BILLING role, "Edit
 	// payment method"): the hosted sessions that bind a payment method (w1/m60),
-	// the pipeline spend limit and the billing email (w6/m627).
+	// the pipeline spend limit, the billing email (w6/m627) and billing info
+	// (w6/m628).
 	"*billing.Service.Checkout":                 core.RelCanManageBilling,
+	"*billing.Service.SetBillingInfo":           core.RelCanManageBilling,
 	"*billing.Service.Portal":                   core.RelCanManageBilling,
 	"*workspaces.Service.SetPipelineSpendLimit": core.RelCanManageBilling,
 	"*workspaces.Service.SetBillingEmail":       core.RelCanManageBilling,
 	// can_view_billing — developer, admin or billing (Render's "View billing
 	// details", w9/m620): usage and its cost, invoices, billing readiness,
-	// the pipeline spend limit and the billing email. A Contributor and a
-	// Viewer read none of them; one moved back to can_view or to
-	// can_manage_billing turns this red.
+	// the pipeline spend limit, the billing email and billing info. A
+	// Contributor and a Viewer read none of them; one moved back to can_view
+	// or to can_manage_billing turns this red.
 	"*billing.Service.Status":              core.RelCanViewBilling,
+	"*billing.Service.BillingInfo":         core.RelCanViewBilling,
 	"*workspaces.Service.PipelineSettings": core.RelCanViewBilling,
 	"*workspaces.Service.BillingEmail":     core.RelCanViewBilling,
 	"*usage.Service.MonthToDate":           core.RelCanViewBilling,

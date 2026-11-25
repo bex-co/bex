@@ -43,6 +43,10 @@ vi.mock("@/features/usage/components/billing-email-card", () => ({
   BillingEmailCard: () => <div data-testid="billing-email-card" />,
 }));
 
+vi.mock("@/features/usage/components/billing-info-card", () => ({
+  BillingInfoCard: () => <div data-testid="billing-info-card" />,
+}));
+
 // The page mounts the section nav twice (mobile bar + desktop rail), and its
 // labels are the card titles, so leaving it in makes every title query
 // ambiguous. It has its own test.
@@ -114,6 +118,7 @@ describe("UsagePage", () => {
       "plan-card",
       "payment-method-card",
       "billing-email-card",
+      "billing-info-card",
       "included-usage",
     ].map((id) => screen.getByTestId(id));
     for (let i = 1; i < order.length; i++) {
@@ -300,6 +305,7 @@ describe("billing details per role (w9/m620)", () => {
         "plan-card",
         "payment-method-card",
         "billing-email-card",
+        "billing-info-card",
         "included-usage",
       ]) {
         expect(screen.queryByTestId(card)).not.toBeInTheDocument();

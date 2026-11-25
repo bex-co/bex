@@ -507,8 +507,9 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
       12,
     ],
     [<AccountSettingsPageSkeleton key="account" />, "account-settings", 6],
-    // Billing email joined the Billing page's rail in w6/m627.
-    [<BillingPageSkeleton key="billing" />, "billing", 8],
+    // Billing email joined the Billing page's rail in w6/m627, billing info
+    // in w6/m628.
+    [<BillingPageSkeleton key="billing" />, "billing", 9],
     [<NotificationsPageSkeleton key="notifications" />, "notifications", 3],
   ])(
     "renders %s pending through the settings page frame, with its real rail",

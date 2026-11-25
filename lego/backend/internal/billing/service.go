@@ -132,6 +132,9 @@ type Service struct {
 	// Eligibility is the payment-eligibility read, which also carries the
 	// card refusal at binding (ADR091 D10.5–D10.6); nil reports none.
 	Eligibility PaymentEligibilityStore
+	// Info reads and writes billing info on the workspace's Stripe Customer
+	// (w6/m628); nil answers ErrBillingUnavailable.
+	Info BillingInfoProvider
 }
 
 type LifecycleReader interface {

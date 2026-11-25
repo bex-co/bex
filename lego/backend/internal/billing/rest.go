@@ -47,6 +47,29 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusCreated, session)
 	})
+	// Billing info (w6/m628): the company name, address and VAT or tax ID
+	// every later invoice carries. PUT replaces all three.
+	mux.HandleFunc("GET /v1/workspaces/{workspaceId}/billing/info", func(w http.ResponseWriter, r *http.Request) {
+		info, err := s.BillingInfo(r.Context(), r.PathValue("workspaceId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, info)
+	})
+	mux.HandleFunc("PUT /v1/workspaces/{workspaceId}/billing/info", func(w http.ResponseWriter, r *http.Request) {
+		req, err := core.DecodeBody[BillingInfoInput](r)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		info, err := s.SetBillingInfo(r.Context(), r.PathValue("workspaceId"), req)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, info)
+	})
 	mux.HandleFunc("POST /v1/workspaces/{workspaceId}/billing/portal-session", func(w http.ResponseWriter, r *http.Request) {
 		var req PortalRequest
 		if err := core.DecodeJSON(r, &req); err != nil {

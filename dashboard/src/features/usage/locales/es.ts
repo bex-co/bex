@@ -531,6 +531,130 @@ const esUsage: Record<string, TranslationEntry> = {
     message: "No se pudo actualizar el correo de facturación",
     description: "Fallback toast when the billing email could not be saved",
   },
+  "usage.billingInfoTitle": {
+    message: "Datos de facturación",
+    description:
+      "Billing info card title and section navigation entry on the billing page (w6/m628)",
+  },
+  "usage.billingInfoDescription": {
+    message:
+      "Nombre de la empresa, dirección y número de IVA o identificación fiscal que aparecen en cada factura.",
+    description: "Billing info card description: what the billing info is for",
+  },
+  "usage.billingInfoBillTo": {
+    message: "Facturar a",
+    description:
+      "Label of the name invoices bill: the company name when set, else the workspace's name",
+  },
+  "usage.billingInfoCompanyName": {
+    message: "Nombre de la empresa",
+    description:
+      "Label of the company name, on the billing info card and in its dialog",
+  },
+  "usage.billingInfoAddress": {
+    message: "Dirección",
+    description: "Label of the billing address on the billing info card",
+  },
+  "usage.billingInfoTaxId": {
+    message: "Identificación fiscal",
+    description:
+      "Label of the VAT or tax ID on the billing info card, and of its value in the dialog when the country has several types",
+  },
+  "usage.billingInfoNotSet": {
+    message: "Sin definir",
+    description: "Shown for a part of the billing info that is not set",
+  },
+  "usage.billingInfoUnreadable": {
+    message: "No se pudieron cargar los datos de facturación.",
+    description: "Shown when the billing info could not be read",
+  },
+  "usage.billingInfoCustomerNotReady": {
+    message:
+      "Primero añade un método de pago; los datos de facturación se guardan con él.",
+    description:
+      "Note on the billing info card, and error toast, while the workspace has no billing account (no payment method was ever added)",
+  },
+  "usage.billingInfoAdd": {
+    message: "Añadir datos de facturación",
+    description:
+      "Button that opens the billing info dialog when no billing info is set",
+  },
+  "usage.billingInfoEdit": {
+    message: "Editar",
+    description:
+      "Button that opens the billing info dialog when billing info is set",
+  },
+  "usage.billingInfoDialogTitle": {
+    message: "Datos de facturación",
+    description: "Title of the dialog that sets the billing info",
+  },
+  "usage.billingInfoDialogDescription": {
+    message:
+      "Datos de facturación adicionales, como el nombre de la empresa, la dirección o el número de IVA, que aparecerán en todas las facturas a partir de ahora.",
+    description: "Description in the billing info dialog (Render's wording)",
+  },
+  "usage.billingInfoCompanyNameHint": {
+    message: "Déjalo vacío para facturar a nombre del espacio de trabajo.",
+    description:
+      "Hint under the company name field: an empty company name bills the workspace's name",
+  },
+  "usage.billingInfoCountry": {
+    message: "País",
+    description: "Label of the billing address country picker",
+  },
+  "usage.billingInfoCountryPlaceholder": {
+    message: "Elige un país",
+    description: "Placeholder of the country picker when no country is chosen",
+  },
+  "usage.billingInfoNoCountry": {
+    message: "Ningún país",
+    description:
+      "Country picker choice that clears the country (and so the address)",
+  },
+  "usage.billingInfoCountryRequired": {
+    message: "Elige un país",
+    description:
+      "Error under the country picker when an address line was typed without a country",
+  },
+  "usage.billingInfoLine1": {
+    message: "Línea 1 de la dirección",
+    description: "Label of the first street address line",
+  },
+  "usage.billingInfoLine2": {
+    message: "Línea 2 de la dirección",
+    description: "Label of the second street address line",
+  },
+  "usage.billingInfoCity": {
+    message: "Ciudad",
+    description: "Label of the city field",
+  },
+  "usage.billingInfoState": {
+    message: "Estado / provincia / región",
+    description: "Label of the state, province or region field",
+  },
+  "usage.billingInfoPostalCode": {
+    message: "Código postal",
+    description: "Label of the postal code field",
+  },
+  "usage.billingInfoTaxIdType": {
+    message: "Tipo de identificación fiscal",
+    description:
+      "Label of the tax ID type picker, shown when the country has several types",
+  },
+  "usage.billingInfoSave": {
+    message: "Guardar",
+    description: "Save button of the billing info dialog",
+  },
+  "usage.billingInfoSaved": {
+    message:
+      "Datos de facturación guardados. Las nuevas facturas se emitirán a nombre de {name}.",
+    description:
+      "Toast after the billing info was saved; {name} is the name new invoices bill",
+  },
+  "usage.billingInfoError": {
+    message: "No se pudieron guardar los datos de facturación",
+    description: "Fallback toast when the billing info could not be saved",
+  },
   "usage.includedUsageTitle": {
     message: "Uso incluido",
     description:

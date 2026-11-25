@@ -529,6 +529,130 @@ const ruUsage: Record<string, TranslationEntry> = {
     message: "Не удалось обновить email для счетов",
     description: "Fallback toast when the billing email could not be saved",
   },
+  "usage.billingInfoTitle": {
+    message: "Платёжные реквизиты",
+    description:
+      "Billing info card title and section navigation entry on the billing page (w6/m628)",
+  },
+  "usage.billingInfoDescription": {
+    message:
+      "Название компании, адрес и номер плательщика НДС или налоговый номер, которые указываются в каждом счёте.",
+    description: "Billing info card description: what the billing info is for",
+  },
+  "usage.billingInfoBillTo": {
+    message: "Плательщик",
+    description:
+      "Label of the name invoices bill: the company name when set, else the workspace's name",
+  },
+  "usage.billingInfoCompanyName": {
+    message: "Название компании",
+    description:
+      "Label of the company name, on the billing info card and in its dialog",
+  },
+  "usage.billingInfoAddress": {
+    message: "Адрес",
+    description: "Label of the billing address on the billing info card",
+  },
+  "usage.billingInfoTaxId": {
+    message: "Налоговый номер",
+    description:
+      "Label of the VAT or tax ID on the billing info card, and of its value in the dialog when the country has several types",
+  },
+  "usage.billingInfoNotSet": {
+    message: "Не указано",
+    description: "Shown for a part of the billing info that is not set",
+  },
+  "usage.billingInfoUnreadable": {
+    message: "Не удалось загрузить платёжные реквизиты.",
+    description: "Shown when the billing info could not be read",
+  },
+  "usage.billingInfoCustomerNotReady": {
+    message:
+      "Сначала добавьте способ оплаты: платёжные реквизиты хранятся вместе с ним.",
+    description:
+      "Note on the billing info card, and error toast, while the workspace has no billing account (no payment method was ever added)",
+  },
+  "usage.billingInfoAdd": {
+    message: "Добавить реквизиты",
+    description:
+      "Button that opens the billing info dialog when no billing info is set",
+  },
+  "usage.billingInfoEdit": {
+    message: "Изменить",
+    description:
+      "Button that opens the billing info dialog when billing info is set",
+  },
+  "usage.billingInfoDialogTitle": {
+    message: "Платёжные реквизиты",
+    description: "Title of the dialog that sets the billing info",
+  },
+  "usage.billingInfoDialogDescription": {
+    message:
+      "Дополнительные платёжные реквизиты, например название компании, адрес или номер плательщика НДС, — с этого момента они указываются во всех счетах.",
+    description: "Description in the billing info dialog (Render's wording)",
+  },
+  "usage.billingInfoCompanyNameHint": {
+    message:
+      "Оставьте пустым, чтобы в счетах указывалось название рабочего пространства.",
+    description:
+      "Hint under the company name field: an empty company name bills the workspace's name",
+  },
+  "usage.billingInfoCountry": {
+    message: "Страна",
+    description: "Label of the billing address country picker",
+  },
+  "usage.billingInfoCountryPlaceholder": {
+    message: "Выберите страну",
+    description: "Placeholder of the country picker when no country is chosen",
+  },
+  "usage.billingInfoNoCountry": {
+    message: "Без страны",
+    description:
+      "Country picker choice that clears the country (and so the address)",
+  },
+  "usage.billingInfoCountryRequired": {
+    message: "Выберите страну",
+    description:
+      "Error under the country picker when an address line was typed without a country",
+  },
+  "usage.billingInfoLine1": {
+    message: "Адрес, строка 1",
+    description: "Label of the first street address line",
+  },
+  "usage.billingInfoLine2": {
+    message: "Адрес, строка 2",
+    description: "Label of the second street address line",
+  },
+  "usage.billingInfoCity": {
+    message: "Город",
+    description: "Label of the city field",
+  },
+  "usage.billingInfoState": {
+    message: "Штат / провинция / регион",
+    description: "Label of the state, province or region field",
+  },
+  "usage.billingInfoPostalCode": {
+    message: "Почтовый индекс",
+    description: "Label of the postal code field",
+  },
+  "usage.billingInfoTaxIdType": {
+    message: "Тип налогового номера",
+    description:
+      "Label of the tax ID type picker, shown when the country has several types",
+  },
+  "usage.billingInfoSave": {
+    message: "Сохранить",
+    description: "Save button of the billing info dialog",
+  },
+  "usage.billingInfoSaved": {
+    message: "Реквизиты сохранены. Новые счета будут выставляться на {name}.",
+    description:
+      "Toast after the billing info was saved; {name} is the name new invoices bill",
+  },
+  "usage.billingInfoError": {
+    message: "Не удалось сохранить платёжные реквизиты",
+    description: "Fallback toast when the billing info could not be saved",
+  },
   "usage.includedUsageTitle": {
     message: "Включённое использование",
     description:

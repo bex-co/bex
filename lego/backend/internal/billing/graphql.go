@@ -109,6 +109,86 @@ var hostedSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// Billing info (w6/m628): address and taxId are null when none is set.
+var billingAddressGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BillingAddress",
+	Fields: graphql.Fields{
+		"line1":      gqlutil.ReqStrField(func(a BillingAddress) any { return a.Line1 }),
+		"line2":      gqlutil.ReqStrField(func(a BillingAddress) any { return a.Line2 }),
+		"city":       gqlutil.ReqStrField(func(a BillingAddress) any { return a.City }),
+		"state":      gqlutil.ReqStrField(func(a BillingAddress) any { return a.State }),
+		"postalCode": gqlutil.ReqStrField(func(a BillingAddress) any { return a.PostalCode }),
+		"country":    gqlutil.ReqStrField(func(a BillingAddress) any { return a.Country }),
+	},
+})
+
+var billingTaxIDGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BillingTaxId",
+	Fields: graphql.Fields{
+		"type":  gqlutil.ReqStrField(func(t BillingTaxID) any { return t.Type }),
+		"value": gqlutil.ReqStrField(func(t BillingTaxID) any { return t.Value }),
+	},
+})
+
+var billingInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "WorkspaceBillingInfo",
+	Description: "The company name, address and VAT or tax ID a workspace's invoices carry, as Render's Billing page billing info. billTo is the name invoices bill: the company name, else the workspace's name.",
+	Fields: graphql.Fields{
+		"workspaceId":   gqlutil.ReqStrField(func(v BillingInfo) any { return v.WorkspaceID }),
+		"customerReady": gqlutil.ReqBoolField(func(v BillingInfo) any { return v.CustomerReady }),
+		"billTo":        gqlutil.ReqStrField(func(v BillingInfo) any { return v.BillTo }),
+		"companyName":   gqlutil.ReqStrField(func(v BillingInfo) any { return v.CompanyName }),
+		"address": gqlutil.Typed(billingAddressGQLType, func(v BillingInfo) any {
+			if v.Address == nil {
+				return nil
+			}
+			return *v.Address
+		}),
+		"taxId": gqlutil.Typed(billingTaxIDGQLType, func(v BillingInfo) any {
+			if v.TaxID == nil {
+				return nil
+			}
+			return *v.TaxID
+		}),
+	},
+})
+
+var billingAddressInputGQLType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "BillingAddressInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"line1":      &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"line2":      &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"city":       &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"state":      &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"postalCode": &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"country":    &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+	},
+})
+
+var billingTaxIDInputGQLType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "BillingTaxIdInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"type":  &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"value": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+	},
+})
+
+// billingInfoInput reads setWorkspaceBillingInfo's arguments; an omitted
+// address or taxId removes it, as REST's PUT does.
+func billingInfoInput(args map[string]any) BillingInfoInput {
+	in := BillingInfoInput{CompanyName: gqlutil.Str(args, "companyName")}
+	if a, ok := args["address"].(map[string]any); ok {
+		in.Address = &BillingAddress{
+			Line1: gqlutil.Str(a, "line1"), Line2: gqlutil.Str(a, "line2"), City: gqlutil.Str(a, "city"),
+			State: gqlutil.Str(a, "state"), PostalCode: gqlutil.Str(a, "postalCode"), Country: gqlutil.Str(a, "country"),
+		}
+	}
+	if t, ok := args["taxId"].(map[string]any); ok {
+		in.TaxID = &BillingTaxID{Type: gqlutil.Str(t, "type"), Value: gqlutil.Str(t, "value")}
+	}
+	return in
+}
+
 func billingWorkspaceArg() graphql.FieldConfigArgument {
 	return graphql.FieldConfigArgument{"workspaceId": gqlutil.ReqArg(graphql.String)}
 }
@@ -120,6 +200,13 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Args: billingWorkspaceArg(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Status(p.Context, gqlutil.Str(p.Args, "workspaceId"))
+			},
+		},
+		"workspaceBillingInfo": &graphql.Field{
+			Type: billingInfoGQLType,
+			Args: billingWorkspaceArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.BillingInfo(p.Context, gqlutil.Str(p.Args, "workspaceId"))
 			},
 		},
 	}
@@ -136,6 +223,20 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Checkout(p.Context, gqlutil.Str(p.Args, "workspaceId"), CheckoutRequest{SuccessURL: gqlutil.Str(p.Args, "successUrl"), CancelURL: gqlutil.Str(p.Args, "cancelUrl")})
+			},
+		},
+		// setWorkspaceBillingInfo replaces the billing info every later
+		// invoice carries (w6/m628); an omitted address or taxId is removed.
+		"setWorkspaceBillingInfo": &graphql.Field{
+			Type: billingInfoGQLType,
+			Args: graphql.FieldConfigArgument{
+				"workspaceId": gqlutil.ReqArg(graphql.String),
+				"companyName": gqlutil.Arg(graphql.String),
+				"address":     gqlutil.Arg(billingAddressInputGQLType),
+				"taxId":       gqlutil.Arg(billingTaxIDInputGQLType),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetBillingInfo(p.Context, gqlutil.Str(p.Args, "workspaceId"), billingInfoInput(p.Args))
 			},
 		},
 		"createBillingPortalSession": &graphql.Field{

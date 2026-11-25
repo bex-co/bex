@@ -135,7 +135,7 @@ type creationBillingFake struct {
 	contractErr       error
 }
 
-func (f *creationBillingFake) PrepareWorkspaceSetup(_ context.Context, _, workspaceID, _, _, _ string) (billing.WorkspaceSetup, error) {
+func (f *creationBillingFake) PrepareWorkspaceSetup(_ context.Context, _, workspaceID, _, _, _, _ string) (billing.WorkspaceSetup, error) {
 	f.preparedWorkspace = workspaceID
 	if f.setupErr != nil {
 		return billing.WorkspaceSetup{}, f.setupErr

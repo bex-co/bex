@@ -811,6 +811,24 @@ type Billing {
   invoices: [BillingInvoice]
 }
 
+type BillingAddress {
+  city: String!
+  country: String!
+  line1: String!
+  line2: String!
+  postalCode: String!
+  state: String!
+}
+
+input BillingAddressInput {
+  city: String
+  country: String!
+  line1: String
+  line2: String
+  postalCode: String
+  state: String
+}
+
 type BillingAmount {
   amountDueUsd: String
   amountUsd: String
@@ -865,6 +883,16 @@ type BillingLifecycle {
 type BillingOverdueInvoice {
   hostedInvoiceUrl: String
   id: String
+}
+
+type BillingTaxId {
+  type: String!
+  value: String!
+}
+
+input BillingTaxIdInput {
+  type: String!
+  value: String!
 }
 
 type BillingTaxReadiness {
@@ -2219,6 +2247,7 @@ type Mutation {
   setSubdomainPolicy(confirm: String, id: String!, policy: String!): Service
   setWebhookEndpointEnabled(enabled: Boolean!, id: String!, ownerId: String): WebhookEndpoint
   setWorkspaceBillingEmail(email: String!, workspaceId: String!): WorkspaceBillingEmail
+  setWorkspaceBillingInfo(address: BillingAddressInput, companyName: String, taxId: BillingTaxIdInput, workspaceId: String!): WorkspaceBillingInfo
   setWorkspaceIPAllowList(id: String!, ipAllowList: [IPAllowListEntryInput!]!): Workspace
   setWorkspaceOverlappingDeployPolicy(id: String!, policy: String!): Workspace
   setWorkspacePrivacy(privacy: String!, workspaceId: String!): Workspace
@@ -2740,6 +2769,7 @@ type Query {
   webhookEventTypes: [String]
   workspace(id: String!): Workspace
   workspaceBillingEmail(workspaceId: String!): WorkspaceBillingEmail
+  workspaceBillingInfo(workspaceId: String!): WorkspaceBillingInfo
   workspaceBillingReadiness(workspaceId: String!): WorkspaceBillingReadiness
   workspaceCreationAttempt(id: String!): WorkspaceCreationAttempt
   workspaceCreationPolicy(plan: String!): WorkspaceCreationPolicy
@@ -3404,6 +3434,15 @@ type Workspace {
 type WorkspaceBillingEmail {
   configurable: Boolean!
   email: String!
+  workspaceId: String!
+}
+
+type WorkspaceBillingInfo {
+  address: BillingAddress
+  billTo: String!
+  companyName: String!
+  customerReady: Boolean!
+  taxId: BillingTaxId
   workspaceId: String!
 }
 

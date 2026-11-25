@@ -14,6 +14,7 @@
 
 import {
   Bot,
+  Building2,
   CreditCard,
   FileText,
   Gauge,
@@ -45,6 +46,11 @@ export function UsageNavigation({ className }: { className?: string }) {
       href: "#billing-email",
       label: t("usage.billingEmailTitle"),
       icon: Mail,
+    },
+    {
+      href: "#billing-info",
+      label: t("usage.billingInfoTitle"),
+      icon: Building2,
     },
     {
       href: "#included-usage",

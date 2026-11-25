@@ -19,6 +19,7 @@ package billing
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -45,7 +46,7 @@ func TestPrepareWorkspaceSetupOwnsCustomerAndUsesDynamicPaymentMethods(t *testin
 		HTTPClient: &http.Client{Transport: stub}, BaseURL: "https://stub.stripe.test",
 		MaxNetworkRetries: stripe.Int64(0),
 	})
-	setup, err := c.PrepareWorkspaceSetup(context.Background(), attemptID, workspaceID, "billing@example.com", "", "")
+	setup, err := c.PrepareWorkspaceSetup(context.Background(), attemptID, workspaceID, "acme-prod", "billing@example.com", "", "")
 	if err != nil {
 		t.Fatalf("PrepareWorkspaceSetup: %v", err)
 	}
@@ -55,6 +56,10 @@ func TestPrepareWorkspaceSetupOwnsCustomerAndUsesDynamicPaymentMethods(t *testin
 	customerRequests := stub.requests("/v1/customers")
 	if len(customerRequests) != 1 || !strings.Contains(customerRequests[0].body, "email=billing%40example.com") || !strings.Contains(customerRequests[0].body, "metadata[bex_workspace]="+workspaceID) {
 		t.Fatalf("customer request = %#v", customerRequests)
+	}
+	// w6/m628: the Customer bills the workspace's name, not its tea- id.
+	if form, _ := url.ParseQuery(customerRequests[0].body); form.Get("name") != "acme-prod" {
+		t.Fatalf("customer name = %q, want the workspace's name", form.Get("name"))
 	}
 	setupRequests := stub.requests("/v1/setup_intents")
 	if len(setupRequests) != 1 || strings.Contains(setupRequests[0].body, "payment_method_types") {

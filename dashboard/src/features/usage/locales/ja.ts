@@ -527,6 +527,129 @@ const jaUsage: Record<string, TranslationEntry> = {
     message: "請求先メールアドレスを更新できませんでした",
     description: "Fallback toast when the billing email could not be saved",
   },
+  "usage.billingInfoTitle": {
+    message: "請求先情報",
+    description:
+      "Billing info card title and section navigation entry on the billing page (w6/m628)",
+  },
+  "usage.billingInfoDescription": {
+    message:
+      "すべての請求書に記載される会社名、住所、VAT 番号または税番号です。",
+    description: "Billing info card description: what the billing info is for",
+  },
+  "usage.billingInfoBillTo": {
+    message: "請求先",
+    description:
+      "Label of the name invoices bill: the company name when set, else the workspace's name",
+  },
+  "usage.billingInfoCompanyName": {
+    message: "会社名",
+    description:
+      "Label of the company name, on the billing info card and in its dialog",
+  },
+  "usage.billingInfoAddress": {
+    message: "住所",
+    description: "Label of the billing address on the billing info card",
+  },
+  "usage.billingInfoTaxId": {
+    message: "税番号",
+    description:
+      "Label of the VAT or tax ID on the billing info card, and of its value in the dialog when the country has several types",
+  },
+  "usage.billingInfoNotSet": {
+    message: "未設定",
+    description: "Shown for a part of the billing info that is not set",
+  },
+  "usage.billingInfoUnreadable": {
+    message: "請求先情報を読み込めませんでした。",
+    description: "Shown when the billing info could not be read",
+  },
+  "usage.billingInfoCustomerNotReady": {
+    message:
+      "先にお支払い方法を追加してください。請求先情報はお支払い方法とあわせて保存されます。",
+    description:
+      "Note on the billing info card, and error toast, while the workspace has no billing account (no payment method was ever added)",
+  },
+  "usage.billingInfoAdd": {
+    message: "請求先情報を追加",
+    description:
+      "Button that opens the billing info dialog when no billing info is set",
+  },
+  "usage.billingInfoEdit": {
+    message: "編集",
+    description:
+      "Button that opens the billing info dialog when billing info is set",
+  },
+  "usage.billingInfoDialogTitle": {
+    message: "請求先情報",
+    description: "Title of the dialog that sets the billing info",
+  },
+  "usage.billingInfoDialogDescription": {
+    message:
+      "会社名、住所、VAT 番号などの追加の請求先情報です。今後のすべての請求書に記載されます。",
+    description: "Description in the billing info dialog (Render's wording)",
+  },
+  "usage.billingInfoCompanyNameHint": {
+    message: "空欄の場合、請求書にはワークスペース名が記載されます。",
+    description:
+      "Hint under the company name field: an empty company name bills the workspace's name",
+  },
+  "usage.billingInfoCountry": {
+    message: "国または地域",
+    description: "Label of the billing address country picker",
+  },
+  "usage.billingInfoCountryPlaceholder": {
+    message: "国または地域を選択",
+    description: "Placeholder of the country picker when no country is chosen",
+  },
+  "usage.billingInfoNoCountry": {
+    message: "国または地域なし",
+    description:
+      "Country picker choice that clears the country (and so the address)",
+  },
+  "usage.billingInfoCountryRequired": {
+    message: "国または地域を選択してください",
+    description:
+      "Error under the country picker when an address line was typed without a country",
+  },
+  "usage.billingInfoLine1": {
+    message: "住所 1",
+    description: "Label of the first street address line",
+  },
+  "usage.billingInfoLine2": {
+    message: "住所 2",
+    description: "Label of the second street address line",
+  },
+  "usage.billingInfoCity": {
+    message: "市区町村",
+    description: "Label of the city field",
+  },
+  "usage.billingInfoState": {
+    message: "都道府県 / 州 / 地域",
+    description: "Label of the state, province or region field",
+  },
+  "usage.billingInfoPostalCode": {
+    message: "郵便番号",
+    description: "Label of the postal code field",
+  },
+  "usage.billingInfoTaxIdType": {
+    message: "税番号の種類",
+    description:
+      "Label of the tax ID type picker, shown when the country has several types",
+  },
+  "usage.billingInfoSave": {
+    message: "保存",
+    description: "Save button of the billing info dialog",
+  },
+  "usage.billingInfoSaved": {
+    message: "請求先情報を保存しました。今後の請求書は {name} 宛てになります。",
+    description:
+      "Toast after the billing info was saved; {name} is the name new invoices bill",
+  },
+  "usage.billingInfoError": {
+    message: "請求先情報を保存できませんでした",
+    description: "Fallback toast when the billing info could not be saved",
+  },
   "usage.includedUsageTitle": {
     message: "含まれる使用量",
     description:

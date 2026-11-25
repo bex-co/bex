@@ -47,11 +47,11 @@ type VerifiedWorkspaceSetup struct {
 // SetupIntent for one reserved workspace. It never consults a current
 // workspace mapping, and deliberately omits payment_method_types so Stripe's
 // dynamic payment-method configuration remains authoritative.
-func (c *StripeClient) PrepareWorkspaceSetup(ctx context.Context, attemptID, workspaceID, billingEmail, customerID, setupIntentID string) (WorkspaceSetup, error) {
+func (c *StripeClient) PrepareWorkspaceSetup(ctx context.Context, attemptID, workspaceID, workspaceName, billingEmail, customerID, setupIntentID string) (WorkspaceSetup, error) {
 	if c.publishableKey == "" {
 		return WorkspaceSetup{}, fmt.Errorf("stripe: publishable key is not configured")
 	}
-	customer, err := c.workspaceCreationCustomer(ctx, attemptID, workspaceID, billingEmail, customerID)
+	customer, err := c.workspaceCreationCustomer(ctx, attemptID, workspaceID, workspaceName, billingEmail, customerID)
 	if err != nil {
 		return WorkspaceSetup{}, err
 	}
@@ -66,7 +66,10 @@ func (c *StripeClient) PrepareWorkspaceSetup(ctx context.Context, attemptID, wor
 	}, nil
 }
 
-func (c *StripeClient) workspaceCreationCustomer(ctx context.Context, attemptID, workspaceID, billingEmail, customerID string) (*stripe.Customer, error) {
+// workspaceCreationCustomer names the Customer after the workspace's name
+// (w6/m628): its invoices bill it, and a rename renames it while the name is
+// still bex's (FollowWorkspaceRename).
+func (c *StripeClient) workspaceCreationCustomer(ctx context.Context, attemptID, workspaceID, workspaceName, billingEmail, customerID string) (*stripe.Customer, error) {
 	if customerID != "" {
 		params := &stripe.CustomerParams{}
 		params.Context = ctx
@@ -80,7 +83,7 @@ func (c *StripeClient) workspaceCreationCustomer(ctx context.Context, attemptID,
 		return customer, nil
 	}
 	params := &stripe.CustomerParams{
-		Name: stripe.String(workspaceID), Email: stripe.String(billingEmail),
+		Name: stripe.String(workspaceName), Email: stripe.String(billingEmail),
 		Metadata: map[string]string{
 			workspaceMetadataKey:                workspaceID,
 			workspaceCreationAttemptMetadataKey: attemptID,

@@ -34,6 +34,9 @@ export const apolloCacheConfig: InMemoryCacheConfig = {
     // setWorkspaceBillingEmail's result refreshes the Billing page's billing
     // email in place (w6/m627).
     WorkspaceBillingEmail: { keyFields: ["workspaceId"] },
+    // setWorkspaceBillingInfo's result refreshes the Billing page's billing
+    // info in place (w6/m628).
+    WorkspaceBillingInfo: { keyFields: ["workspaceId"] },
     // setWorkspaceIPAllowList full-replaces the workspace's inbound IP rules
     // (w9/m388), so its result replaces the cached list outright.
     Workspace: { fields: { ipAllowList: { merge: false } } },

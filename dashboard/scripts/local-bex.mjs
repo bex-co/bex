@@ -104,6 +104,91 @@ function billingEmailFor(workspaceId) {
     configurable,
   };
 }
+// Billing info a workspace set (w6/m628), by workspace id: the company name,
+// address and tax ID its invoices carry. bex-api keeps it on the Stripe
+// Customer, which exists once a payment method was added; with
+// LOCAL_BEX_PAYMENT_WALL=1 there is none, so the card reads customerReady
+// false and a write is refused as bex-api refuses it.
+const BILLING_INFO = new Map();
+function billingInfoFor(workspaceId) {
+  const ws = WORKSPACES.find((w) => w.id === workspaceId) ?? WORKSPACES[0];
+  const stored = BILLING_INFO.get(ws.id) ?? {
+    companyName: "",
+    address: null,
+    taxId: null,
+  };
+  return {
+    __typename: "WorkspaceBillingInfo",
+    workspaceId: ws.id,
+    customerReady: !paymentWall,
+    billTo: stored.companyName || ws.name,
+    companyName: stored.companyName,
+    address: stored.address
+      ? { __typename: "BillingAddress", ...stored.address }
+      : null,
+    taxId: stored.taxId
+      ? { __typename: "BillingTaxId", ...stored.taxId }
+      : null,
+  };
+}
+// A refusal carrying bex-api's code and params (GraphQL extensions), for a
+// form that shows it beside the field it names.
+function codedError(message, extensions) {
+  return Object.assign(new Error(message), { extensions });
+}
+function billingInfoInvalid(field, reason) {
+  return codedError(`${field}: ${reason}`, {
+    code: "BILLING_INFO_INVALID",
+    field,
+    reason,
+  });
+}
+// The replacement setWorkspaceBillingInfo writes, checked as bex-api's
+// normalizeBillingInfo checks it. Stripe's own check of a tax ID's value is
+// stood in for by one rule: an EU VAT number starts with its country's
+// two-letter prefix, so "123" is refused as Stripe refuses it.
+function normalizeBillingInfo(variables) {
+  const trim = (v) => String(v ?? "").trim();
+  const companyName = trim(variables.companyName);
+  let address = null;
+  if (variables.address) {
+    const a = Object.fromEntries(
+      ["line1", "line2", "city", "state", "postalCode", "country"].map((k) => [
+        k,
+        trim(variables.address[k]),
+      ]),
+    );
+    a.country = a.country.toUpperCase();
+    if (Object.values(a).some(Boolean)) {
+      if (!/^[A-Z]{2}$/.test(a.country)) {
+        throw billingInfoInvalid(
+          "address.country",
+          "must be a two-letter ISO 3166-1 country code",
+        );
+      }
+      address = a;
+    }
+  }
+  let taxId = null;
+  if (variables.taxId) {
+    const type = trim(variables.taxId.type).toLowerCase();
+    const value = trim(variables.taxId.value);
+    if (type || value) {
+      if (!/^[a-z]{2}_[a-z_]+$/.test(type)) {
+        throw billingInfoInvalid(
+          "taxId.type",
+          `"${type}" is not a Stripe tax ID type`,
+        );
+      }
+      if (!value) throw billingInfoInvalid("taxId.value", "is required");
+      if (type === "eu_vat" && !/^[A-Z]{2}\w{2,}$/i.test(value)) {
+        throw billingInfoInvalid("taxId.value", "Invalid value for eu_vat.");
+      }
+      taxId = { type, value };
+    }
+  }
+  return { companyName, address, taxId };
+}
 // LOCAL_BEX_HOLD_OPS=WorkspaceBillingEmail,… holds those GraphQL operations'
 // answers for LOCAL_BEX_HOLD_MS (default 60 s), so a card's pending state can
 // be captured beside its ready one.
@@ -2210,6 +2295,21 @@ function resolveGraphQL({ operationName, variables = {} }) {
         setWorkspaceBillingEmail: billingEmailFor(current.workspaceId),
       };
     }
+    case "WorkspaceBillingInfo":
+      return { workspaceBillingInfo: billingInfoFor(variables.workspaceId) };
+    case "SetWorkspaceBillingInfo": {
+      const current = billingInfoFor(variables.workspaceId);
+      if (!current.customerReady) {
+        throw codedError(
+          "add a payment method first: billing info is kept with the workspace's billing account, which the first payment method creates",
+          { code: "BILLING_CUSTOMER_NOT_READY" },
+        );
+      }
+      BILLING_INFO.set(current.workspaceId, normalizeBillingInfo(variables));
+      return {
+        setWorkspaceBillingInfo: billingInfoFor(current.workspaceId),
+      };
+    }
     case "WorkspaceLimits":
       return {
         workspaceLimits: {
@@ -3955,7 +4055,9 @@ const server = createServer((req, res) => {
         try {
           return { data: resolveGraphQL(op) };
         } catch (err) {
-          return { errors: [{ message: err.message }] };
+          const error = { message: err.message };
+          if (err.extensions) error.extensions = err.extensions;
+          return { errors: [error] };
         }
       });
       const answer = () =>

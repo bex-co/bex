@@ -521,6 +521,129 @@ const koUsage: Record<string, TranslationEntry> = {
     message: "청구 이메일을 업데이트할 수 없습니다",
     description: "Fallback toast when the billing email could not be saved",
   },
+  "usage.billingInfoTitle": {
+    message: "청구 정보",
+    description:
+      "Billing info card title and section navigation entry on the billing page (w6/m628)",
+  },
+  "usage.billingInfoDescription": {
+    message:
+      "모든 청구서에 표시되는 회사명, 주소, VAT 번호 또는 세금 ID입니다.",
+    description: "Billing info card description: what the billing info is for",
+  },
+  "usage.billingInfoBillTo": {
+    message: "청구 대상",
+    description:
+      "Label of the name invoices bill: the company name when set, else the workspace's name",
+  },
+  "usage.billingInfoCompanyName": {
+    message: "회사명",
+    description:
+      "Label of the company name, on the billing info card and in its dialog",
+  },
+  "usage.billingInfoAddress": {
+    message: "주소",
+    description: "Label of the billing address on the billing info card",
+  },
+  "usage.billingInfoTaxId": {
+    message: "세금 ID",
+    description:
+      "Label of the VAT or tax ID on the billing info card, and of its value in the dialog when the country has several types",
+  },
+  "usage.billingInfoNotSet": {
+    message: "설정 안 됨",
+    description: "Shown for a part of the billing info that is not set",
+  },
+  "usage.billingInfoUnreadable": {
+    message: "청구 정보를 불러올 수 없습니다.",
+    description: "Shown when the billing info could not be read",
+  },
+  "usage.billingInfoCustomerNotReady": {
+    message:
+      "먼저 결제 수단을 추가하세요. 청구 정보는 결제 수단과 함께 보관됩니다.",
+    description:
+      "Note on the billing info card, and error toast, while the workspace has no billing account (no payment method was ever added)",
+  },
+  "usage.billingInfoAdd": {
+    message: "청구 정보 추가",
+    description:
+      "Button that opens the billing info dialog when no billing info is set",
+  },
+  "usage.billingInfoEdit": {
+    message: "편집",
+    description:
+      "Button that opens the billing info dialog when billing info is set",
+  },
+  "usage.billingInfoDialogTitle": {
+    message: "청구 정보",
+    description: "Title of the dialog that sets the billing info",
+  },
+  "usage.billingInfoDialogDescription": {
+    message:
+      "회사명, 주소, VAT 번호 등 추가 청구 정보로, 앞으로 모든 청구서에 표시됩니다.",
+    description: "Description in the billing info dialog (Render's wording)",
+  },
+  "usage.billingInfoCompanyNameHint": {
+    message: "비워 두면 워크스페이스 이름으로 청구됩니다.",
+    description:
+      "Hint under the company name field: an empty company name bills the workspace's name",
+  },
+  "usage.billingInfoCountry": {
+    message: "국가 또는 지역",
+    description: "Label of the billing address country picker",
+  },
+  "usage.billingInfoCountryPlaceholder": {
+    message: "국가 또는 지역 선택",
+    description: "Placeholder of the country picker when no country is chosen",
+  },
+  "usage.billingInfoNoCountry": {
+    message: "국가 없음",
+    description:
+      "Country picker choice that clears the country (and so the address)",
+  },
+  "usage.billingInfoCountryRequired": {
+    message: "국가 또는 지역을 선택하세요",
+    description:
+      "Error under the country picker when an address line was typed without a country",
+  },
+  "usage.billingInfoLine1": {
+    message: "주소 1",
+    description: "Label of the first street address line",
+  },
+  "usage.billingInfoLine2": {
+    message: "주소 2",
+    description: "Label of the second street address line",
+  },
+  "usage.billingInfoCity": {
+    message: "도시",
+    description: "Label of the city field",
+  },
+  "usage.billingInfoState": {
+    message: "주 / 도 / 지역",
+    description: "Label of the state, province or region field",
+  },
+  "usage.billingInfoPostalCode": {
+    message: "우편번호",
+    description: "Label of the postal code field",
+  },
+  "usage.billingInfoTaxIdType": {
+    message: "세금 ID 유형",
+    description:
+      "Label of the tax ID type picker, shown when the country has several types",
+  },
+  "usage.billingInfoSave": {
+    message: "저장",
+    description: "Save button of the billing info dialog",
+  },
+  "usage.billingInfoSaved": {
+    message: "청구 정보를 저장했습니다. 새 청구서는 {name} 앞으로 발행됩니다.",
+    description:
+      "Toast after the billing info was saved; {name} is the name new invoices bill",
+  },
+  "usage.billingInfoError": {
+    message: "청구 정보를 저장할 수 없습니다",
+    description: "Fallback toast when the billing info could not be saved",
+  },
   "usage.includedUsageTitle": {
     message: "포함 사용량",
     description:

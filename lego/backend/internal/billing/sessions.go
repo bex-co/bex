@@ -278,6 +278,15 @@ func (c *StripeClient) CompleteCheckoutSession(ctx context.Context, eventSession
 	// Last, once nothing above can fail the event: the new card pays what
 	// dunning holds the workspace for (w6/m626, overdue.go).
 	c.payOverdueInvoices(ctx, checkout.workspaceID, checkout.customerID, checkout.subscription.ID, paymentMethod)
+	// A Customer this Checkout created bills the workspace's name, as every
+	// other Customer does (w6/m628). Best-effort: the card is bound, and a
+	// name is not worth failing the event for.
+	if checkout.checkoutCreatedCustomer {
+		if err := c.nameCheckoutCustomer(ctx, checkout); err != nil {
+			c.metrics.Operation("checkout_customer_name", "error")
+			log.Printf("billing: name the Checkout Customer of %s: %v", checkout.workspaceID, err)
+		}
+	}
 	return nil
 }
 
@@ -299,6 +308,9 @@ type verifiedCheckout struct {
 	// the session, not from whether this delivery adopted it, so a retried
 	// webhook sends a byte-identical bind under the same idempotency key.
 	checkoutCreatedCustomer bool
+	// businessName is the business name Checkout collected with a tax ID,
+	// which it saves as the Customer's name; empty without Stripe Tax.
+	businessName string
 }
 
 // errSupersededCheckout reports a completed session whose Checkout-created
@@ -378,7 +390,15 @@ func (c *StripeClient) verifiedCheckout(ctx context.Context, eventSession *strip
 		actorMethod:             session.Metadata[actorMethodMetadataKey],
 		subscription:            subscription,
 		checkoutCreatedCustomer: createdBySession,
+		businessName:            businessName(session),
 	}, nil
+}
+
+func businessName(session *stripe.CheckoutSession) string {
+	if session.CustomerDetails == nil {
+		return ""
+	}
+	return session.CustomerDetails.BusinessName
 }
 
 // adoptCheckoutCustomer tags a Checkout-created Customer with its workspace and

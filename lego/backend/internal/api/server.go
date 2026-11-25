@@ -697,8 +697,12 @@ type Deps struct {
 	// WorkspaceCustomerEmail keeps the Stripe Customer's email in step with
 	// the workspace's billing email (w6/m627). Nil when Stripe is off.
 	WorkspaceCustomerEmail workspaces.CustomerEmailSetter
-	WorkspaceGranter       workspaces.WorkspaceGranter
-	WorkspaceRevoker       workspaces.WorkspaceRevoker
+	// WorkspaceCustomerName renames the Stripe Customer, its invoices'
+	// Bill-to, when the workspace is renamed (w6/m628). Nil when Stripe is
+	// off.
+	WorkspaceCustomerName workspaces.CustomerNameFollower
+	WorkspaceGranter      workspaces.WorkspaceGranter
+	WorkspaceRevoker      workspaces.WorkspaceRevoker
 	// OrgTuples keeps OpenFGA's org tuples in step with the organization rows
 	// (w7/m464, ADR115 D5): the OpenFGA checker when authz is wired.
 	OrgTuples core.OrganizationTupleWriter
@@ -760,6 +764,10 @@ type Deps struct {
 	// takes the card refusal at binding from (ADR091 D10.5–D10.6); nil
 	// reports none.
 	BillingEligibility billing.PaymentEligibilityStore
+	// BillingInfo reads and writes the company name, address and tax ID on
+	// the workspace's Stripe Customer (w6/m628); nil answers 503, as Billing
+	// does.
+	BillingInfo billing.BillingInfoProvider
 	// Identities resolves owner/member email + MFA for the owners/members read
 	// API (w6/m2) — Kratos' admin API (BEX_KRATOS_ADMIN_URL). Nil omits those
 	// fields (honest subset) rather than failing the request.
@@ -952,6 +960,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		CreationStore:         d.WorkspaceCreationStore,
 		CreationBilling:       d.WorkspaceCreationBilling,
 		CustomerEmail:         d.WorkspaceCustomerEmail,
+		CustomerName:          d.WorkspaceCustomerName,
 		Granter:               d.WorkspaceGranter,
 		Revoker:               d.WorkspaceRevoker,
 		OrgTuples:             d.OrgTuples,
@@ -1117,7 +1126,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		envGroupApplier = envGroupsSvc
 		envGroupExport = envGroupsSvc
 	}
-	billingSvc := &billing.Service{Base: base, Provider: d.Billing, State: d.BillingState, Eligibility: d.BillingEligibility}
+	billingSvc := &billing.Service{Base: base, Provider: d.Billing, State: d.BillingState, Eligibility: d.BillingEligibility, Info: d.BillingInfo}
 	var environmentEnvGroups environments.EnvGroupIndex
 	if d.Secrets != nil {
 		environmentEnvGroups = envGroupsSvc

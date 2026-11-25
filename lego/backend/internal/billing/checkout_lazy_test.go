@@ -75,6 +75,9 @@ type adoptionStub struct {
 	mu            sync.Mutex
 	customerOwner string // bex_workspace metadata on cus_new
 	subscription  bool
+	// businessName is what Checkout collected with a tax ID, and so the
+	// name it gave the Customer (w6/m628); empty without Stripe Tax.
+	businessName string
 }
 
 func (a *adoptionStub) route(method, path string) (int, string) {
@@ -82,7 +85,7 @@ func (a *adoptionStub) route(method, path string) (int, string) {
 	defer a.mu.Unlock()
 	switch {
 	case method == http.MethodGet && path == "/v1/checkout/sessions/cs_new":
-		return 200, `{"id":"cs_new","object":"checkout.session","mode":"setup","status":"complete","livemode":false,"customer":"cus_new","customer_creation":"always","setup_intent":"seti_new","metadata":{"bex_workspace":"tea-new"}}`
+		return 200, `{"id":"cs_new","object":"checkout.session","mode":"setup","status":"complete","livemode":false,"customer":"cus_new","customer_creation":"always","setup_intent":"seti_new","metadata":{"bex_workspace":"tea-new"},"customer_details":{"business_name":"` + a.businessName + `"}}`
 	case method == http.MethodGet && path == "/v1/customers/search":
 		return 200, emptySearch
 	case method == http.MethodGet && path == "/v1/customers/cus_new":
@@ -90,7 +93,7 @@ func (a *adoptionStub) route(method, path string) (int, string) {
 		if a.customerOwner != "" {
 			meta = `{"bex_workspace":"` + a.customerOwner + `"}`
 		}
-		return 200, `{"id":"cus_new","object":"customer","livemode":false,"metadata":` + meta + `}`
+		return 200, `{"id":"cus_new","object":"customer","livemode":false,"name":"` + a.businessName + `","metadata":` + meta + `}`
 	case method == http.MethodPost && path == "/v1/customers/cus_new":
 		a.customerOwner = "tea-new"
 		return 200, `{"id":"cus_new","object":"customer","livemode":false,"metadata":{"bex_workspace":"tea-new"}}`
