@@ -1,6 +1,6 @@
 # w3 · m649 — A Key Value instance's sidebar and pages are Render's: Info, Logs, Metrics, each at its own URL
 
-**Worker:** worker3 **Goal:** a Key Value instance's pages swap the workspace nav for a resource sidebar reading Info / Monitor: Logs, Metrics, as Render's does; each entry is its own URL under `/keyvalue/<id>`, so Render's `/r/<id>/<page>` links open the page they name; the Overview/Metrics/Logs tab bar and the Overview's section rail are gone. **Status:** todo (t001–t005 and t007–t009 done; t006 walked locally, its production walk waits for a pin carrying the milestone)
+**Worker:** worker3 **Goal:** a Key Value instance's pages swap the workspace nav for a resource sidebar reading Info / Monitor: Logs, Metrics, as Render's does; each entry is its own URL under `/keyvalue/<id>`, so Render's `/r/<id>/<page>` links open the page they name; the Overview/Metrics/Logs tab bar and the Overview's section rail are gone. **Status:** blocked (t001–t005 and t007–t009 done; t006 walked locally, its production walk waits for a pin carrying `b0bec0ccb3`)
 
 ## Tasks (in order)
 
@@ -39,7 +39,7 @@ Verified 2026-11-25 on main `4a75a22154`.
 
 ## Page map
 
-From t001 (2026-11-25, recorded in [key-value.md § Pages](../../../docs/render-artifacts/key-value.md#pages-sidebar-routes-and-info-w3m649-2026-11-25)). Every card stays on Info, in the order of its Render counterpart. Render's General holds the Maxmemory Policy and Persistence Mode fields; bex keeps them as cards of their own, with their confirmations, right after Details, because folding them into the Details card is not a small change (each card owns a read, an editor and a confirmation dialog).
+From t001 (2026-11-25, recorded in [key-value.md § Pages](../../../../docs/render-artifacts/key-value.md#pages-sidebar-routes-and-info-w3m649-2026-11-25)). Every card stays on Info, in the order of its Render counterpart. Render's General holds the Maxmemory Policy and Persistence Mode fields; bex keeps them as cards of their own, with their confirmations, right after Details, because folding them into the Details card is not a small change (each card owns a read, an editor and a confirmation dialog).
 
 | bex card (old anchor) | Page, place | Render counterpart |
 | --- | --- | --- |
@@ -84,8 +84,12 @@ The browser logged no page error.
 
 ## Source + Goal linkage
 
-- **Source:** promoted from [w3/115](../done/115.md) on 2026-11-25 by `/loopx w3`; the note was filed by w3/m641 t007, which gave Postgres the same sidebar and pages ([done/m641](../done/m641/README.md)) and left Key Value out of scope. The note's ~3h estimate already spanned a nav model, a sidebar, a layout with child routes, redirects, pending frames and docs, more than one sitting.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)). A Key Value instance's pages and URLs are customer-facing behavior, and Render-shaped `/r/<id>/…` links are a contract bex already accepts through its alias routes and emits as `dashboardUrl`.
+- **Source:** promoted from [w3/115](../../done/115.md) on 2026-11-25 by `/loopx w3`; the note was filed by w3/m641 t007, which gave Postgres the same sidebar and pages ([done/m641](../../done/m641/README.md)) and left Key Value out of scope. The note's ~3h estimate already spanned a nav model, a sidebar, a layout with child routes, redirects, pending frames and docs, more than one sitting.
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). A Key Value instance's pages and URLs are customer-facing behavior, and Render-shaped `/r/<id>/…` links are a contract bex already accepts through its alias routes and emits as `dashboardUrl`.
 - **Expected outcome:** someone who knows Render's Key Value pages finds the same sidebar, the same pages and the same URLs; a pasted `/r/<id>/logs` opens Logs; the two datastores' pages share one shape.
 - **Why now:** Postgres just moved to Render's pages (w3/m641, walked on production pin `cdaa0a248615`), so the two datastore detail pages now disagree with each other as well as with Render, and the Postgres code is fresh to copy. `dashboard-routes.md` names the Key Value page as the one consolidated page left.
 - **Render parity task:** included (t007), because the milestone changes the dashboard's pages and URLs. REST, GraphQL and MCP do not change; t007 checks that the `dashboardUrl` bex-api emits for a Key Value instance (`/r/<id>`) still opens Info.
+
+## Parked (2026-11-25)
+
+Shipped in `b0bec0ccb3`. Everything but the production walk is done: t006 steps 2–3 walk production as the QA user in `bex-canary` with a Key Value instance created for it (disposable) at 1440 and 390 once the newest `chore(deploy): pin platform images to <sha>` carries `b0bec0ccb3`, then t010 closes the milestone if every point holds. Nothing is needed from the user.
