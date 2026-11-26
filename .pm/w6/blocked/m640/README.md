@@ -1,6 +1,6 @@
 # w6 · m640 — Background workers, cron jobs and pre-deploy jobs receive no private network traffic, as on Render
 
-**Worker:** worker6 **Goal:** the pods of background workers, cron runs, pre-deploy and one-off jobs refuse connections from the workspace's other services, as Render's private network does, while they still send private traffic and platform access (SSH, metrics, logs) keeps working. **Status:** todo (t001–t004, t007 and t009 done; t010 checks t009 on production, then t005, t006 and t008)
+**Worker:** worker6 **Goal:** the pods of background workers, cron runs, pre-deploy and one-off jobs refuse connections from the workspace's other services, as Render's private network does, while they still send private traffic and platform access (SSH, metrics, logs) keeps working. **Status:** blocked (t001–t004, t007 and t009 done; t010 waits for a production pin carrying t009's `201a068b86`)
 
 ## Tasks (in order)
 
