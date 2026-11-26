@@ -42,6 +42,16 @@ import {
   hasGraphQLErrorCode,
   mutationErrorMessage,
 } from "@/common/lib/graphql-error";
+import {
+  DISK_DEFAULT_SIZE_GB,
+  DISK_MAX_SIZE_GB,
+  diskEligibleType,
+  diskMountPathError,
+} from "@/features/services/lib/disk";
+import {
+  DiskSizeControl,
+  DiskWarnings,
+} from "@/features/services/components/disk-fields";
 
 /** Copy for each stage a failed nightly backup stops at (w6/m154). */
 const DISK_SNAPSHOT_FAILURE_BODY = {
@@ -78,25 +88,6 @@ function diskSudoPhrase(verb: "restore" | "delete", disk: DiskView): string {
   return `sudo ${verb} disk ${disk.mountPath}`;
 }
 
-/**
- * Render's quick-select sizes, 1 GB and up as on Render (.pm/w8/215.md).
- *
- * Hetzner's smallest Cloud Volume is 10 GB, so a 1 or 5 GB disk sits on a
- * 10 GB volume; bex absorbs the difference and reports and bills the size
- * chosen here (ADR082 D6/D8).
- */
-const SIZE_CHIPS = [1, 5, 10, 50, 100] as const;
-const DEFAULT_SIZE_GB = 10;
-const MIN_SIZE_GB = 1;
-const MAX_SIZE_GB = 10000;
-
-/** The service types validateDisk accepts (lego/backend/internal/apps/disks.go). */
-const DISK_ELIGIBLE_TYPES = [
-  "web_service",
-  "private_service",
-  "background_worker",
-];
-
 export function DiskSection({
   serviceId,
   plan,
@@ -120,8 +111,7 @@ export function DiskSection({
   // as a failed submit: a disk needs a long-running instance to mount on (so
   // no cron job or static site) and a paid instance type. Type is checked
   // first because it is the one the tenant cannot fix by upgrading.
-  const wrongType =
-    serviceType !== null && !DISK_ELIGIBLE_TYPES.includes(serviceType);
+  const wrongType = serviceType !== null && !diskEligibleType(serviceType);
   const eligible = !wrongType && plan !== null && plan !== "free";
   const ineligibleReason = wrongType
     ? t("services.diskUnsupportedType")
@@ -247,23 +237,6 @@ export function DiskSection({
   );
 }
 
-/** The five things Render tells you before you attach a disk, verbatim in meaning. */
-function DiskWarnings() {
-  const { t } = useTranslations();
-  return (
-    <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
-      <p className="font-medium">{t("services.diskWarningsTitle")}</p>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-        <li>{t("services.diskWarningZeroDowntime")}</li>
-        <li>{t("services.diskWarningSingleInstance")}</li>
-        <li>{t("services.diskWarningOnePerService")}</li>
-        <li>{t("services.diskWarningMountPathOnly")}</li>
-        <li>{t("services.diskWarningNoSharing")}</li>
-      </ul>
-    </div>
-  );
-}
-
 function AddDiskForm({
   eligible,
   ineligibleReason,
@@ -285,7 +258,7 @@ function AddDiskForm({
   const { t } = useTranslations();
   const [open, setOpen] = useState(false);
   const [mountPath, setMountPath] = useState("");
-  const [sizeGB, setSizeGB] = useState<number>(DEFAULT_SIZE_GB);
+  const [sizeGB, setSizeGB] = useState<number>(DISK_DEFAULT_SIZE_GB);
   const [invalid, setInvalid] = useState<string | null>(null);
 
   if (!open) {
@@ -310,16 +283,16 @@ function AddDiskForm({
 
   const submit = async () => {
     const path = mountPath.trim();
-    const problem = validateMountPath(path, t);
+    const problem = diskMountPathError(path);
     if (problem) {
-      setInvalid(problem);
+      setInvalid(t(problem));
       return;
     }
     setInvalid(null);
     if (await onAdd({ mountPath: path, sizeGB })) {
       setOpen(false);
       setMountPath("");
-      setSizeGB(DEFAULT_SIZE_GB);
+      setSizeGB(DISK_DEFAULT_SIZE_GB);
     }
   };
 
@@ -365,31 +338,7 @@ function AddDiskForm({
         <p className="text-sm text-muted-foreground">
           {t("services.diskSizeHint")}
         </p>
-        <div className="flex flex-wrap items-center gap-2">
-          {SIZE_CHIPS.map((size) => (
-            <Button
-              key={size}
-              type="button"
-              variant={sizeGB === size ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSizeGB(size)}
-            >
-              {t("services.diskSizeChip", { size: String(size) })}
-            </Button>
-          ))}
-          <Input
-            id="disk-size"
-            type="number"
-            // The free-text box honors the same floor as the chips; the API
-            // refuses below it anyway, and saying so up front beats a failed
-            // submit.
-            min={MIN_SIZE_GB}
-            max={MAX_SIZE_GB}
-            className="w-28"
-            value={sizeGB}
-            onChange={(e) => setSizeGB(Number(e.target.value))}
-          />
-        </div>
+        <DiskSizeControl id="disk-size" value={sizeGB} onChange={setSizeGB} />
       </div>
       <div className="flex gap-2">
         <Button
@@ -405,32 +354,6 @@ function AddDiskForm({
       </div>
     </div>
   );
-}
-
-/**
- * The same mount-path rules the CRD enforces, checked before submit so the
- * common mistakes read as guidance rather than as a server rejection.
- */
-function validateMountPath(
-  path: string,
-  t: (key: string) => string,
-): string | null {
-  if (path === "") return t("services.diskMountPathRequired");
-  if (!path.startsWith("/")) return t("services.diskMountPathAbsolute");
-  if (path === "/" || path.endsWith("/"))
-    return t("services.diskMountPathNotRoot");
-  const reserved = [
-    "/etc",
-    "/etc/secrets",
-    "/home",
-    "/home/render",
-    "/opt",
-    "/opt/render",
-    "/opt/render/project",
-    "/opt/render/project/src",
-  ];
-  if (reserved.includes(path)) return t("services.diskMountPathReserved");
-  return null;
 }
 
 function AttachedDisk({
@@ -486,7 +409,7 @@ function AttachedDisk({
             // Grow-only: the control cannot even express a shrink, which the
             // API, the store, and the CRD would each refuse anyway.
             min={disk.sizeGB}
-            max={MAX_SIZE_GB}
+            max={DISK_MAX_SIZE_GB}
             disabled={!editing || mutations.busy}
             value={size}
             onChange={(e) => setSize(Number(e.target.value))}

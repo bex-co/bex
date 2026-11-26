@@ -605,6 +605,28 @@ var serviceDiskGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// serviceDiskInputType is createService's disk: Render's create-time
+// serviceDisk, where name and mountPath are required and sizeGB defaults, as
+// on REST's serviceDetails.disk (w4/m652).
+var serviceDiskInputType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "ServiceDiskInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"name":      &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"mountPath": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"sizeGB":    &graphql.InputObjectFieldConfig{Type: graphql.Int},
+	},
+})
+
+// gqlServiceDiskInput reads createService's disk argument; nil when it is
+// absent, so the create declares no disk.
+func gqlServiceDiskInput(args map[string]any, key string) *ServiceDiskView {
+	d, ok := args[key].(map[string]any)
+	if !ok {
+		return nil
+	}
+	return &ServiceDiskView{Name: gqlutil.Str(d, "name"), MountPath: gqlutil.Str(d, "mountPath"), SizeGB: int32(gqlutil.Int(d, "sizeGB"))}
+}
+
 // diskGQLFields are merged into the root query/mutation by graphql.go.
 func (s *Service) diskGQLQueryFields() graphql.Fields {
 	return graphql.Fields{

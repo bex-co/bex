@@ -60,6 +60,7 @@ import {
 import { CreateEnvVarEditor } from "@/features/services/components/create-env-var-editor";
 import { buildFilterPatternError } from "@/features/services/lib/build-settings-validation";
 import { CreateSecretFileEditor } from "@/features/services/components/create-secret-file-editor";
+import { CreateDiskFields } from "@/features/services/components/create-disk-fields";
 import {
   buildCreateServiceInput,
   buildShape,
@@ -164,6 +165,8 @@ export function NewServicePage({
   // An invalid field inside Advanced holds the card open, so the reason
   // Deploy is held is never folded away.
   const advancedInvalid = Boolean(
+    fieldErrors.diskMountPath ||
+    fieldErrors.diskSize ||
     fieldErrors.healthCheckPath ||
     fieldErrors.dockerfilePath ||
     fieldErrors.dockerContext ||
@@ -209,10 +212,17 @@ export function NewServicePage({
                     reason: t("services.createBlockedPort"),
                     fieldId: "svc-port",
                   }
-                : // Waiting on the catalog is no fault of the user's.
-                  shape.showPlan && form.plan === "" && catalog.loading
-                  ? { reason: t("common.createBlockedLoadingPlans") }
-                  : { reason: t("common.createBlockedFields") };
+                : fieldErrors.diskMountPath || fieldErrors.diskSize
+                  ? {
+                      reason: t("services.createBlockedDisk"),
+                      fieldId: fieldErrors.diskMountPath
+                        ? "svc-disk-mount-path"
+                        : "svc-disk-size",
+                    }
+                  : // Waiting on the catalog is no fault of the user's.
+                    shape.showPlan && form.plan === "" && catalog.loading
+                    ? { reason: t("common.createBlockedLoadingPlans") }
+                    : { reason: t("common.createBlockedFields") };
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -652,13 +662,22 @@ export function NewServicePage({
 
               {/* Render's Advanced card, in its order (docs/render-artifacts/
                   new-service-wizard.md § The Advanced section): Secret Files,
-                  Health Check Path, the Docker build's settings, Docker
+                  Disk, Health Check Path, the Docker build's settings, Docker
                   Command, Pre-Deploy Command, Auto-Deploy, Build Filters. */}
               <CreateAdvanced forceOpen={advancedInvalid}>
                 <CreateSecretFileEditor
                   rows={form.secretFiles}
                   onChange={(secretFiles) => set({ secretFiles })}
                 />
+
+                {shape.showDisk ? (
+                  <CreateDiskFields
+                    disk={form.disk}
+                    onChange={(disk) => set({ disk })}
+                    mountPathError={fieldErrors.diskMountPath}
+                    sizeError={fieldErrors.diskSize}
+                  />
+                ) : null}
 
                 {shape.showHealthCheckPath ? (
                   <CreateTextField

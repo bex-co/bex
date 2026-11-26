@@ -4444,6 +4444,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "添加磁盘",
     description: "Button that opens and submits the add-disk form",
   },
+  "services.createDiskRemove": {
+    message: "移除磁盘",
+    description:
+      "Create form Advanced: drops the drafted disk (Render's 'Remove disk', w4/m652)",
+  },
   "services.diskLoadErrorTitle": {
     message: "无法加载此服务的磁盘",
     description: "Disk tab error state title",
@@ -4504,6 +4509,11 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.diskSizeHint": {
     message: "容量之后可以增加，但无法减少。建议从满足需求的最小值开始。",
     description: "Add-disk size helper text (Render's wording)",
+  },
+  "services.diskSizeRange": {
+    message: "请输入 {min} 到 {max} 之间的整数（GB）。",
+    description:
+      "Create form: the disk size is not a whole number in bex-api's range",
   },
   "services.diskSizeChip": {
     message: "{size} GB",
@@ -6309,6 +6319,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "请输入有效的端口后继续。",
     description:
       "Create-wizard action bar: Deploy is held while the port is out of range",
+  },
+  "services.createBlockedDisk": {
+    message: "请输入有效的磁盘挂载路径和大小后继续。",
+    description:
+      "Create-wizard action bar: Deploy is held while a drafted disk has no valid mount path or size (w4/m652)",
   },
   "services.createBuildSourceRegionNotice": {
     message:

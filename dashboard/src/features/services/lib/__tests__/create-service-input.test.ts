@@ -35,6 +35,7 @@ function form(overrides: Partial<NewServiceForm> = {}): NewServiceForm {
     command: "",
     healthCheckPath: "",
     preDeployCommand: "",
+    disk: null,
     envVars: [],
     secretFiles: [],
     projectId: null,
@@ -1120,5 +1121,101 @@ describe("Advanced fields at create (w4/m651)", () => {
     // A bad pattern holds a web service's Submit too, and only where shown.
     expect(isSubmittable(form({ buildFilterPaths: ["["] }))).toBe(false);
     expect(isSubmittable(imageForm({ buildFilterPaths: ["["] }))).toBe(true);
+  });
+});
+
+// w4/m652: Render's create form attaches a disk to a paid web service,
+// private service or background worker, so its first deploy mounts it
+// (docs/render-artifacts/new-service-wizard.md § The Advanced section).
+describe("Disk at create (w4/m652)", () => {
+  const disk = { mountPath: " /var/data ", sizeGB: 5 };
+  const imageForm = (overrides: Partial<NewServiceForm> = {}) =>
+    form({ tab: "image", image: "nginx:alpine", ...overrides });
+
+  it("sends a drafted disk once, named as Render's dashboard names it, for a paid web, private or worker service", () => {
+    for (const serviceType of [
+      "web_service",
+      "private_service",
+      "background_worker",
+    ] as const) {
+      for (const f of [
+        form({ serviceType, disk }),
+        imageForm({ serviceType, disk }),
+      ]) {
+        expect(buildShape(f).showDisk).toBe(true);
+        expect(buildCreateServiceInput(f).disk).toEqual({
+          name: "disk",
+          mountPath: "/var/data",
+          sizeGB: 5,
+        });
+        expect(isSubmittable(f)).toBe(true);
+      }
+    }
+  });
+
+  it("sends no disk when none is drafted", () => {
+    expect(buildCreateServiceInput(form()).disk).toBeUndefined();
+  });
+
+  it("offers and sends no disk for a cron job, a static site, Free, or before a plan is known", () => {
+    const cron = form({
+      serviceType: "cron_job",
+      schedule: "*/5 * * * *",
+      command: "node job.js",
+      disk,
+    });
+    const site = form({
+      serviceType: "static_site",
+      publishPath: "dist",
+      disk,
+    });
+    const free = form({ plan: "free", disk });
+    const unknownPlan = form({ plan: "", disk });
+    for (const f of [cron, site, free, unknownPlan]) {
+      expect(buildShape(f).showDisk).toBe(false);
+      expect(buildCreateServiceInput(f).disk).toBeUndefined();
+      // A disk the form no longer offers is never judged either.
+      expect(
+        createFormErrors({ ...f, disk: { mountPath: "", sizeGB: 0 } }),
+      ).not.toHaveProperty("diskMountPath");
+    }
+    expect(isSubmittable(free)).toBe(true);
+  });
+
+  it.each([
+    ["", "services.diskMountPathRequired"],
+    ["var/data", "services.diskMountPathAbsolute"],
+    ["/", "services.diskMountPathNotRoot"],
+    ["/var/data/", "services.diskMountPathNotRoot"],
+    ["/etc/secrets", "services.diskMountPathReserved"],
+    ["/bex-health", "services.diskMountPathReserved"],
+  ] as const)(
+    "holds Submit on the mount path %j, as bex-api would refuse it",
+    (mountPath, reason) => {
+      const f = form({ disk: { mountPath, sizeGB: 10 } });
+      expect(createFormErrors(f).diskMountPath).toBe(reason);
+      expect(isSubmittable(f)).toBe(false);
+    },
+  );
+
+  it("accepts a subdirectory of a reserved path", () => {
+    const f = form({ disk: { mountPath: "/etc/app-data", sizeGB: 10 } });
+    expect(createFormErrors(f).diskMountPath).toBeUndefined();
+    expect(isSubmittable(f)).toBe(true);
+  });
+
+  it.each([0, 1.5, 10001, Number.NaN])(
+    "holds Submit on the size %s GB, outside bex-api's whole 1-10000",
+    (sizeGB) => {
+      const f = form({ disk: { mountPath: "/var/data", sizeGB } });
+      expect(createFormErrors(f).diskSize).toBe("services.diskSizeRange");
+      expect(isSubmittable(f)).toBe(false);
+    },
+  );
+
+  it.each([1, 10000])("accepts a %s GB disk", (sizeGB) => {
+    const f = form({ disk: { mountPath: "/var/data", sizeGB } });
+    expect(createFormErrors(f).diskSize).toBeUndefined();
+    expect(buildCreateServiceInput(f).disk?.sizeGB).toBe(sizeGB);
   });
 });

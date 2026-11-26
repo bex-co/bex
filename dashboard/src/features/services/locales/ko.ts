@@ -4553,6 +4553,11 @@ const koServices: Record<string, TranslationEntry> = {
     message: "디스크 추가",
     description: "Button that opens and submits the add-disk form",
   },
+  "services.createDiskRemove": {
+    message: "디스크 제거",
+    description:
+      "Create form Advanced: drops the drafted disk (Render's 'Remove disk', w4/m652)",
+  },
   "services.diskLoadErrorTitle": {
     message: "이 서비스의 디스크를 불러올 수 없습니다",
     description: "Disk tab error state title",
@@ -4615,6 +4620,11 @@ const koServices: Record<string, TranslationEntry> = {
     message:
       "나중에 크기를 늘릴 수는 있지만 줄일 수는 없습니다. 사용 사례에 맞는 가장 작은 값으로 시작하는 것을 권장합니다.",
     description: "Add-disk size helper text (Render's wording)",
+  },
+  "services.diskSizeRange": {
+    message: "{min}~{max} 사이의 정수(GB)를 입력하세요.",
+    description:
+      "Create form: the disk size is not a whole number in bex-api's range",
   },
   "services.diskSizeChip": {
     message: "{size} GB",
@@ -6438,6 +6448,11 @@ const koServices: Record<string, TranslationEntry> = {
     message: "계속하려면 올바른 포트를 입력하세요.",
     description:
       "Create-wizard action bar: Deploy is held while the port is out of range",
+  },
+  "services.createBlockedDisk": {
+    message: "계속하려면 올바른 디스크 마운트 경로와 크기를 입력하세요.",
+    description:
+      "Create-wizard action bar: Deploy is held while a drafted disk has no valid mount path or size (w4/m652)",
   },
   "services.createBuildSourceRegionNotice": {
     message:

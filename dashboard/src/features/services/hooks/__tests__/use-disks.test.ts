@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 
 const mockUseQuery = vi.fn();
 const mockUseMutation = vi.fn();
@@ -16,7 +16,12 @@ vi.mock("@/common/hooks/use-translations", () => ({
   useTranslations: () => ({ t: (k: string) => k }),
 }));
 
-import { useDisk, useDiskSnapshotWarning, useDiskSnapshots } from "@/features/services/hooks/use-disks";
+import {
+  useDisk,
+  useDiskMutations,
+  useDiskSnapshotWarning,
+  useDiskSnapshots,
+} from "@/features/services/hooks/use-disks";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -152,5 +157,25 @@ describe("useDiskSnapshotWarning", () => {
   it("does not ask for a diskless service", () => {
     renderHook(() => useDiskSnapshotWarning(null));
     expect(mockUseQuery).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ skip: true }));
+  });
+});
+
+// Render's dashboard asks for no disk name and sends `disk`, from its Disk
+// page and its create form alike; bex's Disk tab and create form do too
+// (w4/m652), so the two never name a disk differently.
+describe("useDiskMutations.addDisk", () => {
+  it("names the disk `disk`, as Render's dashboard does", async () => {
+    const mutate = vi.fn().mockResolvedValue({ data: { addDisk: { id: "dsk-1" } } });
+    mockUseMutation.mockReturnValue([mutate]);
+    const refetch = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useDiskMutations("srv-1", refetch));
+
+    await act(async () => {
+      expect(await result.current.addDisk({ mountPath: "/var/data", sizeGB: 10 })).toBe(true);
+    });
+
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { serviceId: "srv-1", name: "disk", mountPath: "/var/data", sizeGB: 10 },
+    });
   });
 });

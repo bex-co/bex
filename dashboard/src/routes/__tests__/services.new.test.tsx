@@ -2383,3 +2383,177 @@ describe("NewServicePage Advanced: Docker Build Context Directory and Build Filt
     ).not.toBeInTheDocument();
   });
 });
+
+// w4/m652: Render's Advanced card attaches a disk at create, so the first
+// deploy mounts it (docs/render-artifacts/new-service-wizard.md § The
+// Advanced section): shown for a paid web service, private service or
+// background worker, and dropped when the service stops qualifying.
+describe("NewServicePage Advanced: Disk (w4/m652)", () => {
+  const addDisk = () => screen.queryByRole("button", { name: "Add Disk" });
+  const mountPath = () => screen.queryByLabelText("Mount path");
+  const deploy = () => screen.getByRole("button", { name: /^Deploy / });
+  const blockedReason = "Enter a valid disk mount path and size to continue.";
+
+  it.each([
+    ["web_service", true],
+    ["private_service", true],
+    ["background_worker", true],
+    ["cron_job", false],
+    ["static_site", false],
+  ] as const)("a paid %s offers Add Disk: %s", async (type, offered) => {
+    const user = userEvent.setup();
+    renderPage(`/?type=${type}`);
+    await pickRepo(user);
+    // A web service opens on Free; the paid-only types open on Starter, and
+    // a static site has no plan.
+    if (type === "web_service") {
+      await user.click(screen.getByRole("radio", { name: /Starter/i }));
+    }
+    await openAdvanced(user);
+    expect(addDisk() !== null).toBe(offered);
+  });
+
+  it("offers no disk on Free, the plan a web service opens on", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await pickRepo(user);
+    await openAdvanced(user);
+    expect(addDisk()).not.toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: /Starter/i }));
+    expect(addDisk()).toBeInTheDocument();
+  });
+
+  it("creates a paid web service with its disk, in one create", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await pickRepo(user);
+    await user.click(screen.getByRole("radio", { name: /Starter/i }));
+    await openAdvanced(user);
+    await user.click(addDisk()!);
+
+    // The Disk tab's notes, and focus on the field that replaced the button.
+    expect(
+      screen.getByText(
+        "Attaching a disk disables zero-downtime deploys for the service.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Services with an attached disk can't scale to multiple instances.",
+      ),
+    ).toBeInTheDocument();
+    expect(mountPath()).toHaveFocus();
+    await user.type(mountPath()!, "/var/data");
+    await user.click(screen.getByRole("button", { name: "5 GB" }));
+    expect(screen.getByLabelText("Size")).toHaveValue(5);
+    await user.click(deploy());
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "web_service",
+        plan: "starter",
+        disk: { name: "disk", mountPath: "/var/data", sizeGB: 5 },
+      }),
+    );
+  });
+
+  it("holds Deploy until the disk has a mount path, and marks one bex-api refuses", async () => {
+    const user = userEvent.setup();
+    renderPage("/?type=background_worker");
+    await pickRepo(user);
+    await openAdvanced(user);
+    await user.click(addDisk()!);
+
+    // Required, but not marked red the moment the button is pressed.
+    expect(deploy()).toBeDisabled();
+    expect(deploy()).toHaveAccessibleDescription(blockedReason);
+    expect(mountPath()).toHaveAttribute("aria-invalid", "false");
+
+    await user.type(mountPath()!, "var/data");
+    expect(
+      screen.getByText("The mount path must be absolute (start with /)."),
+    ).toBeInTheDocument();
+    expect(mountPath()).toHaveAttribute("aria-invalid", "true");
+    expect(deploy()).toBeDisabled();
+
+    await user.type(mountPath()!, "{Home}/");
+    expect(deploy()).toBeEnabled();
+
+    const size = screen.getByLabelText("Size");
+    await user.clear(size);
+    expect(deploy()).toBeDisabled();
+    expect(
+      screen.getByText("Enter a whole number of GB from 1 to 10000."),
+    ).toBeInTheDocument();
+    // The bar's reason takes the user to the field holding Deploy.
+    await user.click(screen.getByRole("button", { name: blockedReason }));
+    expect(size).toHaveFocus();
+    await user.type(size, "20");
+    await user.click(deploy());
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "background_worker",
+        disk: { name: "disk", mountPath: "/var/data", sizeGB: 20 },
+      }),
+    );
+  });
+
+  it("keeps Advanced open while the drafted disk is incomplete", async () => {
+    const user = userEvent.setup();
+    renderPage("/?type=private_service");
+    await pickRepo(user);
+    await openAdvanced(user);
+    await user.click(addDisk()!);
+    await user.click(screen.getByRole("button", { name: "Advanced" }));
+    expect(mountPath()).toBeInTheDocument();
+  });
+
+  it("sends no disk once it is removed", async () => {
+    const user = userEvent.setup();
+    renderPage("/?type=private_service");
+    await pickRepo(user);
+    await openAdvanced(user);
+    await user.click(addDisk()!);
+    await user.type(mountPath()!, "/var/data");
+    await user.click(screen.getByRole("button", { name: "Remove disk" }));
+
+    expect(mountPath()).not.toBeInTheDocument();
+    expect(addDisk()).toHaveFocus();
+    await user.click(deploy());
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "private_service", disk: undefined }),
+    );
+  });
+
+  it("drops the drafted disk when Free or a cron job is chosen, as Render's form does", async () => {
+    const user = userEvent.setup();
+    const { router } = renderPage();
+    await pickRepo(user);
+    await user.click(screen.getByRole("radio", { name: /Starter/i }));
+    await openAdvanced(user);
+    await user.click(addDisk()!);
+    await user.type(mountPath()!, "/var/data");
+
+    // Free: the disk is gone, and a paid plan offers Add Disk afresh.
+    await user.click(screen.getByRole("radio", { name: /Free/i }));
+    expect(addDisk()).not.toBeInTheDocument();
+    expect(mountPath()).not.toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: /Starter/i }));
+    expect(addDisk()).toBeInTheDocument();
+    expect(mountPath()).not.toBeInTheDocument();
+    create.mockResolvedValueOnce(null);
+    await user.click(deploy());
+    expect(create).toHaveBeenLastCalledWith(
+      expect.objectContaining({ plan: "starter", disk: undefined }),
+    );
+
+    // A cron job drops it too.
+    await user.click(addDisk()!);
+    await user.type(mountPath()!, "/var/data");
+    await chooseType(router, "cron_job");
+    expect(addDisk()).not.toBeInTheDocument();
+    await chooseType(router, "web_service");
+    expect(mountPath()).not.toBeInTheDocument();
+  });
+});

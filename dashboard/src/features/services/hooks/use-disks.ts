@@ -17,6 +17,7 @@ import {
   skipPollWhenHidden,
 } from "@/common/lib/polling";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { DASHBOARD_DISK_NAME } from "@/features/services/lib/disk";
 
 /** A service's persistent disk, as the Disk tab presents it. */
 export interface DiskView {
@@ -195,9 +196,14 @@ export function useDiskMutations(
       return run(
         () =>
           addDiskMutation({
-            // Render's dashboard has no name field; the disk is named after the
-            // path it serves so the API-level name is never empty.
-            variables: { serviceId, name: "data", mountPath, sizeGB },
+            // Render's dashboard has no name field and names the disk
+            // `disk`, so the API-level name is never empty.
+            variables: {
+              serviceId,
+              name: DASHBOARD_DISK_NAME,
+              mountPath,
+              sizeGB,
+            },
           }),
         "services.diskAddSuccess",
         setAddError,
@@ -256,8 +262,7 @@ const KNOWN_FAILURE_STAGES = ["read", "upload", "config"] as const;
 /** A known stage, or "other" for one this client does not know yet, which
  *  still warrants the generic warning. */
 export type DiskSnapshotFailureStage =
-  | (typeof KNOWN_FAILURE_STAGES)[number]
-  | "other";
+  (typeof KNOWN_FAILURE_STAGES)[number] | "other";
 
 /**
  * The disk's snapshot warning, if any. Null when snapshots are on schedule,

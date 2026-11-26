@@ -855,6 +855,7 @@ func gqlCreateRequest(args map[string]any) (CreateRequest, error) {
 		MaxShutdownDelaySeconds: gqlInt32Ptr(args, "maxShutdownDelaySeconds"),
 		PreDeployCommand:        gqlutil.Str(args, "preDeployCommand"),
 		MaintenanceMode:         gqlMaintenanceModeInput(args, "maintenanceMode"),
+		Disk:                    gqlServiceDiskInput(args, "disk"),
 		IPAllowList:             allowList,
 		DryRun:                  gqlutil.Bool(args, "dryRun"),
 		startIsDockerCommand:    docker.startIsDockerCommand(),
@@ -1632,6 +1633,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// maintenanceMode is Render's maintenanceMode object at create time
 				// (w1/m37); web_service only. Omitted => disabled.
 				"maintenanceMode": gqlutil.Arg(maintenanceModeInputType),
+				// disk is Render's create-time persistent disk (REST's
+				// serviceDetails.disk, w4/m652): checked as REST checks it, so
+				// a static site, a cron job, Free, more than one instance and
+				// autoscaling are refused with REST's messages.
+				"disk": gqlutil.Arg(serviceDiskInputType),
 				// Description-aware service allowlist plus the legacy CIDR list.
 				// Conflicting simultaneous values are rejected by Core.
 				"ipAllowList":        gqlutil.Arg(graphql.NewList(graphql.String)),

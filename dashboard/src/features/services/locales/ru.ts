@@ -4600,6 +4600,11 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "Добавить диск",
     description: "Button that opens and submits the add-disk form",
   },
+  "services.createDiskRemove": {
+    message: "Убрать диск",
+    description:
+      "Create form Advanced: drops the drafted disk (Render's 'Remove disk', w4/m652)",
+  },
   "services.diskLoadErrorTitle": {
     message: "Не удалось загрузить диск этого сервиса",
     description: "Disk tab error state title",
@@ -4664,6 +4669,11 @@ const ruServices: Record<string, TranslationEntry> = {
     message:
       "Размер можно увеличить позже, но нельзя уменьшить. Рекомендуем начать с наименьшего значения, подходящего для вашей задачи.",
     description: "Add-disk size helper text (Render's wording)",
+  },
+  "services.diskSizeRange": {
+    message: "Укажите целое число ГБ от {min} до {max}.",
+    description:
+      "Create form: the disk size is not a whole number in bex-api's range",
   },
   "services.diskSizeChip": {
     message: "{size} ГБ",
@@ -6570,6 +6580,12 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "Укажите корректный порт, чтобы продолжить.",
     description:
       "Create-wizard action bar: Deploy is held while the port is out of range",
+  },
+  "services.createBlockedDisk": {
+    message:
+      "Укажите корректный путь монтирования и размер диска, чтобы продолжить.",
+    description:
+      "Create-wizard action bar: Deploy is held while a drafted disk has no valid mount path or size (w4/m652)",
   },
   "services.createBuildSourceRegionNotice": {
     message:

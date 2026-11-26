@@ -185,6 +185,7 @@ const DRAFT: NewServiceForm = {
   command: "",
   healthCheckPath: "",
   preDeployCommand: "",
+  disk: null,
   envVars: [],
   secretFiles: [],
   projectId: null,

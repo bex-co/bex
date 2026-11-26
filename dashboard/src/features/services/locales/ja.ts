@@ -4583,6 +4583,11 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "ディスクを追加",
     description: "Button that opens and submits the add-disk form",
   },
+  "services.createDiskRemove": {
+    message: "ディスクを外す",
+    description:
+      "Create form Advanced: drops the drafted disk (Render's 'Remove disk', w4/m652)",
+  },
   "services.diskLoadErrorTitle": {
     message: "このサービスのディスクを読み込めませんでした",
     description: "Disk tab error state title",
@@ -4648,6 +4653,11 @@ const jaServices: Record<string, TranslationEntry> = {
     message:
       "サイズは後から増やせますが、減らすことはできません。用途に合う最小の値から始めることをおすすめします。",
     description: "Add-disk size helper text (Render's wording)",
+  },
+  "services.diskSizeRange": {
+    message: "{min}〜{max} の整数（GB）を入力してください。",
+    description:
+      "Create form: the disk size is not a whole number in bex-api's range",
   },
   "services.diskSizeChip": {
     message: "{size} GB",
@@ -6480,6 +6490,12 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "続行するには有効なポートを入力してください。",
     description:
       "Create-wizard action bar: Deploy is held while the port is out of range",
+  },
+  "services.createBlockedDisk": {
+    message:
+      "続行するには有効なディスクのマウントパスとサイズを入力してください。",
+    description:
+      "Create-wizard action bar: Deploy is held while a drafted disk has no valid mount path or size (w4/m652)",
   },
   "services.createBuildSourceRegionNotice": {
     message:

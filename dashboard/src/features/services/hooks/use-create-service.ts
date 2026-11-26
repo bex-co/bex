@@ -62,6 +62,11 @@ export interface CreateServiceInput {
    * services, private services and background workers only.
    */
   preDeployCommand?: string;
+  /**
+   * Render's create-time persistent disk (serviceDetails.disk, w4/m652): paid
+   * web services, private services and background workers only.
+   */
+  disk?: { name: string; mountPath: string; sizeGB: number };
   envVars?: EnvVarEntry[];
   secretFiles?: SecretFileEntry[];
 }

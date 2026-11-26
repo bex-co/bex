@@ -4626,6 +4626,11 @@ const deServices: Record<string, TranslationEntry> = {
     message: "Disk hinzufügen",
     description: "Button that opens and submits the add-disk form",
   },
+  "services.createDiskRemove": {
+    message: "Disk entfernen",
+    description:
+      "Create form Advanced: drops the drafted disk (Render's 'Remove disk', w4/m652)",
+  },
   "services.diskLoadErrorTitle": {
     message: "Die Disk dieses Services konnte nicht geladen werden",
     description: "Disk tab error state title",
@@ -4693,6 +4698,11 @@ const deServices: Record<string, TranslationEntry> = {
     message:
       "Du kannst die Größe später erhöhen, aber nicht verringern. Wir empfehlen, mit dem niedrigsten Wert zu beginnen, der zu deinem Anwendungsfall passt.",
     description: "Add-disk size helper text (Render's wording)",
+  },
+  "services.diskSizeRange": {
+    message: "Gib eine ganze Zahl von {min} bis {max} GB ein.",
+    description:
+      "Create form: the disk size is not a whole number in bex-api's range",
   },
   "services.diskSizeChip": {
     message: "{size} GB",
@@ -6562,6 +6572,12 @@ const deServices: Record<string, TranslationEntry> = {
     message: "Geben Sie einen gültigen Port ein, um fortzufahren.",
     description:
       "Create-wizard action bar: Deploy is held while the port is out of range",
+  },
+  "services.createBlockedDisk": {
+    message:
+      "Geben Sie einen gültigen Mount-Pfad und eine gültige Größe für die Disk ein, um fortzufahren.",
+    description:
+      "Create-wizard action bar: Deploy is held while a drafted disk has no valid mount path or size (w4/m652)",
   },
   "services.createBuildSourceRegionNotice": {
     message:

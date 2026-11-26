@@ -11,6 +11,12 @@ import {
 } from "@/features/services/lib/build-settings-validation";
 import { publishDirectoryError } from "@/features/services/lib/publish-directory";
 import {
+  DASHBOARD_DISK_NAME,
+  diskAllowed,
+  diskMountPathError,
+  diskSizeError,
+} from "@/features/services/lib/disk";
+import {
   VALID_ENV_KEY,
   duplicateNames,
   envValueRuleError,
@@ -78,10 +84,18 @@ export interface NewServiceForm {
   healthCheckPath: string;
   /** Pre-Deploy Command draft (paid web, private and worker services). */
   preDeployCommand: string;
+  /** The drafted disk, `null` until Add Disk is pressed (see `showDisk`). */
+  disk: DiskDraft | null;
   envVars: EnvVarEntry[];
   secretFiles: SecretFileEntry[];
   projectId: string | null;
   environmentId: string | null;
+}
+
+/** A disk drafted on the create form: its mount path as typed, and its size. */
+export interface DiskDraft {
+  mountPath: string;
+  sizeGB: number;
 }
 
 /**
@@ -142,6 +156,14 @@ export interface BuildShape {
    * Free (`errPreDeployCommandFreePlan`). Its draft is kept, never sent.
    */
   preDeployPaidOnly: boolean;
+  /**
+   * Render's Disk: a paid web service, private service or background worker,
+   * from any source. Render's create form shows no Disk on Free, for a cron
+   * job or for a static site, and drops a drafted one when the service stops
+   * qualifying (docs/render-artifacts/new-service-wizard.md § The Advanced
+   * section); bex-api refuses one there too (`validateCreateDisk`).
+   */
+  showDisk: boolean;
 }
 
 /**
@@ -208,6 +230,7 @@ export function buildShape(form: NewServiceForm): BuildShape {
     showHealthCheckPath: isWebServiceType(form.serviceType),
     showPreDeployCommand,
     preDeployPaidOnly: showPreDeployCommand && form.plan === "free",
+    showDisk: diskAllowed(form.serviceType, form.plan),
   };
 }
 
@@ -259,6 +282,9 @@ export interface CreateFormErrors {
   dockerContext?: keyof typeof en;
   publishPath?: keyof typeof en;
   healthCheckPath?: keyof typeof en;
+  /** A drafted disk's mount path or size the server would refuse. */
+  diskMountPath?: keyof typeof en;
+  diskSize?: keyof typeof en;
   /** An invalid Build Filter pattern in either list holds Submit. */
   buildFilter: boolean;
   /** The row index of an environment variable whose value the server refuses. */
@@ -285,6 +311,11 @@ export function createFormErrors(form: NewServiceForm): CreateFormErrors {
   if (shape.showHealthCheckPath) {
     errors.healthCheckPath =
       healthCheckPathError(form.healthCheckPath) ?? undefined;
+  }
+  if (shape.showDisk && form.disk) {
+    errors.diskMountPath =
+      diskMountPathError(form.disk.mountPath.trim()) ?? undefined;
+    errors.diskSize = diskSizeError(form.disk.sizeGB) ?? undefined;
   }
   if (shape.isStaticType) {
     errors.publishPath =
@@ -369,6 +400,8 @@ export function isSubmittable(form: NewServiceForm): boolean {
     !fieldErrors.dockerfilePath &&
     !fieldErrors.dockerContext &&
     !fieldErrors.healthCheckPath &&
+    !fieldErrors.diskMountPath &&
+    !fieldErrors.diskSize &&
     !fieldErrors.publishPath &&
     !fieldErrors.buildFilter &&
     !fieldErrors.secretFilesLimit &&
@@ -489,6 +522,14 @@ export function buildCreateServiceInput(
     preDeployCommand:
       shape.showPreDeployCommand && !shape.preDeployPaidOnly
         ? optionalCommand(form.preDeployCommand)
+        : undefined,
+    disk:
+      shape.showDisk && form.disk
+        ? {
+            name: DASHBOARD_DISK_NAME,
+            mountPath: form.disk.mountPath.trim(),
+            sizeGB: form.disk.sizeGB,
+          }
         : undefined,
     envVars: submittableEnvVars(form.envVars),
     secretFiles: submittableSecretFiles(form.secretFiles),

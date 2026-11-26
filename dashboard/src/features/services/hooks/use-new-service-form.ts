@@ -15,7 +15,11 @@ import {
   type NewServiceSearch,
   type ServiceType,
 } from "@/features/services/lib/create-context";
-import type { NewServiceForm } from "@/features/services/lib/create-service-input";
+import type {
+  DiskDraft,
+  NewServiceForm,
+} from "@/features/services/lib/create-service-input";
+import { diskAllowed } from "@/features/services/lib/disk";
 import type {
   EnvVarEntry,
   SecretFileEntry,
@@ -49,6 +53,7 @@ interface PlainFields {
   buildFilterIgnored: string[];
   healthCheckPath: string;
   preDeployCommand: string;
+  disk: DiskDraft | null;
   envVars: EnvVarEntry[];
   secretFiles: SecretFileEntry[];
   projectId: string | null;
@@ -97,6 +102,7 @@ export function useNewServiceForm(search: NewServiceSearch) {
     buildFilterIgnored: [],
     healthCheckPath: "",
     preDeployCommand: "",
+    disk: null,
     envVars: [],
     secretFiles: [],
     projectId: search.projectId ?? null,
@@ -188,6 +194,13 @@ export function useNewServiceForm(search: NewServiceSearch) {
     dockerfilePath: build.dockerfilePath,
     plan: planOverride ?? selectableTypes[0]?.id ?? "",
   };
+
+  // Render's create form drops a drafted disk once the service can no longer
+  // have one (a cron job, a static site, Free): choosing a paid plan again
+  // offers Add Disk afresh rather than bringing the old draft back.
+  if (fields.disk !== null && !diskAllowed(form.serviceType, form.plan)) {
+    set({ disk: null });
+  }
 
   // Switching source tab abandons whatever the previous tab had selected —
   // except a Public Git Branch, which returning to the same URL restores

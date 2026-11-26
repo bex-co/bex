@@ -3133,6 +3133,7 @@ export type MutationCreateServiceArgs = {
   buildSourceId?: InputMaybe<Scalars['String']['input']>;
   builder?: InputMaybe<Scalars['String']['input']>;
   command?: InputMaybe<Scalars['String']['input']>;
+  disk?: InputMaybe<ServiceDiskInput>;
   dockerCommand?: InputMaybe<Scalars['String']['input']>;
   dockerContext?: InputMaybe<Scalars['String']['input']>;
   dockerfilePath?: InputMaybe<Scalars['String']['input']>;
@@ -6637,6 +6638,12 @@ export type ServiceDisk = {
   mountPath: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
   sizeGB: Maybe<Scalars['Int']['output']>;
+};
+
+export type ServiceDiskInput = {
+  mountPath: Scalars['String']['input'];
+  name: Scalars['String']['input'];
+  sizeGB?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type ServiceEvent = {

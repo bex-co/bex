@@ -82,13 +82,15 @@ One component serves web services, private services, background workers, cron jo
 | 8 | **Auto-Deploy** | not an image, not a Build Source | a Yes/No toggle; the On Commit / After CI Checks Pass / Off selector behind the `expose-auto-deploy-trigger` flag ([dashboard-operations.md](dashboard-operations.md)) |
 | 9 | **Build Filters** | not an image, not a Build Source (every repository-backed type, static sites included) | Included Paths and Ignored Paths; "Include or ignore specific paths in your repo when determining whether to trigger an auto-deploy." |
 
+**The Disk field, read 2026-11-26 (w4/m652)** from the same bundle (`index-D5V4ZgbE.js`, the `disks` field array beside `Attach an SSD`). Heading **Disk**, then "Attach an SSD to persist your service's filesystem data across deploys. Learn More." and "Disks are charged at $0.25/GB per month.", then an **Add disk** button. Pressing it adds `{name: "disk", mountPath: "", sizeGB: 10}`: the form has no name field, and the Disk page's add form sends the same `disk`. With a disk drafted, the card shows the "Note the following:" list (zero-downtime deploys disabled, no scaling to multiple instances, one disk per service, only the mount path persisted, no access from other services), **Mount path** (placeholder `/var/data`, "Cannot be the root directory (`/`)."), **Size** (a stepper from 1 to 1000 GB; larger sizes are a support request) and **Remove disk**. The field renders only when the type is neither a static site nor a cron job and the plan is not Free, and an effect empties `disks` whenever that stops holding, so choosing Free or a cron job drops a drafted disk.
+
 **bex's create form against it** (`dashboard/src/features/services/pages/new-service-page.tsx`):
 
 | Render field | bex before w4/m651 | w4/m651 |
 | --- | --- | --- |
 | Secret Files | present | unchanged |
 | Linked Environment Groups | absent; `createService` takes no environment groups on any surface | filed as [w4/731](../../.pm/w4/731.md) |
-| Disk | absent | [w4/m652](../../.pm/w4/m652/README.md) adds it |
+| Disk | absent | added by [w4/m652](../../.pm/w4/done/m652/README.md): Add Disk, the Disk tab's notes, mount path and size chips, and Remove disk, for a paid web, private or worker service; absent on Free, for cron jobs and static sites |
 | Health Check Path | absent | added, web services only |
 | Registry Credential, Docker Build Context Directory, Dockerfile Path | Dockerfile Path and Registry Credential only | Docker Build Context Directory added, the three in Render's order |
 | Docker Command | present | unchanged |

@@ -134,6 +134,7 @@ mutation CreateService(
   $port: Int
   $healthCheckPath: String
   $preDeployCommand: String
+  $disk: ServiceDiskInput
   $envVars: [EnvVarInput]
   $secretFiles: [SecretFileInput]
 ) {
@@ -164,6 +165,7 @@ mutation CreateService(
     port: $port
     healthCheckPath: $healthCheckPath
     preDeployCommand: $preDeployCommand
+    disk: $disk
     envVars: $envVars
     secretFiles: $secretFiles
   ) {
