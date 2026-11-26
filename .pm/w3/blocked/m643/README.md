@@ -1,6 +1,6 @@
 # w3 · m643 — A cron job's header, its suspension notice and Manual Build say and do what Render's do: the last run's zone, every schedule in words, Resume opens the new deploy
 
-**Worker:** worker3 **Goal:** the five differences from Render's cron header and actions that w3/m555 left are gone: the last run's date carries its zone and Render's UTC tooltip, every valid schedule reads in Render's cronstrue words, a Hobby workspace's notice says "Suspended by you", Resume service opens the deploy the resume starts, and Manual Build toasts only a failure, which stays until dismissed. **Status:** in progress (t001–t006 and t008–t010 done; t007 walked locally, its production walk waits for a production pin carrying the commits)
+**Worker:** worker3 **Goal:** the five differences from Render's cron header and actions that w3/m555 left are gone: the last run's date carries its zone and Render's UTC tooltip, every valid schedule reads in Render's cronstrue words, a Hobby workspace's notice says "Suspended by you", Resume service opens the deploy the resume starts, and Manual Build toasts only a failure, which stays until dismissed. **Status:** blocked (pin must carry `18d2615235`: t007's production walk, then t011; t001–t006 and t008–t010 done, t007's local walk done)
 
 ## Tasks (in order)
 
@@ -22,7 +22,7 @@ Total: **11 tasks, about 7h**.
 
 ## What Render does
 
-Read on 2026-11-25 from Render's public dashboard bundle without sign-in (`https://dashboard.render.com/` and its `./*.js` imports, 459 chunks; the hashes change with every Render deploy, so find the chunks by name, as [metrics-page.md § Status-code label](../../../docs/render-artifacts/metrics-page.md) describes): `page-templates-TTlbtDSy.js` (sha256 `9e445c27098e…`), `AuthContext-P0VAIYE0.js` (`d9a49c1b5d3c…`), `suspension-CuMMXxIN.js` (`e2929a353e47…`), `CronJob-DioyV2Vf.js` (`24992a6b22d2…`), `git-sDZPd43G.js` (`6df549965d16…`), `service-DenIj-uU.js` (`9b4afb0269a0…`), `billing-confirm-plan-utils-DuDK6s98.js` (`2d6258290622…`) and `index-D5V4ZgbE.js`; plus Render's public API spec as pinned in `lego/backend/internal/api/openapi/render-public-api-1.json`.
+Read on 2026-11-25 from Render's public dashboard bundle without sign-in (`https://dashboard.render.com/` and its `./*.js` imports, 459 chunks; the hashes change with every Render deploy, so find the chunks by name, as [metrics-page.md § Status-code label](../../../../docs/render-artifacts/metrics-page.md) describes): `page-templates-TTlbtDSy.js` (sha256 `9e445c27098e…`), `AuthContext-P0VAIYE0.js` (`d9a49c1b5d3c…`), `suspension-CuMMXxIN.js` (`e2929a353e47…`), `CronJob-DioyV2Vf.js` (`24992a6b22d2…`), `git-sDZPd43G.js` (`6df549965d16…`), `service-DenIj-uU.js` (`9b4afb0269a0…`), `billing-confirm-plan-utils-DuDK6s98.js` (`2d6258290622…`) and `index-D5V4ZgbE.js`; plus Render's public API spec as pinned in `lego/backend/internal/api/openapi/render-public-api-1.json`.
 
 - **The last run** (`page-templates-*.js` `CronJobRunMetadata`, `AuthContext-*.js` `H`, `G`, `q`): "Last successful run " then the date formatted `LL [at] LT z` in the viewer's zone ("November 21, 2026 at 9:00 AM PST"). When the viewer's zone (`moment().local().format("z")`) is not `UTC`, the date is a hover-underlined term whose tooltip is a `<time>` reading "UTC: " and the instant formatted `MMM D hh:mm:ss A` in UTC ("UTC: Nov 21 05:00:00 PM"); in UTC there is no tooltip. "No successful runs yet." before the first.
 - **The schedule** (`AuthContext-*.js` `z`, `R`, `V`): split on spaces, five fields, `cron-validator`'s `isValidCron(schedule.replace(/\?/g, "*"), { alias: true, allowNthWeekdayOfMonth: true })`, and not a day-of-month no listed month has (`R`); then `cronstrue.toString(schedule)` with default options, its first letter lowercased, and " UTC" after each AM or PM. Anything else reads nothing. So `*/40 * * * *` reads "every 40 minutes" on Render.
@@ -48,7 +48,7 @@ Read on 2026-11-25 from Render's public dashboard bundle without sign-in (`https
 - **Resume service:** from the header notice (Hobby, 1440 cron job and 390 web service) and the Settings card (Pro, 1440 and 390) it toasts "**`<name>`** has been resumed." (auto-dismissed within 6 s) and lands on `/services/<id>/deploys/<dep>`, whose trigger reads **Service Resumed**. With the mutation's answer replaced by an error in the browser (Playwright `route`), it toasts "An error occurred while resuming **m643-web**. Please try again." and stays. On the cluster the web service's resume deploy ran the serving image's digest, went live, deactivated the previous deploy and the service returned to Running; the cron job's went live too.
 - **Manual Build** (repo-backed cron job): success opens the new deploy with no toast (1440, 390); a failure (the trigger's answer replaced by an error in the browser) toasts the server's message, still shown after 8 s, gone on its close button (1440, 390).
 
-**Production:** waits for a pin carrying the commits (deploys are batched every 6 hours).
+**Production:** waits for a production pin carrying `18d2615235` (deploys are batched every 6 hours).
 
 ## Definition of done
 
@@ -61,8 +61,8 @@ Read on 2026-11-25 from Render's public dashboard bundle without sign-in (`https
 
 ## Source + Goal linkage
 
-- **Source:** promoted from [w3/109](../done/109.md) (filed 2026-11-22 by w3/m555 t008) by `/loopx w3` on 2026-11-25. Weighing the note took it past one sitting: Render's resume opens a deploy, which bex-api does not record, so one item is a backend change; and wording every schedule needs cronstrue across eight dashboard languages.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)).
+- **Source:** promoted from [w3/109](../../done/109.md) (filed 2026-11-22 by w3/m555 t008) by `/loopx w3` on 2026-11-25. Weighing the note took it past one sitting: Render's resume opens a deploy, which bex-api does not record, so one item is a backend change; and wording every schedule needs cronstrue across eight dashboard languages.
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)).
 - **Expected outcome:** a cron job's header, its suspension notice and its Manual Build say and do what Render's do, and a resume leaves a deploy in the history as Render's does.
 - **Why now:** w3/m555 shipped the header and actions and left exactly these five differences, each unsigned in ADR018; w3/125 changes the same notice next.
 - **Render parity task included:** the dashboard's cron header, the suspension notice on every type, Manual Build, and the resume verb's deploy on REST, GraphQL and MCP.
