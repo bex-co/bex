@@ -277,6 +277,11 @@ var readsThatWrite = map[string]string{
 	// Resuming a workspace creation mints its Stripe Customer and SetupIntent
 	// when the attempt has none yet.
 	"graphql workspaceCreationAttempt": "workspaces.ResumeWorkspaceCreation",
+	// Render's avatarPresignedUpload is a query that mints an upload slot; a
+	// workspace's avatar is decided on can_manage, so its success is recorded
+	// (w1/m648). The sweep draws the avatarType enum's first value, which
+	// graphql-go orders at random, so it sees the row about half the time.
+	"graphql avatarPresignedUpload": "avatars.PresignedUpload",
 }
 
 // checkReadRecordsNoSuccess fails a read (a GET route, a GraphQL query field, a
