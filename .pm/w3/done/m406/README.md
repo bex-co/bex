@@ -1,6 +1,6 @@
 # w3 · m406 — The conversation stream ends with `[DONE]` only when the turn has settled
 
-**Worker:** worker3 **Goal:** the gateway's agent-session stream never ends with `[DONE]` while the session is still working. When a turn's sandbox has no address yet, the stream is held until it serves (or ends with a documented reconnect signal), so the CLI, the dashboard, the mobile app and any Vercel AI SDK client see the whole turn without their own workaround. **Status:** blocked (pin must carry `f40d9613db`: t005's production check, then t009; t001–t004 and t006–t008 done)
+**Worker:** worker3 **Goal:** the gateway's agent-session stream never ends with `[DONE]` while the session is still working. When a turn's sandbox has no address yet, the stream is held until it serves (or ends with a documented reconnect signal), so the CLI, the dashboard, the mobile app and any Vercel AI SDK client see the whole turn without their own workaround. **Status:** done
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | Gateway: hold a working session's stream until its sandbox serves — **DONE** | 75m | t001       |
 | [t003](done/t003.md) | Update the stream contract and the CLI — **DONE** | 45m | t002       |
 | [t004](done/t004.md) | Dashboard (and mobile, if affected) follow a new turn through sandbox start — **DONE** | 45m | t002       |
-| t005 | Live check on production                                                    | 30m | t003, t004 |
+| [t005](done/t005.md) | Live check on production — **DONE** | 30m | t003, t004 |
 | [t006](done/t006.md) | Render parity (Devin reference) — **DONE** | 15m | t005       |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t006       |
 | [t008](done/t008.md) | Test coverage — **DONE** | 30m | t006       |
-| t009 | Closeout                                                                    | 10m | t008       |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t008       |
 
 ## Definition of done
 
@@ -60,3 +60,28 @@ No attach ended before its sandbox served: once `sandboxId` was set, the driver 
 ## Simplify (t007)
 
 `/simplify` ran three reviews (reuse, quality, efficiency) over the change. Fixed: the wait bound reuses `agentsessions.SSHWakeTimeout`, the bound the Terminal and an editor's SSH login already wait for a starting sandbox, instead of a second number; the live half is one loop (`followLive`) whose first pass is the first dial, the pod is resolved there, and a replay-only ticket is `claims.Pod == ""`; `liveCut` is the zero value, so a forgotten case never sends `[DONE]`; a held stream whose client stopped reading ends; the driver client times out a driver that sends no headers in 10 s; a store failure on the read path closes without an `error` part (the SDK stops on that part before it sees the close, so the dashboard would not attach again); `errorAndDone` lost its duplicate; the CLI paces the attach for a queued turn; the dashboard caps repeated cuts at 8, uses `useEffectEvent` and one `attachOnce` helper, and checks for `[DONE]` once at the end of the stream instead of per chunk. Kept: the `durableReplay` struct (the settled-while-waiting pass needs its place), per-try session reads (a primary-key read every 0.5–5 s while a stream waits).
+
+## Live check on production (t005, 2026-11-26)
+
+Production pin `11695fb886cb` (carries `f40d9613db`). A `bex` built from main at `f6d5b7665b` with the QA user's device login, in the `bex` workspace, on one session (`ags-dc45i73i676s73bu75h0`, disposable, deleted after). Turn 1 settled first; turns 2–4 each went to that settled session with `bex agent send <id> --follow "Run 'sleep 15' …, then reply with <word> …"`, so each started a new sandbox. The CLI's requests were read from its HTTP/2 trace (paths only), and the dashboard ran in a headless Chromium on the QA session, read every 250 ms and never reloaded. Times are seconds after the steer.
+
+| Turn | CLI | Dashboard |
+| --- | --- | --- |
+| 3, at 1440 px | Two attach tickets at 0.6 and 3.1 s were refused (no sandbox yet; the CLI read the session between them). The third, at 6.6 s, opened **the one stream** of the turn at 6.8 s. It printed the turn from 7.1 s (prompt, setup, `▸ Terminal sleep 15`), then `MANGO` at 26.6 s, where the stream ended with `[DONE]`. After that the CLI only read the session (26.7, 28.9, 32.3, 37.0 s) until it settled, and exited 0 at 37.4 s with `succeeded (turn 3)` | `Redispatching` at 4.2 s, `Running` at 9.5 s. It opened the stream at 9.7 s, rendered `MANGO` at 26.6 s with the header still reading `Running`, and the stream closed at 26.7 s |
+| 4, at 390 px | The same shape: tickets at 0.3 and 2.8 s refused, then one stream at 6.5 s. `PAPAYA` at 26.3 s, session reads until it settled, exit 0 at 36.8 s | It saw `Running` at 19.0 s, on its next session read. Its stream at 19.4 s replayed the turn so far and spliced the rest, and it rendered `PAPAYA` at 26.4 s with the header still reading `Running`. At `Completed` (40.4 s) it attached once more (the replay, then `[DONE]`, in 0.6 s) |
+| 2, at 1440 px | One stream, the same shape. `[DONE]` at 24.0 s, settled and exited 0 at 34.9 s | Its stream was open from 9.6 s to 24.0 s. The reply was on screen after the turn without a reload (this run's marker word was misspelled, so it has no render time) |
+
+DoD 3 holds. `--follow` printed each turn from start to end on one connection. It did not attach again after the turn-end `[DONE]`, although the session had not settled yet: the CLI's session reads saw it settle about 10 s later (t001 measured 4.5 s). The dashboard showed each new turn live, without a reload, at 1440 and at 390 px. Cleanup: the session was deleted, `bex logout` ran, and the QA user's Kratos session was logged out.
+
+Seen during the check. None of these is m406's: each lives in code m406 did not change, and none blocks the DoD.
+
+- **Dashboard: earlier turns lose their tool rows after an in-place re-attach.** After the open column attached again (to a new turn, or once the session settled), the earlier turns showed their text but not their `Used 1 tool` and `Ran 1 command` rows. A fresh load showed every turn's rows. The gateway's replay carries every turn's tool calls, each with its own id (`bex-python-1`…`4`, one `Terminal` per turn). The cause is likely the fold `keepLastReplay` (`dashboard/src/features/agent-sessions/lib/collapse-doubled-parts.ts`, from 2026-08): the SDK updates a re-sent tool part in place, in the older copy that the fold drops.
+- **Dashboard at 390 px: a running session's header hides its state.** The Files button covers the status badge (only `Ru` shows) and the title. The settled header fits.
+- **CLI: the live render prints empty tool calls.** Each turn printed two `▸ Terminal {}` lines before `▸ Terminal sleep 15`. `bex agent logs` shows one Terminal call per turn (`chunkRenderer` in `lego/cli/internal/agent/stream.go`).
+
+## Unblocked (2026-11-26)
+
+- **Affected:** w3/m406 t005, then t009.
+- **Source:** verified evidence. The newest `chore(deploy): pin platform images to 11695fb886cb` (`ec6211f2ca`) on `origin/main` carries the gate's commit: `git merge-base --is-ancestor f40d9613db 11695fb886cb` exits 0. The gate (pin must carry `f40d9613db`) holds.
+- **Remaining gates:** none. The milestone returns from `blocked/` with t005 open.
+- **Next:** t005's production check as the QA user: `bex agent send <id> "…" --follow` with a locally built `bex` on a settled session prints the turn in one connection, and the dashboard shows the turn live at 1440 and 390 px. Then t009 closes the milestone.
