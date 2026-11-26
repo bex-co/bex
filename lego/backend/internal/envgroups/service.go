@@ -635,6 +635,13 @@ func (s *Service) persistCreate(
 	if err := secrets.ValidateFilesMapQuota(files); err != nil {
 		return nil, store.EnvGroup{}, err
 	}
+	// A brand-new workspace's namespace may not exist yet (the
+	// NamespaceReconciler converges it only on its resync tick), so it is
+	// ensured before the projection Secrets land there, as every service,
+	// Postgres and Key Value create does (w2/026, w4/733).
+	if err := s.EnsureWorkspaceNamespace(ctx, g.TenantID); err != nil {
+		return nil, store.EnvGroup{}, err
+	}
 	gid := g.ID
 	patched := make([]*appv1alpha1.App, 0, len(services))
 	rollback := func(cause error) error {

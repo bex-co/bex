@@ -507,12 +507,12 @@ type NamespaceEnsurer func(ctx context.Context, workspaceID string) error
 // EnsureWorkspaceNamespace guarantees a workspace's hosting namespace exists
 // before a create writes into it. The NamespaceReconciler is level-triggered
 // on a resync period and nothing kicks it on workspace mint, so a first
-// service/postgres/keyvalue create within one resync of onboarding otherwise
-// fails with a namespace NotFound from the API server, surfacing as a 500
-// (w2/026). One cheap GET fast-paths the steady state; only a missing
-// namespace pays for the synchronous ensure. A nil ensurer (store off, tests)
-// or an empty/default tenant is a no-op, and a non-NotFound GET error is
-// ignored so the create itself surfaces the real failure exactly as before.
+// service/postgres/keyvalue/env group create within one resync of onboarding
+// otherwise fails with a namespace NotFound from the API server, surfacing as
+// a 500 (w2/026, w4/733). One cheap GET fast-paths the steady state; only a
+// missing namespace pays for the synchronous ensure. A nil ensurer (store off,
+// tests) or an empty/default tenant is a no-op, and a non-NotFound GET error
+// is ignored so the create itself surfaces the real failure exactly as before.
 func (b *Base) EnsureWorkspaceNamespace(ctx context.Context, tenantID string) error {
 	if !b.ensuresNamespacesFor(tenantID) {
 		return nil
