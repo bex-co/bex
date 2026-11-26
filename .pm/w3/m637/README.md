@@ -17,7 +17,7 @@
 
 ## Definition of done
 
-1. The daily job passes against Render's live pages with an empty exceptions list (after [m636](../m636/README.md)).
+1. The daily job passes against Render's live pages with an empty exceptions list (after [m636](../blocked/m636/README.md)).
 2. Fixture mutations each fail it with a message naming the page and the bex table: a moved current default, a new row, a back-dated row, a removed page, changed markup and an eighth page.
 3. The job is scheduled daily, listed in `scripts/ci-schedule-drift.sh`, and its self-tests run in `scripts.yml`.
 
