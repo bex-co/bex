@@ -66,7 +66,7 @@ The `umami`, `django`, `celery`, `minio` and `wordpress` failures were rerun wit
 | 8 | `ioredis` | live | — | — |
 | 9 | `webhook-playground` | live | — | the pre-deploy migration ran, and a triggered cron run ended `successful` |
 | 10 | `clickhouse` | live | — | internal address `clickhouse-<suffix>:8123` |
-| 11 | `pg_pinecone_render` | failed, bex | plan | [w6/183](../../.pm/w6/183.md): `spec.startCommand: Too long: may not be more than 4096 bytes` for a 4,717-byte `dockerCommand` |
+| 11 | `pg_pinecone_render` | failed, bex | plan | [w6/183](../../.pm/w6/blocked/183.md): `spec.startCommand: Too long: may not be more than 4096 bytes` for a 4,717-byte `dockerCommand` |
 | 12 | `n8n` | live | — | — |
 | 13 | `umami` | failed, bex | deploy | [w6/184](../../.pm/w6/184.md): the web service starts before its Postgres is available and exits (`Can't reach database server`); a manual deploy once it is available goes live and the README's first login works |
 | 14 | `bun-docker` | live | — | — |
