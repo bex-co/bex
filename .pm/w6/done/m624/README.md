@@ -1,6 +1,6 @@
 # w6 · m624 — A service that probes by exec mounts its health probe from bex's image, so its app starts without waiting for the kubelet's relist
 
-**Worker:** worker6 **Goal:** a pod that carries bex's health-probe helper gets the binary from an `image` volume of bex's image instead of the `bex-health-probe-install` init container. With no init container, the kubelet starts the app in the same pass that starts the pod, and the 0–1 s wait for its next relist is gone. **Status:** todo (t001, t002, t003, t006, t007 done; t004 turns the image volume on in production's operator)
+**Worker:** worker6 **Goal:** a pod that carries bex's health-probe helper gets the binary from an `image` volume of bex's image instead of the `bex-health-probe-install` init container. With no init container, the kubelet starts the app in the same pass that starts the pod, and the 0–1 s wait for its next relist is gone. **Status:** done
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | t001 | [The operator mounts the health probe from an image volume when the cluster serves them](done/t001.md) — **DONE** | 1h30m | — |
 | t002 | [Prove the image volume on the local CAPD cluster](done/t002.md) — **DONE** | 1h | t001 |
 | t003 | [Turn on `ImageVolume` on production's API servers and tenant kubelets](done/t003.md) — **DONE** | 1h30m | — |
-| t004 | [Turn the image volume on in production's operator](t004.md) | 20m | t001, t002, t003 |
-| t005 | [Measure on production and record the window](t005.md) | 1h30m | t004 |
+| t004 | [Turn the image volume on in production's operator](done/t004.md) — **DONE** | 20m | t001, t002, t003 |
+| t005 | [Measure on production and record the window](done/t005.md) — **DONE** | 1h30m | t004 |
 | t006 | [Simplify](done/t006.md) — **DONE** | 15m | t005 |
 | t007 | [Test coverage](done/t007.md) — **DONE** | 30m | t005 |
-| t008 | [Closeout](t008.md) | 10m | t006, t007 |
+| t008 | [Closeout](done/t008.md) — **DONE** | 10m | t006, t007 |
 
 ## Definition of done
 
@@ -71,3 +71,10 @@ The note's directions, weighed against the code at `3dd1fccbae` and upstream sou
 - **fsn1.** `GET /v1/server_types/115` reads cx33 `available: false` in fsn1, nbg1 and hel1 at 13:54Z; cpx32 (`server_types/110`) reads `available: true` in fsn1. The flag does not decide (w1/144), so the roll itself is the probe: re-apply the control-plane hunk of `3ac4bb829d` and watch its first surge. If Hetzner refuses it, wait for that push's app-cluster run to finish, then revert, and park again with the date a day later.
 - **Not approved:** the cpx32 fallback for the control plane (ADR053) is still the user's to take through `/unblock w6`.
 - KCP `bex-control-plane` stood on its three members (`ff5b6`, `mmgdq`, `zvxjm`, all up to date) before the roll, and no app-cluster run was in progress.
+
+## Closeout (2026-11-26, `/loopx w6`)
+
+- **t003.** `30588c6353` rolled the control plane onto `ImageVolume` (fsn1 placed a cx33 for the first surge; one refused surge was deleted by hand, [w6/191](../../191.md)), and `c98690e829` rolled `bex-tenant-0`. Every API server and the kubelet of every control-plane and `bex-tenant-0` node read the gate 1; `bex-tenant-xl` and `-xxl` have no nodes and their templates carry it. `scripts/verify-substrate.sh` passes all ten checks.
+- **t004.** `28b4f18bbe` turned `BEX_HEALTH_PROBE_IMAGE_VOLUME` on in `config/prod`; Argo synced it at 15:26:40Z and no service rolled.
+- **t005.** On `w6-m624-t005` (disposable), pods with a Health Check Path or no port had no init container and mounted the helper from the image volume. They reached a running app in 1.88–2.01 s from their cgroup, against the named-port twin's 1.78–2.00 s, and were down 5.25–5.51 s (Health Check Path) and 5.50 s (no-port code deploys), against the twin's 4.75–5.00 s: at most two 0.25 s probe steps over, for the exec probe and the no-port release's port promotion. ADR082 § D3, ADR004 and the ADR018 disk row record it.
+- **Definition of done.** Every line holds: the windows and pod shape (t005), the gate on the API servers and the three App pools (t003), an operator with the setting off keeps the installer and turning it on rolled no service (t001, t007, t004), and the docs.
