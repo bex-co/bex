@@ -52,6 +52,23 @@ class PublishingInputs(unittest.TestCase):
         )
         self.assertEqual([row['base'] for row in native_matrix.matrix(source)['include']], [image14, image16])
 
+    def test_exact_node_donors_publish_under_their_own_release_names(self):
+        self.assertEqual(native_matrix.exact_donors(), [
+            {"name": "node-24.14.1-bookworm",
+             "base": "node:24.14.1-bookworm@sha256:80fc934952c8f1b2b4d39907af7211f8a9fff1a4c2cf673fb49099292c251cec"},
+            {"name": "node-24.21.0-bookworm",
+             "base": "node:24.21.0-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0"},
+        ])
+
+    def test_exact_donor_inputs_must_be_pinned_official_releases(self):
+        original = native_matrix.EXACT_DONORS
+        self.addCleanup(setattr, native_matrix, "EXACT_DONORS", original)
+        for image in ('node:24.14.1-bookworm', 'node:24-bookworm@sha256:' + 'a' * 64,
+                      'ghcr.io/bex-co/bex-cnb-run:node-24.14.1@sha256:' + 'a' * 64):
+            with self.subTest(image=image), self.assertRaises(ValueError):
+                native_matrix.EXACT_DONORS = (image,)
+                native_matrix.exact_donors()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -32,11 +32,34 @@ RUN --mount=type=bind,from=primary,source=/usr/local,target=/opt/bex-primary,rea
     esac; \
   fi
 
+# Node 24 needs GCC 12.2, so Render's dated 24.14.1 and 24.21.0 compile on
+# Bookworm (w3/m672). Final images use the Bookworm common base. patch.sh
+# leaves a 24 release that already carries Node's fix alone.
+FROM node:24-bookworm@sha256:49f7adaf9f1574bc45c20ea317139b39a59d7e758d0e93745e112fd85cb42623 AS node-backport-bookworm
+COPY node-brotli/patch.sh node-brotli/node-24-brotli-49dff6f57aa7.patch /tmp/bex-node-brotli/
+RUN --mount=type=bind,from=primary,source=/usr/local,target=/opt/bex-primary,readonly \
+  set -eu; \
+  mkdir -p /opt/bex-node-backport; \
+  if [ -f /opt/bex-primary/include/node/node_version.h ]; then \
+    major="$(awk '$1 == "#define" && $2 == "NODE_MAJOR_VERSION" { print $3 }' /opt/bex-primary/include/node/node_version.h)"; \
+    if [ "$major" = 24 ]; then \
+      rm -rf /usr/local; \
+      mkdir -p /usr/local; \
+      cp -a /opt/bex-primary/. /usr/local/; \
+      sh /tmp/bex-node-brotli/patch.sh; \
+      if [ -f /usr/share/bex-node-brotli/sources.txt ]; then \
+        install -D -m 755 /usr/local/bin/node /opt/bex-node-backport/usr/local/bin/node; \
+        install -D -m 644 /usr/share/bex-node-brotli/sources.txt /opt/bex-node-backport/usr/share/bex-node-brotli/sources.txt; \
+      fi; \
+    fi; \
+  fi
+
 FROM primary
 USER root
 # Only the repaired executable and its source record leave the compiler stage.
 # Inherit every runtime environment setting from the original primary.
 COPY --link --from=node-backport /opt/bex-node-backport/ /
+COPY --link --from=node-backport-bookworm /opt/bex-node-backport/ /
 COPY node-brotli/check.js /usr/share/bex-security/node-check.js
 COPY --link --from=node-tools /opt/bex/native-node-tools /opt/bex/native-node-tools
 COPY tsc webpack /usr/bin/

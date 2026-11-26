@@ -1,4 +1,5 @@
 """Execute real publisher shell with controlled tools; no network/crypto/Docker proof."""
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -299,6 +300,20 @@ class PublisherInputControls(unittest.TestCase):
         self.assertEqual(process.returncode, 0, process.stderr)
         self.assertEqual(json.loads(records["images"]), {"include": [{"name": "node-14-bullseye", "base": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e"}]})
 
+    def test_exact_node24_donors_are_singleton_publications(self):
+        # w3/m672: Render's dated Node 24 defaults publish as their own donors.
+        for name, base in {
+            "node-24.14.1-bookworm": "node:24.14.1-bookworm@sha256:80fc934952c8f1b2b4d39907af7211f8a9fff1a4c2cf673fb49099292c251cec",
+            "node-24.21.0-bookworm": "node:24.21.0-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+        }.items():
+            with self.subTest(runtime=name):
+                process, records = self.select(name)
+                self.assertEqual(process.returncode, 0, process.stderr)
+                self.assertEqual(json.loads(records["images"]), {"include": [{"name": name, "base": base}]})
+        process, records = self.select("node-24.22.1-bookworm")
+        self.assertNotEqual(process.returncode, 0)
+        self.assertNotIn("images", records)
+
 
     def test_d3_publisher_targets_only_amd64_and_preserves_complete_amd_gates(self):
         self.assertEqual(WORKFLOW_TEXT.count('platforms: linux/amd64\n'), 2)
@@ -364,6 +379,48 @@ class NodeBackportInputControls(unittest.TestCase):
         process = self.select("14.21.1", "--common-bookworm", "14.21.1", "b" * 64)
         self.assertEqual(process.returncode, 0, process.stderr)
         self.assertEqual(process.stdout.splitlines()[:2], ["b" * 64, "1.0.10"])
+
+    def test_dated_node24_defaults_use_their_official_source_and_nodes_vendored_fix(self):
+        # w3/m672: the 24 line bundles Brotli 1.2.0; Node's own cherry-pick
+        # keeps that version, so the vendored patch is the second input.
+        patch = (ROOT / "deploy/native-base/node-brotli/node-24-brotli-49dff6f57aa7.patch").read_bytes()
+        patch_sha = hashlib.sha256(patch).hexdigest()
+        for version, checksum in {
+            "24.14.1": "7822507713f202cf2a551899d250259643f477b671706db421a6fb55c4aa0991",
+            "24.21.0": "a6f54defb6fd7c84f41dba13d61e78e9b4e0961712cf61f29715c05f5ced94fc",
+        }.items():
+            with self.subTest(version=version):
+                process = self.select(version, brotli="1.2.0")
+                self.assertEqual(process.returncode, 0, process.stderr)
+                self.assertEqual(process.stdout.splitlines(), [checksum, "1.2.0", patch_sha])
+
+    def test_vendored_node24_fix_is_nodes_own_decoder_change(self):
+        patch = (ROOT / "deploy/native-base/node-brotli/node-24-brotli-49dff6f57aa7.patch").read_text()
+        touched = [line.split(" b/", 1)[1] for line in patch.splitlines() if line.startswith("diff --git ")]
+        self.assertEqual(touched, ["deps/brotli/c/dec/decode.c", "deps/brotli/c/include/brotli/decode.h"])
+        # Pre-images are the blobs v24.14.1 and v24.21.0 ship; post-images are 24.22.1's.
+        self.assertIn("index e87e7f5ea0f9..19c7e0283faa 100644", patch)
+        self.assertIn("index 8d436db733c9..10d01e3658b5 100644", patch)
+        self.assertIn("+  BROTLI_ERROR_CODE(_ERROR_FORMAT_, BLOCK_SWITCH, -17) SEPARATOR", patch)
+
+    def test_other_node24_releases_are_refused_or_already_fixed(self):
+        for version in ("24.0.0", "24.10.0", "24.14.0", "24.21.1", "24.22.0"):
+            with self.subTest(version=version):
+                process = self.select(version, brotli="1.2.0")
+                self.assertNotEqual(process.returncode, 0)
+                self.assertIn("Unreviewed Node 24 source", process.stderr)
+                self.assertEqual(process.stdout, "")
+        # 24.22.1 is the line's first release with Node's own fix (w1/135).
+        for version in ("24.22.1", "24.22.2", "24.23.0", "24.100.0"):
+            with self.subTest(version=version):
+                process = self.select(version, brotli="1.2.0")
+                self.assertEqual(process.returncode, 0, process.stderr)
+                self.assertEqual(process.stdout, "")
+
+    def test_node24_backport_is_never_a_tenant_build(self):
+        process = self.select("24.14.1", "--common-bookworm", "24.14.1", "7822507713f202cf2a551899d250259643f477b671706db421a6fb55c4aa0991", brotli="1.2.0")
+        self.assertNotEqual(process.returncode, 0)
+        self.assertIn("published donors, never tenant builds", process.stderr)
 
 
 if __name__ == "__main__":

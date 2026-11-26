@@ -1,6 +1,8 @@
 #!/bin/sh
-# Rebuild only the existing EOL Node executable with Google's matching Brotli
-# security release. npm and the selected Node/ABI versions stay unchanged.
+# Rebuild only an existing reviewed Node executable with its line's Brotli
+# security fix: Google's matching release for the EOL lines, Node's own
+# in-tree cherry-pick for Render's dated Node 24 defaults. npm and the
+# selected Node/ABI versions stay unchanged.
 set -eu
 
 common_mode=0
@@ -17,6 +19,8 @@ fi
 [ -x /usr/local/bin/node ] || exit 0
 node_version=$(/usr/local/bin/node -p 'process.versions.node')
 [ "$common_mode" -eq 0 ] || [ "$node_version" = "$expected_version" ]
+brotli_patch=
+brotli_source=source
 case "$node_version" in
   14.21.2)
     node_sha=d8f09a0f16773a77613c3817606f6d455624992d9c43443aca15e91807a1ff03
@@ -58,38 +62,83 @@ case "$node_version" in
       *) echo 'unexpected EOL Node Brotli dependency family' >&2; exit 1 ;;
     esac
     ;;
+  # Render's dated defaults (w3/m672). Both bundle Node's Brotli 1.2.0 tree
+  # before the fix; Node's own cherry-pick makes deps/brotli/c identical to
+  # 24.22.1's, which still reports 1.2.0.
+  24.14.1|24.21.0)
+    [ "$common_mode" -eq 0 ] || { echo "Node 24 backports are published donors, never tenant builds" >&2; exit 1; }
+    case "$node_version" in
+      24.14.1) node_sha=7822507713f202cf2a551899d250259643f477b671706db421a6fb55c4aa0991 ;;
+      24.21.0) node_sha=a6f54defb6fd7c84f41dba13d61e78e9b4e0961712cf61f29715c05f5ced94fc ;;
+    esac
+    brotli_version=1.2.0
+    brotli_patch=node-24-brotli-49dff6f57aa7.patch
+    brotli_source="patch nodejs/node@49dff6f57aa7"
+    brotli_sha=1e9ee182923958541a120582078b087380ab38e6850153cdc3cdec33cf331876
+    ;;
+  24.*)
+    # 24.22.1 is the line's first release carrying Node's fix (w1/135).
+    minor=${node_version#24.}
+    patch_level=${minor#*.}
+    minor=${minor%%.*}
+    if [ "$minor" -gt 22 ] || { [ "$minor" -eq 22 ] && [ "$patch_level" -ge 1 ]; }; then
+      exit 0
+    fi
+    echo "Unreviewed Node 24 source without the Brotli fix: $node_version" >&2
+    exit 1
+    ;;
   *) exit 0 ;;
 esac
 [ "$common_mode" -eq 0 ] || [ "$node_sha" = "$source_checksum" ]
 
 . /etc/os-release
-expected_suite=bullseye
-[ "$common_mode" -eq 0 ] || expected_suite=bookworm
+# Node 24 requires GCC 12.2, which Bookworm has and Bullseye lacks; the EOL
+# lines compile on the Bullseye companion baseline unless a common build asks.
+expected_suite=bookworm
+if [ "$common_mode" -eq 0 ] && [ -z "$brotli_patch" ]; then
+  expected_suite=bullseye
+fi
 if [ "$VERSION_CODENAME" != "$expected_suite" ]; then
-  echo "Node backports must compile on the Bullseye companion baseline" >&2
+  echo "Node $node_version backport must compile on Debian $expected_suite" >&2
   exit 1
 fi
 
+script_dir=$(cd "$(dirname "$0")" && pwd)
 work_dir=$(mktemp -d)
 trap 'rm -rf "$work_dir"' EXIT HUP INT TERM
 cd "$work_dir"
 
 # HTTPS checksums are recorded from the official Node SHASUMS256.txt and
-# Google Brotli release archives; see README.md beside this script.
+# Google Brotli release archives; see README.md beside this script. Node's own
+# fix is vendored beside the script because generated diffs are not stable.
 curl --fail --location --retry 3 "https://nodejs.org/dist/v$node_version/node-v$node_version.tar.xz" -o node.tar.xz
 printf '%s  node.tar.xz\n' "$node_sha" | sha256sum -c -
-curl --fail --location --retry 3 "https://codeload.github.com/google/brotli/tar.gz/refs/tags/v$brotli_version" -o brotli.tar.gz
-printf '%s  brotli.tar.gz\n' "$brotli_sha" | sha256sum -c -
+if [ -n "$brotli_patch" ]; then
+  cp "$script_dir/$brotli_patch" brotli.patch
+  printf '%s  brotli.patch\n' "$brotli_sha" | sha256sum -c -
+else
+  curl --fail --location --retry 3 "https://codeload.github.com/google/brotli/tar.gz/refs/tags/v$brotli_version" -o brotli.tar.gz
+  printf '%s  brotli.tar.gz\n' "$brotli_sha" | sha256sum -c -
+  tar -xzf brotli.tar.gz
+fi
 tar -xJf node.tar.xz
-tar -xzf brotli.tar.gz
 
 /usr/local/bin/node -p 'JSON.stringify(process.versions)' > original-versions.json
 original_npm=$(npm --version)
 cd "node-v$node_version"
-# The matching 1.0/1.1 security release changes the decoder, not the Node ABI.
-# Keep Node's GYP metadata; replace only Google's vendored C sources.
-rm -rf deps/brotli/c
-cp -a "../brotli-$brotli_version/c" deps/brotli/c
+if [ -n "$brotli_patch" ]; then
+  patch -p1 --forward --no-backup-if-mismatch < ../brotli.patch
+  # The repaired decoder is byte-for-byte Node 24.22.1's.
+  sha256sum -c - <<'SUMS'
+d48bc54c60553238d50db2fcd606522efd447d33a37d6a2d5c2ea1ece22067c3  deps/brotli/c/dec/decode.c
+e2f5fdc3ae41e6b7e8986538e421ae79c095541bacf32f2bbfccf8e056405444  deps/brotli/c/include/brotli/decode.h
+SUMS
+else
+  # The matching 1.0/1.1 security release changes the decoder, not the Node
+  # ABI. Keep Node's GYP metadata; replace only Google's vendored C sources.
+  rm -rf deps/brotli/c
+  cp -a "../brotli-$brotli_version/c" deps/brotli/c
+fi
 # Match Node's official companion fix: expose the new decoder error constant.
 python3 - <<'PY'
 from pathlib import Path
@@ -126,8 +175,8 @@ JS
 install -m 755 out/Release/node /usr/local/bin/node
 [ "$(npm --version)" = "$original_npm" ]
 mkdir -p /usr/share/bex-node-brotli
-printf 'Node %s; source sha256:%s; Brotli %s; source sha256:%s\n' \
-  "$node_version" "$node_sha" "$brotli_version" "$brotli_sha" \
+printf 'Node %s; source sha256:%s; Brotli %s; %s sha256:%s\n' \
+  "$node_version" "$node_sha" "$brotli_version" "$brotli_source" "$brotli_sha" \
   > /usr/share/bex-node-brotli/sources.txt
 printf 'Compiler baseline: Debian %s; %s\n' "$VERSION_CODENAME" "$(getconf GNU_LIBC_VERSION)" \
   >> /usr/share/bex-node-brotli/sources.txt
