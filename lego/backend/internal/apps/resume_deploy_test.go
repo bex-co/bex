@@ -195,3 +195,54 @@ func TestAPlatformResumeOpensNoDeploy(t *testing.T) {
 		t.Error("the allowance's resume did not resume")
 	}
 }
+
+// A suspend of a suspended service and a resume of a running one change
+// nothing: no deploy, no row write, no App patch. The projection already
+// disables both (PrecondSuspended / PrecondNotSuspended), and the sibling
+// Postgres and KeyValue verbs answer the current state the same way —
+// in particular a resume must not open a service_resumed deploy for a
+// service that never stopped.
+func TestSuspendResumeOnMatchingStateIsANoOp(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("resume a running service opens no deploy", func(t *testing.T) {
+		rec := &recordingStore{}
+		svc, cl := newService(rec, managedApp("web", "srv-1"))
+		hook := &resumeHook{cl: cl, deployID: "dep-resumed"}
+		svc.ResumeDeploy = hook.run
+
+		view, err := svc.Resume(ctx, "web")
+		if err != nil {
+			t.Fatalf("Resume: %v", err)
+		}
+		if view.Suspended || view.LatestDeployID != "" {
+			t.Errorf("view = suspended %v latestDeploy %q, want running with no deploy", view.Suspended, view.LatestDeployID)
+		}
+		if hook.calls != 0 {
+			t.Errorf("the resume asked the resume deploy verb %d times, want none", hook.calls)
+		}
+		if len(rec.calls) != 0 {
+			t.Errorf("row writes = %v, want none", rec.calls)
+		}
+		if got := getApp(t, cl, "web"); got.Spec.Suspended {
+			t.Error("the no-op resume suspended the App")
+		}
+	})
+
+	t.Run("suspend a suspended service writes nothing", func(t *testing.T) {
+		rec := &recordingStore{}
+		svc, _ := newService(rec, suspendedManagedApp())
+		svc.ResumeDeploy = (&resumeHook{deployID: "dep-x"}).run
+
+		view, err := svc.Suspend(ctx, "web")
+		if err != nil {
+			t.Fatalf("Suspend: %v", err)
+		}
+		if !view.Suspended {
+			t.Error("the no-op suspend reads running")
+		}
+		if len(rec.calls) != 0 {
+			t.Errorf("row writes = %v, want none", rec.calls)
+		}
+	})
+}
