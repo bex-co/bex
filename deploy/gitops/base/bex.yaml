@@ -37,7 +37,7 @@ spec:
     path: lego/operator/config/default
     kustomize:
       images:
-        - controller=ghcr.io/bex-co/bex-operator@sha256:3838967ad9ff016418c57d667e78eff55048e1e01bd7651f14b248702ab49ee4
+        - controller=ghcr.io/bex-co/bex-operator@sha256:f031439853c2882dfda5c0adc7e6765fd666a66b5a64f0619dd1dd38c5ab85c0
         - kv-sni-proxy=ghcr.io/bex-co/bex-operator@sha256:65ef4f0d90b1492ae50edcc26368c37c81976badd99a38f74ebae345e185247a
         - pg-sni-proxy=ghcr.io/bex-co/bex-operator@sha256:f5d75a7c48d1f58cc2e0d9328a006fd6b315481615b1fa0be35d72978c55a403
   destination:
