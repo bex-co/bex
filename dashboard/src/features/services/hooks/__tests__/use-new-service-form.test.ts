@@ -29,12 +29,15 @@ const buildSourcesMock: {
   loading: false,
   error: undefined,
 };
-vi.mock("@/features/services/hooks/use-build-sources", async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import("@/features/services/hooks/use-build-sources")
-  >()),
-  useBuildSources: () => buildSourcesMock,
-}));
+vi.mock(
+  "@/features/services/hooks/use-build-sources",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@/features/services/hooks/use-build-sources")
+    >()),
+    useBuildSources: () => buildSourcesMock,
+  }),
+);
 
 vi.mock("@/features/services/hooks/use-service-name-draft", () => ({
   useServiceNameDraft: () => ({
@@ -63,6 +66,15 @@ vi.mock("@/features/services/hooks/use-repo-runtime-detection", () => ({
     const runtime: GitRuntime = rootDir === "services/python" ? "python" : "go";
     return runtime;
   },
+}));
+
+const envGroupsMock: {
+  groups: Array<{ id: string; name: string; environmentId: string | null }>;
+  loading: boolean;
+  error: Error | undefined;
+} = { groups: [], loading: false, error: undefined };
+vi.mock("@/features/env-groups/hooks/use-env-groups", () => ({
+  useEnvGroups: () => ({ ...envGroupsMock, refetch: vi.fn() }),
 }));
 
 import { useNewServiceForm } from "@/features/services/hooks/use-new-service-form";
@@ -348,5 +360,38 @@ describe("useNewServiceForm Build Source selection (w2/m612)", () => {
 
     act(() => result.current.setServiceType("static_site"));
     expect(result.current.form.tab).toBe("github");
+  });
+});
+
+// w4/731: a linked group the chosen Environment cannot link leaves the
+// draft, but only once the groups' read has settled.
+describe("useNewServiceForm Linked Environment Groups (w4/731)", () => {
+  beforeEach(() => {
+    envGroupsMock.groups = [
+      { id: "evg-shared", name: "shared", environmentId: null },
+      { id: "evg-prod", name: "prod", environmentId: "env-production" },
+    ];
+    envGroupsMock.loading = false;
+    envGroupsMock.error = undefined;
+  });
+
+  it("drops a group the new Environment cannot link and keeps a workspace group", () => {
+    const { result } = renderHook(() =>
+      useNewServiceForm({ environmentId: "env-production" }),
+    );
+    act(() => result.current.set({ envGroups: ["evg-prod", "evg-shared"] }));
+    expect(result.current.form.envGroups).toEqual(["evg-prod", "evg-shared"]);
+    act(() => result.current.set({ environmentId: "env-staging" }));
+    expect(result.current.form.envGroups).toEqual(["evg-shared"]);
+  });
+
+  it.each([
+    ["loading", { loading: true }],
+    ["failed", { error: new Error("read failed") }],
+  ])("keeps the draft while the groups' read is %s", (_, state) => {
+    Object.assign(envGroupsMock, { groups: [] }, state);
+    const { result } = renderHook(() => useNewServiceForm({}));
+    act(() => result.current.set({ envGroups: ["evg-prod"] }));
+    expect(result.current.form.envGroups).toEqual(["evg-prod"]);
   });
 });

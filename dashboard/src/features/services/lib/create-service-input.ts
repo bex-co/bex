@@ -86,6 +86,11 @@ export interface NewServiceForm {
   preDeployCommand: string;
   /** The drafted disk, `null` until Add Disk is pressed (see `showDisk`). */
   disk: DiskDraft | null;
+  /**
+   * Linked Environment Groups (`evg-` ids), in the order chosen: every type,
+   * every source, as on Render's create form (w4/731).
+   */
+  envGroups: string[];
   envVars: EnvVarEntry[];
   secretFiles: SecretFileEntry[];
   projectId: string | null;
@@ -531,6 +536,7 @@ export function buildCreateServiceInput(
             sizeGB: form.disk.sizeGB,
           }
         : undefined,
+    envGroups: form.envGroups.length > 0 ? form.envGroups : undefined,
     envVars: submittableEnvVars(form.envVars),
     secretFiles: submittableSecretFiles(form.secretFiles),
   };

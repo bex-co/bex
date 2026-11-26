@@ -287,6 +287,7 @@ var gqlCreateRules = map[string]wireRule{
 	"disk.name":                        to("Disk"),
 	"disk.mountPath":                   to("Disk"),
 	"disk.sizeGB":                      to("Disk"),
+	"envGroups":                        to("EnvGroupIDs"),
 	"ipAllowList":                      to("IPAllowList"),
 	"ipAllowListEntries[].cidrBlock":   to("IPAllowList"),
 	"ipAllowListEntries[].description": to("IPAllowList"),

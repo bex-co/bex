@@ -92,8 +92,11 @@ export interface UseEnvGroupsResult {
 /**
  * Reads every environment group in the switcher-selected workspace (w6/m24):
  * skipped until the selection resolves to an id, mirroring useApiKeys/useServices.
+ * `poll: false` reads once, for a form that re-reads when its picker opens.
  */
-export function useEnvGroups(): UseEnvGroupsResult {
+export function useEnvGroups({
+  poll = true,
+}: { poll?: boolean } = {}): UseEnvGroupsResult {
   const { currentWorkspaceId } = useWorkspace();
   const resolved = currentWorkspaceId != null;
   const { data, loading, error, refetch } = useQuery(EnvGroupsDocument, {
@@ -101,7 +104,7 @@ export function useEnvGroups(): UseEnvGroupsResult {
     skip: !resolved,
     fetchPolicy: PRIMED_FETCH_POLICY,
     errorPolicy: "all",
-    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    pollInterval: poll ? RESOURCE_POLL_INTERVAL_MS : 0,
     skipPollAttempt: skipPollWhenHidden,
   });
 

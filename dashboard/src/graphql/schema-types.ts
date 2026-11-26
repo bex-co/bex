@@ -3138,6 +3138,7 @@ export type MutationCreateServiceArgs = {
   dockerContext?: InputMaybe<Scalars['String']['input']>;
   dockerfilePath?: InputMaybe<Scalars['String']['input']>;
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
+  envGroups?: InputMaybe<Array<Scalars['String']['input']>>;
   envVars?: InputMaybe<Array<InputMaybe<EnvVarInput>>>;
   environmentId?: InputMaybe<Scalars['String']['input']>;
   headers?: InputMaybe<Array<InputMaybe<StaticHeaderInput>>>;

@@ -2266,6 +2266,12 @@ type CreateRequest struct {
 	// callers leave it nil and configure autoscaling later via SetAutoscaling.
 	// Non-nil enables autoscaling immediately — same validation as SetAutoscaling.
 	Autoscaling *SetAutoscalingRequest
+	// EnvGroupIDs are the environment groups (`evg-` ids) the new service
+	// links before its first deploy, so that deploy already carries their
+	// values: Render's create form's Linked Environment Groups (w4/731). Only
+	// GraphQL createService, the dashboard's create, sets it; REST and MCP
+	// take none, as Render's POST /v1/services has no such field.
+	EnvGroupIDs []string
 	// DryRun, when true, resolves the spec and returns a preview without any
 	// Kubernetes or control-plane-store writes — zero side effects (w2/m29).
 	// The response shape is identical to a live create; the caller knows it is a
@@ -2707,6 +2713,14 @@ func (s *Service) planNewApp(ctx context.Context, req CreateRequest, a *appv1alp
 		// its row exists (roomForBuildSources), so no quota dry-run here.
 		return s.checkBuildSourceCeiling(ctx, tenantID)
 	}
+	if len(req.EnvGroupIDs) > 0 {
+		if s.EnvGroups == nil {
+			return core.ErrSecretsUnavailable
+		}
+		if err := s.EnvGroups.CheckInitialEnvGroupIDs(ctx, req.EnvGroupIDs, probe); err != nil {
+			return err
+		}
+	}
 	if err := s.DryRunCreate(ctx, probe); err != nil {
 		return serviceCountCap.CreateError(err)
 	}
@@ -3015,7 +3029,7 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 			EnvironmentID:        environment.ID,
 			// Provenance for the first deploy row CreateApp opens (w9/001).
 			FirstDeployCommit: firstCommit,
-			CreationPending:   len(req.initialEnvGroups) > 0,
+			CreationPending:   req.linksInitialGroups(),
 			// A re-created service's App beside its predecessor's (w2/m365).
 			ObjectName: suffixedObjectName(a.Name, tenantID, req.Name),
 		})
@@ -3327,6 +3341,13 @@ func errClaimServiceDomains(err error) error {
 // names, instead of a raw Kubernetes admission error surfacing as a 500.
 var serviceCountCap = core.CountCap{Key: store.AppsQuotaCountKey, Noun: "service"}
 
+// linksInitialGroups reports that the new service links environment groups
+// as its App is written: a Blueprint's fromGroup names or the create form's
+// EnvGroupIDs.
+func (r CreateRequest) linksInitialGroups() bool {
+	return len(r.initialEnvGroups) > 0 || len(r.EnvGroupIDs) > 0
+}
+
 // writeInitialApp keeps group attachment inside the create compensation
 // boundary. Existing Apps never enter this path; their normal link/rollout
 // policy continues to apply.
@@ -3369,24 +3390,30 @@ func (s *Service) writeInitialApp(ctx context.Context, req CreateRequest, a *app
 		}
 		return cause
 	}
+	linksGroups := req.linksInitialGroups()
 	fail := func(cause error) error {
 		if cause != nil && rollbackRow != nil {
-			if rowID != "" && len(req.initialEnvGroups) > 0 {
+			if rowID != "" && linksGroups {
 				cause = captureOperational(cause)
 			}
 			var removed bool
 			cause, removed = rollbackRow(cause)
-			if removed && rowID != "" && len(req.initialEnvGroups) > 0 {
+			if removed && rowID != "" && linksGroups {
 				cause = cleanupOperational(cause)
 			}
 		}
 		return cause
 	}
-	if len(req.initialEnvGroups) == 0 {
+	if !linksGroups {
 		return fail(s.writeNewApp(ctx, req.Name, a, seed))
 	}
 	if s.EnvGroups == nil {
 		return fail(core.ErrSecretsUnavailable)
+	}
+	// A Blueprint names its groups; the create form names them by id.
+	withGroups, refs := s.EnvGroups.WithInitialEnvGroups, req.initialEnvGroups
+	if len(req.EnvGroupIDs) > 0 {
+		withGroups, refs = s.EnvGroups.WithInitialEnvGroupIDs, req.EnvGroupIDs
 	}
 	var complete func() error
 	if rowID != "" {
@@ -3406,7 +3433,7 @@ func (s *Service) writeInitialApp(ctx context.Context, req CreateRequest, a *app
 		complete = func() error { return requireDeployAuthority(ctx, s) }
 	}
 	created := false
-	err := s.EnvGroups.WithInitialEnvGroups(ctx, req.initialEnvGroups, a, func() error {
+	err := withGroups(ctx, refs, a, func() error {
 		if err := requireDeployAuthority(ctx, s); err != nil {
 			return err
 		}

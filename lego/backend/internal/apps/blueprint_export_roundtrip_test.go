@@ -224,6 +224,7 @@ func roundTripCreates(t *testing.T) []CreateRequest {
 		// store and secret seams this test runs without.
 		req.OwnerID, req.EnvironmentID, req.EnvironmentSpecified = "", "", false
 		req.SecretFiles, req.InitialDeployHook, req.DryRun = nil, "", false
+		req.EnvGroupIDs = nil          // linked through the env-groups seam, not the spec
 		req.RegistryCredentialID = nil // the probe's native runtime takes none; see rt-private-*
 		out = append(out, req)
 	}

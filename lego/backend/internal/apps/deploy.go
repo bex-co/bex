@@ -174,12 +174,19 @@ type DeployRequest struct {
 
 // EnvGroupApplier is the blueprint apply path's seam onto the env-groups feature
 // (*envgroups.Service satisfies it structurally): materialize a render.yaml's
-// envVarGroups: by name and link them to services via fromGroup. Kept to the
-// narrow read/apply methods Blueprint flows need so apps never imports envgroups.
+// envVarGroups: by name and link them to services via fromGroup, and link the
+// create form's chosen groups as a new service is written (w4/731). Kept to the
+// narrow read/apply methods those flows need so apps never imports envgroups.
 type EnvGroupApplier interface {
 	// WithInitialEnvGroups prepares ordered refs and membership around first
 	// creation. complete publishes durable creation only after links commit.
 	WithInitialEnvGroups(ctx context.Context, names []string, a *appv1alpha1.App, create, complete func() error) error
+	// WithInitialEnvGroupIDs is WithInitialEnvGroups for groups named by id,
+	// the create form's Linked Environment Groups (CreateRequest.EnvGroupIDs).
+	WithInitialEnvGroupIDs(ctx context.Context, ids []string, a *appv1alpha1.App, create, complete func() error) error
+	// CheckInitialEnvGroupIDs refuses, writing nothing, what
+	// WithInitialEnvGroupIDs would refuse before its first write.
+	CheckInitialEnvGroupIDs(ctx context.Context, ids []string, a *appv1alpha1.App) error
 	// GroupNames returns every existing env group's name, for pre-flighting an
 	// unknown fromGroup reference before any write (all-or-nothing).
 	GroupNames(ctx context.Context) ([]string, error)

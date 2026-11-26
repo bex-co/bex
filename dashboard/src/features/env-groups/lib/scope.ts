@@ -80,9 +80,22 @@ export function serviceMatchesScope(
   serviceId: string,
   environmentId: string | null,
 ): boolean {
+  return scopeAdmits(
+    environmentId,
+    serviceEnvironmentById.get(serviceId) ?? null,
+  );
+}
+
+/**
+ * `serviceMatchesScope` for a service known by its Environment alone, as on
+ * the create form, where the service does not exist yet (w4/731).
+ */
+export function scopeAdmits(
+  groupEnvironmentId: string | null,
+  serviceEnvironmentId: string | null,
+): boolean {
   return (
-    environmentId === null ||
-    (serviceEnvironmentById.get(serviceId) ?? null) === environmentId
+    groupEnvironmentId === null || serviceEnvironmentId === groupEnvironmentId
   );
 }
 

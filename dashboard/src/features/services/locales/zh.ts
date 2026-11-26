@@ -4449,6 +4449,26 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Create form Advanced: drops the drafted disk (Render's 'Remove disk', w4/m652)",
   },
+  "services.createEnvGroupsDescription": {
+    message: "环境组是一组环境变量与机密文件，可在多个服务之间共享。",
+    description:
+      "Create form Advanced: Linked Environment Groups' description, Render's copy (w4/731)",
+  },
+  "services.createEnvGroupPlaceholder": {
+    message: "选择环境组…",
+    description:
+      "Create form Advanced: placeholder of a Linked Environment Groups picker with no group chosen (Render's 'Select an environment group…', w4/731)",
+  },
+  "services.createEnvGroupRowLabel": {
+    message: "已关联的环境组 {n}",
+    description:
+      "Create form Advanced: accessible name of the picker holding the nth linked environment group (w4/731)",
+  },
+  "services.createEnvGroupAddLabel": {
+    message: "关联环境组",
+    description:
+      "Create form Advanced: accessible name of the empty picker that links one more environment group (w4/731)",
+  },
   "services.diskLoadErrorTitle": {
     message: "无法加载此服务的磁盘",
     description: "Disk tab error state title",

@@ -35,6 +35,7 @@ import type { InstanceTypeView } from "@/features/services/hooks/use-instance-ty
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { RegistryCredentialView } from "@/features/registry-credentials/types";
 import type { UseCreateServiceResult } from "@/features/services/hooks/use-create-service";
+import type { EnvGroupView } from "@/features/env-groups/types";
 
 beforeAll(() => {
   if (!Element.prototype.hasPointerCapture) {
@@ -242,6 +243,16 @@ vi.mock("@/features/environments/hooks/use-environments", () => ({
   useEnvironments: () => ({ ...environmentsState, loading: false }),
 }));
 
+const envGroupsState: {
+  groups: EnvGroupView[];
+  loading: boolean;
+  error: Error | undefined;
+} = { groups: [], loading: false, error: undefined };
+const refetchEnvGroups = vi.fn(async () => envGroupsState.groups);
+vi.mock("@/features/env-groups/hooks/use-env-groups", () => ({
+  useEnvGroups: () => ({ ...envGroupsState, refetch: refetchEnvGroups }),
+}));
+
 // ── fixtures ─────────────────────────────────────────────────────────────────
 
 const FREE: InstanceTypeView = {
@@ -402,6 +413,10 @@ beforeEach(() => {
   nameAvailabilityState.checking = false;
   registryCredentialsState.credentials = [PRIVATE_REGISTRY_CREDENTIAL];
   registryCredentialsState.loading = false;
+  envGroupsState.groups = [];
+  envGroupsState.loading = false;
+  envGroupsState.error = undefined;
+  refetchEnvGroups.mockClear();
   projectsState.projects = [
     {
       id: "prj-platform",
@@ -2555,5 +2570,146 @@ describe("NewServicePage Advanced: Disk (w4/m652)", () => {
     expect(addDisk()).not.toBeInTheDocument();
     await chooseType(router, "web_service");
     expect(mountPath()).not.toBeInTheDocument();
+  });
+});
+
+describe("NewServicePage Advanced: Linked Environment Groups (w4/731)", () => {
+  const group = (
+    id: string,
+    name: string,
+    environmentId: string | null,
+  ): EnvGroupView => ({
+    id,
+    name,
+    ownerId: "tea-1",
+    environmentId,
+    createdAt: null,
+    updatedAt: null,
+    revision: null,
+    availability: null,
+    serviceLinks: [],
+    envVarKeys: ["KEY"],
+    secretFileNames: [],
+  });
+  const SHARED = group("evg-shared", "shared", null);
+  const ANALYTICS = group("evg-analytics", "analytics", null);
+  const PROD = group("evg-prod", "prod-secrets", "env-production");
+  const STAGING = group("evg-staging", "staging-secrets", "env-staging");
+  const heading = () => screen.queryByText("Linked Environment Groups");
+  const addPicker = () =>
+    screen.getByRole("combobox", { name: "Link an environment group" });
+  const optionNames = () =>
+    screen.getAllByRole("option").map((option) => option.textContent);
+
+  it("is absent while the workspace has no group the service can link", async () => {
+    envGroupsState.groups = [STAGING];
+    const user = userEvent.setup();
+    renderPage("/?projectId=prj-platform&environmentId=env-production");
+    await pickRepo(user);
+    await openAdvanced(user);
+    expect(screen.getByText("Secret Files")).toBeInTheDocument();
+    expect(heading()).not.toBeInTheDocument();
+  });
+
+  it("offers the workspace's groups by name, then the Environment's, never another Environment's", async () => {
+    envGroupsState.groups = [STAGING, PROD, SHARED, ANALYTICS];
+    const user = userEvent.setup();
+    renderPage("/?projectId=prj-platform&environmentId=env-production");
+    await pickRepo(user);
+    await openAdvanced(user);
+    expect(heading()).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Environment groups are collections of environment variables and secret files that you can share across multiple services.",
+      ),
+    ).toBeInTheDocument();
+    expect(addPicker()).toHaveTextContent("Select an environment group…");
+    await user.click(addPicker());
+    expect(optionNames()).toEqual(["analytics", "shared", "prod-secrets"]);
+    // Opening a picker re-reads the groups, as Render's does.
+    expect(refetchEnvGroups).toHaveBeenCalled();
+  });
+
+  it("offers a service in no Environment the workspace's groups only", async () => {
+    envGroupsState.groups = [PROD, SHARED];
+    const user = userEvent.setup();
+    renderPage();
+    await pickRepo(user);
+    await openAdvanced(user);
+    await user.click(addPicker());
+    expect(optionNames()).toEqual(["shared"]);
+  });
+
+  it("links the chosen groups at create, in the order chosen, and Unlink drops one", async () => {
+    envGroupsState.groups = [SHARED, ANALYTICS, PROD];
+    const user = userEvent.setup();
+    renderPage("/?projectId=prj-platform&environmentId=env-production");
+    await pickRepo(user);
+    await openAdvanced(user);
+    await user.click(addPicker());
+    await user.click(screen.getByRole("option", { name: "prod-secrets" }));
+    await user.click(addPicker());
+    // A group another row holds is not offered again.
+    expect(optionNames()).toEqual(["analytics", "shared"]);
+    await user.click(screen.getByRole("option", { name: "shared" }));
+    await user.click(addPicker());
+    await user.click(screen.getByRole("option", { name: "analytics" }));
+    // Every group is linked, so no empty picker is left.
+    expect(
+      screen.queryByRole("combobox", { name: "Link an environment group" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "Linked environment group 1" }),
+    ).toHaveTextContent("prod-secrets");
+
+    await user.click(screen.getByRole("button", { name: "Unlink shared" }));
+    expect(screen.queryByRole("button", { name: "Unlink shared" })).toBeNull();
+    // Focus moves to the picker that offers it again.
+    expect(addPicker()).toHaveFocus();
+    await user.click(screen.getByRole("button", { name: /^Deploy / }));
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        environmentId: "env-production",
+        envGroups: ["evg-prod", "evg-analytics"],
+      }),
+    );
+  });
+
+  it("drops a chosen group the new Environment cannot link", async () => {
+    envGroupsState.groups = [SHARED, PROD];
+    const user = userEvent.setup();
+    renderPage("/?projectId=prj-platform&environmentId=env-production");
+    await pickRepo(user);
+    await openAdvanced(user);
+    await user.click(addPicker());
+    await user.click(screen.getByRole("option", { name: "prod-secrets" }));
+    await user.click(addPicker());
+    await user.click(screen.getByRole("option", { name: "shared" }));
+
+    await user.click(screen.getByRole("combobox", { name: "Environment" }));
+    await user.click(screen.getByRole("option", { name: "No environment" }));
+    expect(
+      screen.queryByRole("button", { name: "Unlink prod-secrets" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Unlink shared" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^Deploy / }));
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ envGroups: ["evg-shared"] }),
+    );
+  });
+
+  it("sends no envGroups when none is linked", async () => {
+    envGroupsState.groups = [SHARED];
+    const user = userEvent.setup();
+    renderPage();
+    await pickRepo(user);
+    await user.click(screen.getByRole("button", { name: /^Deploy / }));
+    expect(create).toHaveBeenCalledWith(
+      expect.not.objectContaining({ envGroups: expect.anything() }),
+    );
   });
 });

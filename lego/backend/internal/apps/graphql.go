@@ -856,6 +856,7 @@ func gqlCreateRequest(args map[string]any) (CreateRequest, error) {
 		PreDeployCommand:        gqlutil.Str(args, "preDeployCommand"),
 		MaintenanceMode:         gqlMaintenanceModeInput(args, "maintenanceMode"),
 		Disk:                    gqlServiceDiskInput(args, "disk"),
+		EnvGroupIDs:             gqlutil.StringList(args["envGroups"]),
 		IPAllowList:             allowList,
 		DryRun:                  gqlutil.Bool(args, "dryRun"),
 		startIsDockerCommand:    docker.startIsDockerCommand(),
@@ -1638,6 +1639,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// a static site, a cron job, Free, more than one instance and
 				// autoscaling are refused with REST's messages.
 				"disk": gqlutil.Arg(serviceDiskInputType),
+				// envGroups are the environment groups (`evg-` ids) the new
+				// service links before its first deploy: Render's create form
+				// sends its Linked Environment Groups under this name (w4/731).
+				// REST and MCP take none, as Render's POST /v1/services has none.
+				"envGroups": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 				// Description-aware service allowlist plus the legacy CIDR list.
 				// Conflicting simultaneous values are rejected by Core.
 				"ipAllowList":        gqlutil.Arg(graphql.NewList(graphql.String)),

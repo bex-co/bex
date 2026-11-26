@@ -1207,11 +1207,14 @@ func receiverTypeName(expr ast.Expr) string {
 // declared on recv's named type (not a promoted *core.Base helper), exported,
 // (ctx, ...) -> (..., error).
 func isVerbMethod(recv reflect.Type, m reflect.Method) bool {
-	// This internal Blueprint composition callback accepts an unpublished App,
-	// never a transport request. Its non-nil App authorization and compensation
-	// contracts are exercised in envgroups/initial_blueprint_links_security_test.go;
-	// the zero-argument public-verb sweep cannot construct that owned resource.
-	if recv == reflect.TypeFor[*envgroups.Service]() && m.Name == "WithInitialEnvGroups" {
+	// These internal create composition callbacks (a Blueprint's groups by
+	// name, the create form's by id, w4/731, and that one's plan check) accept
+	// an unpublished App, never a transport request. Their non-nil App
+	// authorization and compensation contracts are exercised in
+	// envgroups/initial_blueprint_links_security_test.go and
+	// envgroups/initial_group_ids_test.go; the zero-argument public-verb sweep
+	// cannot construct that owned resource.
+	if recv == reflect.TypeFor[*envgroups.Service]() && (m.Name == "WithInitialEnvGroups" || m.Name == "WithInitialEnvGroupIDs" || m.Name == "CheckInitialEnvGroupIDs") {
 		return false
 	}
 	// The operator-run container-policy migration (w6/m149 t008), one service

@@ -4623,6 +4623,27 @@ const ptServices: Record<string, TranslationEntry> = {
     description:
       "Create form Advanced: drops the drafted disk (Render's 'Remove disk', w4/m652)",
   },
+  "services.createEnvGroupsDescription": {
+    message:
+      "Grupos de ambiente são coleções de variáveis de ambiente e arquivos secretos que você pode compartilhar entre vários serviços.",
+    description:
+      "Create form Advanced: Linked Environment Groups' description, Render's copy (w4/731)",
+  },
+  "services.createEnvGroupPlaceholder": {
+    message: "Selecione um grupo de ambiente…",
+    description:
+      "Create form Advanced: placeholder of a Linked Environment Groups picker with no group chosen (Render's 'Select an environment group…', w4/731)",
+  },
+  "services.createEnvGroupRowLabel": {
+    message: "Grupo de ambiente vinculado {n}",
+    description:
+      "Create form Advanced: accessible name of the picker holding the nth linked environment group (w4/731)",
+  },
+  "services.createEnvGroupAddLabel": {
+    message: "Vincular um grupo de ambiente",
+    description:
+      "Create form Advanced: accessible name of the empty picker that links one more environment group (w4/731)",
+  },
   "services.diskLoadErrorTitle": {
     message: "Não foi possível carregar o disco deste serviço",
     description: "Disk tab error state title",

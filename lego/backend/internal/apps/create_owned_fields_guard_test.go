@@ -125,8 +125,10 @@ func createProbeRequests() []CreateRequest {
 			// valid request can. OwnerID/EnvironmentID/Region/SecretFiles/
 			// InitialDeployHook/DryRun are consumed by Create/applyCreate, not
 			// specFromCreate; they are set here only to satisfy the coverage
-			// guard with zero effect on the produced spec.
+			// guard with zero effect on the produced spec. EnvGroupIDs too: its
+			// group refs reach the App as it is written (writeInitialApp).
 			OwnerID:                 "tea-probe",
+			EnvGroupIDs:             []string{"evg-probe"},
 			EnvironmentID:           "env-probe",
 			EnvironmentSpecified:    true,
 			Region:                  "oregon",

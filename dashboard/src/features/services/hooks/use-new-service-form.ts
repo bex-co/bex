@@ -20,6 +20,8 @@ import type {
   NewServiceForm,
 } from "@/features/services/lib/create-service-input";
 import { diskAllowed } from "@/features/services/lib/disk";
+import { useEnvGroups } from "@/features/env-groups/hooks/use-env-groups";
+import { linkableEnvGroupIds } from "@/features/services/lib/create-env-groups";
 import type {
   EnvVarEntry,
   SecretFileEntry,
@@ -54,6 +56,7 @@ interface PlainFields {
   healthCheckPath: string;
   preDeployCommand: string;
   disk: DiskDraft | null;
+  envGroups: string[];
   envVars: EnvVarEntry[];
   secretFiles: SecretFileEntry[];
   projectId: string | null;
@@ -103,6 +106,7 @@ export function useNewServiceForm(search: NewServiceSearch) {
     healthCheckPath: "",
     preDeployCommand: "",
     disk: null,
+    envGroups: [],
     envVars: [],
     secretFiles: [],
     projectId: search.projectId ?? null,
@@ -202,6 +206,22 @@ export function useNewServiceForm(search: NewServiceSearch) {
     set({ disk: null });
   }
 
+  // The workspace's groups, for Linked Environment Groups (w4/731): read once
+  // with the page, so the Advanced card opens on them, and again whenever a
+  // picker opens, as Render's does.
+  const envGroups = useEnvGroups({ poll: false });
+  // A group the chosen Environment cannot link (another Environment's, or
+  // one since deleted) leaves the draft, so Deploy never sends a link
+  // bex-api refuses; only a settled read decides it.
+  if (fields.envGroups.length > 0 && !envGroups.loading && !envGroups.error) {
+    const linkable = linkableEnvGroupIds(
+      envGroups.groups,
+      fields.environmentId,
+    );
+    const kept = fields.envGroups.filter((id) => linkable.has(id));
+    if (kept.length !== fields.envGroups.length) set({ envGroups: kept });
+  }
+
   // Switching source tab abandons whatever the previous tab had selected —
   // except a Public Git Branch, which returning to the same URL restores
   // (w4/240); it never carries over to a different repository URL.
@@ -245,6 +265,7 @@ export function useNewServiceForm(search: NewServiceSearch) {
     build,
     name,
     instanceTypes: offeredTypes,
+    envGroups,
     /** The plan catalog's read state, so the page can tell pending from a
      *  settled failure and retry it in place (w4/m218). */
     catalog: {

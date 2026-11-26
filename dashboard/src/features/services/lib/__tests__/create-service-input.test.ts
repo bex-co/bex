@@ -36,6 +36,7 @@ function form(overrides: Partial<NewServiceForm> = {}): NewServiceForm {
     healthCheckPath: "",
     preDeployCommand: "",
     disk: null,
+    envGroups: [],
     envVars: [],
     secretFiles: [],
     projectId: null,
@@ -1217,5 +1218,35 @@ describe("Disk at create (w4/m652)", () => {
     const f = form({ disk: { mountPath: "/var/data", sizeGB } });
     expect(createFormErrors(f).diskSize).toBeUndefined();
     expect(buildCreateServiceInput(f).disk?.sizeGB).toBe(sizeGB);
+  });
+});
+
+// w4/731: Render's create form links environment groups for every type and
+// source, so the create sends them, in the order chosen, whatever the shape.
+describe("buildCreateServiceInput envGroups", () => {
+  const envGroups = ["evg-b", "evg-a"];
+
+  it.each([
+    ["a web service from Git", form({ envGroups })],
+    [
+      "a static site",
+      form({ serviceType: "static_site", publishPath: "dist", envGroups }),
+    ],
+    [
+      "a cron job",
+      form({
+        serviceType: "cron_job",
+        schedule: "0 * * * *",
+        command: "run",
+        envGroups,
+      }),
+    ],
+    ["an existing image", form({ tab: "image", image: "nginx:1", envGroups })],
+  ])("sends %s's linked groups in their order", (_, f) => {
+    expect(buildCreateServiceInput(f).envGroups).toEqual(envGroups);
+  });
+
+  it("sends none when no group is linked", () => {
+    expect(buildCreateServiceInput(form()).envGroups).toBeUndefined();
   });
 });

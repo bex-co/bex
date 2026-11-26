@@ -85,6 +85,16 @@ func (f *fakeEnvGroups) WithInitialEnvGroups(_ context.Context, names []string, 
 	return nil
 }
 
+// WithInitialEnvGroupIDs is WithInitialEnvGroups for the create form's ids;
+// no Blueprint sends them.
+func (f *fakeEnvGroups) WithInitialEnvGroupIDs(ctx context.Context, ids []string, a *appv1alpha1.App, create, complete func() error) error {
+	return f.WithInitialEnvGroups(ctx, ids, a, create, complete)
+}
+
+func (f *fakeEnvGroups) CheckInitialEnvGroupIDs(context.Context, []string, *appv1alpha1.App) error {
+	return nil
+}
+
 func (f *fakeEnvGroups) GroupNames(ctx context.Context) ([]string, error) {
 	groups, err := f.GroupIDsByName(ctx)
 	if err != nil {

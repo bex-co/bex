@@ -61,6 +61,7 @@ import { CreateEnvVarEditor } from "@/features/services/components/create-env-va
 import { buildFilterPatternError } from "@/features/services/lib/build-settings-validation";
 import { CreateSecretFileEditor } from "@/features/services/components/create-secret-file-editor";
 import { CreateDiskFields } from "@/features/services/components/create-disk-fields";
+import { CreateEnvGroupFields } from "@/features/services/components/create-env-group-fields";
 import {
   buildCreateServiceInput,
   buildShape,
@@ -123,6 +124,7 @@ export function NewServicePage({
     name,
     instanceTypes,
     catalog,
+    envGroups,
   } = useNewServiceForm({ ...search, type: serviceType });
 
   // The breadcrumb's type switcher moves between the five create paths, which
@@ -662,12 +664,21 @@ export function NewServicePage({
 
               {/* Render's Advanced card, in its order (docs/render-artifacts/
                   new-service-wizard.md § The Advanced section): Secret Files,
-                  Disk, Health Check Path, the Docker build's settings, Docker
-                  Command, Pre-Deploy Command, Auto-Deploy, Build Filters. */}
+                  Linked Environment Groups, Disk, Health Check Path, the
+                  Docker build's settings, Docker Command, Pre-Deploy Command,
+                  Auto-Deploy, Build Filters. */}
               <CreateAdvanced forceOpen={advancedInvalid}>
                 <CreateSecretFileEditor
                   rows={form.secretFiles}
                   onChange={(secretFiles) => set({ secretFiles })}
+                />
+
+                <CreateEnvGroupFields
+                  groups={envGroups.groups}
+                  environmentId={form.environmentId}
+                  value={form.envGroups}
+                  onChange={(next) => set({ envGroups: next })}
+                  onOpen={() => void envGroups.refetch().catch(() => {})}
                 />
 
                 {shape.showDisk ? (

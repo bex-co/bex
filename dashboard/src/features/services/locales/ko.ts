@@ -4558,6 +4558,27 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Create form Advanced: drops the drafted disk (Render's 'Remove disk', w4/m652)",
   },
+  "services.createEnvGroupsDescription": {
+    message:
+      "환경 그룹은 여러 서비스에서 함께 사용할 수 있는 환경 변수와 시크릿 파일의 모음입니다.",
+    description:
+      "Create form Advanced: Linked Environment Groups' description, Render's copy (w4/731)",
+  },
+  "services.createEnvGroupPlaceholder": {
+    message: "환경 그룹 선택…",
+    description:
+      "Create form Advanced: placeholder of a Linked Environment Groups picker with no group chosen (Render's 'Select an environment group…', w4/731)",
+  },
+  "services.createEnvGroupRowLabel": {
+    message: "연결된 환경 그룹 {n}",
+    description:
+      "Create form Advanced: accessible name of the picker holding the nth linked environment group (w4/731)",
+  },
+  "services.createEnvGroupAddLabel": {
+    message: "환경 그룹 연결",
+    description:
+      "Create form Advanced: accessible name of the empty picker that links one more environment group (w4/731)",
+  },
   "services.diskLoadErrorTitle": {
     message: "이 서비스의 디스크를 불러올 수 없습니다",
     description: "Disk tab error state title",

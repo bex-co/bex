@@ -4588,6 +4588,27 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "Create form Advanced: drops the drafted disk (Render's 'Remove disk', w4/m652)",
   },
+  "services.createEnvGroupsDescription": {
+    message:
+      "環境グループは、複数のサービスで共有できる環境変数とシークレットファイルのまとまりです。",
+    description:
+      "Create form Advanced: Linked Environment Groups' description, Render's copy (w4/731)",
+  },
+  "services.createEnvGroupPlaceholder": {
+    message: "環境グループを選択…",
+    description:
+      "Create form Advanced: placeholder of a Linked Environment Groups picker with no group chosen (Render's 'Select an environment group…', w4/731)",
+  },
+  "services.createEnvGroupRowLabel": {
+    message: "リンクされた環境グループ {n}",
+    description:
+      "Create form Advanced: accessible name of the picker holding the nth linked environment group (w4/731)",
+  },
+  "services.createEnvGroupAddLabel": {
+    message: "環境グループをリンク",
+    description:
+      "Create form Advanced: accessible name of the empty picker that links one more environment group (w4/731)",
+  },
   "services.diskLoadErrorTitle": {
     message: "このサービスのディスクを読み込めませんでした",
     description: "Disk tab error state title",

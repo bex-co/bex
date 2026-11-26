@@ -67,6 +67,11 @@ export interface CreateServiceInput {
    * web services, private services and background workers only.
    */
   disk?: { name: string; mountPath: string; sizeGB: number };
+  /**
+   * Render's Linked Environment Groups at create (w4/731): the groups' `evg-`
+   * ids, linked before the first deploy. GraphQL only, as on Render.
+   */
+  envGroups?: string[];
   envVars?: EnvVarEntry[];
   secretFiles?: SecretFileEntry[];
 }
