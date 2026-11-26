@@ -911,6 +911,9 @@ func TestSandboxSessionMicroUSD(t *testing.T) {
 		// GiB-seconds 7 (7.38…), but together 31 (30.72…).
 		{store.AgentSessionSandboxUsage{CPUSeconds: 1, MemoryGBSeconds: 2}, 31},
 		{store.AgentSessionSandboxUsage{ComputeMilliSeconds: 1_800_000, CPUSeconds: 900, MemoryGBSeconds: 8 * 3600}, 172_150},
+		// Production's first agent session after the switch (w6/m566 t006):
+		// 522 s of agent-4c-8g using 144 CPU-seconds read computeUSD 0.018792.
+		{store.AgentSessionSandboxUsage{CPUSeconds: 144, MemoryGBSeconds: 4177}, 18_792},
 	} {
 		if got := Default.SandboxSessionMicroUSD(tc.usage); got != tc.want {
 			t.Errorf("SandboxSessionMicroUSD(%+v) = %d, want %d", tc.usage, got, tc.want)

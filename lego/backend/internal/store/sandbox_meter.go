@@ -373,8 +373,11 @@ func (s *PGStore) sandboxUsageSwitch(usageBilled bool) time.Time {
 // billed as Render bills one never marks a row; the reads leave its rows
 // before SandboxUsageBilledFrom out of the bill by their hour.
 func (s *PGStore) sandboxUsageUnbilled(usageBilled bool, window time.Time) bool {
-	switchAt := s.sandboxUsageSwitch(usageBilled)
-	return !usageBilled && (switchAt.IsZero() || window.Before(switchAt))
+	if usageBilled {
+		return false
+	}
+	at := s.AgentSandboxUsageBilledFrom
+	return at.IsZero() || window.Before(at)
 }
 
 // accrueSandboxInterval adds the running interval prior.observedAt..end to the
@@ -418,19 +421,33 @@ func (s *PGStore) accrueSandboxInterval(ctx context.Context, tx pgx.Tx, workspac
 	// switch and the memory billed from it (w6/m566). A sandbox billed as
 	// Render bills one is never a session's, and a sandbox no session adopted
 	// updates nothing.
-	if prior.usageBilled || compute == 0 && memory == 0 {
+	if prior.usageBilled {
+		return nil
+	}
+	return addAgentSessionSandboxUsage(ctx, tx, workspaceID, sandboxID, AgentSessionSandboxUsage{ComputeMilliSeconds: compute, MemoryGBSeconds: memory})
+}
+
+// addAgentSessionSandboxUsage adds what a sandbox's meters just billed to the
+// totals of the agent session that adopted it, in the meter's transaction; a
+// sandbox no session adopted updates nothing, and nothing billed writes
+// nothing.
+func addAgentSessionSandboxUsage(ctx context.Context, tx pgx.Tx, workspaceID, sandboxID string, u AgentSessionSandboxUsage) error {
+	if u == (AgentSessionSandboxUsage{}) {
 		return nil
 	}
 	_, err := tx.Exec(ctx, `
 		UPDATE agent_session_sandboxes
-		SET compute_milli_seconds = compute_milli_seconds + $3, memory_gb_seconds = memory_gb_seconds + $4
-		WHERE workspace_id = $1 AND sandbox_id = $2`, workspaceID, sandboxID, compute, memory)
+		SET compute_milli_seconds = compute_milli_seconds + $3, cpu_seconds = cpu_seconds + $4,
+		    memory_gb_seconds = memory_gb_seconds + $5
+		WHERE workspace_id = $1 AND sandbox_id = $2`,
+		workspaceID, sandboxID, u.ComputeMilliSeconds, u.CPUSeconds, u.MemoryGBSeconds)
 	return err
 }
 
-// lockSandboxMeter serializes one sandbox's accruals with each other and with
-// the agent_session_bind_sandbox trigger (migration 0206), which seeds a newly
-// adopted sandbox's session total from usage_hourly under the same key.
+// lockSandboxMeter serializes one sandbox's accruals, the cursor's and the CPU
+// meter's, with each other and with the agent_session_bind_sandbox trigger
+// (migrations 0206, 0345), which seeds a newly adopted sandbox's session totals
+// from usage_hourly under the same key.
 func lockSandboxMeter(ctx context.Context, tx pgx.Tx, workspaceID, sandboxID string) error {
 	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, workspaceID+"|"+sandboxID)
 	return err

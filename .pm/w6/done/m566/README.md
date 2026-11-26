@@ -1,6 +1,6 @@
 # w6 · m566 — An agent session's sandbox is billed for the CPU it uses and the memory it is allocated, as a Render sandbox is
 
-**Worker:** worker6 **Goal:** an agent session's sandbox pays what a `/v1/sandboxes` sandbox pays for the same running time, used CPU at $0.084 per CPU-hour plus allocated memory at $0.0133 per GiB-hour, instead of the weighted allocated-shape charge. The session's cost and spend ceiling use the same figures. **Status:** blocked (t001–t005 done: from 2026-11-26T00:00:00Z an agent session's sandbox is billed for used CPU and allocated memory, `b8510dadf2`; t006's production check waits for production to run the switch)
+**Worker:** worker6 **Goal:** an agent session's sandbox pays what a `/v1/sandboxes` sandbox pays for the same running time, used CPU at $0.084 per CPU-hour plus allocated memory at $0.0133 per GiB-hour, instead of the weighted allocated-shape charge. The session's cost and spend ceiling use the same figures. **Status:** done (2026-11-26: production bills an agent session's sandbox for used CPU and allocated memory from 2026-11-26T00:00:00Z, and a session's `computeUSD` equals its billed rows to the micro-dollar on REST, GraphQL, MCP and the dashboard)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | t003 | [Cut agent sandboxes over to used CPU and allocated memory at one UTC hour](done/t003.md) — **DONE** | 2h | t002 |
 | t004 | [A session's cost and its spend ceiling price the same CPU and memory](done/t004.md) — **DONE** | 2h | t003 |
 | t005 | [ADR030 §17, ADR047 D6, ADR023 and the billing page say agent sessions are billed on use](done/t005.md) — **DONE** | 45m | t003, t004 |
-| t006 | [Production check: an idle agent sandbox hour and a session's cost after the cutover](t006.md) | 1h | t005 |
-| t007 | [Render parity](t007.md) | 30m | t006 |
-| t008 | [Simplify](t008.md) | 20m | t007 |
-| t009 | [Test coverage](t009.md) | 45m | t007 |
-| t010 | [Closeout](t010.md) | 10m | t008, t009 |
+| t006 | [Production check: an idle agent sandbox hour and a session's cost after the cutover](done/t006.md) — **DONE** | 1h | t005 |
+| t007 | [Render parity](done/t007.md) — **DONE** | 30m | t006 |
+| t008 | [Simplify](done/t008.md) — **DONE** | 20m | t007 |
+| t009 | [Test coverage](done/t009.md) — **DONE** | 45m | t007 |
+| t010 | [Closeout](done/t010.md) — **DONE** | 10m | t008, t009 |
 
 ## Definition of done
 
@@ -101,3 +101,56 @@
   3. Read one session whose sandbox ran after the instant. Its `outcome.cost.computeUSD` (REST `GET /v1/agent-sessions/<id>`, signed in through `scripts/qa-login.sh`, or the `bex` workspace's own session) equals its sandboxes' billed rows priced at the sheet's rates, to the micro-dollar: `agent_session_sandboxes` totals against `usage_hourly` sums.
   4. Record both, with the query and the hours read, in this README. Then do Render parity (t007), Simplify (t008), Test coverage (t009) and Closeout (t010).
 
+## Unblock record 2026-11-26 (/loopx w6, UTC)
+
+- **Source:** verified evidence, not a user decision. Affects t006–t010.
+- **The gate cleared.** Production's pin `2bd6e1f415d3` (`043827a8e8`, 2026-11-26T00:25Z) carries `b8510dadf2` (`git merge-base --is-ancestor b8510dadf2 2bd6e1f415d3`), and the date gate 2026-11-26T02:00Z has passed (read at 02:01Z).
+- **The switch ran on a binary that carries it.** The first pin to carry `b8510dadf2` is `7b046987bcd8` (`4b533337ab`, 2026-11-25T04:39Z). At 00:00Z production ran pin `cdaa0a248615` (bex-api ReplicaSet created 2026-11-25T17:55Z), which carries it too, so every hour from 00:00Z is read as written.
+- **Next (worker):** t006 on production, then t007–t010.
+
+
+## Production check 2026-11-26 (t006, /loopx w6, UTC)
+
+Read-only, on the replica `bex-db-1` of `hetzner-prod`, from 02:01Z to 02:10Z. The `bex` workspace's own sessions and usage were read signed in as the QA user.
+
+- **The switch landed on the hour.** In the `bex` workspace (`tea-d98210cbbpdc73dcrkvg`), the two `agent-4c-8g` sandboxes of the 23:00Z automation runs billed `sandbox_compute_seconds` (3,403,001 and 3,040,395 weighted milli-seconds), with their CPU and memory beside it marked `unbilled`. From 00:00Z on, every agent sandbox row is billed CPU or memory: no `sandbox_compute_seconds` row and none marked, 11 rows of 6 sandboxes by 02:10Z. No other workspace ran an agent sandbox in that time.
+- **The hour read: sandbox `6fa68772`, window 2026-11-26T00:00Z.** It belongs to session `ags-dc3nd34g1jgc73daga8g`, an automation's, and ran 00:00:16–00:08:58Z (522 s).
+  - `sandbox_memory_gb_seconds` 4,177, billed: 8 GiB × 522.19 s. That is $0.015432 at $0.0133 per GiB-hour.
+  - `sandbox_cpu_seconds` 144, billed: 0.28 of its 4 CPUs (7%). That is $0.003360 at $0.084 per CPU-hour.
+  - No `sandbox_compute_seconds` row. $0.018792 in all, where the weighted meter would have charged $0.0630 for the same 522 s ($0.434 an hour).
+  - The billing page, REST `GET /v1/usage`, GraphQL `usage` and MCP `get_usage` preview it as 0.04 CPU-hr ($0.00) and 1.16 GiB-hr ($0.02) at those rates. An hour of 8 GiB is 8 GiB-hr, $0.1064.
+- **No agent sandbox runs a full idle hour any more.** Since m563, an automation's sandbox closes at its harvest and a person's 5 minutes after its turn. None of the 45 `agent-4c-8g` intervals since 2026-11-23 ran an hour; the longest ran 1,963 s. So this check reads the definition of done's idle hour as the rate the rows bill per running second: memory of exactly 8 GiB × running seconds, the CPU used, and nothing weighted. An hour of that is $0.1064 of memory plus the CPU used. The three other sandboxes that finished since 00:00Z agree to the GiB-second: 4,772 for 596.6 s, 9,325 for 1,165.7 s and 8,730 for 1,091.3 s.
+- **A session's cost equals its rows to the micro-dollar.** For all eight sessions with a sandbox since 22:50Z, the `agent_session_sandboxes` totals equal the sums of each sandbox's billed `usage_hourly` rows. The two 23:00Z sessions carry only their weighted milli-seconds, since the CPU and memory marked `unbilled` are not theirs.
+
+| session | billed rows (CPU-s, GiB-s) | at the sheet's rates | `computeUSD` on REST, GraphQL, MCP |
+| --- | --- | --- | --- |
+| `ags-dc3nd34g1jgc73daga8g` | 144, 4,177 | $0.01879169 | 0.018792 |
+| `ags-dc3o9603teic73bl0rm0` | 1,710, 9,325 | $0.07435069 | 0.074351 |
+
+- **Reproduce.**
+  - **The rows.** `kubectl --context hetzner-prod -n bex-system exec -i bex-db-1 -c postgres -- psql -U postgres -d bex`, with `SET default_transaction_read_only = on`. Read `sandbox_running_intervals` left-joined to `agent_session_sandboxes` on `(workspace_id, sandbox_id)` where `coalesce(ended_at, now()) >= '2026-11-25T23:00Z'`, and `usage_hourly` where `resource_kind = 'sandbox' AND window_start >= '2026-11-25T23:00Z'`.
+  - **The session totals.** `agent_session_sandboxes` grouped by `session_id`, against `usage_hourly` sums per `kind` and `unbilled`, joined on `service_id = sandbox_id`.
+  - **The cost.** `GET https://api.bex.co/v1/agent-sessions/<id>` with the QA session (`bash scripts/qa-login.sh`, then `curl -b <jar> -H 'Origin: https://dashboard.bex.co'`), GraphQL `agentSession(id) { outcome { cost { computeUSD } } }`, and `get_agent_session` on `/mcp` and `/mcp/cloud-agents` through `scripts/qa-mcp.py`, with an `agents: read` key minted for the run and revoked after it.
+
+## Render parity 2026-11-26 (t007, /loopx w6, UTC)
+
+- **One figure on every surface.** For both sessions above, REST, GraphQL, MCP `get_agent_session` on `/mcp` and on `/mcp/cloud-agents` return the same `cost` (`modelUSD`, `computeUSD`, `totalUSD`).
+  - The dashboard's session page for `ags-dc3nd34g1jgc73daga8g` reads "$0.108593 total cost", and its breakdown reads "model $0.089801 of the $20.00 session limit, compute $0.018792". The ceiling counts model spend only (ADR094 D8).
+  - REST `GET /v1/usage`, GraphQL `usage` and MCP `get_usage` give the same CPU-hr and GiB-hr lines, and the same `agentSandboxUsageBilledFrom`, `2026-11-26T00:00:00Z`.
+  - The billing page of the `bex` workspace reads: "An agent session's sandbox is billed this way from Nov 26, 2026, 12:00 AM UTC; before then, its usage is billed as sandbox compute."
+- **Render.** Render bills a running sandbox for the CPU it actively uses and the memory it is allocated (ADR104 D8), and nothing while it is closed. That is what the rows show: only running seconds are billed, and `6fa68772` has no row after 00:08:58Z.
+- **Devin.** Devin bills a session's awake time. With m563 an agent sandbox is awake for its turn plus at most 5 minutes, and from the switch that time bills its memory and the CPU it used.
+- **Drift found:** none, so nothing was filed.
+
+## Simplify and test coverage 2026-11-26 (t008, t009, /loopx w6, UTC)
+
+- **Simplify (t008).** `/simplify` over the code `506b9b40ef` and `b8510dadf2` changed, with no change in behavior:
+  - One helper, `addAgentSessionSandboxUsage`, now adds a sandbox's newly billed meters to its session's totals. It replaces the two copies of that `UPDATE agent_session_sandboxes` in the cursor's accrual and in the CPU meter.
+  - `sandboxUsageUnbilled` reads `AgentSandboxUsageBilledFrom` directly instead of going through `sandboxUsageSwitch` and testing the flag twice.
+  - `SandboxSessionMicroUSD` uses `microUSDPerUSD`.
+  - The billing card no longer gates the agent instant on the sandbox instant a second time: its note is rendered only inside that block.
+  - Four comments that t003 left stale now say "before agentBilledFrom" or name both trigger migrations.
+  - Not taken: dropping the cached `sandboxUsageUnits` (one rate kept two ways, a defensible cache), taking the meter lock only for agent sandboxes (one round trip per sandbox-hour), and building the switch date formatter only when the note shows.
+- **Test coverage (t009).** The milestone's tests already cover agent CPU rows across the switch, the outbox and the export totals (`TestAgentSandboxUsageSwitchPG`), session totals equal to billed rows (`TestAgentSessionUsageAcrossAgentSwitchPG`), the Stripe quantity, the price and the outcome cost. Added:
+  - `TestAgentSessionUsageAcrossAgentSwitchPG` gives its session a `maxSpendUSD` of 1.00 and one model request of 0.25. After the session's sandboxes bill CPU and memory on both sides of the switch, `AgentSessionCeilingHeadroom` must still be 0.75. A mutation that counts the session's sandbox usage as spend fails it with headroom 0.661470.
+  - `TestSandboxSessionMicroUSD` pins the production session read in t006 (144 CPU-seconds, 4,177 GiB-seconds → 18,792 micro-USD).

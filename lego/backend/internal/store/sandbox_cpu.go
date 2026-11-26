@@ -63,7 +63,7 @@ type SandboxCPUStats struct {
 // stays running therefore ends one interval and starts the next at the same
 // instant: no gap and no overlap. The CPU meter reads every interval; one of a
 // sandbox not billed on use (an agent session's) records its CPU unbilled
-// (w6/m566).
+// before AgentSandboxUsageBilledFrom (w6/m566).
 func syncSandboxInterval(ctx context.Context, tx pgx.Tx, obs SandboxMeterObservation) error {
 	at := obs.ObservedAt.UTC()
 	running := obs.Phase == "running" && obs.PodName != ""
@@ -197,10 +197,8 @@ func (s *PGStore) AccrueSandboxCPUWindow(ctx context.Context, w SandboxCPUWindow
 		if err != nil {
 			return false, err
 		}
-		if billed > 0 && !usageBilled {
-			if _, err := tx.Exec(ctx, `
-				UPDATE agent_session_sandboxes SET cpu_seconds = cpu_seconds + $3
-				WHERE workspace_id = $1 AND sandbox_id = $2`, w.WorkspaceID, w.SandboxID, billed); err != nil {
+		if !usageBilled {
+			if err := addAgentSessionSandboxUsage(ctx, tx, w.WorkspaceID, w.SandboxID, AgentSessionSandboxUsage{CPUSeconds: billed}); err != nil {
 				return false, err
 			}
 		}

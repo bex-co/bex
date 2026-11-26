@@ -24,6 +24,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
@@ -162,17 +163,26 @@ func TestAgentSessionComputeAttributionPG(t *testing.T) {
 // before the switch, the CPU and memory from it, and none of the CPU and
 // memory marked unbilled before it. The binding seeds all three from what the
 // meters wrote before the session adopted the sandbox, and the totals equal
-// the sums of the sandbox's billed usage_hourly rows of each kind.
+// the sums of the sandbox's billed usage_hourly rows of each kind. The
+// session's spend ceiling still counts its model requests alone.
 func TestAgentSessionUsageAcrossAgentSwitchPG(t *testing.T) {
 	st, ws := sandboxCPUTestStore(t, "agent-usage-switch")
 	ctx := context.Background()
 	agentFrom := time.Date(2026, 11, 26, 0, 0, 0, 0, time.UTC)
 	st.SandboxUsageBilledFrom = agentFrom.Add(-8 * 24 * time.Hour)
 	st.AgentSandboxUsageBilledFrom = agentFrom
+	ceiling := int64(1_000_000) // maxSpendUSD 1.00
 	session, err := st.CreateAgentSession(ctx, AgentSession{
 		WorkspaceID: ws, AgentConfig: []byte(`{"agent":"claude","task":"t"}`), InitialPrompt: "p",
+		MaxSpendMicroUSD: &ceiling,
 	})
 	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.RecordAgentModelUsage(ctx, AgentModelUsage{
+		RequestID: ids.New(ids.AgentModelRequest), WorkspaceID: ws, SessionID: session.ID,
+		Model: "m/a", At: agentFrom.Add(5 * time.Minute), CostSource: AgentModelCostReported, PriceMicroUSD: 250_000,
+	}); err != nil {
 		t.Fatal(err)
 	}
 	observe := func(sandbox, phase string, at time.Time) {
@@ -296,5 +306,13 @@ func TestAgentSessionUsageAcrossAgentSwitchPG(t *testing.T) {
 		if rows[k] != v {
 			t.Errorf("usage %+v = %d, want %d", k, rows[k], v)
 		}
+	}
+
+	// The maxSpendUSD ceiling bounds model spend only (ADR094 D8), on both
+	// sides of the switch: the session's billed CPU and memory leave its
+	// headroom at the ceiling minus its one model request.
+	headroom, bounded, err := st.AgentSessionCeilingHeadroom(ctx, ws, session.ID)
+	if err != nil || !bounded || headroom != ceiling-250_000 {
+		t.Errorf("ceiling headroom = %d bounded=%v err=%v, want %d: sandbox usage is not model spend", headroom, bounded, err, ceiling-250_000)
 	}
 }

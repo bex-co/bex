@@ -442,9 +442,9 @@ export function ChargesCard({
   // A fixed instant formatted in UTC, so SSR and the client agree.
   const sandboxSwitch = parseInstant(estimatedCost?.sandboxUsageBilledFrom);
   // An agent session's sandbox switched later, at its own instant (w6/m566).
-  const agentSandboxSwitch = sandboxSwitch
-    ? parseInstant(estimatedCost?.agentSandboxUsageBilledFrom)
-    : null;
+  const agentSandboxSwitch = parseInstant(
+    estimatedCost?.agentSandboxUsageBilledFrom,
+  );
   const switchDate = new Intl.DateTimeFormat(i18n.language || "en", {
     dateStyle: "medium",
     timeStyle: "short",

@@ -228,7 +228,7 @@ func (s *Sheet) SandboxSessionMicroUSD(u store.AgentSessionSandboxUsage) int64 {
 			usd.Add(usd, new(big.Rat).Mul(big.NewRat(part.quantity, 1), part.rate))
 		}
 	}
-	usd.Mul(usd, big.NewRat(1_000_000, 1))
+	usd.Mul(usd, big.NewRat(microUSDPerUSD, 1))
 	n, _ := new(big.Int).SetString(usd.FloatString(0), 10)
 	return n.Int64()
 }
