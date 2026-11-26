@@ -1,6 +1,6 @@
 # w1 · m646 — A rollback's Confirm Rollback page lists what the rollback changes, as Render's does
 
-**Worker:** worker1 **Goal:** before a rollback, the dashboard compares the live deploy's configuration with the target deploy's, as Render's `rollbackComparison` does. It shows each changed command, health check path and instance count as live → target values, names each changed env var key, secret file and env group, warns about the plan, and never shows an env var value or a secret file's contents. **Status:** blocked (t001–t004 and t006–t008 done, shipped in `6e614db0b0`; t005 waits for a production pin carrying it, then t009)
+**Worker:** worker1 **Goal:** before a rollback, the dashboard compares the live deploy's configuration with the target deploy's, as Render's `rollbackComparison` does. It shows each changed command, health check path and instance count as live → target values, names each changed env var key, secret file and env group, warns about the plan, and never shows an env var value or a secret file's contents. **Status:** blocked (t001–t004 and t006–t008 done, shipped in `6e614db0b0`; t005's production walk on 2026-11-26 verified DoD 1–3 and found DoD 4 short at 390 px, fixed in `f0eaf57377`; t005 re-checks DoD 4 on a pin carrying it, then t009)
 
 ## Tasks (in order)
 
@@ -32,6 +32,23 @@ The orchestrator re-checked Render in a headed browser, signed in to a Render Pr
 - **Env vars** are a sorted KEY / VALUE table with `••••••••••••` values, not sentences.
 - Render also has an **Instances** row, static-site wording for env groups, and the static and Auto-Deploy notices.
 - A **missing snapshot on either side** shows Render's one "Unable to load configuration…" sentence (DoD 3 amended).
+
+## Unblock (2026-11-26)
+
+- **Affects:** t005, then t009.
+- **Source:** verified evidence. Production's newest pin, `chore(deploy): pin platform images to 11695fb886cb` (`ec6211f2ca`), carries `6e614db0b0` (`git merge-base --is-ancestor 6e614db0b0 11695fb886cb` exits 0), so the gate `pin must carry 6e614db0b0` holds.
+- **Next:** a worker walks t005 on production in `bex-canary` as the QA user, the 1440/390 px loading-vs-ready check of the Rollback page included, then closes with t009. No user action.
+
+## Production walk (t005, 2026-11-26)
+
+On production pin `11695fb886cb`, as the QA user. The disposable web service `qa-20261126-m646-rb` (disposable) in `bex-canary` ran `traefik/whoami:v1.10.3` with env vars `QA_ALPHA` and `QA_BETA`, secret file `qa-secret.txt` and health check path `/`. A save-only env patch then updated `QA_ALPHA`, deleted `QA_BETA`, added `QA_GAMMA` and changed the file's contents, and the health check path became `/health`. That deploy went live, then a manual deploy with no change followed. The service was deleted afterwards.
+
+- **DoD 1 holds.** Rollback on the first deploy links to `…/deploys/<id>/rollback`. Its Confirm Rollback page lists Health Check Path (`- /health`, `+ /`), the Environment Variables table (`QA_ALPHA` on both lines, `QA_BETA` on `-`, `QA_GAMMA` on `+`, every value `••••••••••••`) and "Secret file `qa-secret.txt` was changed after this deploy. The rollback will revert to the original contents." No env var value or file content appears in the page's HTML or in the `RollbackComparison` response, which carries key and file names only. Cancel returns to the deploy page and dispatches nothing. At 390 px the page has no horizontal scroll.
+- **DoD 2 holds.** Rollback on the second deploy, after the unchanged redeploy, says "No configuration changes since this deploy."
+- **DoD 3 holds.** A 2026-08 deploy of a service in the `bex` workspace, whose release predates configuration records (opened and cancelled), shows "Unable to load configuration for the current live deploy. Rolling back to this deploy could cause unanticipated configuration changes." That service has Auto-Deploy on, and the page also shows Render's Auto-Deploy notice. The disposable service has it off and shows none.
+- **DoD 4: the comparison's loading frame matches its ready frame.** With the `RollbackComparison` request held, the spinner frame is 148 px, as the empty and unavailable states are at both widths. The card is 231 px at 1440 and 251 px at 390, and the buttons do not move when the answer lands. A comparison with rows grows below the frame, as Render's does.
+- **DoD 4: the route's pending skeleton did not match at 390 px.** With the route chunk held, the skeleton's Confirm Rollback card header is 81 px at both widths. The ready one is 81 px at 1440 but 101 px at 390, because the lead wraps onto a second line, so the comparison and buttons dropped 20 px when the page landed. Fixed in `f0eaf57377`: the skeleton now lays out the ready title, lead and button labels invisibly under its bars (`ReservedText`, `ReservedButton`).
+- **Not a defect:** above the card, the deploy header skeleton reserves the fullest header (`deploy-page-skeletons.tsx`, shared with the deploy page). It has the id line and seven facts, so a header with fewer facts settles upward when the page lands: 27 px for the image deploy at 1440, 32 px at 390, and 55 px for the 2026-08 git deploy at 1440.
 
 ## Render parity (t006)
 
