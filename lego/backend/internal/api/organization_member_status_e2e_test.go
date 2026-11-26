@@ -134,14 +134,24 @@ func TestOrgUserAuthStatusE2E(t *testing.T) {
 		t.Errorf("an unreadable account answered %v, want an error", out["data"])
 	}
 
-	// A Member cannot list, mint or revoke the org's audit-log keys.
+	// A Member cannot list, mint or revoke the org's audit-log keys. Minting
+	// and revoking refuse them as orgUserAuthStatus does, not by telling them
+	// the org they are in was not found (production answered that, w1/m657
+	// t007); someone outside the org is told it was not found. This server
+	// has no key store, so the list only has to refuse.
+	list := fmt.Sprintf(`{ organization(organizationId: %q) { organizationAPITokens { id } } }`, orgID)
+	if errs, _ := e.gql(bob, list)["errors"].([]any); len(errs) == 0 {
+		t.Errorf("a Member ran %s", list)
+	}
 	for _, q := range []string{
-		fmt.Sprintf(`{ organization(organizationId: %q) { organizationAPITokens { id } } }`, orgID),
 		fmt.Sprintf(`mutation { provisionOrganizationAuditLogToken(organizationId: %q, label: "x") { token } }`, orgID),
 		fmt.Sprintf(`mutation { revokeOrganizationAPIToken(organizationId: %q, tokenId: "x") }`, orgID),
 	} {
-		if errs, _ := e.gql(bob, q)["errors"].([]any); len(errs) == 0 {
-			t.Errorf("a Member ran %s", q)
+		if code := graphqlCode(e.gql(bob, q)); code != "FORBIDDEN" {
+			t.Errorf("a Member running %s answered %q, want FORBIDDEN", q, code)
+		}
+		if code := graphqlCode(e.gql(carol, q)); code != core.CodeOrganizationNotFound {
+			t.Errorf("someone outside the org running %s answered %q", q, code)
 		}
 	}
 }

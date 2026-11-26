@@ -1,5 +1,6 @@
 import { Lock } from "lucide-react";
 import { Badge } from "@/common/components/ui/badge";
+import { ReservedBadge } from "@/common/components/reserved-skeleton";
 import { Button } from "@/common/components/ui/button";
 import {
   Dialog,
@@ -17,7 +18,10 @@ import {
 } from "@/features/avatars/components/avatar";
 import type { OrganizationMember } from "@/features/organizations/hooks/use-organization-members";
 import { useOrgUserAuthStatus } from "@/features/organizations/hooks/use-org-user-auth-status";
-import { loginMethodLabel } from "@/features/organizations/lib/login-methods";
+import {
+  LOGIN_METHODS,
+  loginMethodLabel,
+} from "@/features/organizations/lib/login-methods";
 import { ROLES, type Role } from "@/features/team/types";
 import { WORKSPACE_PRIVACY_KEYS } from "@/features/workspaces/types";
 import {
@@ -124,9 +128,7 @@ export function OrganizationMemberDetailsDialog({
                   </li>
                 </ul>
               ) : (
-                <p role="status" className="text-muted-foreground text-sm">
-                  {t("organizations.detailsLoginStatusLoading")}
-                </p>
+                <LoginStatusFrame />
               )}
             </section>
           ) : null}
@@ -138,6 +140,40 @@ export function OrganizationMemberDetailsDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * The status rows while orgUserAuthStatus is read (w1/m657 t007): each row's
+ * label as itself and its badge's box, so the dialog keeps its height when the
+ * answer lands. The methods are the ones bex-api lists, in its order
+ * (`members.OrgUserAuthStatus`).
+ */
+function LoginStatusFrame() {
+  const { t } = useTranslations();
+  const password = t("organizations.loginMethodPassword");
+  return (
+    <>
+      <span role="status" className="sr-only">
+        {t("organizations.detailsLoginStatusLoading")}
+      </span>
+      <ul className="text-sm" aria-hidden="true">
+        {LOGIN_METHODS.map((method) => (
+          <li key={method} className={STATUS_ROW}>
+            <span>{loginMethodLabel(method, password)}</span>
+            <ReservedBadge variant="outline">
+              {t("organizations.loginNotSignedIn")}
+            </ReservedBadge>
+          </li>
+        ))}
+        <li className={STATUS_ROW}>
+          <span>{t("organizations.loginTwoFactor")}</span>
+          <ReservedBadge variant="outline">
+            {t("organizations.loginTwoFactorNotEnabled")}
+          </ReservedBadge>
+        </li>
+      </ul>
+    </>
   );
 }
 

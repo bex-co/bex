@@ -44,8 +44,7 @@ import {
 } from "@/features/organizations/components/organization-members-frame";
 import {
   NAME_ROW_CLASS,
-  ORGANIZATION_KEYS_EMPTY_CLASS,
-  OrganizationApiKeysTable,
+  OrganizationApiKeysFrame,
   OrganizationAuditLogKeysSection,
   OrganizationAuditLogsCardHeader,
   OrganizationAuditNoPermission,
@@ -327,16 +326,7 @@ export function OrganizationSettingsSkeleton({
               {readOnly ? (
                 <OrganizationKeysNoPermission />
               ) : (
-                <div className="space-y-2 overflow-x-auto">
-                  <OrganizationApiKeysTable />
-                  <p className={ORGANIZATION_KEYS_EMPTY_CLASS}>
-                    <span className="relative inline-block">
-                      <ReservedText>
-                        {t("organizations.auditKeysEmpty")}
-                      </ReservedText>
-                    </span>
-                  </p>
-                </div>
+                <OrganizationApiKeysFrame />
               )}
             </OrganizationAuditLogKeysSection>
           </CardContent>

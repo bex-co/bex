@@ -24,6 +24,7 @@ import { RelativeAge } from "@/common/components/relative-time";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   ORGANIZATION_KEYS_EMPTY_CLASS,
+  OrganizationApiKeysFrame,
   OrganizationApiKeysTable,
   OrganizationAuditLogKeysSection,
   OrganizationKeysNoPermission,
@@ -73,9 +74,14 @@ export function OrganizationAuditLogKeys({
       {!canManage ? (
         <OrganizationKeysNoPermission />
       ) : loading ? (
-        <p role="status" className="text-muted-foreground text-sm">
-          {t("organizations.auditKeysLoading")}
-        </p>
+        // The empty list's frame, as the route's pending frame draws it, so
+        // the section keeps its height while its keys are read (w1/m657 t007).
+        <div>
+          <span role="status" className="sr-only">
+            {t("organizations.auditKeysLoading")}
+          </span>
+          <OrganizationApiKeysFrame />
+        </div>
       ) : failed ? (
         <div role="alert" className="space-y-3">
           <p className="text-destructive text-sm">

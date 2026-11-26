@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/common/components/ui/table";
 import type { WorkspaceLoginRequirement } from "@/common/apollo/auth-error-link";
+import { ReservedText } from "@/common/components/reserved-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { MAX_EXPORT_DAYS } from "@/features/audit/lib/audit-csv";
 import { LoginRequirementRow } from "@/features/workspaces/components/login-requirement-row";
@@ -174,6 +175,26 @@ export function OrganizationApiKeysTable({
 /** The line under the table when the org has no keys (Render's). */
 export const ORGANIZATION_KEYS_EMPTY_CLASS =
   "bg-muted/40 text-muted-foreground rounded-lg p-4 text-center text-sm";
+
+/**
+ * The keys list before its keys are known, for the route's pending frame and
+ * for the section while its own read is in flight (w1/m657 t007): the table's
+ * header and the empty line's box, so an org without keys lands with no
+ * shift and each key adds its row below, as the ready list does.
+ */
+export function OrganizationApiKeysFrame() {
+  const { t } = useTranslations();
+  return (
+    <div className="space-y-2 overflow-x-auto" aria-hidden="true">
+      <OrganizationApiKeysTable />
+      <p className={ORGANIZATION_KEYS_EMPTY_CLASS}>
+        <span className="relative inline-block">
+          <ReservedText>{t("organizations.auditKeysEmpty")}</ReservedText>
+        </span>
+      </p>
+    </div>
+  );
+}
 
 /** Audit Logs' export, for anyone but an Owner (Render's text). */
 export function OrganizationAuditNoPermission() {

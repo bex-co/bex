@@ -5,6 +5,7 @@ import { OrganizationMemberDetailsDialog } from "@/features/organizations/compon
 import { loginMethodLabel } from "@/features/organizations/lib/login-methods";
 import type { OrganizationMember } from "@/features/organizations/hooks/use-organization-members";
 import {
+  heldLink,
   orgWorkspace,
   scriptedClient,
 } from "@/features/organizations/__tests__/org-fixtures";
@@ -54,6 +55,18 @@ const STATUS = {
     ],
   },
 };
+
+/** Each Login & Authentication Status row: its label and its badge's box. */
+function statusRows(dialog: HTMLElement) {
+  const section = within(dialog)
+    .getByText("Login & Authentication Status")
+    .closest("section")!;
+  return [...section.querySelectorAll("li")].map((row) => ({
+    label: row.firstElementChild?.textContent,
+    badges: row.querySelectorAll("[data-slot=badge]").length,
+    className: row.className,
+  }));
+}
 
 function renderDetails(
   canViewAuthStatus: boolean,
@@ -116,6 +129,41 @@ describe("OrganizationMemberDetailsDialog", () => {
         variables: { userId: "usr-ada", organizationId: "org-1" },
       },
     ]);
+  });
+
+  // On production the section said "Loading login status…" on one line, so
+  // the dialog grew from 288 to 457 px when the status landed (t007).
+  it("holds each status row while the status loads", async () => {
+    const held = heldLink();
+    const script = scriptedClient({ orgUserAuthStatus: () => STATUS }, [
+      held.link,
+    ]);
+    render(
+      <OrganizationMemberDetailsDialog
+        organizationId="org-1"
+        member={member()}
+        canViewAuthStatus
+        workspace={(id) => WORKSPACES.find((w) => w.id === id)}
+        onClose={vi.fn()}
+      />,
+      { wrapper: script.wrapper },
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("status")).toHaveTextContent(
+      "Loading login status…",
+    );
+    const loading = statusRows(dialog);
+    expect(loading.map((row) => row.label)).toEqual([
+      "Password",
+      "Google",
+      "Github",
+      "Two-factor Authentication",
+    ]);
+
+    held.release();
+    expect(await within(dialog).findAllByText("Signed in")).toHaveLength(2);
+    expect(within(dialog).queryByRole("status")).toBeNull();
+    expect(statusRows(dialog)).toEqual(loading);
   });
 
   it("shows anyone else the workspaces only, and asks nothing", () => {

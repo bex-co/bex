@@ -78,17 +78,21 @@ func (s *Service) organizationKeys() (OrganizationKeyStore, error) {
 }
 
 // authorizeOrganizationKeys holds the caller to the org's Owners, Render's
-// manageOrganization: can_manage on the org, then their role in the source of
-// truth. can_manage is a write relation, so OpenFGA is asked uncached. Anyone
-// outside the org, and anyone the org's OpenFGA tuples do not make an Owner,
-// is told the org was not found, so an org id reveals nothing; a Member or
-// Guest the store still lists is refused 403.
+// manageOrganization. Anyone the org does not hold (no can_view on it) is told
+// the org was not found, so an org id reveals nothing. A Member or Guest is
+// refused 403 FORBIDDEN, as orgUserAuthStatus refuses them (w1/m657 t007: they
+// were told the org was not found, which is not true for them). Then
+// can_manage, a write relation that OpenFGA is asked uncached, and the
+// caller's role in the source of truth.
 func (s *Service) authorizeOrganizationKeys(ctx context.Context, orgID string) (OrganizationKeyStore, error) {
-	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.OrganizationObject(orgID)); err != nil {
+	if err := s.AuthorizeOn(ctx, core.RelCanView, core.OrganizationObject(orgID)); err != nil {
 		if core.IsLoginRefusal(err) || !errors.Is(err, core.ErrForbidden) {
 			return nil, err
 		}
 		return nil, core.NewOrganizationNotFoundError(orgID)
+	}
+	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.OrganizationObject(orgID)); err != nil {
+		return nil, err
 	}
 	orgs, err := s.organizationKeys()
 	if err != nil {

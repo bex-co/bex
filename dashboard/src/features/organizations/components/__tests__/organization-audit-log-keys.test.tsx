@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { OrganizationAuditLogKeys } from "@/features/organizations/components/organization-audit-log-keys";
 import {
+  heldLink,
   refusal,
   scriptedClient,
 } from "@/features/organizations/__tests__/org-fixtures";
@@ -28,6 +29,17 @@ function tokens(...list: ReturnType<typeof apiToken>[]) {
       id: "org-1",
       organizationAPITokens: list,
     },
+  };
+}
+
+/** What sets the keys list's height: its columns, its rows and its lines. */
+function keysFrame(section: Element) {
+  return {
+    columns: [...section.querySelectorAll("[data-slot=table-head]")].map(
+      (head) => head.textContent,
+    ),
+    rows: section.querySelectorAll("[data-slot=table-body] > tr").length,
+    lines: [...section.querySelectorAll("p")].map((line) => line.className),
   };
 }
 
@@ -70,6 +82,32 @@ describe("OrganizationAuditLogKeys", () => {
     expect(siem).toHaveTextContent("aaaaaaaa…");
     expect(siem).toHaveTextContent("Never");
     expect(screen.queryByText("No provisioned API keys.")).toBeNull();
+  });
+
+  // On production the section said "Loading API keys…" on one line while
+  // its keys were read, then grew 69 px (77 at 390) into the table (t007).
+  it("holds the empty list's frame while the keys load", async () => {
+    const held = heldLink();
+    const script = scriptedClient({ organizationAPITokens: () => tokens() }, [
+      held.link,
+    ]);
+    const { container } = render(
+      <OrganizationAuditLogKeys organizationId="org-1" canManage />,
+      { wrapper: script.wrapper },
+    );
+    const section = () =>
+      container.querySelector("[data-testid=organization-audit-log-keys]")!;
+    expect(screen.getByRole("status")).toHaveTextContent("Loading API keys…");
+    const loading = keysFrame(section());
+    expect(loading.columns).toHaveLength(5);
+
+    held.release();
+    await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
+    expect(keysFrame(section())).toEqual(loading);
+    // The frame lays the empty line out invisibly; now it is the line itself.
+    const empty = screen.getByText("No provisioned API keys.");
+    expect(empty.tagName).toBe("P");
+    expect(empty.querySelector(".invisible")).toBeNull();
   });
 
   it("says when the org has no keys, and when they could not be read", async () => {

@@ -145,26 +145,30 @@ func TestOrganizationKeyLifecycle(t *testing.T) {
 	}
 }
 
-// A Member and a Guest are refused 403; someone outside the org, and an org
-// that does not exist, answer ORGANIZATION_NOT_FOUND, so an org id reveals
-// nothing; an API key cannot mint one. Nothing reaches Hydra.
+// A Member and a Guest are refused 403 FORBIDDEN, never told that an org they
+// are in was not found (ORGANIZATION_NOT_FOUND is a 403 too, so the code is
+// what tells them apart; production answered it to a Member, w1/m657 t007);
+// someone outside the org, and an org that does not exist, answer
+// ORGANIZATION_NOT_FOUND, so an org id reveals nothing; an API key cannot
+// mint one. Nothing reaches Hydra.
 func TestOrganizationKeyRefusals(t *testing.T) {
 	s, keys, _ := orgKeyService()
-	for _, who := range []string{"member", "guest"} {
-		ctx := session(who)
-		if _, err := s.ProvisionOrganizationAuditLogToken(ctx, "org-a", "x"); !errors.Is(err, core.ErrForbidden) {
-			t.Errorf("%s mint = %v", who, err)
-		}
-		if _, err := s.ListOrganizationAPITokens(ctx, "org-a"); !errors.Is(err, core.ErrForbidden) {
-			t.Errorf("%s list = %v", who, err)
-		}
-		if err := s.RevokeOrganizationAPIToken(ctx, "org-a", "key-1"); !errors.Is(err, core.ErrForbidden) {
-			t.Errorf("%s revoke = %v", who, err)
-		}
-	}
 	notFound := func(err error) bool {
 		var coded *core.CodedError
 		return errors.As(err, &coded) && coded.Code == core.CodeOrganizationNotFound
+	}
+	forbidden := func(err error) bool { return errors.Is(err, core.ErrForbidden) && !notFound(err) }
+	for _, who := range []string{"member", "guest"} {
+		ctx := session(who)
+		if _, err := s.ProvisionOrganizationAuditLogToken(ctx, "org-a", "x"); !forbidden(err) {
+			t.Errorf("%s mint = %v", who, err)
+		}
+		if _, err := s.ListOrganizationAPITokens(ctx, "org-a"); !forbidden(err) {
+			t.Errorf("%s list = %v", who, err)
+		}
+		if err := s.RevokeOrganizationAPIToken(ctx, "org-a", "key-1"); !forbidden(err) {
+			t.Errorf("%s revoke = %v", who, err)
+		}
 	}
 	for _, c := range []struct{ who, org string }{{"stranger", "org-a"}, {"owner", "org-missing"}} {
 		ctx := session(c.who)

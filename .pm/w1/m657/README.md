@@ -1,6 +1,6 @@
 # w1 · m657 — An Org Owner mints audit-log API keys, and the org Members page shows each member's login methods and 2FA, as on Render
 
-**Worker:** worker1 **Goal:** an Org Owner creates, lists and revokes organization API keys that read the audit logs of the org and of every workspace in it, and nothing else; and the org Members page's **View details** shows a member's workspaces, the login methods they have signed in with and whether 2FA is on, as Render's does. **Status:** blocked (t001–t006 and t008–t010 done, shipped in `3926ec646c`; t007 walked on dev-1, its production walk waits for a production pin carrying `3926ec646c`, then t011)
+**Worker:** worker1 **Goal:** an Org Owner creates, lists and revokes organization API keys that read the audit logs of the org and of every workspace in it, and nothing else; and the org Members page's **View details** shows a member's workspaces, the login methods they have signed in with and whether 2FA is on, as Render's does. **Status:** todo (t001–t006 and t008–t010 done, shipped in `3926ec646c`; t007 walked on dev-1 and on production, where two loading frames and a refusal code were fixed; their production check next, then t011)
 
 ## Tasks (in order)
 
@@ -65,3 +65,17 @@ Verified 2026-11-26 on main `bea7a8664a`.
 - **Why now:** the ledger just made both gaps visible and checkable, the org login settings (w7/m466) and their lock-out lists (w1/m647) are fresh, and an Owner's own key is today the only way to read the org log over the API, which hands a log reader everything the Owner can do.
 - **Triage notes (2026-11-26):** the note's "no flag" was half wrong. The keys sit behind `scoped_access_tokens` (as the w1/148 worker reported), but render.com/docs/api-keys documents them, so the gap stands. The login status is unflagged and gated only by `viewOrgUserAuthStatus`; it lives in the row's **View details** dialog, not in a column as the note said. SAML SSO rows are out (`.pm/DO_NOT_DO.md`, Enterprise surfaces).
 - **Render parity task:** included (t008), because the milestone adds GraphQL fields, REST authorization and dashboard UI.
+
+## Unblock (2026-11-26)
+
+- **Affects:** t007 step 4, then t011.
+- **Source:** verified evidence. Production's newest pin, `chore(deploy): pin platform images to 410850e80281` (`918667a83f`), carries `3926ec646c` (`git merge-base --is-ancestor 3926ec646c 410850e80281` exits 0), so the gate `pin must carry 3926ec646c` holds.
+- **Next:** a worker walks t007 step 4 on production as the QA user on a Scale fixture org (disposable) with a second identity as a Member, deletes the fixture, and closes with t011. No user action.
+
+## Production walk (t007, 2026-11-26, pin `410850e80281`)
+
+Walked as the QA user on a Scale fixture org (disposable) with a second identity as a Member, then deleted; the record is in [t007](t007.md).
+
+- **DoD 1–4 hold**: minting, listing, using and revoking keys over GraphQL and in the browser, the quota and rate refusals with Render's text, the Member's disabled section, the key's reads and refusals on REST, GraphQL and MCP, the org's end revoking its keys, and View details against each identity's credentials, TOTP included.
+- **Fixed here**: the Audit Log API Keys section and View details each showed a one-line loading text while their own read was in flight, so the card and the dialog grew when the answer landed (DoD 5); both now draw the ready state's frame. A Member was told the org was not found on the key operations; they now get 403 `FORBIDDEN`, as ADR115 D11 says.
+- **Filed**: [w1/169](../169.md), the "needs: none" wording of an org key's refusal on a route that needs no permission.

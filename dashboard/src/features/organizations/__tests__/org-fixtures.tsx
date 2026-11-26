@@ -277,6 +277,26 @@ export function scriptedClient(
   return { client, wrapper, sent };
 }
 
+/**
+ * A link that holds every operation until `release()`, so a test reads the
+ * frame a component draws while its read is in flight, then the ready state.
+ */
+export function heldLink() {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  const link = new ApolloLink(
+    (operation, forward) =>
+      new Observable((observer) => {
+        let subscription: { unsubscribe(): void } | undefined;
+        void gate.then(() => {
+          subscription = forward(operation).subscribe(observer);
+        });
+        return () => subscription?.unsubscribe();
+      }),
+  );
+  return { link, release };
+}
+
 /** bex-api's coded refusal, as it arrives in a GraphQL response. */
 export function refusal(code: string, params: Record<string, unknown> = {}) {
   return new GraphQLError("reworded by the server", {
