@@ -1,18 +1,18 @@
 # w3 · m656 — A Postgres database warns that it is almost full, as Render's does
 
-**Worker:** worker3 **Goal:** when a Postgres database has used more than 80% of its storage and has less than 5 GiB left, its Info and Plan pages show Render's "almost full" warning, with a link to the place that grows its storage. GraphQL's `Database` carries Render's `storageUsedPercent`, `storageUsed` and `storageTotal`. **Status:** todo
+**Worker:** worker3 **Goal:** when a Postgres database has used more than 80% of its storage and has less than 5 GiB left, its Info and Plan pages show Render's "almost full" warning, with a link to the place that grows its storage. GraphQL's `Database` carries Render's `storageUsedPercent`, `storageUsed` and `storageTotal`. **Status:** blocked (t001–t003 and t005–t007 done; t004 walked locally, its production read waits for a pin carrying the code)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Record Render's almost-full warning and settle bex's used and total numbers | 20m | — |
-| [t002](t002.md) | GraphQL `storageUsedPercent`, `storageUsed` and `storageTotal` on `Database` | 1h30m | t001 |
-| [t003](t003.md) | The warning on Info and Plan, in Render's words, with its two links | 1h | t002 |
+| [t001](done/t001.md) | Record Render's almost-full warning and settle bex's used and total numbers — **DONE** | 20m | — |
+| [t002](done/t002.md) | GraphQL `storageUsedPercent`, `storageUsed` and `storageTotal` on `Database` — **DONE** | 1h30m | t001 |
+| [t003](done/t003.md) | The warning on Info and Plan, in Render's words, with its two links — **DONE** | 1h | t002 |
 | [t004](t004.md) | Verify locally by filling a database past the line, and on production | 45m | t003 |
-| [t005](t005.md) | Render parity | 20m | t004 |
-| [t006](t006.md) | Simplify | 15m | t005 |
-| [t007](t007.md) | Test coverage | 40m | t005 |
+| [t005](done/t005.md) | Render parity — **DONE** | 20m | t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 40m | t005 |
 | [t008](t008.md) | Closeout | 10m | t006, t007 |
 
 Total: **8 tasks, about 5h**.
@@ -49,7 +49,37 @@ Verified 2026-11-25 on main `c196617a8b`.
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm one aspect of render parity for w3` (2026-11-25), item 2, checked against Render's bundle and bex's code before filing. The brainstorm's conflict check against w1/m645–m648 found no overlap. w1/m645's operation ledger points the `database` query's three storage fields at this milestone (added to its t002 when this was filed).
-- **Goal linkage:** [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first), and the data-safety promise of a managed database: Render's copy says a full disk breaks reads, writes and backups.
+- **Goal linkage:** [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first), and the data-safety promise of a managed database: Render's copy says a full disk breaks reads, writes and backups.
 - **Expected outcome:** a user sees that a database is filling before writes start failing and backups stop, on the two pages where they would grow it, as on Render.
 - **Why now:** disk autoscaling is opt-in (`docs/render-artifacts/postgres-disk-autoscaling.md`). A database without it fills with no warning in the dashboard today. This is the cheapest item from the brainstorm and the one with the most direct user harm.
 - **Render parity task:** included (t005). GraphQL and the dashboard change. REST and MCP stay as Render's public API is, with no usage field, and t005 confirms that.
+
+## Local walk (2026-11-25, t004 steps 1–2)
+
+bex-api and the dashboard ran from this tree on dev-3 (`scripts/dev-env.sh 3 up`), with dev-3's Prometheus and its local-path volume-usage exporter standing in for the kubelet series. A user registered for the walk created a Free Postgres `almost-full` (disposable, deleted after), filled it with an unlogged `generate_series` table and later moved it to Basic 256MB. Google Chrome for Testing, headless through `playwright-core`, at 1440×900 and 390×900.
+
+| Point | Seen | Verdict |
+| --- | --- | --- |
+| The three fields | `storageTotal` `"1073741824"`, `storageUsed` `"936996864"`, `storageUsedPercent` 87.26 at 87% used; `storageTotal` equal to `datastoreMetrics(name: "disk_capacity")`'s 1073741824 | holds |
+| Free (fixed storage) | Render's sentence above Info's and Plan's headings and above Recovery's card, ending "upgrade to a compute plan with more storage", linking `/databases/<id>/plan`; none on Logs, Metrics or Apps; at both widths | holds |
+| Basic 256MB (storage can grow) | the same, ending "increase its storage", linking `/databases/<id>/plan#storage`; following it from Info lands on Plan with the Storage row in view (scrolled to it at 390) | holds |
+| Render's link on a full load | `/databases/<id>/plan#storage`, `/d/<id>/plan#storage` and `/databases/<id>#storage` each open Plan with the Storage row in view, at both widths | holds |
+| Prometheus cut off | the port-forward stopped: the usage fields read null in 0.03 s, bex-api logged the failed read once, and all six pages loaded with no warning and no error | holds |
+| Below the line | the table dropped: 7.7% used, and no page draws the warning | holds |
+
+Not walked: the "contact support" ending (storage at its plan's 16 TB ceiling), which the page tests cover.
+
+## Decisions and deviations
+
+- **Placement.** Render also draws the warning on Recovery, under Point-in-Time Recovery and above Export; bex draws it above Recovery's one card, which holds both. On Info and Plan it sits above the page heading, as on Render's Info.
+- **The support ending.** Render's `isMaxPlan` has no bex field. bex shows "contact support to create a custom compute plan" when the storage is already at its plan's maximum, as plain text: bex has no support link.
+- **Who reads usage.** `storageUsed` and `storageUsedPercent` follow `can_view_activity`, the permission the Metrics page's disk graph reads under, so a Billing member gets null and no warning. `storageTotal` is always there.
+- **`storageTotal` with no usage.** The task said all three fields read null when Prometheus fails; `storageTotal` is the database's own size and needs no Prometheus, so only the two usage fields go null.
+- **No new instant query.** The usage read reuses the disk graph's range source over the last ten minutes, newest sample per volume, fullest volume (`metrics.CurrentDiskUsed`), which the service-disk sweeper now shares, instead of a second Prometheus query shape.
+- **A query of its own.** The dashboard reads the three fields in `DatabaseStorage`, not in the page's `Database` read, so a slow Prometheus never delays a database page.
+- Follow-up filed: [w3/130](../../130.md), Render's 1 TB export limit.
+
+## Parked (2026-11-25)
+
+Shipped in `fa9a9913e2`. Everything but the production read is done: t004 step 3 reads `database { storageUsedPercent storageUsed storageTotal }` on production as the QA user in `bex-canary` (`tea-daif693dqjvc73e7as3g`) for a Postgres created for it (disposable), opens its Info and Plan at 1440 and 390 without the warning, and deletes it, once the newest `chore(deploy): pin platform images to <sha>` carries `fa9a9913e2`. Then t008 closes the milestone. Nothing is needed from the user.
+
