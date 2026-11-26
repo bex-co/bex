@@ -2499,11 +2499,19 @@ describe("NewServicePage Advanced: Disk (w4/m652)", () => {
     await user.clear(size);
     expect(deploy()).toBeDisabled();
     expect(
-      screen.getByText("Enter a whole number of GB from 1 to 10000."),
+      screen.getByText("Enter a whole number of GB from 1 to 1000."),
     ).toBeInTheDocument();
+    // Past Render's 1 TB cap the field sends the user to support (w4/732).
+    await user.type(size, "1001");
+    expect(
+      screen.getByText("For sizes larger than 1 TB, please contact support."),
+    ).toBeInTheDocument();
+    expect(size).toHaveAttribute("max", "1000");
+    expect(deploy()).toBeDisabled();
     // The bar's reason takes the user to the field holding Deploy.
     await user.click(screen.getByRole("button", { name: blockedReason }));
     expect(size).toHaveFocus();
+    await user.clear(size);
     await user.type(size, "20");
     await user.click(deploy());
     expect(create).toHaveBeenCalledWith(

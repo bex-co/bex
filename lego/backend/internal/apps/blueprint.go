@@ -782,12 +782,17 @@ func blueprintReadSpec(ctx context.Context, req CreateRequest) (appv1alpha1.AppS
 	return specFromCreate(req)
 }
 
-// withCurrentTier records the tier an existing service already runs on a
-// Blueprint request that re-applies it, so a paused tier (w2/m250) is refused
-// only as a new selection. existing nil (a create) leaves req unchanged.
-func withCurrentTier(req CreateRequest, existing *appv1alpha1.App) CreateRequest {
+// withCurrentSettings records what an existing service already runs on a
+// Blueprint request that re-applies it: its tier, so a paused tier (w2/m250)
+// is refused only as a new selection, and its disk's size, so a disk above the
+// 1 TB cap (w4/732) is refused only as a grow. existing nil (a create) leaves
+// req unchanged.
+func withCurrentSettings(req CreateRequest, existing *appv1alpha1.App) CreateRequest {
 	if existing != nil {
 		req.currentTier = existing.Spec.Tier
+		if existing.Spec.Disk != nil {
+			req.currentDiskSizeGB = existing.Spec.Disk.SizeGB
+		}
 	}
 	return req
 }

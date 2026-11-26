@@ -4725,6 +4725,11 @@ const deServices: Record<string, TranslationEntry> = {
     description:
       "Create form: the disk size is not a whole number in bex-api's range",
   },
+  "services.diskSizeAboveMax": {
+    message: "Für Größen über 1 TB wende dich bitte an den Support.",
+    description:
+      "Disk size above Render's 1 TB cap, on the create form and the Disk page (Render's words; bex has no support address to link)",
+  },
   "services.diskSizeChip": {
     message: "{size} GB",
     description: "Size quick-select chip and size display",

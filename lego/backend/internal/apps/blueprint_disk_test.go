@@ -128,7 +128,7 @@ func TestBlueprintDiskRefusesIneligibleServices(t *testing.T) {
 		"two instances": {appv1alpha1.TypeWebService, "starter", 2, "more than one instance"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := validateCreateDisk(tc.svcType, tc.tier, tc.replicas, false, disk)
+			_, err := validateCreateDisk(tc.svcType, tc.tier, tc.replicas, false, disk, 0)
 			if !errors.Is(err, core.ErrBadRequest) {
 				t.Fatalf("validateCreateDisk = %v, want bad request", err)
 			}
@@ -140,7 +140,7 @@ func TestBlueprintDiskRefusesIneligibleServices(t *testing.T) {
 
 	// The eligible shape is accepted and defaults applied.
 	spec, err := validateCreateDisk(appv1alpha1.TypeWebService, "starter", 1, false,
-		&ServiceDiskView{Name: "data", MountPath: "/var/data"})
+		&ServiceDiskView{Name: "data", MountPath: "/var/data"}, 0)
 	if err != nil {
 		t.Fatalf("eligible service refused: %v", err)
 	}

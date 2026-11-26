@@ -24,7 +24,11 @@ export const DASHBOARD_DISK_NAME = "disk";
 export const DISK_SIZE_CHIPS = [1, 5, 10, 50, 100] as const;
 export const DISK_DEFAULT_SIZE_GB = 10;
 export const DISK_MIN_SIZE_GB = 1;
-export const DISK_MAX_SIZE_GB = 10000;
+/**
+ * Render's cap on both disk forms, 1 TB: a larger size is a support request,
+ * and bex-api refuses it too (w4/732).
+ */
+export const DISK_MAX_SIZE_GB = 1000;
 
 /** The service types validateDisk accepts: a long-running instance to mount on. */
 const DISK_ELIGIBLE_TYPES: readonly string[] = [
@@ -69,11 +73,13 @@ export function diskMountPathError(path: string): Reason | null {
   return null;
 }
 
-/** A whole number of GB in the range bex-api accepts. */
+/**
+ * Why a size cannot be sent: past the 1 TB cap, Render's words sending the
+ * user to support; otherwise not a whole number of GB in bex-api's range.
+ */
 export function diskSizeError(sizeGB: number): Reason | null {
-  return Number.isInteger(sizeGB) &&
-    sizeGB >= DISK_MIN_SIZE_GB &&
-    sizeGB <= DISK_MAX_SIZE_GB
+  if (sizeGB > DISK_MAX_SIZE_GB) return "services.diskSizeAboveMax";
+  return Number.isInteger(sizeGB) && sizeGB >= DISK_MIN_SIZE_GB
     ? null
     : "services.diskSizeRange";
 }

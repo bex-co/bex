@@ -331,7 +331,7 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		if svc.req, refsPending, err = r.withPlannedRefs(svc); err != nil {
 			return BlueprintPlanAction{}, err
 		}
-		want, err := blueprintReadSpec(ctx, withCurrentTier(svc.req, r.services[resource.Name]))
+		want, err := blueprintReadSpec(ctx, withCurrentSettings(svc.req, r.services[resource.Name]))
 		if err != nil {
 			return BlueprintPlanAction{}, err
 		}

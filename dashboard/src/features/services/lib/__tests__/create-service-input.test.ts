@@ -1205,8 +1205,8 @@ describe("Disk at create (w4/m652)", () => {
     expect(isSubmittable(f)).toBe(true);
   });
 
-  it.each([0, 1.5, 10001, Number.NaN])(
-    "holds Submit on the size %s GB, outside bex-api's whole 1-10000",
+  it.each([0, 1.5, Number.NaN])(
+    "holds Submit on the size %s GB, not a whole number of at least 1",
     (sizeGB) => {
       const f = form({ disk: { mountPath: "/var/data", sizeGB } });
       expect(createFormErrors(f).diskSize).toBe("services.diskSizeRange");
@@ -1214,7 +1214,17 @@ describe("Disk at create (w4/m652)", () => {
     },
   );
 
-  it.each([1, 10000])("accepts a %s GB disk", (sizeGB) => {
+  // w4/732: Render's form stops at 1000 GB and sends larger sizes to support.
+  it.each([1001, 1000.5, 10000])(
+    "holds Submit on %s GB, past Render's 1 TB cap, and points to support",
+    (sizeGB) => {
+      const f = form({ disk: { mountPath: "/var/data", sizeGB } });
+      expect(createFormErrors(f).diskSize).toBe("services.diskSizeAboveMax");
+      expect(isSubmittable(f)).toBe(false);
+    },
+  );
+
+  it.each([1, 1000])("accepts a %s GB disk", (sizeGB) => {
     const f = form({ disk: { mountPath: "/var/data", sizeGB } });
     expect(createFormErrors(f).diskSize).toBeUndefined();
     expect(buildCreateServiceInput(f).disk?.sizeGB).toBe(sizeGB);

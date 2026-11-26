@@ -42,7 +42,9 @@ import (
 // into spec.disk and what the provisioned-capacity meter bills from. Every
 // refusal here mirrors a CRD-level CEL rule, so the API's 400 and the API
 // server's rejection say the same thing — a Blueprint apply that bypasses
-// bex-api cannot land a disk this layer would have refused.
+// bex-api cannot land a disk this layer would have refused. The size cap is
+// the one rule stricter than the CRD: the CRD admits Hetzner's 10 000 GB, the
+// ceiling support may raise a disk to, while bex-api stops at Render's 1 TB.
 
 // diskDefaultSizeGB is Render's Blueprint default; diskMinSizeGB and
 // diskMaxSizeGB bound the sizes a user may ask for.
@@ -59,7 +61,13 @@ const (
 	// refused smaller disks, which broke every Render template declaring
 	// `sizeGB: 1`. The CRD's own Minimum is 1 too (lego/types app_types.go).
 	diskMinSizeGB = 1
-	diskMaxSizeGB = 10000
+	// diskMaxSizeGB is Render's self-serve cap, 1 TB (w4/732). Render's
+	// dashboard stops both disk forms at 1000 GB ("For sizes larger than 1 TB,
+	// please contact support"), maps its server's "disk size cannot exceed
+	// 1TB" refusal, and its Terraform provider refuses size_gb above 1000. A
+	// larger disk is a support request, and a disk already above 1 TB keeps
+	// its size (validateDiskSize).
+	diskMaxSizeGB = 1000
 )
 
 // diskReservedMountPaths are the exact paths a volume must not be mounted over,
@@ -117,7 +125,7 @@ func (s *Service) AddDisk(ctx context.Context, serviceID, name, mountPath string
 	if err := s.RequirePlanBilling(ctx, tenantID, a.Spec.Tier); err != nil {
 		return DiskView{}, err
 	}
-	name, mountPath, sizeGB, err = validateDisk(a, name, mountPath, sizeGB)
+	name, mountPath, sizeGB, err = validateDisk(a, name, mountPath, sizeGB, 0)
 	if err != nil {
 		return DiskView{}, err
 	}
@@ -228,7 +236,7 @@ func (s *Service) UpdateDisk(ctx context.Context, diskID string, name, mountPath
 		return DiskView{}, err
 	}
 	if sizeGB != nil {
-		if err := validateDiskSize(*sizeGB); err != nil {
+		if err := validateDiskSize(*sizeGB, disk.SizeGB); err != nil {
 			return DiskView{}, err
 		}
 		if *sizeGB < disk.SizeGB {
@@ -355,8 +363,9 @@ func diskShapeRefusals(spec appv1alpha1.AppSpec) []diskShapeRefusal {
 
 // validateDisk applies the eligibility rules the CRD enforces in CEL, so every
 // surface refuses the same disk for the same stated reason instead of leaving
-// it to the API server's less legible message.
-func validateDisk(a *appv1alpha1.App, name, mountPath string, sizeGB int32) (string, string, int32, error) {
+// it to the API server's less legible message. currentGB is the size of the
+// disk the request re-declares, 0 for a new one (validateDiskSize).
+func validateDisk(a *appv1alpha1.App, name, mountPath string, sizeGB, currentGB int32) (string, string, int32, error) {
 	name, mountPath = strings.TrimSpace(name), strings.TrimSpace(mountPath)
 	if sizeGB == 0 {
 		sizeGB = diskDefaultSizeGB
@@ -386,7 +395,7 @@ func validateDisk(a *appv1alpha1.App, name, mountPath string, sizeGB int32) (str
 	if err := validateDiskMountPath(mountPath); err != nil {
 		return "", "", 0, err
 	}
-	if err := validateDiskSize(sizeGB); err != nil {
+	if err := validateDiskSize(sizeGB, currentGB); err != nil {
 		return "", "", 0, err
 	}
 	return name, mountPath, sizeGB, nil
@@ -416,12 +425,16 @@ func validateDiskMountPath(path string) error {
 	return nil
 }
 
-func validateDiskSize(sizeGB int32) error {
+// validateDiskSize bounds a requested size. currentGB is the size the disk
+// already has (0 for a new one): a disk support raised above the 1 TB cap
+// keeps its size when a request repeats it, and only growing past the cap is
+// refused, in the words of Render's own refusal.
+func validateDiskSize(sizeGB, currentGB int32) error {
 	if sizeGB < diskMinSizeGB {
 		return fmt.Errorf("%w: sizeGB must be at least %d", core.ErrBadRequest, diskMinSizeGB)
 	}
-	if sizeGB > diskMaxSizeGB {
-		return fmt.Errorf("%w: sizeGB must be at most %d", core.ErrBadRequest, diskMaxSizeGB)
+	if sizeGB > diskMaxSizeGB && sizeGB > currentGB {
+		return fmt.Errorf("%w: disk size cannot exceed 1TB (%dGB)", core.ErrBadRequest, diskMaxSizeGB)
 	}
 	return nil
 }
@@ -817,12 +830,16 @@ func blueprintDisk(d *bexDisk) *ServiceDiskView {
 // a service that already scales; here the two arrive together, so the sentence
 // stops at the rule. Without this check the App's admission rule answered, in
 // the cluster's words (w8/279).
-func validateCreateDisk(svcType, tier string, replicas int32, autoscaling bool, disk *ServiceDiskView) (*appv1alpha1.DiskSpec, error) {
+//
+// currentGB is the size of the disk the service already has when a Blueprint
+// sync re-declares it (0 for a new service), so a disk already above the 1 TB
+// cap stays accepted at its own size.
+func validateCreateDisk(svcType, tier string, replicas int32, autoscaling bool, disk *ServiceDiskView, currentGB int32) (*appv1alpha1.DiskSpec, error) {
 	if disk == nil {
 		return nil, nil
 	}
 	probe := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Type: svcType, Tier: tier, Replicas: replicas}}
-	name, mountPath, sizeGB, err := validateDisk(probe, disk.Name, disk.MountPath, disk.SizeGB)
+	name, mountPath, sizeGB, err := validateDisk(probe, disk.Name, disk.MountPath, disk.SizeGB, currentGB)
 	if err != nil {
 		return nil, err
 	}

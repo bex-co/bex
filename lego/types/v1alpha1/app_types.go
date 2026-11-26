@@ -1388,8 +1388,9 @@ type DiskSpec struct {
 	// SizeGB is the provisioned capacity, in gigabytes. It grows only: the
 	// spec-level transition rule refuses any decrease, because shrinking a
 	// filesystem under a running service destroys data. 10 is Render's
-	// Blueprint default; the 10000 ceiling is the Hetzner Cloud volume maximum,
-	// stated here rather than left undocumented as Render leaves it.
+	// Blueprint default; the 10000 ceiling is the Hetzner Cloud volume maximum.
+	// bex-api stops a requested size at Render's 1000 (1 TB), and a larger disk
+	// is a support request, which this ceiling leaves room for.
 	// +optional
 	// +kubebuilder:default=10
 	// +kubebuilder:validation:Minimum=1

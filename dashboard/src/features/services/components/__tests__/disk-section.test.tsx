@@ -159,6 +159,72 @@ describe("DiskSection", () => {
     );
   });
 
+  // w4/732: Render's Disk page stops the size at 1000 GB and sends larger
+  // sizes to support, and bex-api refuses them too.
+  it("stops a new disk at 1 TB and sends a larger size to support", async () => {
+    const user = userEvent.setup();
+    render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
+    await user.click(screen.getByRole("button", { name: /add disk/i }));
+    await user.type(screen.getByLabelText(/mount path/i), "/var/data");
+    const size = screen.getByLabelText(/^size$/i);
+    expect(size).toHaveAttribute("max", "1000");
+
+    await user.clear(size);
+    await user.type(size, "1001");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "For sizes larger than 1 TB, please contact support.",
+    );
+    expect(size).toHaveAttribute("aria-invalid", "true");
+    await user.click(screen.getAllByRole("button", { name: /add disk/i }).at(-1)!);
+    expect(mockAddDisk).not.toHaveBeenCalled();
+    expect(size).toHaveFocus();
+
+    await user.clear(size);
+    await user.type(size, "1000");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: /add disk/i }).at(-1)!);
+    await waitFor(() =>
+      expect(mockAddDisk).toHaveBeenCalledWith({ mountPath: "/var/data", sizeGB: 1000 }),
+    );
+  });
+
+  it("stops a grow at 1 TB and sends a larger size to support", async () => {
+    const user = userEvent.setup();
+    mockUseDisk.mockReturnValue(attached);
+    render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+    const size = screen.getByLabelText(/^size$/i);
+    expect(size).toHaveAttribute("max", "1000");
+
+    await user.clear(size);
+    await user.type(size, "1001");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "For sizes larger than 1 TB, please contact support.",
+    );
+    expect(screen.getByRole("button", { name: /increase size/i })).toBeDisabled();
+
+    await user.clear(size);
+    await user.type(size, "1000");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /increase size/i }));
+    expect(mockGrowDisk).toHaveBeenCalledWith("dsk-1", 1000);
+  });
+
+  // A disk support raised past 1 TB cannot be grown from the page, as on
+  // Render, and the page says where to go instead.
+  it("sends a disk already past 1 TB to support instead of offering a grow", async () => {
+    const user = userEvent.setup();
+    mockUseDisk.mockReturnValue({ ...attached, disk: { ...attached.disk, sizeGB: 1500 } });
+    render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "For sizes larger than 1 TB, please contact support.",
+    );
+    expect(screen.getByRole("button", { name: /increase size/i })).toBeDisabled();
+  });
+
   // Render keeps the size field inert until you press Edit, so a page opened to
   // read cannot be nudged into an irreversible grow (live capture 2026-08-24:
   // its size input ships `disabled`, with an Edit button beside it).

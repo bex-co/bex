@@ -45,8 +45,10 @@ import {
 import {
   DISK_DEFAULT_SIZE_GB,
   DISK_MAX_SIZE_GB,
+  DISK_MIN_SIZE_GB,
   diskEligibleType,
   diskMountPathError,
+  diskSizeError,
 } from "@/features/services/lib/disk";
 import {
   DiskSizeControl,
@@ -260,6 +262,9 @@ function AddDiskForm({
   const [mountPath, setMountPath] = useState("");
   const [sizeGB, setSizeGB] = useState<number>(DISK_DEFAULT_SIZE_GB);
   const [invalid, setInvalid] = useState<string | null>(null);
+  // Checked as the size changes, as Render's form does: past 1 TB the field
+  // sends the user to support before anything is sent.
+  const sizeProblem = diskSizeError(sizeGB);
 
   if (!open) {
     return (
@@ -289,6 +294,10 @@ function AddDiskForm({
       return;
     }
     setInvalid(null);
+    if (sizeProblem) {
+      document.getElementById("disk-size")?.focus();
+      return;
+    }
     if (await onAdd({ mountPath: path, sizeGB })) {
       setOpen(false);
       setMountPath("");
@@ -338,7 +347,25 @@ function AddDiskForm({
         <p className="text-sm text-muted-foreground">
           {t("services.diskSizeHint")}
         </p>
-        <DiskSizeControl id="disk-size" value={sizeGB} onChange={setSizeGB} />
+        <DiskSizeControl
+          id="disk-size"
+          value={sizeGB}
+          onChange={setSizeGB}
+          invalid={sizeProblem !== null}
+          describedBy={sizeProblem ? "disk-size-error" : undefined}
+        />
+        {sizeProblem ? (
+          <p
+            id="disk-size-error"
+            role="alert"
+            className="text-sm text-destructive"
+          >
+            {t(sizeProblem, {
+              min: String(DISK_MIN_SIZE_GB),
+              max: String(DISK_MAX_SIZE_GB),
+            })}
+          </p>
+        ) : null}
       </div>
       <div className="flex gap-2">
         <Button
@@ -372,6 +399,9 @@ function AttachedDisk({
   // Growing a volume is irreversible — you cannot shrink it back — so the extra
   // click is the point, not friction to design away.
   const [editing, setEditing] = useState(false);
+  // Render's Disk page stops a grow at 1 TB too, so a disk support raised
+  // past it cannot be grown here at all.
+  const overCap = editing && size > DISK_MAX_SIZE_GB;
 
   const cancelEdit = () => {
     setSize(disk.sizeGB);
@@ -413,11 +443,22 @@ function AttachedDisk({
             disabled={!editing || mutations.busy}
             value={size}
             onChange={(e) => setSize(Number(e.target.value))}
+            aria-invalid={overCap}
+            aria-describedby={overCap ? "disk-grow-error" : undefined}
           />
           <span className="text-sm text-muted-foreground">
             {t("services.diskSizeUnit")}
           </span>
         </div>
+        {overCap ? (
+          <p
+            id="disk-grow-error"
+            role="alert"
+            className="mt-2 text-sm text-destructive"
+          >
+            {t("services.diskSizeAboveMax")}
+          </p>
+        ) : null}
         {canCreate ? (
           <div className="mt-2 flex justify-end gap-2">
             {editing ? (
@@ -436,7 +477,7 @@ function AttachedDisk({
                     if (await mutations.growDisk(disk.id, size))
                       setEditing(false);
                   }}
-                  disabled={mutations.busy || size <= disk.sizeGB}
+                  disabled={mutations.busy || size <= disk.sizeGB || overCap}
                 >
                   {t("services.diskGrowAction")}
                 </Button>

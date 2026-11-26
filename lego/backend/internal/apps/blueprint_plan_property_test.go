@@ -312,7 +312,7 @@ func blueprintPlanService(t *testing.T, manifest string) parsedService {
 func blueprintPlanWant(t *testing.T, svc parsedService, app *appv1alpha1.App) appv1alpha1.AppSpec {
 	t.Helper()
 	ctx := context.WithValue(context.Background(), unresolvedRepoKey{}, true)
-	want, err := blueprintReadSpec(ctx, withCurrentTier(svc.req, app))
+	want, err := blueprintReadSpec(ctx, withCurrentSettings(svc.req, app))
 	if err != nil {
 		t.Fatalf("blueprintReadSpec: %v", err)
 	}

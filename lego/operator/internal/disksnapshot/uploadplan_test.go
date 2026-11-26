@@ -29,8 +29,9 @@ import (
 const (
 	mib = int64(1) << 20
 	gib = int64(1) << 30
-	// diskMaxSizeGB is the largest disk the API accepts (backend/internal/apps
-	// disks.go); a snapshot has to fit its parts for every size up to it.
+	// diskMaxSizeGB is the largest disk the App CRD admits (lego/types
+	// app_types.go). bex-api stops a request at 1000 GB, but support may raise
+	// a disk to this ceiling, so a snapshot has to fit its parts up to it.
 	diskMaxSizeGB = 10000
 	// s3MaxParts and s3MaxPartSize are S3's limits on one multipart upload.
 	s3MaxParts    = 10000
@@ -42,7 +43,7 @@ const (
 // fails at the part cap and the disk never snapshots, so the part size has to
 // follow the disk. The stream is the volume's contents plus tar, gzip and age
 // framing, which on incompressible data is a little more than the volume.
-func TestPlanUploadFitsEveryDiskTheAPIAllows(t *testing.T) {
+func TestPlanUploadFitsEveryDiskTheCRDAdmits(t *testing.T) {
 	for _, sizeGB := range []int64{1, 10, 70, 78, 80, 100, 500, 1000, 1024, 5000, diskMaxSizeGB} {
 		plan := PlanUpload(sizeGB)
 		worstStream := sizeGB * gib * 11 / 10

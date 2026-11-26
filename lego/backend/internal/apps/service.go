@@ -2128,6 +2128,10 @@ type CreateRequest struct {
 	// re-applies this request to an existing App ("" for a new service), so a
 	// paused tier (w2/m250) stays accepted for the services already on it.
 	currentTier string
+	// currentDiskSizeGB is the size of the disk that existing App already has
+	// (0 for none), so a disk support raised above the 1 TB cap stays
+	// accepted when the file re-declares its size (w4/732).
+	currentDiskSizeGB int32
 	// Disk attaches a persistent volume at create time — the Blueprint path's
 	// only way in, since render.yaml declares a disk inline with its service.
 	// nil means no disk is being declared, which on a sync PRESERVES whatever
@@ -3713,7 +3717,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	// A Blueprint declares a disk inline with its service, so eligibility is
 	// checked here rather than on a later attach — there is no moment when the
 	// service exists without it.
-	disk, err := validateCreateDisk(svcType, tier, replicas, req.Autoscaling != nil, req.Disk)
+	disk, err := validateCreateDisk(svcType, tier, replicas, req.Autoscaling != nil, req.Disk, req.currentDiskSizeGB)
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}

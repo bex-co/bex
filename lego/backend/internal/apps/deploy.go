@@ -2019,7 +2019,7 @@ func copyRefusal(consumer *parsedService, c stateCopy, why string) blueprintReso
 }
 
 func (s *Service) validateBlueprintService(ctx context.Context, svc parsedService, appsByName map[string]*appv1alpha1.App) error {
-	desired, err := blueprintReadSpec(ctx, withCurrentTier(svc.req, appsByName[svc.req.Name]))
+	desired, err := blueprintReadSpec(ctx, withCurrentSettings(svc.req, appsByName[svc.req.Name]))
 	if err != nil {
 		var free *freePlanForTypeError
 		if errors.As(err, &free) {
@@ -3974,7 +3974,7 @@ func (s *Service) applyStackService(ctx context.Context, req CreateRequest, fiel
 	if err := s.claimBlueprintResourceName(ctx, store.BlueprintClaimService, req.Name); err != nil {
 		return AppView{}, nil, err
 	}
-	desired, err := specFromCreate(withCurrentTier(req, appsByName[req.Name]))
+	desired, err := specFromCreate(withCurrentSettings(req, appsByName[req.Name]))
 	if err != nil {
 		return AppView{}, nil, err
 	}
