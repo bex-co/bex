@@ -1085,6 +1085,11 @@ func NewServer(base *core.Base, d Deps) *Server {
 		PodLogs:      d.PodLogs,
 	}
 	pg.DatabaseLogs = datastoreLogsAdapter(logSvc)
+	// The almost-full warning's usage read: the disk graph's own series
+	// (w3/m656).
+	if d.DiskUsage != nil {
+		pg.StorageUsed = metrics.DatabaseStorageUsed(d.DiskUsage)
+	}
 	kv := &keyvalue.Service{Base: base, Retirements: retirements, Protection: protectionStore, Owners: workspaceSvc, Metadata: resourceMetadata}
 	kv.PodLogs = d.PodLogs
 	kv.KeyValueLogs = datastoreLogsAdapter(logSvc)

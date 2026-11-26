@@ -1614,6 +1614,9 @@ export type Database = {
   status: Maybe<Scalars['String']['output']>;
   statusReason: Maybe<Scalars['String']['output']>;
   statusReasonCode: Maybe<Scalars['String']['output']>;
+  storageTotal: Maybe<Scalars['String']['output']>;
+  storageUsed: Maybe<Scalars['String']['output']>;
+  storageUsedPercent: Maybe<Scalars['Float']['output']>;
   suspended: Maybe<Scalars['String']['output']>;
   suspenders: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   updatedAt: Maybe<Scalars['String']['output']>;

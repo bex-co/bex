@@ -8,13 +8,16 @@ import { splatParts } from "@/common/lib/render-alias";
 
 /**
  * The old single page's section anchors whose cards left Info when it split
- * into Render's pages (w3/m641), and the page each card lives on now. The
+ * into Render's pages (w3/m641), and Render's `#storage` (w3/m656), with the
+ * page each card lives on now. The
  * other anchors (`#metadata`, `#connection`, `#access-control`,
  * `#sql-console`, `#danger-zone`) name cards still on Info.
  */
 const MOVED_ANCHORS: Readonly<Record<string, DatabasePagePath>> = {
   "high-availability": "/plan",
   plan: "/plan",
+  // Render's anchor for the storage control, on Plan (w3/m656).
+  storage: "/plan",
   metrics: "/metrics",
   insights: "/metrics",
   apps: "/apps",

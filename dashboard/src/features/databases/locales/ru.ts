@@ -1483,6 +1483,28 @@ const ruDatabases: Record<string, TranslationEntry> = {
     description:
       "Why the Storage Edit button is disabled on a free database (bex-api POSTGRES_STORAGE_PLAN_UNSUPPORTED)",
   },
+  "databases.storageAlmostFull": {
+    message:
+      "База данных почти заполнена. Это может привести к ошибкам чтения и записи и помешать автоматическому резервному копированию. Попробуйте освободить место в базе данных или {action}.",
+    description:
+      "Render's almost-full warning at the top of a Postgres database's Info, Plan and Recovery pages (w3/m656): more than 80% of its storage used and less than 5 GiB left. {action} is databases.storageAlmostFullIncrease or databases.storageAlmostFullUpgrade, drawn as a link to the Plan page, or databases.storageAlmostFullSupport",
+  },
+  "databases.storageAlmostFullIncrease": {
+    message: "увеличить её хранилище",
+    description:
+      "The almost-full warning's ending for storage that can grow: a link to the Plan page's Storage control (Render's copy)",
+  },
+  "databases.storageAlmostFullUpgrade": {
+    message: "перейти на тариф вычислений с большим объёмом хранилища",
+    description:
+      "The almost-full warning's ending for a plan whose storage is fixed: a link to the Plan page's plan picker (Render's copy)",
+  },
+  "databases.storageAlmostFullSupport": {
+    message:
+      "обратиться в поддержку, чтобы создать индивидуальный тариф вычислений",
+    description:
+      "The almost-full warning's ending for storage already at its plan's maximum, which no plan grows further (Render's copy); plain text",
+  },
   "databases.storageEdit": {
     message: "Изменить",
     description:

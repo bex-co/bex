@@ -47,7 +47,7 @@ Each page's cards, in Render's order:
 
 - **Info** (`eI`): the clone, expiry and storage-almost-full banners, the title "Info", then **General** (Name, Created, Status, PostgreSQL Version, Region, **Read Replicas** with Add Read Replica, or a replica's Primary link, Datadog API key), a replica's compute plan (replicas only), **Connections** (Hostname, Port, Database, Username, Password, Internal and External Database URL), **Credentials** (primary), **Networking** (the IP allow list, primary), a log stream override, **PostgreSQL Configuration Overrides**, and the delete card, which also holds **Restart Database** and **Suspend Database**.
 - **Plan** (`vve`, primary): the storage-almost-full banner, **Compute** (`#compute`: the plan cards, Edit, then "Review your compute and storage selections" and Update compute), **Storage** (`#storage`), **Storage Autoscaling**, **High Availability** (`#high-availability`: the switch and "Manually trigger a failover"). No title heading.
-- **Recovery** (`Vve`): the title "Recovery", **Point-in-Time Recovery**, **Export**. A replica reads "Backups are only taken for primary databases."
+- **Recovery** (`Vve`): the title "Recovery", **Point-in-Time Recovery**, the storage-almost-full banner, **Export**. A replica reads "Backups are only taken for primary databases."
 - **Apps**: the title "Apps", pgAdmin and PgHero ([postgres-admin-apps.md](postgres-admin-apps.md)).
 - **Logs** (`wve`): the full-screen log viewer.
 - **Metrics** (`DatabaseMetricsWithPermission`): the time range and event filters, the Instance, Network and Database metric groups, then **table and index sizes**, **processes** and **top queries** (those three need `viewDatabaseConnectionInfo`).
@@ -87,3 +87,36 @@ Each card of bex's former single Postgres page goes to the page whose Render cou
 - A Key Value instance keeps its single page ([w3/115](../../.pm/w3/done/115.md), promoted to w3/m649).
 - Render's document title has no page name; bex's names the page first, as its service tabs do.
 - Render's Sharing page (legacy, flagged) and its log stream override (a [`DO_NOT_DO.md`](../../.pm/DO_NOT_DO.md) non-goal) have no bex counterpart.
+
+## Almost-full warning (w3/m656)
+
+Read 2026-11-25 from Render's public dashboard bundle, without sign-in: `index-D5V4ZgbE.js` (sha256 `8d15889ace2d…`) holds the rule and the banner, `database-BZ7Tvd7O.js` (`a0a69cc0775a…`) the query, and three of its imports the helpers: `urls-ubVUii_6.js` (`830179d15f15…`) the plan URL, `IntercomHandler-CwplQFZP.js` (`3ad80ad016f2…`) the support link and `plans-wgP2-MCL.js` (`852fd70ad525…`) the custom-plan test. Find the rule by `storageUsedPercent` beside `1073741824`.
+
+- **Data.** The `database(id)` query asks for `storageUsedPercent`, `storageUsed` and `storageTotal` beside `...databaseFields`, whose fragment carries `diskSizeGiB` and `isMaxPlan`. The bundle reads all three through `Number()`, so their wire types are not visible; the byte counts do not fit GraphQL's 32-bit `Int` past 2 GiB.
+- **Rule.** `total = Number(storageTotal)` and `percent = Number(storageUsedPercent)`. When both are non-zero, it warns if `percent > 80` and `(1 − percent / 100) × total / 1073741824 < 5`, that is more than 80% used and less than 5 GiB left. A missing or zero number never warns.
+- **Copy.** "Your database is almost full. This may lead to errors reading from or writing to your database and can prevent automated backups. Consider clearing some space in your database or ‹ending›." The ending is one of three:
+
+  | When | Ending | Link |
+  | --- | --- | --- |
+  | `isMaxPlan` | "contact support to update your custom compute plan" on a custom plan (its name matches `/(custom\|dedicated\|w\.)/i`), else "contact support to create a custom compute plan" | "contact support" opens Render's chat (`mailto:support@render.com`) |
+  | `diskSizeGiB` is set (flexible storage) | "increase its storage" | `/d/<id>/plan#storage` |
+  | otherwise | "upgrade to a compute plan with more storage" | `/d/<id>/plan` |
+
+- **Look and placement.** An inline warning. Info draws it after the clone and expiry banners, above the title "Info"; a primary's Plan draws it first, above Compute; Recovery draws it under Point-in-Time Recovery, above Export.
+- **Beside it.** Recovery's Create export is disabled when `Number(storageUsed) > 1099511627776`: "Exports are disabled for databases exceeding 1TB disk used."
+
+### What bex does (w3/m656)
+
+- GraphQL's `Database` carries the three fields: `storageTotal` and `storageUsed` as decimal strings, `storageUsedPercent` as a Float. REST and MCP do not carry them, since Render's public `postgres` objects (`diskSizeGB`, `diskAutoscalingEnabled`) and its MCP have no usage field.
+- `storageTotal` is the database's logical size, `diskSizeGB` × 2^30 bytes, which is the capacity its Metrics page draws (w4/m91). `storageUsed` is the fullest instance volume's newest `kubelet_volume_stats_used_bytes` sample in the last ten minutes, from the series the Metrics page's disk graph reads: the primary's, the HA standby's and each read replica's volume, since each holds a full copy. `storageUsedPercent` is used over total.
+- Writes fail only once the physical volume fills. Below 10 GiB the physical volume (Hetzner's floor) is larger than the logical size, so a small database can keep writing past its line and its percent can pass 100. bex warns at Render's line anyway, since Render's `storageTotal` is the provisioned size too.
+- `storageUsed` and `storageUsedPercent` are null without a recent sample, after a failed read or one slower than 3 seconds, and for a member without `can_view_activity` (a Billing member, who cannot open Metrics either). `storageTotal` is always there. A query that selects none of the three makes no usage read.
+- The dashboard reads the three in a query of their own (`DatabaseStorage`), so a database page never waits on the usage read. The warning appears once they answer and Render's rule holds.
+- The endings: a plan whose storage is fixed (Free) gets "upgrade to a compute plan with more storage", linking `/databases/<id>/plan`. Storage already at its plan's maximum, which no plan grows further, gets "contact support to create a custom compute plan" as plain text. Any other database gets "increase its storage", linking `/databases/<id>/plan#storage`, the Plan page's Storage row. Render's `/d/<id>/plan#storage` lands there through the `/d/` alias, and so does `/databases/<id>#storage`.
+- Placement: above Info's and Plan's headings, and on Recovery under its heading, above its one card. bex's Recovery card holds both point-in-time recovery and exports, so the warning cannot sit between them.
+
+### Still apart
+
+- Render's "update your custom compute plan": bex has no custom plans.
+- Render's "contact support" opens its chat; bex's is text, as bex has no support channel to link.
+- Render disables Create export above 1 TB used; bex does not ([w3/130](../../.pm/w3/130.md)).

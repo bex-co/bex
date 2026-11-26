@@ -1413,6 +1413,27 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description:
       "Why the Storage Edit button is disabled on a free database (bex-api POSTGRES_STORAGE_PLAN_UNSUPPORTED)",
   },
+  "databases.storageAlmostFull": {
+    message:
+      "你的数据库即将存满。这可能导致数据库读写出错，还可能导致自动备份无法进行。请考虑清理数据库中的部分空间，或{action}。",
+    description:
+      "Render's almost-full warning at the top of a Postgres database's Info, Plan and Recovery pages (w3/m656): more than 80% of its storage used and less than 5 GiB left. {action} is databases.storageAlmostFullIncrease or databases.storageAlmostFullUpgrade, drawn as a link to the Plan page, or databases.storageAlmostFullSupport",
+  },
+  "databases.storageAlmostFullIncrease": {
+    message: "增加它的存储",
+    description:
+      "The almost-full warning's ending for storage that can grow: a link to the Plan page's Storage control (Render's copy)",
+  },
+  "databases.storageAlmostFullUpgrade": {
+    message: "升级到存储更大的计算套餐",
+    description:
+      "The almost-full warning's ending for a plan whose storage is fixed: a link to the Plan page's plan picker (Render's copy)",
+  },
+  "databases.storageAlmostFullSupport": {
+    message: "联系支持团队创建自定义计算套餐",
+    description:
+      "The almost-full warning's ending for storage already at its plan's maximum, which no plan grows further (Render's copy); plain text",
+  },
   "databases.storageEdit": {
     message: "编辑",
     description:

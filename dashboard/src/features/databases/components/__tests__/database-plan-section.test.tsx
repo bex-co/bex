@@ -344,6 +344,16 @@ describe("DatabasePlanSection storage", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  // Render's almost-full warning links `/plan#storage` (w3/m656).
+  it("is Render's #storage anchor", () => {
+    render(<DatabasePlanSection database={STARTER} onChanged={vi.fn()} />);
+    const anchor = document.getElementById("storage");
+    expect(anchor).toHaveTextContent(/^Storage10 GB/);
+    expect(
+      within(anchor!).getByRole("button", { name: "Edit storage" }),
+    ).toBeInTheDocument();
+  });
+
   it("rejects a size that is not a multiple of 5 GB", async () => {
     const { dialog, save, enter } = await openStorage();
     await enter("12");

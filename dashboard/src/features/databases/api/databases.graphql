@@ -80,6 +80,19 @@ query Database($id: String!) {
   }
 }
 
+# Render's almost-full warning reads these beside the database (w3/m656): its
+# logical size and its fullest instance volume's used bytes, as decimal
+# strings, and their ratio. Read on its own so a database page never waits on
+# the usage read; Apollo merges them into the same Database entry.
+query DatabaseStorage($id: String!) {
+  database(id: $id) {
+    id
+    storageUsedPercent
+    storageUsed
+    storageTotal
+  }
+}
+
 # The one place the DB password is surfaced (docs/ADR006-bex-api.md §Managed Postgres):
 # fetched on demand from the detail page's "Reveal", never in the bulk list and
 # never on page load. Returns the Render-shaped `PostgresConnectionInfo`.

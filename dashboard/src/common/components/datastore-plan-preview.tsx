@@ -143,7 +143,9 @@ export function DatastorePlanPreview({
         </div>
         {copy.storage ? (
           <>
-            <div className="flex items-center justify-between gap-4 border-t pt-4">
+            {/* The ready row's classes; its `#storage` id is the ready
+                control's alone (w3/m656). */}
+            <div className="flex scroll-mt-6 items-center justify-between gap-4 border-t pt-4">
               <div className="min-w-0 space-y-1">
                 <p className="text-sm font-medium">{t(copy.storage.title)}</p>
                 {/* The size line: text-sm's 20px line box. */}

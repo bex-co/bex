@@ -88,6 +88,11 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// blueprintId: the Blueprint managing this database, null when nothing
 		// does (w4/m125, bex extension).
 		"blueprintId": gqlutil.OptionalStrField(func(v PostgresView) any { return v.BlueprintID }),
+		// Render's almost-full warning reads these three (w3/m656,
+		// storage_usage.go).
+		"storageTotal":       {Type: graphql.String, Resolve: resolveStorageTotal},
+		"storageUsed":        {Type: graphql.String, Resolve: resolveStorageUsed},
+		"storageUsedPercent": {Type: graphql.Float, Resolve: resolveStorageUsedPercent},
 	},
 })
 

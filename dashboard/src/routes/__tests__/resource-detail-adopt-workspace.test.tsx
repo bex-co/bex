@@ -110,6 +110,10 @@ vi.mock("@/features/databases/components/database-danger-actions", () => ({
 vi.mock("@/features/databases/components/connection-info-panel", () => ({
   ConnectionInfoPanel: stub,
 }));
+// The almost-full warning's own usage read (w3/m656).
+vi.mock("@/features/databases/components/database-storage-alert", () => ({
+  DatabaseStorageAlert: stub,
+}));
 vi.mock(
   "@/features/databases/components/database-disk-autoscaling-control",
   () => ({ DatabaseDiskAutoscalingControl: stub }),

@@ -99,6 +99,9 @@ type Service struct {
 	// Retirements records a deleted database for usage metering, which lists
 	// only live CRs (w4/m173). nil records nothing.
 	Retirements store.UsageRetirementRecorder
+	// StorageUsed reads a database's current used bytes for GraphQL's
+	// storageUsed and storageUsedPercent (w3/m656). nil reads them as null.
+	StorageUsed StorageUsedSource
 }
 
 // PostgresView is the Render-shaped "postgres" object.
@@ -220,6 +223,10 @@ type PostgresView struct {
 	// the claim table's mirror — see apps.AppView.BlueprintID for why that
 	// makes it affordable on lists as well as single reads.
 	BlueprintID string `json:"blueprintId,omitempty"`
+
+	// storage reads the database's current usage for GraphQL's storage
+	// fields (w3/m656), only when a query selects one; nil without a source.
+	storage *storageUsage
 }
 
 // ReadReplicaView is one named read replica as returned in the Render-shaped
@@ -691,6 +698,7 @@ func (s *Service) view(d *appv1alpha1.Database) PostgresView {
 	v := pgView(d)
 	v.Region = s.Metadata.ResourceRegion(d)
 	v.DashboardURL = s.Metadata.DashboardURL(resourcemeta.PostgresDashboardRoute, v.ID)
+	v.storage = s.storageUsage(d.Namespace, d.Labels[core.LabelTenant], d.Name)
 	return v
 }
 

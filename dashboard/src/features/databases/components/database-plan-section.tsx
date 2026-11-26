@@ -273,7 +273,12 @@ function StorageRow({
   }
 
   return (
-    <div className="flex items-center justify-between gap-4 border-t pt-4">
+    // `#storage` is Render's anchor for this control: its almost-full
+    // warning links `/plan#storage` (w3/m656).
+    <div
+      id="storage"
+      className="flex scroll-mt-6 items-center justify-between gap-4 border-t pt-4"
+    >
       <div className="min-w-0 space-y-1">
         <p className="text-sm font-medium">{t("databases.storageTitle")}</p>
         <p className="text-muted-foreground text-sm">

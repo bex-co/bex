@@ -106,6 +106,8 @@ describe("a Postgres database's old links and Render's sub-paths (w3/m641)", () 
     ["insights", "/metrics"],
     ["plan", "/plan"],
     ["high-availability", "/plan"],
+    // Render's anchor for the storage control (w3/m656).
+    ["storage", "/plan"],
     ["apps", "/apps"],
     ["recovery", "/recovery"],
   ])(
@@ -143,6 +145,8 @@ describe("a Postgres database's old links and Render's sub-paths (w3/m641)", () 
 
   it.each([
     ["/upgrade?plan=pro#compute", "/plan", { plan: "pro" }, "compute"],
+    // The almost-full warning's link on Render (w3/m656).
+    ["/plan#storage", "/plan", {}, "storage"],
     ["/high-availability-upgrade", "/plan", {}, "high-availability"],
     ["/version-upgrade", "", {}, ""],
     ["/metrics/7d", "/metrics", {}, ""],

@@ -1308,6 +1308,9 @@ type Database {
   status: String
   statusReason: String
   statusReasonCode: String
+  storageTotal: String
+  storageUsed: String
+  storageUsedPercent: Float
   suspended: String
   suspenders: [String]
   updatedAt: String

@@ -17,8 +17,18 @@ import { renderDatabasePages } from "@/test/datastore-pages";
 // Page map), and no other page's. The real layout and page routes run; the
 // data hooks are stubbed and every card stands in as a named marker.
 
-const { card } = vi.hoisted(() => ({
+const { card, storage, catalog } = vi.hoisted(() => ({
   card: (name: string) => () => <div data-card={name} />,
+  // The almost-full warning's usage read and the plan catalog (w3/m656).
+  storage: {
+    current: null as {
+      storageUsedPercent: number | null;
+      storageTotal: string | null;
+    } | null,
+  },
+  catalog: {
+    current: [] as { id: string; storageGB: number; maxStorageGB: number }[],
+  },
 }));
 
 vi.mock("@/common/components/dashboard-layout", () => ({
@@ -59,7 +69,10 @@ vi.mock("@/features/databases/hooks/use-database-lifecycle", () => ({
   useDatabaseLifecycle: () => ({ pending: null, run: vi.fn() }),
 }));
 vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
-  useDatabaseInstanceTypes: () => ({ instanceTypes: [] }),
+  useDatabaseInstanceTypes: () => ({ instanceTypes: catalog.current }),
+}));
+vi.mock("@/features/databases/hooks/use-database-storage", () => ({
+  useDatabaseStorage: () => storage.current,
 }));
 vi.mock("@/features/databases/components/database-status-badge", () => ({
   DatabaseStatusBadge: () => null,
@@ -129,6 +142,8 @@ const cards = () =>
 
 beforeEach(() => {
   document.body.innerHTML = "";
+  storage.current = null;
+  catalog.current = [];
 });
 
 describe("a Postgres database's pages (w3/m641)", () => {
@@ -181,5 +196,120 @@ describe("a Postgres database's pages (w3/m641)", () => {
     await waitFor(() => expect(cards()).toEqual(INFO));
     expect(router.state.location.pathname).toBe("/databases/dpg-main/info");
     expect(document.getElementById("sql-console")).not.toBeNull();
+  });
+});
+
+// w3/m656: Render's almost-full warning leads Info and Plan, above Info's
+// title, and Recovery under its title; no other page draws it.
+describe("a Postgres database's almost-full warning (w3/m656)", () => {
+  const GIB = 1024 ** 3;
+  const ALMOST_FULL = {
+    storageUsedPercent: 90,
+    storageTotal: String(10 * GIB),
+  };
+  const WARNING = /^Your database is almost full\./;
+
+  const alert = () => screen.queryByRole("alert");
+  const precedes = (first: Element, second: Element) =>
+    Boolean(
+      first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+
+  it.each([
+    ["/databases/dpg-main", "Info"],
+    ["/databases/dpg-main/info", "Info"],
+    ["/databases/dpg-main/plan", "Plan"],
+  ])("leads %s, above its heading", async (href, heading) => {
+    storage.current = ALMOST_FULL;
+    await renderDatabasePages(ROUTES, href);
+
+    const title = await screen.findByRole("heading", {
+      level: 2,
+      name: heading,
+    });
+    const warning = await screen.findByRole("alert");
+    expect(warning).toHaveTextContent(WARNING);
+    expect(precedes(warning, title)).toBe(true);
+  });
+
+  it("leads Recovery's card, under its heading", async () => {
+    storage.current = ALMOST_FULL;
+    await renderDatabasePages(ROUTES, "/databases/dpg-main/recovery");
+
+    const title = await screen.findByRole("heading", {
+      level: 2,
+      name: "Recovery",
+    });
+    const warning = await screen.findByRole("alert");
+    await waitFor(() => expect(cards()).toEqual(["recovery"]));
+    const recovery = document.querySelector("[data-card=recovery]")!;
+    expect(precedes(title, warning) && precedes(warning, recovery)).toBe(true);
+  });
+
+  it.each(["logs", "metrics", "apps"])("is not on %s", async (page) => {
+    storage.current = ALMOST_FULL;
+    await renderDatabasePages(ROUTES, `/databases/dpg-main/${page}`);
+
+    await screen.findByRole("heading", { level: 2 });
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    expect(alert()).toBeNull();
+  });
+
+  it.each([
+    [
+      "below Render's line",
+      { storageUsedPercent: 80, storageTotal: String(10 * GIB) },
+    ],
+    [
+      "with 5 GiB or more left",
+      { storageUsedPercent: 95, storageTotal: String(200 * GIB) },
+    ],
+    [
+      "without a usage read",
+      { storageUsedPercent: null, storageTotal: String(10 * GIB) },
+    ],
+    ["before the read answers", null],
+  ])("does not show %s", async (_name, usage) => {
+    storage.current = usage;
+    await renderDatabasePages(ROUTES, "/databases/dpg-main/info");
+
+    await waitFor(() => expect(cards()).toEqual(INFO));
+    expect(alert()).toBeNull();
+  });
+
+  it("links the Plan page's storage control, Render's /plan#storage", async () => {
+    storage.current = ALMOST_FULL;
+    catalog.current = [{ id: "basic-1gb", storageGB: 5, maxStorageGB: 16384 }];
+    await renderDatabasePages(ROUTES, "/databases/dpg-main/info");
+
+    const link = await screen.findByRole("link", {
+      name: "increase its storage",
+    });
+    expect(link).toHaveAttribute("href", "/databases/dpg-main/plan#storage");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Your database is almost full. This may lead to errors reading from or writing to your database and can prevent automated backups. Consider clearing some space in your database or increase its storage.",
+    );
+  });
+
+  it("links a fixed plan's picker instead", async () => {
+    storage.current = ALMOST_FULL;
+    catalog.current = [{ id: "basic-1gb", storageGB: 1, maxStorageGB: 1 }];
+    await renderDatabasePages(ROUTES, "/databases/dpg-main/plan");
+
+    const link = await screen.findByRole("link", {
+      name: "upgrade to a compute plan with more storage",
+    });
+    expect(link).toHaveAttribute("href", "/databases/dpg-main/plan");
+  });
+
+  it("asks support once the storage is at its plan's maximum", async () => {
+    storage.current = ALMOST_FULL;
+    catalog.current = [{ id: "basic-1gb", storageGB: 5, maxStorageGB: 10 }];
+    await renderDatabasePages(ROUTES, "/databases/dpg-main/info");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /or contact support to create a custom compute plan\.$/,
+    );
+    expect(screen.queryByRole("link", { name: /storage|plan/ })).toBeNull();
   });
 });

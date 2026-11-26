@@ -31,6 +31,7 @@ import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt
 import { useDatabaseLifecycle } from "@/features/databases/hooks/use-database-lifecycle";
 import { DatabaseStatusBadge } from "@/features/databases/components/database-status-badge";
 import { DatabaseRowActions } from "@/features/databases/components/database-row-actions";
+import { DatabaseStorageAlert } from "@/features/databases/components/database-storage-alert";
 import { databasePageLabelKey } from "@/features/databases/components/database-nav";
 import { DatabaseDetailProvider } from "@/features/databases/lib/database-detail";
 import { DatabaseDocument } from "@/graphql/definitions";
@@ -180,6 +181,11 @@ function DatabaseDetailLayout({
           data-skeleton-region={!database ? "active-page" : undefined}
         >
           <div className="mx-auto w-full max-w-5xl space-y-6">
+            {database && storageAlertAbovePage(pageLabelKey) ? (
+              // Render draws its almost-full warning first on Info and Plan,
+              // above Info's title (w3/m656).
+              <DatabaseStorageAlert database={database} />
+            ) : null}
             {pageLabelKey ? (
               // Every page opens with its name, the sidebar's label for it.
               <h2 className="text-lg leading-7 font-semibold tracking-tight">
@@ -203,6 +209,13 @@ function DatabaseDetailLayout({
       </div>
     </DashboardLayout>
   );
+}
+
+/** The pages whose almost-full warning leads them, above their heading. */
+function storageAlertAbovePage(
+  labelKey: ReturnType<typeof databasePageLabelKey>,
+): boolean {
+  return labelKey === "databases.navInfo" || labelKey === "databases.navPlan";
 }
 
 /**

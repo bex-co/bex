@@ -182,29 +182,11 @@ func (w *Sweeper) evaluate(ctx context.Context, a *appv1alpha1.App, now time.Tim
 // usedBytes is the volume's most recent used-bytes sample within the last ten
 // minutes.
 func (w *Sweeper) usedBytes(ctx context.Context, a *appv1alpha1.App, now time.Time) (float64, bool, error) {
-	series, err := w.Usage(ctx, metrics.DiskUsageRequest{
+	return metrics.CurrentDiskUsed(ctx, w.Usage, metrics.DiskUsageRequest{
 		Namespace:  a.Namespace,
 		Resource:   a.Name,
 		PVCPattern: metrics.ServiceDiskPVCPattern(a.Name),
-		Start:      now.Add(-10 * time.Minute),
-		End:        now,
-		Resolution: time.Minute,
-	})
-	if err != nil {
-		return 0, false, err
-	}
-	var latest time.Time
-	var value float64
-	found := false
-	for _, s := range series {
-		for _, p := range s.Points {
-			at, err := time.Parse(time.RFC3339, p.Timestamp)
-			if err == nil && (!found || at.After(latest)) {
-				latest, value, found = at, p.Value, true
-			}
-		}
-	}
-	return value, found, nil
+	}, now)
 }
 
 func roundTenth(v float64) float64 { return math.Round(v*10) / 10 }

@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { DatabaseRecoverySkeleton } from "@/common/components/route-skeletons";
 import { RecoveryPanelSkeleton } from "@/features/databases/components/recovery-panel-skeleton";
+import { DatabaseStorageAlert } from "@/features/databases/components/database-storage-alert";
 import { databasePageHead } from "@/features/databases/lib/database-page-head";
 import { useDatabaseDetail } from "@/features/databases/lib/database-detail";
 
@@ -13,7 +14,9 @@ const RecoveryPanel = lazy(() =>
 
 /**
  * A Postgres database's Recovery page, Render's `/d/<id>/recovery`:
- * point-in-time recovery and exports (w3/m641).
+ * point-in-time recovery and exports (w3/m641). Render's almost-full warning
+ * sits under its title, before Export (w3/m656); bex's one card holds both,
+ * so the warning leads it.
  */
 export const Route = createFileRoute("/databases/$databaseId/recovery")({
   head: databasePageHead("databases.navRecovery"),
@@ -24,21 +27,24 @@ export const Route = createFileRoute("/databases/$databaseId/recovery")({
 function RouteComponent() {
   const { database } = useDatabaseDetail();
   return (
-    <section id="recovery" className="scroll-mt-6">
-      <Suspense
-        fallback={
-          <RecoveryPanelSkeleton
-            backupsEnabled={database.backupsEnabled !== false}
-            exportScope={Boolean(database.databaseName)}
+    <>
+      <DatabaseStorageAlert database={database} />
+      <section id="recovery" className="scroll-mt-6">
+        <Suspense
+          fallback={
+            <RecoveryPanelSkeleton
+              backupsEnabled={database.backupsEnabled !== false}
+              exportScope={Boolean(database.databaseName)}
+            />
+          }
+        >
+          <RecoveryPanel
+            id={database.id}
+            databaseName={database.databaseName}
+            backupsEnabled={database.backupsEnabled}
           />
-        }
-      >
-        <RecoveryPanel
-          id={database.id}
-          databaseName={database.databaseName}
-          backupsEnabled={database.backupsEnabled}
-        />
-      </Suspense>
-    </section>
+        </Suspense>
+      </section>
+    </>
   );
 }
