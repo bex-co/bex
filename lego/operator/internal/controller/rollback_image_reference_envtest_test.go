@@ -54,6 +54,10 @@ type movableTagRegistry struct {
 	// rateLimited answers every manifest read 429, as Docker Hub answers an
 	// anonymous puller past its rate limit.
 	rateLimited bool
+	// answer, when set, is every manifest read's status (w4/m671).
+	answer int
+	// manifestReads records each manifest request as "METHOD reference".
+	manifestReads []string
 }
 
 func newMovableTagRegistry() *movableTagRegistry {
@@ -80,6 +84,35 @@ func (m *movableTagRegistry) remove(tag string) {
 	delete(m.tags, tag)
 }
 
+// forget deletes a manifest by its digest, as a registry's retention or an
+// expired ttl.sh tag does.
+func (m *movableTagRegistry) forget(digest string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.manifests, digest)
+	for tag, body := range m.tags {
+		if fmt.Sprintf("sha256:%x", sha256.Sum256([]byte(body))) == digest {
+			delete(m.tags, tag)
+		}
+	}
+}
+
+// setAnswer makes every manifest read answer status; 0 serves them again.
+func (m *movableTagRegistry) setAnswer(status int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.answer = status
+}
+
+// takeManifestReads returns the manifest requests since the last call.
+func (m *movableTagRegistry) takeManifestReads() []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	reads := m.manifestReads
+	m.manifestReads = nil
+	return reads
+}
+
 func (m *movableTagRegistry) setUnreachable(unreachable bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -98,7 +131,12 @@ func (m *movableTagRegistry) client() *http.Client {
 		defer m.mu.Unlock()
 		status, body := http.StatusOK, ""
 		_, reference, isManifest := strings.Cut(request.URL.Path, "/manifests/")
+		if isManifest {
+			m.manifestReads = append(m.manifestReads, request.Method+" "+reference)
+		}
 		switch {
+		case isManifest && m.answer != 0:
+			status = m.answer
 		case isManifest && m.unreachable:
 			return nil, errors.New("connection refused")
 		case isManifest && m.rateLimited:

@@ -107,8 +107,9 @@ function wordSentence(
 /**
  * The reason in the dashboard's language when its code is one the dashboard
  * words, else bex-api's own sentence. A hint or cause bex-api read as parts
- * (w5/m356) follows the sentence part by part, each worded or in its own
- * English, then any remainder as bex-api wrote it.
+ * (w5/m356) reads part by part, each worded or in its own English, then any
+ * remainder as bex-api wrote it, where the sentence places it: at its end for
+ * a stall's hint, first for a running service's unavailable image (w4/m671).
  */
 export function deployReasonText(
   t: Translate,
@@ -117,17 +118,16 @@ export function deployReasonText(
 ): string {
   if (!template) return text;
   const tail = template.parts.length > 0 || template.remainder !== "";
+  const worded = tail
+    ? template.parts
+        .map((p) => wordSentence(t, p.code, p.params) ?? p.text)
+        .join("") + template.remainder
+    : "";
   const params = Object.fromEntries(
     Object.entries(template.params).map(([name, value]) => [
       name,
-      tail && (name === "hint" || name === "cause") ? "" : value,
+      tail && (name === "hint" || name === "cause") ? worded : value,
     ]),
   );
-  const sentence = wordSentence(t, template.code, params);
-  if (sentence === null) return text;
-  if (!tail) return sentence;
-  const parts = template.parts.map(
-    (p) => wordSentence(t, p.code, p.params) ?? p.text,
-  );
-  return sentence + parts.join("") + template.remainder;
+  return wordSentence(t, template.code, params) ?? text;
 }

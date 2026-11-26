@@ -584,6 +584,12 @@ const jaDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_rate_limited, w4/m669): Render's Rate limited (429 error) cause with its three remedies; params are the sentence's values",
   },
+  "deploys.reason.image_unavailable_serving": {
+    message:
+      "{cause}。実行中のインスタンスには影響しませんが、再起動やスケールアップなどイメージを再度 pull する操作は、イメージに再びアクセスできるようになるまで失敗します",
+    description:
+      "The Image Pull Failed message of a running service whose image its registry no longer serves, by its code (bex-api DeployReason image_unavailable_serving, w4/m671); {cause} is the image reason (image_not_found, image_credential_refused or image_access_refused), worded as its own part",
+  },
   "deploys.reason.build_timed_out": {
     message:
       "ビルドがビルド時間の上限内に完了しませんでした。ビルドログを確認してください",

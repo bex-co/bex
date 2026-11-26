@@ -582,6 +582,12 @@ const koDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_rate_limited, w4/m669): Render's Rate limited (429 error) cause with its three remedies; params are the sentence's values",
   },
+  "deploys.reason.image_unavailable_serving": {
+    message:
+      "{cause}. 실행 중인 인스턴스에는 영향이 없지만, 재시작이나 스케일 업처럼 이미지를 다시 pull하는 작업은 이미지에 다시 접근할 수 있을 때까지 실패합니다",
+    description:
+      "The Image Pull Failed message of a running service whose image its registry no longer serves, by its code (bex-api DeployReason image_unavailable_serving, w4/m671); {cause} is the image reason (image_not_found, image_credential_refused or image_access_refused), worded as its own part",
+  },
   "deploys.reason.build_timed_out": {
     message: "빌드가 허용 시간 내에 끝나지 않았습니다. 빌드 로그를 확인하세요",
     description:

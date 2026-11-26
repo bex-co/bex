@@ -1164,3 +1164,69 @@ func TestImagePullFailedSurfaceParity(t *testing.T) {
 		t.Errorf("MCP get_service_event = %+v, want message %q", one, cause)
 	}
 }
+
+// TestImageUnavailableSurfaceParity pins w4/m671: the image availability
+// check's image_pull_failed has no deploy, and its details.message names the
+// cause and says the running instances are unaffected, identically on REST
+// list and retrieve (what a webhook receiver reads by data.id), GraphQL (with
+// the cause worded by code as the sentence's part) and MCP.
+func TestImageUnavailableSurfaceParity(t *testing.T) {
+	at := time.Date(2026, 11, 26, 20, 0, 0, 0, time.UTC)
+	const image = "ttl.sh/m671-walk@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	cause := appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageNotFound, appv1alpha1.DeployReasonParam{Name: "image", Value: image})
+	message := appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageUnavailableServing, appv1alpha1.DeployReasonParam{Name: "cause", Value: cause})
+	row := store.ServiceEventRow{
+		Key: "fact:" + store.ImageAvailabilitySourceKey("web", at), At: at,
+		Source: store.EventSourceFact, FactType: string(store.EventFactImagePullFailed),
+		Image: image, ImagePullMessage: message, ReasonCode: store.EventReasonImagePullBackoff,
+	}
+	fake := &fakeEventStore{rows: []store.ServiceEventRow{row}}
+	base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
+	h, srv := serverWith(t, base, Deps{EventStore: fake})
+
+	res := do(t, h, "GET", "/v1/services/web/events?type=image_pull_failed&startTime=2026-11-01T00:00:00Z", testToken, "")
+	var rest []restEvent
+	if res.Code != http.StatusOK || json.Unmarshal(res.Body.Bytes(), &rest) != nil || len(rest) != 1 {
+		t.Fatalf("REST list: %d %s", res.Code, res.Body.String())
+	}
+	details := rest[0].Event.Details
+	if details["message"] != message || details["imageURL"] != image || details["deployId"] != nil {
+		t.Fatalf("REST image_pull_failed = %+v, want message %q, imageURL %q and no deploy", details, message, image)
+	}
+	if !strings.Contains(message, "Running instances are unaffected") || !strings.HasPrefix(message, cause) {
+		t.Fatalf("message %q does not name the cause and the running instances", message)
+	}
+	got := do(t, h, "GET", "/v1/events/"+rest[0].Event.ID, testToken, "")
+	var one wireEvent
+	if err := json.Unmarshal(got.Body.Bytes(), &one); err != nil || got.Code != http.StatusOK || fmt.Sprint(one.Details) != fmt.Sprint(details) {
+		t.Fatalf("REST retrieve = %d %s, want %+v", got.Code, got.Body.String(), details)
+	}
+
+	gqlList := gql(t, h, `{ serviceEvents(serviceId: "web", type: "image_pull_failed", startTime: "2026-11-01T00:00:00Z") { details { deployId message messageTemplate { code parts { code params { name value } } } } } }`)["serviceEvents"].([]any)
+	if len(gqlList) != 1 {
+		t.Fatalf("GraphQL list = %d, want 1", len(gqlList))
+	}
+	gqlDetails := gqlList[0].(map[string]any)["details"].(map[string]any)
+	template, _ := gqlDetails["messageTemplate"].(map[string]any)
+	parts, _ := template["parts"].([]any)
+	if gqlDetails["message"] != message || (gqlDetails["deployId"] != nil && gqlDetails["deployId"] != "") || template["code"] != appv1alpha1.DeployReasonImageUnavailableServing ||
+		len(parts) != 1 || parts[0].(map[string]any)["code"] != appv1alpha1.DeployReasonImageNotFound {
+		t.Errorf("GraphQL image_pull_failed = %v, want message %q worded as %s with its cause as a part", gqlDetails, message, appv1alpha1.DeployReasonImageUnavailableServing)
+	}
+
+	mcpRes, err := mcpSessionAs(t, srv, "user-x").CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      "list_events",
+		Arguments: map[string]any{"serviceId": "web", "eventTypes": []string{events.TypeImagePullFailed}, "startTime": "2026-11-01T00:00:00Z"},
+	})
+	if err != nil || mcpRes.IsError || len(mcpRes.Content) == 0 {
+		t.Fatalf("MCP list_events: res=%+v err=%v", mcpRes, err)
+	}
+	arrayPart, _, _ := strings.Cut(mcpRes.Content[0].(*mcp.TextContent).Text, "\n\n")
+	var mcpList []wireEvent
+	if err := json.Unmarshal([]byte(arrayPart), &mcpList); err != nil || len(mcpList) != 1 || fmt.Sprint(mcpList[0].Details) != fmt.Sprint(details) {
+		t.Errorf("MCP list_events = %+v (%v), want %+v", mcpList, err, details)
+	}
+	if one := callGetServiceEvent(t, srv, rest[0].Event.ID); fmt.Sprint(one.Details) != fmt.Sprint(details) {
+		t.Errorf("MCP get_service_event = %+v, want %+v", one.Details, details)
+	}
+}

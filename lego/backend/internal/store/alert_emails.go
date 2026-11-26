@@ -32,9 +32,13 @@ const (
 	AlertEmailFeedWatermark      = "feed"
 	AlertEmailBlueprintWatermark = "blueprint_syncs"
 
-	AlertEmailServerFailed        = "server_failed"
-	AlertEmailCronFailed          = "cron_failed"
-	AlertEmailImagePullFailed     = "image_pull_failed"
+	AlertEmailServerFailed    = "server_failed"
+	AlertEmailCronFailed      = "cron_failed"
+	AlertEmailImagePullFailed = "image_pull_failed"
+	// AlertEmailImageUnavailable is the Image Pull Failed email for a running
+	// service whose image its registry no longer serves (w4/m671): its lead
+	// says the service still runs, unlike a deploy's failed pull.
+	AlertEmailImageUnavailable    = "image_unavailable"
 	AlertEmailBlueprintSyncFailed = "blueprint_sync_failed"
 	AlertEmailServiceSuspended    = "service_suspended"
 	AlertEmailDiskUsageHigh       = "disk_usage_high"
@@ -95,7 +99,7 @@ type FailedBlueprintSync struct {
 func validAlertEmailEvent(event string) bool {
 	switch event {
 	case AlertEmailServerFailed, AlertEmailCronFailed, AlertEmailImagePullFailed, AlertEmailBlueprintSyncFailed,
-		AlertEmailServiceSuspended, AlertEmailDiskUsageHigh, AlertEmailDiskUsageRecovered:
+		AlertEmailServiceSuspended, AlertEmailDiskUsageHigh, AlertEmailDiskUsageRecovered, AlertEmailImageUnavailable:
 		return true
 	}
 	return false

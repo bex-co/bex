@@ -625,6 +625,12 @@ const ruDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_rate_limited, w4/m669): Render's Rate limited (429 error) cause with its three remedies; params are the sentence's values",
   },
+  "deploys.reason.image_unavailable_serving": {
+    message:
+      "{cause}. Работающие инстансы не затронуты, но любое действие, которое заново загружает образ, например перезапуск или масштабирование, завершится ошибкой, пока образ снова не станет доступен",
+    description:
+      "The Image Pull Failed message of a running service whose image its registry no longer serves, by its code (bex-api DeployReason image_unavailable_serving, w4/m671); {cause} is the image reason (image_not_found, image_credential_refused or image_access_refused), worded as its own part",
+  },
   "deploys.reason.build_timed_out": {
     message: "сборка не завершилась в отведённое время; проверьте логи сборки",
     description:

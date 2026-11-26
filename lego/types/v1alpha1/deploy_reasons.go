@@ -56,9 +56,15 @@ const (
 	// a network error stopped.
 	DeployReasonImageRegistryRateLimited = "image_registry_rate_limited"
 	DeployReasonImageRegistryUnavailable = "image_registry_unavailable"
-	DeployReasonBuildTimedOut            = "build_timed_out"
-	DeployReasonPreDeployTimedOut        = "pre_deploy_timed_out"
-	DeployReasonHealthTimedOut           = "health_timed_out"
+	// w4/m671: the image a running service runs is no longer served (its
+	// ConditionImageAvailable turned False). {cause} is one of the image
+	// reasons above, worded as a part of its own; the sentence says what
+	// Render's page does: the running instances are unaffected, but a fresh
+	// pull fails.
+	DeployReasonImageUnavailableServing = "image_unavailable_serving"
+	DeployReasonBuildTimedOut           = "build_timed_out"
+	DeployReasonPreDeployTimedOut       = "pre_deploy_timed_out"
+	DeployReasonHealthTimedOut          = "health_timed_out"
 	// w4/630: the service container was OOM-killed while starting; {memory}
 	// is its compute plan's limit, as Render's "Out of memory" names it.
 	DeployReasonStartupOutOfMemory = "startup_out_of_memory"
@@ -237,6 +243,7 @@ var deployReasonTemplates = map[string]string{
 	DeployReasonImageRegistryUnreachable: "the registry {host} did not answer the read of the image {image} for {minutes} minutes. " + registryUnavailableRemedy,
 	DeployReasonImageRegistryUnavailable: "the registry {host} is unavailable and could not serve the image {image}. " + registryUnavailableRemedy,
 	DeployReasonImageRegistryRateLimited: "the registry {host} rate-limited the pull of the image {image} (HTTP 429). Wait for the rate limit to reset, use a registry credential for an account with a higher rate limit, or mirror the image to another registry",
+	DeployReasonImageUnavailableServing:  "{cause}. Running instances are unaffected, but any action that pulls the image again, such as a restart or a scale-up, will fail until the image is reachable again",
 	DeployReasonBuildTimedOut:            "the build did not finish within the build window; check the build logs",
 	DeployReasonPreDeployTimedOut:        "the pre-deploy command did not finish within its window; check the pre-deploy logs",
 	DeployReasonHealthTimedOut:           "the deploy did not become healthy within the health-gate window; check the service logs",

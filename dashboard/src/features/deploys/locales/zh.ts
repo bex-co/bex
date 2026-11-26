@@ -572,6 +572,12 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_rate_limited, w4/m669): Render's Rate limited (429 error) cause with its three remedies; params are the sentence's values",
   },
+  "deploys.reason.image_unavailable_serving": {
+    message:
+      "{cause}。正在运行的实例不受影响，但任何需要重新拉取镜像的操作（例如重启或扩容）都会失败，直到镜像再次可访问",
+    description:
+      "The Image Pull Failed message of a running service whose image its registry no longer serves, by its code (bex-api DeployReason image_unavailable_serving, w4/m671); {cause} is the image reason (image_not_found, image_credential_refused or image_access_refused), worded as its own part",
+  },
   "deploys.reason.build_timed_out": {
     message: "构建未在构建时限内完成；请查看构建日志",
     description:

@@ -451,3 +451,36 @@ func TestImagePullFailedEmailNamesTheCause(t *testing.T) {
 		t.Errorf("mail = %q / %q, want the cause under the lead", subject, text)
 	}
 }
+
+// The image availability check's Image Pull Failed email says the service
+// still runs: its own stream and lead, then the cause and what it means
+// (w4/m671). A deploy's failed pull keeps its own email.
+func TestAnUnavailableImageEmailsARunningServiceLead(t *testing.T) {
+	const image = "ttl.sh/m671@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	cause := appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageNotFound, appv1alpha1.DeployReasonParam{Name: "image", Value: image})
+	message := appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageUnavailableServing, appv1alpha1.DeployReasonParam{Name: "cause", Value: cause})
+	key := "fact:" + store.ImageAvailabilitySourceKey("srv-web", time.Date(2026, 11, 26, 14, 15, 0, 0, time.UTC))
+	byTenant := map[string][]store.AlertEmailRecipient{"tea-a": {{TenantID: "tea-a", Subject: "alice", DeployFailed: true}}}
+	w := &AlertEmailWorker{Store: &fakeAlertStore{results: map[string]string{key: message}}}
+	row := func(key string) store.WebhookEventRow {
+		return store.WebhookEventRow{TenantID: "tea-a", ServiceID: "tea-a-web", AppID: "srv-web", ServiceName: "web",
+			Key: key, Source: store.EventSourceFact, FactType: string(store.EventFactImagePullFailed)}
+	}
+	items, err := w.projectFeed(t.Context(), []store.WebhookEventRow{row(key), row("fact:deploy:dep-1:image_pull_failed")}, byTenant)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 2 || items[0].Event != store.AlertEmailImageUnavailable || items[1].Event != store.AlertEmailImagePullFailed {
+		t.Fatalf("items = %+v, want the availability check's own alert and a deploy's", items)
+	}
+	subject, msg := alertEmail(store.AlertEmailStream{Event: items[0].Event, ResourceName: "web", Detail: items[0].Detail,
+		Occurrences: []time.Time{time.Now()}, PendingCount: 1}, "")
+	text := msg.Text()
+	lead := `The Docker image of "web" can no longer be pulled from its registry.`
+	detail := "The image " + image + " was not found in its registry"
+	if subject != "Image pull failed: web" || !strings.Contains(text, lead) || !strings.Contains(text, detail) ||
+		!strings.Contains(text, "Running instances are unaffected") || strings.Contains(text, "the new version did not start") ||
+		strings.Index(text, detail) < strings.Index(text, lead) {
+		t.Errorf("mail = %q / %q, want the running-service lead, then the cause", subject, text)
+	}
+}

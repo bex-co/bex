@@ -325,6 +325,38 @@ const ConditionBuild = "Build"
 // until a newer release moves the release generation past the record.
 const ConditionRollout = "Rollout"
 
+// ConditionImageAvailable reports whether the registry still serves the image
+// a running image-backed service runs (w4/m671). Render "periodically checks
+// image availability for active services. If an image is unavailable, Render
+// can notify you even if your running services are unaffected"
+// (render.com/docs/deploying-an-image); a restart, a scale-up or a node
+// replacement would pull it again and fail.
+//
+// The operator's app-image-check controller alone writes it, with
+// status.imageCheck, from a manifest HEAD on status.image (see ADR004 § A
+// running image service's image is checked):
+//
+//   - ImageAvailable    (True)  — the registry served the manifest
+//   - ImageNotFound     (False) — it answered 404 twice in a row
+//   - ImageCredentialRefused / ImageAccessRefused (False) — it answered 401 or
+//     403 twice in a row, with or without the release's registry credential
+//
+// A rate limit, a server error or an unreachable registry never sets it. Its
+// message is the cause in the deploy reason templates' words
+// (image_not_found, image_credential_refused, image_access_refused). Absent
+// until the served image's first conclusive check, and dropped with
+// status.imageCheck when another image starts serving. bex-api records one
+// image_pull_failed event, with no deploy, per False transition.
+const ConditionImageAvailable = "ImageAvailable"
+
+// ConditionImageAvailable's reasons.
+const (
+	ReasonImageAvailable         = "ImageAvailable"
+	ReasonImageNotFound          = "ImageNotFound"
+	ReasonImageCredentialRefused = "ImageCredentialRefused"
+	ReasonImageAccessRefused     = "ImageAccessRefused"
+)
+
 // Build-failure condition reasons. These are part of the CR contract, not an
 // operator-internal detail: the operator writes them onto the Ready condition
 // and bex-api reads them to classify a deploy, so they live here where both
@@ -1898,6 +1930,23 @@ type ImageDigestStatus struct {
 	Digest string `json:"digest"`
 }
 
+// ImageCheckStatus is the last answer of the periodic check that the registry
+// still serves the image a running image-backed service runs (w4/m671). It
+// keeps the check's schedule across manager restarts; the outcome is
+// ConditionImageAvailable.
+type ImageCheckStatus struct {
+	// Image is the reference checked: status.image when the registry answered.
+	Image string `json:"image"`
+
+	// CheckedAt is when the registry last gave the check a conclusive answer.
+	CheckedAt metav1.Time `json:"checkedAt"`
+
+	// Refusals counts the consecutive checks the registry answered not found
+	// or refused (401, 403, 404); an answer that served the image resets it.
+	// +optional
+	Refusals int32 `json:"refusals,omitempty"`
+}
+
 // MaxReleaseRolloutAppStarts bounds ReleaseRolloutStatus.AppStarts.
 const MaxReleaseRolloutAppStarts = 10
 
@@ -2329,6 +2378,15 @@ type AppStatus struct {
 	// (static sites; cron jobs whose image is a tag).
 	// +optional
 	ImageDigest *ImageDigestStatus `json:"imageDigest,omitempty"`
+
+	// ImageCheck is the last conclusive answer of the periodic check that the
+	// registry still serves status.image, for a running web service, private
+	// service or background worker whose image is outside bex's registry
+	// (w4/m671). Written only by the app-image-check controller, beside
+	// ConditionImageAvailable; nil until the first answer, and for every other
+	// App.
+	// +optional
+	ImageCheck *ImageCheckStatus `json:"imageCheck,omitempty"`
 
 	// RolloutFailure is the structured cause of a release whose rollout failed
 	// (w8/m146): how its app container last exited, or the deadline it ran

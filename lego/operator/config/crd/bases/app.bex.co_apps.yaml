@@ -1465,6 +1465,34 @@ spec:
               image:
                 description: Image is the OCI image of the active revision.
                 type: string
+              imageCheck:
+                description: |-
+                  ImageCheck is the last conclusive answer of the periodic check that the
+                  registry still serves status.image, for a running web service, private
+                  service or background worker whose image is outside bex's registry
+                  (w4/m671). Written only by the app-image-check controller, beside
+                  ConditionImageAvailable; nil until the first answer, and for every other
+                  App.
+                properties:
+                  checkedAt:
+                    description: CheckedAt is when the registry last gave the check
+                      a conclusive answer.
+                    format: date-time
+                    type: string
+                  image:
+                    description: 'Image is the reference checked: status.image when
+                      the registry answered.'
+                    type: string
+                  refusals:
+                    description: |-
+                      Refusals counts the consecutive checks the registry answered not found
+                      or refused (401, 403, 404); an answer that served the image resets it.
+                    format: int32
+                    type: integer
+                required:
+                - checkedAt
+                - image
+                type: object
               imageDigest:
                 description: |-
                   ImageDigest is the digest the serving release's app container runs,

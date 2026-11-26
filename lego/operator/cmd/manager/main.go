@@ -115,6 +115,26 @@ func envInt(k string, def int) int {
 	return n
 }
 
+// imageCheckInterval is BEX_IMAGE_CHECK_INTERVAL (w4/m671): how often the
+// operator asks the registry whether a running image service's image is still
+// served, as a Go duration ("6h", "2m"). Unset is
+// controller.DefaultImageCheckInterval, and 0 turns the check off. A
+// malformed or negative value keeps the default and says so, rather than
+// stopping the manager over a check.
+func imageCheckInterval() time.Duration {
+	raw := os.Getenv("BEX_IMAGE_CHECK_INTERVAL")
+	if raw == "" {
+		return controller.DefaultImageCheckInterval
+	}
+	interval, err := time.ParseDuration(raw)
+	if err != nil || interval < 0 {
+		setupLog.Info("BEX_IMAGE_CHECK_INTERVAL is not a duration of zero or more; using the default",
+			"value", raw, "default", controller.DefaultImageCheckInterval.String())
+		return controller.DefaultImageCheckInterval
+	}
+	return interval
+}
+
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
@@ -515,6 +535,8 @@ func setupAppReconciler(
 		// Unset leaves every pod template byte-identical; the bex workspace is
 		// the Hetzner hcloud-volumes idmap canary before "*".
 		RenderV1UserNamespaces: controller.ParseWorkspaceSet(os.Getenv("BEX_RENDER_V1_USER_NAMESPACES")),
+		// w4/m671: how often a running image service's image is checked.
+		ImageCheckInterval: imageCheckInterval(),
 	}
 	// Build-namespace pull credential for build-plane Jobs (the static-site publish
 	// Job) that pull the just-built tenant image from Zot. The per-App/shared tenant

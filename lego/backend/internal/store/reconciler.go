@@ -613,6 +613,11 @@ func (r *Reconciler) recordObservations(ctx context.Context, d DesiredApp, cur *
 			}
 		}
 	}
+	if fact, ok := imageUnavailableFact(d.ID, cur); ok {
+		if _, err := r.Store.InsertServiceEventFact(ctx, fact); err != nil {
+			log.Printf("controlplane: record the unavailable image of %s: %v", d.ID, err)
+		}
+	}
 	r.recordCanceledPreDeploy(ctx, d.ID, cur)
 	// Before the sampled availability below, which leaves the failure to these
 	// when a process exit explains it.
@@ -1900,6 +1905,55 @@ func buildServedReleasePullFact(appID, image string, gen int64, c *metav1.Condit
 		Message:    imagePullFailedCause(c.Message),
 		ReasonCode: EventReasonImagePullBackoff,
 	}
+}
+
+// imageUnavailableFact is the image_pull_failed fact, with no deploy, for a
+// running service whose image its registry no longer serves: the operator's
+// ImageAvailable condition turned False (w4/m671; Render's Image Pull Failed
+// event needs only a message and an imageURL). The key holds the condition's
+// transition time, so one outage is one event however many passes see it, and
+// the operator's next False after a recovery is an event of its own. It is
+// dated by that transition, when the check found the outage, and names the
+// image the check read (status.imageCheck), which a deploy in flight may
+// already have replaced in status.image. The message is the operator's cause
+// followed by what it means for a running service (image_unavailable_serving).
+func imageUnavailableFact(appID string, app *appv1alpha1.App) (ServiceEventFact, bool) {
+	c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionImageAvailable)
+	check := app.Status.ImageCheck
+	if c == nil || check == nil || c.Status != metav1.ConditionFalse || c.LastTransitionTime.IsZero() {
+		return ServiceEventFact{}, false
+	}
+	cause := strings.TrimSpace(c.Message)
+	if cause == "" {
+		return ServiceEventFact{}, false
+	}
+	at := c.LastTransitionTime.UTC()
+	return ServiceEventFact{
+		SourceKey:  ImageAvailabilitySourceKey(appID, at),
+		AppID:      appID,
+		Type:       EventFactImagePullFailed,
+		At:         at,
+		Image:      check.Image,
+		Message:    appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageUnavailableServing, appv1alpha1.DeployReasonParam{Name: "cause", Value: cause}),
+		ReasonCode: EventReasonImagePullBackoff,
+	}, true
+}
+
+// imageAvailabilityKeyPrefix starts the source key of an image_pull_failed
+// fact the image availability check recorded (imageUnavailableFact).
+const imageAvailabilityKeyPrefix = "availability:"
+
+// ImageAvailabilitySourceKey is the source key of the image_pull_failed fact
+// for appID's outage found at at.
+func ImageAvailabilitySourceKey(appID string, at time.Time) string {
+	return fmt.Sprintf("%s%s:%d", imageAvailabilityKeyPrefix, appID, at.Unix())
+}
+
+// IsImageAvailabilityFact reports a feed row's key (fact:<source key>) that
+// names an image_pull_failed fact of the image availability check: the
+// running service's image is gone, not a deploy's pull.
+func IsImageAvailabilityFact(feedKey string) bool {
+	return strings.HasPrefix(factSourceKey(feedKey), imageAvailabilityKeyPrefix)
 }
 
 // imagePullFailure reports a Ready or Rollout reason that Render reports as

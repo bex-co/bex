@@ -289,6 +289,11 @@ func classifyAlertEmail(row store.WebhookEventRow) (event, detail string, ok boo
 	case string(store.EventFactServerHardwareFailure):
 		return store.AlertEmailServerFailed, "An instance was lost with the machine it ran on.", true
 	case string(store.EventFactImagePullFailed):
+		// The availability check's event is about a service that still runs
+		// (w4/m671), so its email has a lead of its own.
+		if store.IsImageAvailabilityFact(row.Key) {
+			return store.AlertEmailImageUnavailable, "", true
+		}
 		return store.AlertEmailImagePullFailed, "", true
 	case string(store.EventFactCronRunEnded):
 		if row.Status == store.EventStatusFailed {
@@ -480,9 +485,12 @@ func alertEmail(st store.AlertEmailStream, url string) (string, email.Message) {
 	case store.AlertEmailCronFailed:
 		title, cta = "Cron job failed", "View runs"
 		lead = fmt.Sprintf("A run of the cron job %q failed.", name)
-	case store.AlertEmailImagePullFailed:
+	case store.AlertEmailImagePullFailed, store.AlertEmailImageUnavailable:
 		title, cta = "Image pull failed", "View events"
 		lead = fmt.Sprintf("%q could not pull its Docker image, so the new version did not start.", name)
+		if st.Event == store.AlertEmailImageUnavailable {
+			lead = fmt.Sprintf("The Docker image of %q can no longer be pulled from its registry.", name)
+		}
 	case store.AlertEmailDiskUsageHigh:
 		title, cta = "Disk usage high", "View events"
 		lead = fmt.Sprintf("A disk on %q crossed its usage threshold. Free up space or increase the disk size before it fills up.", name)

@@ -141,6 +141,21 @@ func TestDeployReasonFieldReadsATailAsParts(t *testing.T) {
 	if _, parts, remainder := read("the build never started: " + unknown); len(parts) != 0 || remainder != unknown {
 		t.Errorf("an unknown cause = %+v remainder %q", parts, remainder)
 	}
+
+	// w4/m671: a running service's unavailable image names its cause, a whole
+	// image reason, which reads as the one part the dashboard words.
+	gone := appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageNotFound,
+		appv1alpha1.DeployReasonParam{Name: "image", Value: "ttl.sh/m671:1h"})
+	serving := appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageUnavailableServing, appv1alpha1.DeployReasonParam{Name: "cause", Value: gone})
+	if code, parts, remainder := read(serving); code != appv1alpha1.DeployReasonImageUnavailableServing || remainder != "" || len(parts) != 1 ||
+		parts[0].Code != appv1alpha1.DeployReasonImageNotFound || parts[0].Text != gone ||
+		len(parts[0].Params) != 1 || parts[0].Params[0].Value != "ttl.sh/m671:1h" {
+		t.Errorf("an unavailable image = %s %+v remainder %q", code, parts, remainder)
+	}
+	if _, parts, remainder := read(appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageUnavailableServing,
+		appv1alpha1.DeployReasonParam{Name: "cause", Value: unknown})); len(parts) != 0 || remainder != unknown {
+		t.Errorf("an unavailable image with an unknown cause = %+v remainder %q", parts, remainder)
+	}
 }
 
 // w4/630: the operator's startup out-of-memory sentence, as stored, reads as

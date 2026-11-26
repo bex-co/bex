@@ -239,10 +239,11 @@ type layerDescriptor struct {
 	Size      int64  `json:"size"`
 }
 
-// fetchOnce GETs target under redirectPolicy. redirected reports that the
-// answer came from a redirect target rather than the registry itself.
-func fetchOnce(ctx context.Context, client *http.Client, target, authorization, bearer string) (data []byte, status int, header http.Header, redirected bool, err error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+// fetchOnce sends method (GET, or HEAD for a check that reads no body) to
+// target under redirectPolicy. redirected reports that the answer came from a
+// redirect target rather than the registry itself.
+func fetchOnce(ctx context.Context, client *http.Client, method, target, authorization, bearer string) (data []byte, status int, header http.Header, redirected bool, err error) {
+	req, err := http.NewRequestWithContext(ctx, method, target, nil)
 	if err != nil {
 		return nil, 0, nil, false, err
 	}
@@ -385,6 +386,81 @@ func exchangesForBearer(authorization, challenge string) bool {
 	return authorization == "" || strings.HasPrefix(authorization, "Basic ") && strings.HasPrefix(challenge, "Bearer ")
 }
 
+// repoSession reads one repository of a tenant-named registry. One token
+// serves every manifest and blob read of the repository.
+//
+// Registries serve blobs from storage: Docker Hub, GHCR, ECR and GCR all
+// answer a blob GET with a redirect to a CDN or presigned URL (w8/201), and
+// registry.k8s.io serves manifests from a regional mirror (w32/080). fetchOnce
+// follows them under redirectPolicy, without the credential (presigned URLs
+// carry their own authorization); the token request does not.
+type repoSession struct {
+	client, tokens              *http.Client
+	base, authorization, bearer string
+}
+
+func newRepoSession(httpClient *http.Client, base, authorization string) *repoSession {
+	if httpClient == nil {
+		httpClient = defaultHTTPClient
+	}
+	tokens := *httpClient
+	tokens.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return &repoSession{client: httpClient, tokens: &tokens, base: base, authorization: authorization}
+}
+
+// do sends method to the repository's path and returns a 200's body; any other
+// answer is statusFailure's.
+//
+// A registry may answer with a Bearer challenge: an anonymous read (w4/m243)
+// fetches a token without credentials, a Basic-credentialed read (w6/095)
+// exchanges its credential at the realm, then retries once. A registry that
+// accepts Basic directly never challenges. A redirect target's challenge is
+// refused as it stands: its realm is the target's word, so exchanging there
+// would hand a Basic credential to a host the tenant never named, and the
+// token would never reach the target anyway (redirectPolicy drops it).
+func (s *repoSession) do(ctx context.Context, method, path string) ([]byte, error) {
+	exchanged := false
+	for {
+		data, status, header, redirected, err := fetchOnce(ctx, s.client, method, s.base+path, s.authorization, s.bearer)
+		if err != nil {
+			return nil, err
+		}
+		if status == http.StatusOK {
+			return data, nil
+		}
+		challenge := header.Get("WWW-Authenticate")
+		if status == http.StatusUnauthorized && !exchanged && !redirected && exchangesForBearer(s.authorization, challenge) {
+			token, terr := bearerToken(ctx, s.tokens, challenge, s.authorization)
+			if terr != nil {
+				return nil, terr
+			}
+			s.bearer, exchanged = token, true
+			continue
+		}
+		return nil, statusFailure("image metadata request", status, header)
+	}
+}
+
+// CheckImageManifest asks whether the registry still serves reference's
+// manifest: one HEAD, with the same authorization, token exchange, redirect
+// policy and address refusals as ReadImageConfig, that downloads no manifest,
+// config or layer (w4/m671). Docker Hub does not count it as a pull ("Using
+// GET emulates a real pull and counts towards the limit. Using HEAD won't",
+// docs.docker.com/docker-hub/usage/pulls). nil means the registry served it;
+// a *RefusedError is its definitive answer (404, or 401/403 for an image it
+// will not serve with this authorization), and a *TransientError a rate
+// limit, a server error or a failed request.
+func CheckImageManifest(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string) error {
+	base, err := imageRepoBase(registryHost, repo, reference, authorization)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := boundedhttp.WithTimeout(ctx)
+	defer cancel()
+	_, err = newRepoSession(httpClient, base, authorization).do(ctx, http.MethodHead, "manifests/"+reference)
+	return err
+}
+
 func readImageConfigDocument(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string, platform Platform) (string, string, imageConfigDocument, error) {
 	base, err := imageRepoBase(registryHost, repo, reference, authorization)
 	if err != nil {
@@ -392,51 +468,17 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 	}
 	ctx, cancel := boundedhttp.WithTimeout(ctx)
 	defer cancel()
-	if httpClient == nil {
-		httpClient = defaultHTTPClient
-	}
-	// Registries serve blobs from storage: Docker Hub, GHCR, ECR and GCR all
-	// answer a blob GET with a redirect to a CDN or presigned URL (w8/201), and
-	// registry.k8s.io serves manifests from a regional mirror (w32/080).
-	// fetchOnce follows them under redirectPolicy, without the credential
-	// (presigned URLs carry their own authorization); the token request does not.
-	tokens := *httpClient
-	tokens.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	// One token serves every manifest and blob read of this repository.
-	bearer := ""
+	session := newRepoSession(httpClient, base, authorization)
 	fetch := func(path, expectedDigest string) ([]byte, string, error) {
-		exchanged := false
-		for {
-			data, status, header, redirected, err := fetchOnce(ctx, httpClient, base+path, authorization, bearer)
-			if err != nil {
-				return nil, "", err
-			}
-			if status == http.StatusOK {
-				digest := fmt.Sprintf("sha256:%x", sha256.Sum256(data))
-				if expectedDigest != "" && digest != expectedDigest {
-					return nil, "", fmt.Errorf("image metadata digest mismatch")
-				}
-				return data, digest, nil
-			}
-			// A registry may answer with a Bearer challenge: an anonymous read
-			// (w4/m243) fetches a token without credentials, a Basic-credentialed
-			// read (w6/095) exchanges its credential at the realm, then retries
-			// once. A registry that accepts Basic directly never challenges. A
-			// redirect target's challenge is refused as it stands: its realm is
-			// the target's word, so exchanging there would hand a Basic
-			// credential to a host the tenant never named, and the token would
-			// never reach the target anyway (redirectPolicy drops it).
-			challenge := header.Get("WWW-Authenticate")
-			if status == http.StatusUnauthorized && !exchanged && !redirected && exchangesForBearer(authorization, challenge) {
-				token, terr := bearerToken(ctx, &tokens, challenge, authorization)
-				if terr != nil {
-					return nil, "", terr
-				}
-				bearer, exchanged = token, true
-				continue
-			}
-			return nil, "", statusFailure("image metadata request", status, header)
+		data, err := session.do(ctx, http.MethodGet, path)
+		if err != nil {
+			return nil, "", err
 		}
+		digest := fmt.Sprintf("sha256:%x", sha256.Sum256(data))
+		if expectedDigest != "" && digest != expectedDigest {
+			return nil, "", fmt.Errorf("image metadata digest mismatch")
+		}
+		return data, digest, nil
 	}
 	// The first verified response is the digest users see when pinning a tag.
 	// Keep it even while traversing nested indexes to the platform manifest.

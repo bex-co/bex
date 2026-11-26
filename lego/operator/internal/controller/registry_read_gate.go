@@ -193,12 +193,24 @@ func (r *AppReconciler) registryReads() *registryReadGate {
 // readExternalImageConfig reads a tenant-named registry's image config through
 // the read gate.
 func (r *AppReconciler) readExternalImageConfig(ctx context.Context, namespace, host, repo, reference, authorization string) (registry.ImageConfig, error) {
-	release, wait, ok := r.registryReads().acquire(host, namespace)
+	var metadata registry.ImageConfig
+	err := gatedRegistryRead(ctx, r.registryReads(), host, namespace, func() (err error) {
+		metadata, err = registry.ReadImageConfig(ctx, r.HTTPClient, host, repo, reference, authorization)
+		return err
+	})
+	return metadata, err
+}
+
+// gatedRegistryRead runs read, a read of host for a workspace's namespace,
+// once gate admits it, or returns a *registryBusyError. A read that got no
+// answer (a transient status or a failed request) counts against the host.
+func gatedRegistryRead(ctx context.Context, gate *registryReadGate, host, namespace string, read func() error) error {
+	release, wait, ok := gate.acquire(host, namespace)
 	if !ok {
-		return registry.ImageConfig{}, &registryBusyError{host: host, retryAfter: wait}
+		return &registryBusyError{host: host, retryAfter: wait}
 	}
-	metadata, err := registry.ReadImageConfig(ctx, r.HTTPClient, host, repo, reference, authorization)
+	err := read()
 	var transient *registry.TransientError
 	release(errors.As(err, &transient) && ctx.Err() == nil)
-	return metadata, err
+	return err
 }

@@ -190,7 +190,9 @@ func (w *AppStatusWatch) failed(err error) error {
 // recordObservations may record; nothing else in the status is.
 //
 // Conditions are reduced to their verdicts (type, status, reason, generation):
-// a message rewording or a re-stamped transition time is not a new fact.
+// a message rewording or a re-stamped transition time is not a new fact. The
+// image check's ImageAvailable counts only while False (w4/m671): its True is
+// written on every newly served image and records nothing.
 //
 // It is kept as a 64-bit hash: a collision costs one missed kick, which the
 // resync covers.
@@ -201,6 +203,9 @@ func statusFingerprint(s *appv1alpha1.AppStatus) uint64 {
 	}
 	conditions := make([]verdict, 0, len(s.Conditions))
 	for _, c := range s.Conditions {
+		if c.Type == appv1alpha1.ConditionImageAvailable && c.Status != metav1.ConditionFalse {
+			continue
+		}
 		conditions = append(conditions, verdict{c.Type, string(c.Status), c.Reason, c.ObservedGeneration})
 	}
 	b, err := json.Marshal(struct {

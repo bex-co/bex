@@ -21,10 +21,13 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
+
+	"github.com/bex-co/bex/lego/operator/internal/controller"
 )
 
 // w6/m469: the manager hashes the proxy binary its image carries; one it
@@ -48,6 +51,23 @@ func TestPositiveEnvInt(t *testing.T) {
 				t.Fatalf("positiveEnvInt(%q, 1) = %d, want %d", key, got, tc.want)
 			}
 		})
+	}
+}
+
+// w4/m671: BEX_IMAGE_CHECK_INTERVAL paces the image availability check; 0
+// turns it off, and a value that is no duration keeps the default.
+func TestImageCheckInterval(t *testing.T) {
+	for value, want := range map[string]time.Duration{
+		"":    controller.DefaultImageCheckInterval,
+		"2m":  2 * time.Minute,
+		"0":   0,
+		"-1h": controller.DefaultImageCheckInterval,
+		"6":   controller.DefaultImageCheckInterval,
+	} {
+		t.Setenv("BEX_IMAGE_CHECK_INTERVAL", value)
+		if got := imageCheckInterval(); got != want {
+			t.Errorf("BEX_IMAGE_CHECK_INTERVAL=%q: %v, want %v", value, got, want)
+		}
 	}
 }
 

@@ -349,6 +349,13 @@ func TestAlertEmailStreamLifecycle(t *testing.T) {
 	if err := st.EnqueueAlertEmails(ctx, "", []store.AlertEmailItem{suspended}, window, time.Time{}, ""); err != nil {
 		t.Fatalf("cursor-less enqueue: %v", err)
 	}
+	// The image availability check's alert (w4/m671) is a stream of its own,
+	// which the event vocabulary and its CHECK accept.
+	unavailable := item("image-gone", t0)
+	unavailable.Event, unavailable.ResourceID = store.AlertEmailImageUnavailable, "srv-image-gone"
+	if err := st.EnqueueAlertEmails(ctx, "", []store.AlertEmailItem{unavailable}, window, time.Time{}, ""); err != nil {
+		t.Fatalf("image_unavailable enqueue: %v", err)
+	}
 	var watermarkAfter time.Time
 	if err := pool.QueryRow(ctx, `SELECT at FROM alert_email_watermarks WHERE name = 'feed'`).Scan(&watermarkAfter); err != nil {
 		t.Fatal(err)

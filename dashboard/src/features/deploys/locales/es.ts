@@ -613,6 +613,12 @@ const esDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_rate_limited, w4/m669): Render's Rate limited (429 error) cause with its three remedies; params are the sentence's values",
   },
+  "deploys.reason.image_unavailable_serving": {
+    message:
+      "{cause}. Las instancias en ejecución no se ven afectadas, pero cualquier acción que vuelva a descargar la imagen, como un reinicio o un escalado, fallará hasta que la imagen vuelva a estar accesible",
+    description:
+      "The Image Pull Failed message of a running service whose image its registry no longer serves, by its code (bex-api DeployReason image_unavailable_serving, w4/m671); {cause} is the image reason (image_not_found, image_credential_refused or image_access_refused), worded as its own part",
+  },
   "deploys.reason.build_timed_out": {
     message:
       "el build no terminó dentro de su ventana de tiempo; revisa los logs de build",

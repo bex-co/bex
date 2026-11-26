@@ -534,6 +534,18 @@ type AppReconciler struct {
 	// HTTPClient is the bounded shared client used for registry finalization.
 	// Tests may inject a deterministic transport.
 	HTTPClient *http.Client
+	// ImageCheckInterval is how often the app-image-check controller asks the
+	// registry whether a running image service's image is still served
+	// (BEX_IMAGE_CHECK_INTERVAL, 6 h by default; image_check.go, w4/m671).
+	// Zero turns the check off.
+	ImageCheckInterval time.Duration
+	// imageCheckNow is the check's clock (tests); nil reads time.Now.
+	imageCheckNow func() time.Time
+	// imageCheckPace spaces the checks; imageCheckReadGate is their own
+	// registry read gate, built on first use.
+	imageCheckPace      imageCheckPacer
+	imageCheckReadsOnce sync.Once
+	imageCheckReadGate  *registryReadGate
 	// MetricsReader reads live CPU/memory utilization from the metrics-server API.
 	// When nil, spec.autoscaling is accepted in the CR but the autoscaling loop
 	// is skipped (no replica adjustment). Tests inject a fake reader.
@@ -7527,8 +7539,9 @@ func (r *AppReconciler) writeAppStatus(ctx context.Context, app *appv1alpha1.App
 // the local status, and update again; other errors are logged at ERROR so a
 // lost marker is at least visible. The projector never writes status; the
 // independent saved-configuration controller owns UndeployedChanges and the
-// fields beside it (savedConfigurationStatus), which a retry retains from the
-// fresh object.
+// fields beside it (savedConfigurationStatus), and the app-image-check
+// controller owns imageCheck and the ImageAvailable condition
+// (imageCheckStatus); a retry retains both from the fresh object.
 func (r *AppReconciler) updateStatusRetrying(ctx context.Context, app *appv1alpha1.App, site string) {
 	for range statusWriteAttempts {
 		if err := updateStatusIfChanged(ctx, r.Client, app); err == nil {
@@ -7546,13 +7559,22 @@ func (r *AppReconciler) updateStatusRetrying(ctx context.Context, app *appv1alph
 				"app", app.Name, "site", site)
 			return
 		}
-		savedConfigurationStatusOf(&fresh.Status).applyTo(&app.Status)
+		keepIndependentStatus(&fresh.Status, &app.Status)
 		fresh.Status = app.Status
 		*app = *fresh
 		keepReleaseView(ctx, app)
 	}
 	logf.FromContext(ctx).Error(nil, "app status write still conflicting after retries; durable markers may be stale",
 		"app", app.Name, "site", site)
+}
+
+// keepIndependentStatus copies onto local, a runtime pass's status about to be
+// retried over fresh, the parts of fresh's status that other controllers own:
+// the saved configuration status (app-config-status) and the image check's
+// (app-image-check).
+func keepIndependentStatus(fresh, local *appv1alpha1.AppStatus) {
+	savedConfigurationStatusOf(fresh).applyTo(local)
+	imageCheckStatusOf(fresh).applyTo(local)
 }
 
 // statusWriteAttempts bounds updateStatusRetrying's conflict loop — enough to
@@ -7581,7 +7603,8 @@ func setNotReadyCondition(ctx context.Context, r client.Client, obj client.Objec
 			return
 		}
 		// Lost the race: re-read for a fresh resourceVersion, re-apply this
-		// pass's status, and retry. App's independent configuration status is kept.
+		// pass's status, and retry. App's independent configuration and image
+		// check status are kept.
 		fresh := obj.DeepCopyObject().(client.Object)
 		if err := r.Get(ctx, client.ObjectKeyFromObject(obj), fresh); err != nil {
 			logf.FromContext(ctx).Error(err, "re-read for status retry failed",
@@ -7592,7 +7615,7 @@ func setNotReadyCondition(ctx context.Context, r client.Client, obj client.Objec
 		case *appv1alpha1.App:
 			local := *typed // keep the local status…
 			*typed = *fresh.(*appv1alpha1.App)
-			savedConfigurationStatusOf(&typed.Status).applyTo(&local.Status)
+			keepIndependentStatus(&typed.Status, &local.Status)
 			typed.Status = local.Status // …over the fresh resourceVersion
 			keepReleaseView(ctx, typed)
 		case *appv1alpha1.Database:
@@ -8580,6 +8603,9 @@ func (r *AppReconciler) reconcileExecutionNetworkPolicy(ctx context.Context, app
 // SetupWithManager sets up the controller with the Manager.
 func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err := r.setupSavedConfigurationStatus(mgr); err != nil {
+		return err
+	}
+	if err := r.setupImageCheck(mgr); err != nil {
 		return err
 	}
 	// Publish the cache gate from setup rather than from the first dispatch, so

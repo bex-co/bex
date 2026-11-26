@@ -306,6 +306,34 @@ describe("deployReasonText", () => {
     expect(zh).not.toContain("端口绑定");
   });
 
+  // w4/m671: a running service's unavailable image starts with its cause, a
+  // whole image reason, worded where the sentence places it.
+  it("words a running service's unavailable image, cause first", () => {
+    const cause =
+      "the image ttl.sh/m671:1h was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists";
+    const sentence =
+      cause +
+      ". Running instances are unaffected, but any action that pulls the image again, such as a restart or a scale-up, will fail until the image is reachable again";
+    const unavailable = wire(
+      "image_unavailable_serving",
+      [{ name: "cause", value: cause }],
+      [
+        {
+          code: "image_not_found",
+          params: [{ name: "image", value: "ttl.sh/m671:1h" }],
+          text: cause,
+        },
+      ],
+    );
+    expect(deployReasonText(translator("en"), sentence, unavailable)).toBe(
+      sentence,
+    );
+    expect(deployReasonText(translator("zh"), sentence, unavailable)).toBe(
+      "在镜像仓库中找不到镜像 ttl.sh/m671:1h：仓库或标签不存在。请检查镜像 URL 和标签，或部署一个存在的镜像摘要。" +
+        "正在运行的实例不受影响，但任何需要重新拉取镜像的操作（例如重启或扩容）都会失败，直到镜像再次可访问",
+    );
+  });
+
   // w5/m356: a never-started build's cause is worded too.
   describe("a build that never started", () => {
     const cause =

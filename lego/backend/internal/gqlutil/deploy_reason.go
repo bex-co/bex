@@ -87,6 +87,14 @@ func parseDeployReason(text string) (deployReason, bool) {
 		}
 		var parts []appv1alpha1.DeployReasonPart
 		parts, reason.remainder = appv1alpha1.ParseDeployReasonParts(p.Value)
+		// A cause that no part words may be a whole reason of its own: a
+		// running service's unavailable image names one of the image reasons
+		// (image_unavailable_serving, w4/m671).
+		if len(parts) == 0 && p.Name == "cause" {
+			if code, params, ok := appv1alpha1.ParseDeployReason(p.Value); ok {
+				parts, reason.remainder = []appv1alpha1.DeployReasonPart{{Code: code, Params: params, Text: p.Value}}, ""
+			}
+		}
 		for _, part := range parts {
 			reason.parts = append(reason.parts, deployReason{
 				code: part.Code, params: nonNilParams(part.Params), parts: []deployReason{}, text: part.Text,
