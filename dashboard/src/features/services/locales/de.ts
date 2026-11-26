@@ -4701,6 +4701,10 @@ const deServices: Record<string, TranslationEntry> = {
     message: "Der Mount-Pfad muss absolut sein (mit / beginnen).",
     description: "Client-side validation: relative mount path",
   },
+  "services.diskMountPathTooLong": {
+    message: "Der Mount-Pfad darf höchstens 255 Zeichen lang sein.",
+    description: "Client-side validation: mount path over bex-api's length cap",
+  },
   "services.diskMountPathNotRoot": {
     message:
       "Der Mount-Pfad darf nicht das Root-Verzeichnis sein und nicht mit einem Schrägstrich enden.",

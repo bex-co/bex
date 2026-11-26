@@ -4691,6 +4691,10 @@ const ptServices: Record<string, TranslationEntry> = {
     message: "O caminho de montagem deve ser absoluto (começar com /).",
     description: "Client-side validation: relative mount path",
   },
+  "services.diskMountPathTooLong": {
+    message: "O caminho de montagem deve ter no máximo 255 caracteres.",
+    description: "Client-side validation: mount path over bex-api's length cap",
+  },
   "services.diskMountPathNotRoot": {
     message:
       "O caminho de montagem não pode ser o diretório raiz nem terminar com barra.",

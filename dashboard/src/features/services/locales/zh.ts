@@ -4514,6 +4514,10 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "挂载路径必须是绝对路径（以 / 开头）。",
     description: "Client-side validation: relative mount path",
   },
+  "services.diskMountPathTooLong": {
+    message: "挂载路径最多只能包含 255 个字符。",
+    description: "Client-side validation: mount path over bex-api's length cap",
+  },
   "services.diskMountPathNotRoot": {
     message: "挂载路径不能是根目录，也不能以斜杠结尾。",
     description: "Client-side validation: root or trailing slash",

@@ -1205,6 +1205,27 @@ describe("Disk at create (w4/m652)", () => {
     expect(isSubmittable(f)).toBe(true);
   });
 
+  it("accepts a 255-byte mount path, as bex-api does", () => {
+    const f = form({ disk: { mountPath: `/${"a".repeat(254)}`, sizeGB: 10 } });
+    expect(createFormErrors(f).diskMountPath).toBeUndefined();
+    expect(isSubmittable(f)).toBe(true);
+  });
+
+  it.each([
+    ["a 256-byte path", `/${"b".repeat(255)}`],
+    // 129 characters but 257 UTF-8 bytes: bex-api counts bytes, not characters.
+    ["a path over 255 bytes in multibyte", `/${"é".repeat(128)}`],
+  ])(
+    "holds Submit on %s, as bex-api would refuse it",
+    (_name, mountPath) => {
+      const f = form({ disk: { mountPath, sizeGB: 10 } });
+      expect(createFormErrors(f).diskMountPath).toBe(
+        "services.diskMountPathTooLong",
+      );
+      expect(isSubmittable(f)).toBe(false);
+    },
+  );
+
   it.each([0, 1.5, Number.NaN])(
     "holds Submit on the size %s GB, not a whole number of at least 1",
     (sizeGB) => {

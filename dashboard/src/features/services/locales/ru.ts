@@ -4672,6 +4672,10 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "Путь монтирования должен быть абсолютным (начинаться с /).",
     description: "Client-side validation: relative mount path",
   },
+  "services.diskMountPathTooLong": {
+    message: "Путь монтирования должен содержать не более 255 символов.",
+    description: "Client-side validation: mount path over bex-api's length cap",
+  },
   "services.diskMountPathNotRoot": {
     message:
       "Путь монтирования не может быть корневым каталогом или заканчиваться слэшем.",

@@ -4617,6 +4617,10 @@ const enServices: Record<string, TranslationEntry> = {
     message: "The mount path must be absolute (start with /).",
     description: "Client-side validation: relative mount path",
   },
+  "services.diskMountPathTooLong": {
+    message: "The mount path must be at most 255 characters.",
+    description: "Client-side validation: mount path over bex-api's length cap",
+  },
   "services.diskMountPathNotRoot": {
     message: "The mount path cannot be the root directory or end with a slash.",
     description: "Client-side validation: root or trailing slash",
