@@ -534,6 +534,14 @@ func (s *Service) UpdateEnvironment(ctx context.Context, ownerID string, input E
 	if s.Spend == nil {
 		return view, nil
 	}
+	if keyChanged {
+		// The spend position was read before the key write, and the key
+		// flag is its only input this mutation changes: carry the new flag
+		// so the returned view's charge verdict agrees with a fresh read
+		// (and the mint) instead of promising a charge the workspace's own
+		// key will never see, or hiding one clearing it restores.
+		status.ModelKeySet = keySet
+	}
 	return s.spendFor(ctx, workspaceID, view, status.WithOverride(row.SpendCapOverrideMicroUSD)), nil
 }
 
