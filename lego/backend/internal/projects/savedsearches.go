@@ -358,9 +358,11 @@ func (s *Service) ProjectLogResources(ctx context.Context, projectID string) (st
 
 // ProjectScopeResources resolves the resources of a project, an environment,
 // or an environment within a project for Render's project-scoped logs and
-// metrics reads (w4/m596). An unknown or cross-workspace project or
-// environment returns 404; an environment that exists and is viewable but
-// belongs to a different project returns 400.
+// metrics reads (w4/m596). An unknown project or environment returns 404; one
+// in a workspace the caller may not view is refused as that scope's own read
+// is (forbidden unnamed, not found in a named workspace — ADR072's by-id
+// matrix, pinned by TestProjectScopeResourcesDecisionMatrix); an environment
+// that exists and is viewable but belongs to a different project returns 400.
 func (s *Service) ProjectScopeResources(ctx context.Context, projectID, environmentID string) (string, []savedsearch.Resource, error) {
 	if projectID == "" && environmentID == "" {
 		if err := s.Authorize(ctx, core.RelCanView); err != nil {
