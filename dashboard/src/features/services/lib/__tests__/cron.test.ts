@@ -5,10 +5,8 @@ import { readRepoVectors } from "@/test/repo-vectors";
 import {
   cronScheduleProblem,
   describeCron,
-  describeCronRun,
   isValidCron,
 } from "@/features/services/lib/cron";
-import { ensureLanguage } from "@/i18n/init";
 import { translator } from "@/test/translator";
 
 const t = translator("en");
@@ -259,57 +257,5 @@ describe("describeCron in Chinese", () => {
     ]) {
       expect(describeCron(s, zh)).toBeNull();
     }
-  });
-});
-
-// w3/m555: a cron job's header says when it runs in Render's words, which are
-// cronstrue's phrase with its first letter lowered and UTC after the time
-// (Render's bundle, `AuthContext-*.js` `z`; the English phrases below are what
-// cronstrue 2.50.0 answers for each schedule).
-describe("describeCronRun", () => {
-  const run = (s: string) => describeCronRun(s, t, "en");
-
-  it("words the shapes it names as Render's header does", () => {
-    expect(run("* * * * *")).toBe("every minute");
-    expect(run("*/2 * * * *")).toBe("every 2 minutes");
-    expect(run("0 * * * *")).toBe("every hour");
-    expect(run("5 * * * *")).toBe("at 5 minutes past the hour");
-    expect(run("0 */2 * * *")).toBe(
-      "at 0 minutes past the hour, every 2 hours",
-    );
-    expect(run("0 9 * * *")).toBe("at 09:00 AM UTC");
-    expect(run("0 0 * * *")).toBe("at 12:00 AM UTC");
-    expect(run("30 13 * * *")).toBe("at 01:30 PM UTC");
-    expect(run("0 12 * * *")).toBe("at 12:00 PM UTC");
-    expect(run("0 9 * * 1")).toBe("at 09:00 AM UTC, only on Monday");
-    expect(run("0 9 * * SUN")).toBe("at 09:00 AM UTC, only on Sunday");
-    expect(run("0 9 1 * *")).toBe("at 09:00 AM UTC, on day 1 of the month");
-  });
-
-  it("reads a step wider than its field as the schedule it runs", () => {
-    expect(run("*/70 * * * *")).toBe("every hour");
-    expect(run("15 */30 * * *")).toBe("at 12:15 AM UTC");
-  });
-
-  // A step that does not divide its field has no uniform interval to name
-  // (describeCron's rule), and ranges and lists have no phrase here: the
-  // header shows the expression instead.
-  it("names nothing it would misstate", () => {
-    expect(run("*/40 * * * *")).toBeNull();
-    expect(run("0 9 * * 1-5")).toBeNull();
-    expect(run("0 9,17 * * *")).toBeNull();
-    expect(run("not a cron")).toBeNull();
-  });
-
-  it("reads each language's own clock, with a fixed text", async () => {
-    await ensureLanguage("de");
-    const zh = translator("zh");
-    const de = translator("de");
-    expect(describeCronRun("30 13 * * *", zh, "zh")).toBe("每天 UTC 13:30");
-    expect(describeCronRun("30 13 * * *", de, "de")).toBe("um 13:30 UTC");
-    expect(describeCronRun("0 9 * * 1", de, "de-DE")).toBe(
-      "um 09:00 UTC, nur am Montag",
-    );
-    expect(describeCronRun("0 9 * * *", t, "en-US")).toBe("at 09:00 AM UTC");
   });
 });

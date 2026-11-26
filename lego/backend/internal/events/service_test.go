@@ -1006,6 +1006,9 @@ func TestDeployTriggerNamesTheCauseItActuallyHad(t *testing.T) {
 		{store.TriggerDeployHook, Trigger{DeployHook: true}},
 		{store.TriggerCreate, Trigger{FirstBuild: true}},
 		{store.TriggerRollback, Trigger{Rollback: true}},
+		// The deploy a resume opens (w3/m643): Render's trigger object has no
+		// flag for a resume, so none is set and only its user names the cause.
+		{store.TriggerServiceResumed, Trigger{}},
 	} {
 		t.Run(tc.trigger, func(t *testing.T) {
 			ev := view(store.ServiceEventRow{
@@ -1028,7 +1031,7 @@ func TestDeployTriggerNamesTheCauseItActuallyHad(t *testing.T) {
 				}
 			}
 			wantSet := 1
-			if tc.trigger == store.TriggerAPI || tc.trigger == store.TriggerSettingsChange {
+			if tc.trigger == store.TriggerAPI || tc.trigger == store.TriggerSettingsChange || tc.trigger == store.TriggerServiceResumed {
 				wantSet = 0 // Render's api record sets no manual flag (w4/413)
 			}
 			if set != wantSet {

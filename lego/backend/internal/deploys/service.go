@@ -1480,7 +1480,7 @@ func (s *Service) rollbackFetched(ctx context.Context, service string, a *appv1a
 	fromTrigger := core.RenderAutoDeployTrigger(a.Spec.AutoDeploy, a.Spec.AutoDeployTrigger)
 	d, err := s.openSelectedRelease(ctx, a, func(*appv1alpha1.App) (store.Deploy, *appv1alpha1.ReleaseConfigReference, error) {
 		return target, selected, nil
-	}, true, o.DisableAutoDeploy)
+	}, selectedOpening{rowTrigger: store.TriggerRollback, disableAutoDeploy: o.DisableAutoDeploy})
 	if err != nil {
 		return DeployView{}, err
 	}

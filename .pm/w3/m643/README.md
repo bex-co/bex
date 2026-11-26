@@ -1,21 +1,21 @@
 # w3 · m643 — A cron job's header, its suspension notice and Manual Build say and do what Render's do: the last run's zone, every schedule in words, Resume opens the new deploy
 
-**Worker:** worker3 **Goal:** the five differences from Render's cron header and actions that w3/m555 left are gone: the last run's date carries its zone and Render's UTC tooltip, every valid schedule reads in Render's cronstrue words, a Hobby workspace's notice says "Suspended by you", Resume service opens the deploy the resume starts, and Manual Build toasts only a failure, which stays until dismissed. **Status:** todo
+**Worker:** worker3 **Goal:** the five differences from Render's cron header and actions that w3/m555 left are gone: the last run's date carries its zone and Render's UTC tooltip, every valid schedule reads in Render's cronstrue words, a Hobby workspace's notice says "Suspended by you", Resume service opens the deploy the resume starts, and Manual Build toasts only a failure, which stays until dismissed. **Status:** in progress (t001–t006 and t008–t010 done; t007 walked locally, its production walk waits for a production pin carrying the commits)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | The last successful run reads Render's date with its zone, and "UTC: …" in its tooltip off UTC | 30m | — |
-| [t002](t002.md) | Every valid schedule in Render's cronstrue words | 1h | — |
-| [t003](t003.md) | "Suspended by you" on a Hobby workspace's suspension notice | 30m | — |
-| [t004](t004.md) | Resume opens a deploy with Render's `service_resumed` trigger, and GraphQL `resumeService` answers it | 1h30m | — |
-| [t005](t005.md) | Resume service opens the new deploy, with Render's resume toasts | 45m | t004 |
-| [t006](t006.md) | Manual Build: no toast on success, and a failure that stays until dismissed | 20m | — |
+| [t001](done/t001.md) | The last successful run reads Render's date with its zone, and "UTC: …" in its tooltip off UTC — **DONE** | 30m | — |
+| [t002](done/t002.md) | Every valid schedule in Render's cronstrue words — **DONE** | 1h | — |
+| [t003](done/t003.md) | "Suspended by you" on a Hobby workspace's suspension notice — **DONE** | 30m | — |
+| [t004](done/t004.md) | Resume opens a deploy with Render's `service_resumed` trigger, and GraphQL `resumeService` answers it — **DONE** | 1h30m | — |
+| [t005](done/t005.md) | Resume service opens the new deploy, with Render's resume toasts — **DONE** | 45m | t004 |
+| [t006](done/t006.md) | Manual Build: no toast on success, and a failure that stays until dismissed — **DONE** | 20m | — |
 | [t007](t007.md) | Verify in a real browser at 1440 and 390, locally and on production | 45m | t001, t002, t003, t005, t006 |
-| [t008](t008.md) | Render parity | 30m | t007 |
-| [t009](t009.md) | Simplify | 15m | t008 |
-| [t010](t010.md) | Test coverage | 45m | t008 |
+| [t008](done/t008.md) | Render parity — **DONE** | 30m | t007 |
+| [t009](done/t009.md) | Simplify — **DONE** | 15m | t008 |
+| [t010](done/t010.md) | Test coverage — **DONE** | 45m | t008 |
 | [t011](t011.md) | Closeout | 10m | t009, t010 |
 
 Total: **11 tasks, about 7h**.
@@ -37,6 +37,18 @@ Read on 2026-11-25 from Render's public dashboard bundle without sign-in (`https
 - `suspendedNoticeTitleKey` (`dashboard/src/features/services/lib/status.ts`) gives "Manually suspended" for a `user` suspender on every plan. The workspace's plan is on the workspace context (`dashboard/src/features/workspaces/types.ts` `plan`).
 - `setSuspended` (`lego/backend/internal/apps/service.go`) flips `Spec.Suspended` and opens no deploy; GraphQL `resumeService` answers `id suspended suspenders phase`; `useServiceLifecycle` toasts "Resuming {name}…" or "Could not update {name}. Please try again." and stays on the page.
 - `ManualBuildButton` uses `useTriggerDeploy` (`dashboard/src/features/services/hooks/use-trigger-deploy.ts`), which toasts "Deploy triggered." and a failure that closes itself.
+
+## Live walk
+
+**Locally, 2026-11-25** (t007's local half): dev-3 (`bash scripts/dev-env.sh 3 up`, after `bash scripts/mock-cluster.sh` refreshed the shared cluster's stale kubeconfig) with bex-api and the dashboard built from the tree on top of `407fcb0ff0`, in Google Chrome (headless, Playwright) at 1440 and 390, as a fresh sign-up in its own Hobby workspace (disposable) with an image-backed web service, an image-backed cron job and a repo-backed cron job (all disposable, local only).
+
+- **The last run** (cron job, after its scheduled runs): America/Los_Angeles reads "Last successful run November 25, 2026 at 6:32 PM PST" and its hover tooltip "UTC: Nov 26 02:32:03 AM"; UTC reads "… November 26, 2026 at 2:32 AM UTC" with no tooltip; zh in Asia/Shanghai reads "上次成功运行 2026年11月26日 上午10:40 GMT+8" with "UTC：11月26日 上午02:40:04". At 390 the line wraps to two lines and the header's pending frame (a client navigation with GraphQL held) has the same box as the ready line at both widths (1440: y 180, 20px; 390: y 252, 40px). No page error.
+- **The schedule:** `*/2 * * * *` "every 2 minutes", `0 9 * * 1-5` "at 09:00 AM UTC, Monday through Friday", `*/40 * * * *` "every 40 minutes", `0 0 1 * *` "at 12:00 AM UTC, on day 1 of the month", at both widths; zh "每隔 2 分钟" and "在 UTC 上午 09:00, 星期一至星期五".
+- **The notice:** in the Hobby workspace a suspended web service (390) and cron job (1440) read "Suspended by you"; with the workspace on Pro (`changeWorkspacePlan`) both read "Manually suspended" (1440 and 390).
+- **Resume service:** from the header notice (Hobby, 1440 cron job and 390 web service) and the Settings card (Pro, 1440 and 390) it toasts "**`<name>`** has been resumed." (auto-dismissed within 6 s) and lands on `/services/<id>/deploys/<dep>`, whose trigger reads **Service Resumed**. With the mutation's answer replaced by an error in the browser (Playwright `route`), it toasts "An error occurred while resuming **m643-web**. Please try again." and stays. On the cluster the web service's resume deploy ran the serving image's digest, went live, deactivated the previous deploy and the service returned to Running; the cron job's went live too.
+- **Manual Build** (repo-backed cron job): success opens the new deploy with no toast (1440, 390); a failure (the trigger's answer replaced by an error in the browser) toasts the server's message, still shown after 8 s, gone on its close button (1440, 390).
+
+**Production:** waits for a pin carrying the commits (deploys are batched every 6 hours).
 
 ## Definition of done
 

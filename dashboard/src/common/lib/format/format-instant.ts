@@ -1,5 +1,6 @@
 import { formatDistanceStrict } from "date-fns";
 import { LANGUAGE_TAGS } from "@/i18n/config";
+import { formatDateTime } from "./format-date-time";
 import { formatDuration } from "./format-duration";
 import { dashboardLanguage, dateFnsLocale, languageOptions } from "./language";
 
@@ -107,8 +108,9 @@ function cardReading(date: Date, language: string | undefined, zone: string) {
   return `${day.format(date)} ${clock.format(date)}`;
 }
 
-function zoneName(date: Date, zone: string): string | null {
-  const part = zonedFormat("en-US", zone, { timeZoneName: "short" })
+// The zone's short name at `date` as `tag` writes it ("PST", "MEZ", "GMT-8").
+function zoneName(date: Date, zone: string, tag = "en-US"): string | null {
+  const part = zonedFormat(tag, zone, { timeZoneName: "short" })
     .formatToParts(date)
     .find((p) => p.type === "timeZoneName");
   return part?.value || null;
@@ -175,6 +177,26 @@ export function formatInstantDetails(
     utcCopy: date.toISOString(),
     unix: String(ms),
   };
+}
+
+/**
+ * `formatDateTime` followed by the zone's short name, as Render's cron job
+ * header dates its last successful run (`LL [at] LT z`, w3/m643): "November
+ * 21, 2026 at 9:00 AM PST"; other languages keep their own date and name the
+ * zone their own way ("21. November 2026 um 09:00 MEZ"). The runtime's zone
+ * (UTC in the SSR container), so render it only after hydration, through
+ * `LocalDateTimeWithZone`. Null when `iso` is missing or unparseable.
+ */
+export function formatDateTimeWithZone(
+  iso: string | null | undefined,
+  language?: string,
+): string | null {
+  const text = formatDateTime(iso, language);
+  const ms = parseInstant(iso);
+  if (text === null || ms === null) return null;
+  const tag = LANGUAGE_TAGS[dashboardLanguage(language)];
+  const zone = zoneName(new Date(ms), runtimeZone(), tag);
+  return zone ? `${text} ${zone}` : text;
 }
 
 /**

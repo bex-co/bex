@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  formatDateTimeWithZone,
   formatDuration,
   formatInstantDetails,
   formatInstantGap,
@@ -88,6 +89,41 @@ describe("formatTimeAgo", () => {
     expect(formatTimeAgo(null, opts)).toBeNull();
     expect(formatTimeAgo("", opts)).toBeNull();
     expect(formatTimeAgo("not-a-date", opts)).toBeNull();
+  });
+});
+
+// Render's cron job "Last successful run" (`LL [at] LT z`, w3/m643): the
+// dashboard's date and time in the runtime's zone, then the zone's short
+// name in the dashboard language.
+describe("formatDateTimeWithZone", () => {
+  const suiteZone = process.env.TZ;
+  afterEach(() => {
+    process.env.TZ = suiteZone;
+  });
+
+  it("names UTC on UTC, the suite's zone", () => {
+    expect(formatDateTimeWithZone("2026-11-21T17:00:00Z", "en")).toBe(
+      "November 21, 2026 at 5:00 PM UTC",
+    );
+  });
+
+  it("reads a viewer's own zone and names it", () => {
+    process.env.TZ = "America/Los_Angeles";
+    expect(formatDateTimeWithZone("2026-11-21T17:00:00Z", "en")).toBe(
+      "November 21, 2026 at 9:00 AM PST",
+    );
+    expect(formatDateTimeWithZone("2026-07-16T16:00:00Z", "en")).toBe(
+      "July 16, 2026 at 9:00 AM PDT",
+    );
+    process.env.TZ = "Asia/Shanghai";
+    expect(formatDateTimeWithZone("2026-11-21T17:00:00Z", "zh")).toBe(
+      "2026年11月22日 上午1:00 GMT+8",
+    );
+  });
+
+  it("returns null for a missing or unparseable instant", () => {
+    expect(formatDateTimeWithZone(null, "en")).toBeNull();
+    expect(formatDateTimeWithZone("not-a-date", "en")).toBeNull();
   });
 });
 

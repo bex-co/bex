@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { isValidElement, type ReactNode } from "react";
+import { renderHook, act, render } from "@testing-library/react";
 import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
 import type { ServiceView } from "@/features/services/types";
 import { codedGraphQLError } from "@/test/mocks/apollo";
@@ -8,6 +9,11 @@ import { codedGraphQLError } from "@/test/mocks/apollo";
 
 const mutateCalls: { op: string; id: string; confirm?: string }[] = [];
 let rejectNext: Error | null = null;
+// What the next mutation answers, e.g. the deploy a resume opened.
+let nextData: Record<string, unknown> = {};
+
+const navigate = vi.fn();
+vi.mock("@tanstack/react-router", () => ({ useNavigate: () => navigate }));
 
 vi.mock("@apollo/client/react", () => ({
   // Each useMutation(doc) returns a fn tagged with the operation name so the
@@ -33,7 +39,9 @@ vi.mock("@apollo/client/react", () => ({
           rejectNext = null;
           throw err;
         }
-        return { data: {} };
+        const data = nextData;
+        nextData = {};
+        return { data };
       },
     );
     return [fn, {}];
@@ -44,10 +52,20 @@ const toastSuccess = vi.fn();
 const toastError = vi.fn();
 vi.mock("sonner", () => ({
   toast: {
-    success: (m: string) => toastSuccess(m),
-    error: (m: string) => toastError(m),
+    success: (m: ReactNode) => toastSuccess(m),
+    error: (m: ReactNode) => toastError(m),
   },
 }));
+
+/** A toast's text, and the words it sets in bold. */
+function toastText(message: ReactNode) {
+  if (!isValidElement(message)) return { text: String(message), bold: [] };
+  const { container } = render(message);
+  return {
+    text: container.textContent,
+    bold: [...container.querySelectorAll("strong")].map((b) => b.textContent),
+  };
+}
 
 // --- helpers -------------------------------------------------------------
 
@@ -103,6 +121,8 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
 beforeEach(() => {
   mutateCalls.length = 0;
   rejectNext = null;
+  nextData = {};
+  navigate.mockReset();
   toastSuccess.mockReset();
   toastError.mockReset();
 });
@@ -213,5 +233,96 @@ describe("useServiceLifecycle", () => {
     ]);
     expect(toastSuccess).toHaveBeenCalledOnce();
     expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  // w3/m643: Render's Resume service toasts "<name> has been resumed." and
+  // opens the deploy (a cron job's build) its resumeService answers.
+  it("opens the deploy a resume answers, with Render's resume toast", async () => {
+    nextData = { resumeService: { id: "app", latestDeployId: "dep-resumed" } };
+    const refetch = vi.fn(async () => [svc()]);
+    const { result } = renderHook(() =>
+      useServiceLifecycle({ refetch, pollIntervalMs: 0, maxPolls: 1 }),
+    );
+
+    await act(async () => {
+      await result.current.run("resume", svc({ suspended: true }));
+    });
+
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/services/$serviceId/deploys/$deployId",
+      params: { serviceId: "app", deployId: "dep-resumed" },
+    });
+    expect(toastSuccess).toHaveBeenCalledOnce();
+    expect(toastText(toastSuccess.mock.calls[0][0])).toEqual({
+      text: "app has been resumed.",
+      bold: ["app"],
+    });
+  });
+
+  it("opens a static site's deploy under its own base", async () => {
+    nextData = { resumeService: { id: "app", latestDeployId: "dep-site" } };
+    const refetch = vi.fn(async () => [svc({ type: "static_site" })]);
+    const { result } = renderHook(() =>
+      useServiceLifecycle({ refetch, pollIntervalMs: 0, maxPolls: 1 }),
+    );
+
+    await act(async () => {
+      await result.current.run(
+        "resume",
+        svc({ type: "static_site", suspended: true }),
+      );
+    });
+
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/static/$serviceId/deploys/$deployId",
+      params: { serviceId: "app", deployId: "dep-site" },
+    });
+  });
+
+  it("stays on the page when the resume opened no deploy", async () => {
+    nextData = { resumeService: { id: "app", latestDeployId: null } };
+    const refetch = vi.fn(async () => [svc()]);
+    const { result } = renderHook(() =>
+      useServiceLifecycle({ refetch, pollIntervalMs: 0, maxPolls: 1 }),
+    );
+
+    await act(async () => {
+      await result.current.run("resume", svc({ suspended: true }));
+    });
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(toastText(toastSuccess.mock.calls[0][0]).text).toBe(
+      "app has been resumed.",
+    );
+  });
+
+  it("toasts Render's resume failure, or the server's own reason", async () => {
+    rejectNext = new Error("boom");
+    const refetch = vi.fn(async () => [svc()]);
+    const { result } = renderHook(() =>
+      useServiceLifecycle({ refetch, pollIntervalMs: 0, maxPolls: 1 }),
+    );
+
+    await act(async () => {
+      await result.current.run("resume", svc({ suspended: true }));
+    });
+    expect(toastText(toastError.mock.calls[0][0])).toEqual({
+      text: "An error occurred while resuming app. Please try again.",
+      bold: ["app"],
+    });
+    expect(navigate).not.toHaveBeenCalled();
+
+    rejectNext = codedGraphQLError(
+      "FREE_HOURS_EXHAUSTED",
+      {},
+      "this workspace has used its monthly Free instance hours",
+    );
+    await act(async () => {
+      await result.current.run("resume", svc({ suspended: true }));
+    });
+    // The server's refusal, capitalized as a sentence.
+    expect(toastError.mock.calls[1][0]).toBe(
+      "This workspace has used its monthly Free instance hours",
+    );
   });
 });

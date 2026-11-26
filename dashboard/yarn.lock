@@ -6770,6 +6770,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"cronstrue@npm:2.50.0":
+  version: 2.50.0
+  resolution: "cronstrue@npm:2.50.0"
+  bin:
+    cronstrue: bin/cli.js
+  checksum: 10c0/9fec217cfc83a53842c04cab1103ffb077a33837ea0f03f8a0968fe548509134b6667303ee7188d00b555fb53ad82fef5b6cd0c1886f3ec34b74625b61c6c3d7
+  languageName: node
+  linkType: hard
+
 "cross-inspect@npm:1.0.1":
   version: 1.0.1
   resolution: "cross-inspect@npm:1.0.1"
@@ -6901,6 +6910,7 @@ __metadata:
     class-variance-authority: "npm:^0.7.1"
     clsx: "npm:^2.1.1"
     cmdk: "npm:^1.1.1"
+    cronstrue: "npm:2.50.0"
     date-fns: "npm:^4.4.0"
     dotenv: "npm:^17.4.2"
     eslint: "npm:^10.7.0"

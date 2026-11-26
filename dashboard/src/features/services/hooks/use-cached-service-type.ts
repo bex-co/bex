@@ -79,13 +79,14 @@ export function useCachedServiceSource(
   serviceId: string,
 ): CachedServiceSource | null {
   const service = useCachedService(serviceId);
+  const { currentWorkspace } = useWorkspace();
   if (service?.repo === undefined) return null;
   return {
     repository: Boolean(service.repo),
     registryCredential: Boolean(service.registryCredentialId),
     cron: service.type != null && isCronType(service.type),
     suspendedNotice: isSuspended(service.suspended ?? null)
-      ? suspendedNoticeTitleKeyFor(service.suspenders)
+      ? suspendedNoticeTitleKeyFor(service.suspenders, currentWorkspace?.plan)
       : null,
   };
 }

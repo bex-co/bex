@@ -190,21 +190,48 @@ describe("suspendedNoticeTitleKey", () => {
     [[], "services.suspendedNoticeTitle"],
     [null, "services.suspendedNoticeTitle"],
     [undefined, "services.suspendedNoticeTitle"],
-  ] as const)("titles suspenders %j %s", (suspenders, key) => {
-    expect(suspendedNoticeTitleKeyFor(suspenders)).toBe(key);
+  ] as const)("titles suspenders %j %s on Pro", (suspenders, key) => {
+    expect(suspendedNoticeTitleKeyFor(suspenders, "pro")).toBe(key);
+  });
+
+  // w3/m643: Render's owner suspension reads "Suspended by you" in a Hobby
+  // (TIER1) workspace and "Manually suspended" on every other plan; the
+  // platform's titles do not depend on the plan.
+  it.each([
+    ["hobby", "services.suspendedNoticeByYou"],
+    ["pro", "services.suspendedNoticeManual"],
+    ["scale", "services.suspendedNoticeManual"],
+    ["enterprise", "services.suspendedNoticeManual"],
+    [null, "services.suspendedNoticeManual"],
+    [undefined, "services.suspendedNoticeManual"],
+  ] as const)("titles an owner's suspension on %s %s", (plan, key) => {
+    expect(suspendedNoticeTitleKeyFor(["user"], plan)).toBe(key);
+  });
+
+  it.each([
+    [["billing", "user"], "services.suspendedNoticeByPlatform"],
+    [["stuck_crashlooping", "user"], "services.suspendedNoticeCrashLoop"],
+    [["admin"], "services.suspendedNoticeTitle"],
+  ] as const)("titles suspenders %j %s on Hobby", (suspenders, key) => {
+    expect(suspendedNoticeTitleKeyFor(suspenders, "hobby")).toBe(key);
   });
 
   it("titles a service view the same way", () => {
-    expect(suspendedNoticeTitleKey({ manuallySuspended: true })).toBe(
+    expect(suspendedNoticeTitleKey({ manuallySuspended: true }, "pro")).toBe(
       "services.suspendedNoticeManual",
     );
+    expect(suspendedNoticeTitleKey({ manuallySuspended: true }, "hobby")).toBe(
+      "services.suspendedNoticeByYou",
+    );
     expect(
-      suspendedNoticeTitleKey({
-        manuallySuspended: true,
-        billingSuspended: true,
-      }),
+      suspendedNoticeTitleKey(
+        { manuallySuspended: true, billingSuspended: true },
+        "hobby",
+      ),
     ).toBe("services.suspendedNoticeByPlatform");
-    expect(suspendedNoticeTitleKey({})).toBe("services.suspendedNoticeTitle");
+    expect(suspendedNoticeTitleKey({}, "hobby")).toBe(
+      "services.suspendedNoticeTitle",
+    );
   });
 });
 

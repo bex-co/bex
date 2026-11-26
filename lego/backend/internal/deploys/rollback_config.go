@@ -17,8 +17,10 @@ limitations under the License.
 package deploys
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -201,14 +203,29 @@ func (s *Service) retainedStaticPublication(ctx context.Context, a *appv1alpha1.
 // state that has since moved on.
 type releaseSelector func(a *appv1alpha1.App) (store.Deploy, *appv1alpha1.ReleaseConfigReference, error)
 
-// openSelectedRelease is shared by rollback and snapshot-backed Restart. The
-// selection rides the same optimistic, serialized patch as its release id; saved
-// image, commands, environment and source configuration remain untouched.
-func (s *Service) openSelectedRelease(ctx context.Context, a *appv1alpha1.App, selectRelease releaseSelector, rollback, disableAutoDeploy bool) (store.Deploy, error) {
+// selectedOpening is how openSelectedRelease opens its release: the deploy
+// row's trigger (rollback, restart or service_resumed), whether the release
+// write turns auto-deploy off, and a resume's own row write and App change,
+// which ride that same write.
+type selectedOpening struct {
+	rowTrigger        string
+	disableAutoDeploy bool
+	// rowWrite runs under the trigger lock before the release write, as
+	// openRelease's rowWrite does; nil writes no row.
+	rowWrite func() error
+	// mutate changes the App in the release write; nil changes nothing else.
+	mutate func(*appv1alpha1.App)
+}
+
+// openSelectedRelease is shared by rollback, snapshot-backed Restart and the
+// deploy a Resume opens. The selection rides the same optimistic, serialized
+// patch as its release id; saved image, commands, environment and source
+// configuration remain untouched.
+func (s *Service) openSelectedRelease(ctx context.Context, a *appv1alpha1.App, selectRelease releaseSelector, o selectedOpening) (store.Deploy, error) {
 	appID := appStoreID(a)
 	var target store.Deploy
 	var selected *appv1alpha1.ReleaseConfigReference
-	return s.openRelease(ctx, a, appID, nil, func(a *appv1alpha1.App, release int64) error {
+	return s.openRelease(ctx, a, appID, o.rowWrite, func(a *appv1alpha1.App, release int64) error {
 		var err error
 		if target, selected, err = selectRelease(a); err != nil {
 			return err
@@ -218,18 +235,27 @@ func (s *Service) openSelectedRelease(ctx context.Context, a *appv1alpha1.App, s
 		selection := *selected
 		selection.Generation = release
 		a.Spec.ReleaseConfig = &selection
-		if disableAutoDeploy {
+		if o.disableAutoDeploy {
 			a.Spec.AutoDeploy = false
+		}
+		if o.mutate != nil {
+			o.mutate(a)
 		}
 		return nil
 	}, func(ctx context.Context, release int64) (store.Deploy, error) {
 		// The restored release's build source build travels with its commit.
 		commit := target.CommitInfo()
 		commit.BuildID = target.BuildID
-		if rollback {
+		switch o.rowTrigger {
+		case store.TriggerRollback:
 			return s.Store.CreateRollbackDeploy(ctx, appID, selected.Image, target.ID, release, commit, core.SubjectFrom(ctx))
+		case store.TriggerRestart:
+			return s.Store.CreateRestartDeploy(ctx, appID, selected.Image, release, commit, core.SubjectFrom(ctx))
+		case store.TriggerServiceResumed:
+			return s.Store.CreateDeploy(ctx, appID, o.rowTrigger, selected.Image, release, commit, core.SubjectFrom(ctx))
+		default:
+			return store.Deploy{}, fmt.Errorf("a selected release opens no %q deploy", o.rowTrigger)
 		}
-		return s.Store.CreateRestartDeploy(ctx, appID, selected.Image, release, commit, core.SubjectFrom(ctx))
 	})
 }
 
@@ -247,19 +273,35 @@ func (s *Service) restartSelectedRelease(ctx context.Context, service string, a 
 	if err := s.validateTrigger(service, a, TriggerParams{restart: true}); err != nil {
 		return nil, err
 	}
-	// This unlocked read only picks snapshot Restart over the legacy fallback;
-	// the release actually restarted is selected again under the lock.
-	if selectable, err := s.restartSelectable(ctx, service, a); !selectable || err != nil {
+	refreshed, ok, err := s.selectServing(ctx, service, a)
+	if !ok || err != nil {
 		return nil, err
 	}
-	// The serving release's credential is refreshed here, before the trigger
-	// lock; the locked selection refreshes again only if it moved on.
+	return s.openServing(ctx, service, a, refreshed, selectedOpening{rowTrigger: store.TriggerRestart})
+}
+
+// selectServing is the unlocked read of the release serving now: false when
+// it cannot be selected (Restart then keeps the legacy commit-pinned
+// fallback), else the serving release's registry credential refreshed before
+// the trigger lock, which openServing's locked selection refreshes again only
+// if it moved on.
+func (s *Service) selectServing(ctx context.Context, service string, a *appv1alpha1.App) (refreshedCredentials, bool, error) {
+	if selectable, err := s.restartSelectable(ctx, service, a); !selectable || err != nil {
+		return nil, false, err
+	}
 	refreshed := refreshedCredentials{}
 	if _, selected, err := s.restartSelection(ctx, service, a); err == nil && selected != nil {
 		if err := s.refreshRegistryBinding(ctx, a, selected, refreshed); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	}
+	return refreshed, true, nil
+}
+
+// openServing opens a new release of the artifact and configuration serving
+// now, selected again under the trigger lock, recorded as o says: Restart's,
+// and the deploy a Resume opens.
+func (s *Service) openServing(ctx context.Context, service string, a *appv1alpha1.App, refreshed refreshedCredentials, o selectedOpening) (*DeployView, error) {
 	d, err := s.openSelectedRelease(ctx, a, func(a *appv1alpha1.App) (store.Deploy, *appv1alpha1.ReleaseConfigReference, error) {
 		target, selected, err := s.restartSelection(ctx, service, a)
 		if err == nil && selected == nil {
@@ -269,7 +311,7 @@ func (s *Service) restartSelectedRelease(ctx context.Context, service string, a 
 			err = s.refreshRegistryBinding(ctx, a, selected, refreshed)
 		}
 		return target, selected, err
-	}, false, false)
+	}, o)
 	if err != nil {
 		return nil, err
 	}
@@ -278,6 +320,75 @@ func (s *Service) restartSelectedRelease(ctx context.Context, service string, a 
 	}
 	result := view(a, d)
 	return &result, nil
+}
+
+// ResumeRelease resumes a suspended service with a deploy of the release it
+// was serving, as Render's resume opens a deploy: Render's deploy trigger enum
+// carries service_resumed, and its dashboard opens the deploy (a cron job's
+// build) its resumeService mutation answers (w3/m643,
+// docs/render-artifacts/cron-dashboard.md). Like Restart it re-releases the
+// artifact and configuration that ran, so nothing builds and saved changes
+// wait for the next deploy. writeRow and resume are the resume's own row write
+// and App change; they ride the release write, so the operator brings the
+// service back once, onto the new release.
+//
+// "" with a nil error opens nothing and writes nothing, and the caller resumes
+// the service without a deploy: it is not store-managed, a deploy is in
+// flight (which brings it back itself, and a new release would replace it),
+// or its serving release cannot be selected (it never went live, its release
+// predates the records a Restart selects from, or reading it failed). An error
+// is one from the writes themselves, once the serving release was selected
+// under the trigger lock.
+func (s *Service) ResumeRelease(ctx context.Context, service string, a *appv1alpha1.App, writeRow func() error, resume func(*appv1alpha1.App)) (string, error) {
+	appID := appStoreID(a)
+	if s.Store == nil || appID == "" {
+		return "", nil
+	}
+	if inFlight, err := s.deployInFlight(ctx, appID); err != nil || inFlight {
+		return "", err
+	}
+	refreshed, ok, err := s.selectServing(ctx, service, a)
+	if err != nil {
+		logf.FromContext(ctx).Info("resume opens no deploy: the serving release cannot be selected", "app", a.Name, "reason", err.Error())
+	}
+	if !ok || err != nil {
+		return "", nil
+	}
+	d, err := s.openServing(ctx, service, a, refreshed, selectedOpening{
+		rowTrigger: store.TriggerServiceResumed,
+		// Checked again under the trigger lock, on the App as re-read there,
+		// before anything is written: a deploy opened since keeps its
+		// release, and a serving release that can no longer be selected
+		// leaves the resume to the caller.
+		rowWrite: func() error {
+			if inFlight, err := s.deployInFlight(ctx, appID); err != nil || inFlight {
+				return cmp.Or(err, errResumeWithoutDeploy)
+			}
+			if _, selected, err := s.restartSelection(ctx, service, a); err != nil || selected == nil {
+				return errResumeWithoutDeploy
+			}
+			return writeRow()
+		},
+		mutate: resume,
+	})
+	if errors.Is(err, errResumeWithoutDeploy) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return d.ID, nil
+}
+
+// errResumeWithoutDeploy is ResumeRelease's locked finding that it should open
+// no deploy; it answers "" with no error.
+var errResumeWithoutDeploy = errors.New("the resume opens no deploy")
+
+// deployInFlight reports an open deploy for appID: one executing, queued or
+// waiting.
+func (s *Service) deployInFlight(ctx context.Context, appID string) (bool, error) {
+	open, err := s.Store.ListDeploys(ctx, appID, store.DeployFilter{Statuses: store.OpenDeployStatuses(), Limit: 1})
+	return len(open) > 0, err
 }
 
 // restartSelectable reports whether Restart can select the release serving

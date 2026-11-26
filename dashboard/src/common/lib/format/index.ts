@@ -16,6 +16,7 @@ export { isValidTimeZone } from "./language";
 export { formatDateTime, formatDateLong } from "./format-date-time";
 export { formatDuration } from "./format-duration";
 export {
+  formatDateTimeWithZone,
   formatInstantDetails,
   formatInstantGap,
   formatTimeAgo,

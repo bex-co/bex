@@ -4,6 +4,7 @@ import { ResumeServiceButton } from "@/features/services/components/resume-servi
 import type { ProtectedActionResult } from "@/features/services/lib/protected-confirmation";
 import { suspendedNoticeTitleKey } from "@/features/services/lib/status";
 import type { LifecycleAction, ServiceView } from "@/features/services/types";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 /** The notice's box, which its loading frame draws too. */
 export const SUSPENDED_NOTICE_CLASS =
@@ -12,9 +13,10 @@ export const SUSPENDED_NOTICE_CLASS =
 /**
  * Render's notice under a suspended service's facts, which stands in for the
  * header's actions while it is suspended, on every type (w3/m555, w3/107):
- * Render's title for whoever suspended it, that a suspended service is not
- * billed, and Resume service, gated by the server's `resume` decision like
- * every other Resume.
+ * Render's title for whoever suspended it (for its owner, in the current
+ * workspace's plan's words, w3/m643), that a suspended service is not billed,
+ * and Resume service, gated by the server's `resume` decision like every
+ * other Resume.
  */
 export function ServiceSuspendedNotice({
   service,
@@ -30,6 +32,7 @@ export function ServiceSuspendedNotice({
   ) => Promise<ProtectedActionResult>;
 }) {
   const { t } = useTranslations();
+  const { currentWorkspace } = useWorkspace();
   return (
     <div
       role="status"
@@ -40,7 +43,9 @@ export function ServiceSuspendedNotice({
         aria-hidden="true"
         className="text-muted-foreground size-4 shrink-0"
       />
-      <span className="font-medium">{t(suspendedNoticeTitleKey(service))}</span>{" "}
+      <span className="font-medium">
+        {t(suspendedNoticeTitleKey(service, currentWorkspace?.plan))}
+      </span>{" "}
       <span className="text-muted-foreground">
         {t("services.suspendedNoticeBody")}
       </span>{" "}

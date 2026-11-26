@@ -44,7 +44,10 @@ vi.mock("@/features/workspaces/context/hooks", async () => {
 });
 // Manual Build's trigger (w3/m555): the deploy verb, answering the new
 // deploy's id.
-const triggerDeploy = vi.fn(async (_serviceId: string) => "dep-new");
+const triggerDeploy = vi.fn(
+  async (_serviceId: string, _opts?: { toastOnlyFailure?: boolean }) =>
+    "dep-new",
+);
 vi.mock("@/features/services/hooks/use-trigger-deploy", () => ({
   useTriggerDeploy: () => ({
     deploying: false,
@@ -763,7 +766,11 @@ describe("DeploysListPage search and Manual Build", () => {
     expect(button).toBeEnabled();
     await user.click(button);
 
-    expect(triggerDeploy).toHaveBeenCalledExactlyOnceWith("web");
+    // Render toasts no success, only a failure, kept until dismissed
+    // (w3/m643).
+    expect(triggerDeploy).toHaveBeenCalledExactlyOnceWith("web", {
+      toastOnlyFailure: true,
+    });
     // No confirm or menu: the build's page opens at once.
     expect(await screen.findByText("deploy detail")).toBeInTheDocument();
     expect(screen.queryByRole("alertdialog")).toBeNull();

@@ -333,7 +333,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 // is Render's service_updated, and a Blueprint sync's rollout (stored
 // "blueprint") its blueprint_sync (w8/301). A service's first deploy has no
 // exact Render value, so it is `other` rather than a cause bex cannot vouch
-// for (a new_commit or an api call). The rest are spelled alike. Unknown
+// for (a new_commit or an api call). The rest are spelled alike, the deploy a
+// resume opens (service_resumed, w3/m643) among them. Unknown
 // values map to `other` too; TestRenderConformance seeds every
 // store.AllTriggers entry.
 func renderTrigger(trigger string) string {
@@ -342,7 +343,7 @@ func renderTrigger(trigger string) string {
 		return "service_updated"
 	case store.TriggerBlueprintSync:
 		return "blueprint_sync"
-	case store.TriggerAPI, store.TriggerManual, store.TriggerDeployHook, store.TriggerRollback, store.TriggerNewCommit, store.TriggerDeployedByRender:
+	case store.TriggerAPI, store.TriggerManual, store.TriggerDeployHook, store.TriggerRollback, store.TriggerNewCommit, store.TriggerDeployedByRender, store.TriggerServiceResumed:
 		return trigger
 	case "":
 		return ""

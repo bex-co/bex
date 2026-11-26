@@ -43,13 +43,20 @@ export interface TriggerOptions {
    * dashboard "Deploy a specific commit" does (w4/m431). Needs `commitId`.
    */
   disableAutoDeploy?: boolean;
+  /**
+   * Toast only a failure, and keep it until it is closed: Render's Manual
+   * Build opens the new build instead of toasting it (w3/m643). Manual
+   * Deploy leaves it off and toasts both.
+   */
+  toastOnlyFailure?: boolean;
 }
 
 export interface UseTriggerDeployResult {
   /** True while the deploy mutation (and its Events refetch) is in flight. */
   deploying: boolean;
   /**
-   * Trigger a manual deploy of `serviceId`, toasting the outcome. Resolves the
+   * Trigger a manual deploy of `serviceId`, toasting the outcome (only a
+   * failure with `toastOnlyFailure`). Resolves the
    * new deploy's id on success (w9/m1/t004 — callers navigate to its page), or
    * null on failure (the toast already reported it; the caller shouldn't also
    * navigate).
@@ -117,11 +124,18 @@ export function useTriggerDeploy(): UseTriggerDeployResult {
           },
         }),
       );
-      toast.success(t("services.triggerDeploySuccess"));
+      if (!opts?.toastOnlyFailure) {
+        toast.success(t("services.triggerDeploySuccess"));
+      }
       return data?.triggerDeploy?.id ?? null;
     } catch (err) {
       if (err instanceof ProtectedConfirmationDismissed) return null;
-      toast.error(mutationErrorMessage(err, t("services.triggerDeployError")));
+      toast.error(
+        mutationErrorMessage(err, t("services.triggerDeployError")),
+        opts?.toastOnlyFailure
+          ? { duration: Infinity, closeButton: true }
+          : undefined,
+      );
       return null;
     }
   }

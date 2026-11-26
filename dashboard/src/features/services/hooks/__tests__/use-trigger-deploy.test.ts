@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useTriggerDeploy } from "@/features/services/hooks/use-trigger-deploy";
+import { uncodedGraphQLError } from "@/test/mocks/apollo";
 
 const mockUseMutation = vi.fn();
 vi.mock("@apollo/client/react", () => ({
@@ -57,6 +58,61 @@ describe("useTriggerDeploy", () => {
     expect(id).toBeNull();
     expect(toastError).toHaveBeenCalled();
     expect(toastSuccess).not.toHaveBeenCalled();
+  });
+
+  // Manual Deploy's toasts: the success, and a failure that closes itself.
+  it("toasts a success, and a failure that closes itself, by default", async () => {
+    const triggerDeploy = vi
+      .fn()
+      .mockResolvedValueOnce({ data: { triggerDeploy: { id: "dep-new-1" } } })
+      .mockRejectedValueOnce(uncodedGraphQLError("branch main not found"));
+    mockUseMutation.mockReturnValue([triggerDeploy, { loading: false }]);
+
+    const { result } = renderHook(() => useTriggerDeploy());
+    await act(async () => {
+      await result.current.trigger("web");
+      await result.current.trigger("web");
+    });
+
+    expect(toastSuccess).toHaveBeenCalledExactlyOnceWith("Deploy triggered.");
+    expect(toastError).toHaveBeenCalledExactlyOnceWith(
+      "Branch main not found",
+      undefined,
+    );
+  });
+
+  // w3/m643: Render's Manual Build opens the new build with no toast, and
+  // toasts a failure's own message until it is dismissed.
+  it("toasts only a failure, kept until dismissed, with toastOnlyFailure", async () => {
+    const triggerDeploy = vi
+      .fn()
+      .mockResolvedValueOnce({ data: { triggerDeploy: { id: "dep-new-1" } } })
+      .mockRejectedValueOnce(uncodedGraphQLError("branch main not found"));
+    mockUseMutation.mockReturnValue([triggerDeploy, { loading: false }]);
+
+    const { result } = renderHook(() => useTriggerDeploy());
+    let built: string | null = null;
+    let failed: string | null = "dep-should-be-overwritten";
+    await act(async () => {
+      built = await result.current.trigger("web", { toastOnlyFailure: true });
+    });
+    expect(built).toBe("dep-new-1");
+    expect(toastSuccess).not.toHaveBeenCalled();
+    expect(toastError).not.toHaveBeenCalled();
+    // The option is the dashboard's, never a mutation variable.
+    expect(triggerDeploy).toHaveBeenCalledWith({
+      variables: { serviceId: "web" },
+    });
+
+    await act(async () => {
+      failed = await result.current.trigger("web", { toastOnlyFailure: true });
+    });
+    expect(failed).toBeNull();
+    expect(toastSuccess).not.toHaveBeenCalled();
+    expect(toastError).toHaveBeenCalledExactlyOnceWith(
+      "Branch main not found",
+      { duration: Infinity, closeButton: true },
+    );
   });
 
   it("resolves null when the mutation succeeds but the server omits an id (contract violation)", async () => {

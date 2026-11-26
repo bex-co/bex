@@ -443,9 +443,15 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "正在暂停 {name}……",
     description: "Toast shown after a suspend request is accepted",
   },
-  "services.toastResumeSuccess": {
-    message: "正在恢复 {name}……",
-    description: "Toast shown after a resume request is accepted",
+  "services.toastResumed": {
+    message: "{name} 已恢复。",
+    description:
+      "Toast after a resume is accepted, Render's words (w3/m643); {name} is drawn in bold",
+  },
+  "services.toastResumeError": {
+    message: "恢复 {name} 时出错，请重试。",
+    description:
+      "Toast when a resume fails and the server names no reason, Render's words (w3/m643); {name} is drawn in bold",
   },
   "services.toastRestartSuccess": {
     message: "正在重启 {name}……",
@@ -506,6 +512,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail header: a cron job's second fact line, before the last successful run's date (Render's \"Last successful run <date>\", w3/m555)",
   },
+  "services.headerLastRunUtc": {
+    message: "UTC：{time}",
+    description:
+      'Service-detail header: the tooltip on a cron job\'s last successful run date, shown only when the viewer\'s zone is not UTC; {time} is the instant in UTC as "Nov 21 05:00:00 PM" (Render\'s "UTC: <date>", w3/m643)',
+  },
   "services.headerRuns": {
     message: "运行",
     description:
@@ -525,6 +536,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "已手动暂停",
     description:
       "Title of the notice under a suspended service's header when its owner suspended it (Render's \"Manually suspended\", w3/m555, w3/107)",
+  },
+  "services.suspendedNoticeByYou": {
+    message: "已被你暂停",
+    description:
+      "Title of the notice under a suspended service's header when its owner suspended it in a Hobby workspace; every other plan reads services.suspendedNoticeManual (Render's \"Suspended by you\", w3/m643)",
   },
   "services.suspendedNoticeTitle": {
     message: "已暂停",
@@ -2538,7 +2554,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Source card: container image path field label",
   },
   "services.sourceDialogDescription": {
-    message: "选择 Git 仓库、现有构建源或 Docker 镜像。提交后会立即开始新部署。",
+    message:
+      "选择 Git 仓库、现有构建源或 Docker 镜像。提交后会立即开始新部署。",
     description:
       "Update Source dialog description for non-static services (Render parity)",
   },
@@ -6186,46 +6203,6 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Cron schedule preview phrase (w4/m188): monthly on a day of the month at HH:MM (UTC)",
   },
-  "services.cronRunsEveryMinute": {
-    message: "每分钟",
-    description:
-      'Cron job header, after "Runs <command>": the schedule every minute (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsEveryNMinutes": {
-    message: "每 {n} 分钟",
-    description:
-      'Cron job header, after "Runs <command>": every {n} minutes (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsEveryHour": {
-    message: "每小时",
-    description:
-      'Cron job header, after "Runs <command>": every hour on the hour (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsHourlyAtMinute": {
-    message: "每小时第 {minute} 分钟",
-    description:
-      'Cron job header, after "Runs <command>": hourly at minute {minute} (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsEveryNHours": {
-    message: "每 {n} 小时的第 {minute} 分钟",
-    description:
-      'Cron job header, after "Runs <command>": at minute {minute}, every {n} hours (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsDailyAt": {
-    message: "每天 UTC {time}",
-    description:
-      'Cron job header, after "Runs <command>": daily at {time} ("09:00 AM" in English, the 24-hour clock elsewhere), UTC (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsWeeklyAt": {
-    message: "每{day} UTC {time}",
-    description:
-      'Cron job header, after "Runs <command>": weekly on {day} (a services.cronDay* name) at {time}, UTC (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsMonthlyAt": {
-    message: "每月 {day} 日 UTC {time}",
-    description:
-      'Cron job header, after "Runs <command>": monthly on day {day} at {time}, UTC (Render\'s cronstrue phrase, w3/m555)',
-  },
   "services.cronDaySunday": {
     message: "周日",
     description:
@@ -6373,7 +6350,8 @@ const zhServices: Record<string, TranslationEntry> = {
       "Create-wizard action bar: Deploy is held while the port is out of range",
   },
   "services.createBuildSourceRegionNotice": {
-    message: "关联到此 Git 构建源的服务将在 {region} 创建，以与该构建源的区域保持一致。",
+    message:
+      "关联到此 Git 构建源的服务将在 {region} 创建，以与该构建源的区域保持一致。",
     description:
       "Create service wizard: notice explaining that a git Build Source determines the new service's region; {region} is the Render region name",
   },

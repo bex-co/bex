@@ -4,7 +4,11 @@ import { cn } from "@/common/lib/utils/utils";
 import { SkeletonSpan } from "@/common/components/ui/skeleton";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatDateTime, formatDateLong } from "@/common/lib/format";
+import {
+  formatDateTime,
+  formatDateLong,
+  formatDateTimeWithZone,
+} from "@/common/lib/format";
 
 interface LocalTimeProps {
   /** RFC3339/ISO instant to render in the viewer's local timezone. */
@@ -86,6 +90,18 @@ function LocalTime({
 export function LocalDateTime(props: LocalTimeProps) {
   return (
     <LocalTime {...props} format={formatDateTime} placeholderClassName="w-40" />
+  );
+}
+
+/** `LocalDateTime` with the zone's name after the time ("… at 9:00 AM PST"),
+ *  as Render's cron job header dates its last run (w3/m643). */
+export function LocalDateTimeWithZone(props: LocalTimeProps) {
+  return (
+    <LocalTime
+      {...props}
+      format={formatDateTimeWithZone}
+      placeholderClassName="w-56"
+    />
   );
 }
 

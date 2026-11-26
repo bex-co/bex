@@ -915,7 +915,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "resume_service",
-		Description: "Resume a suspended service, restoring its replicas. bex extension over Render's MCP.",
+		Description: "Resume a suspended service, restoring its replicas. Opens a deploy of the release it was running (trigger service_resumed), as Render's resume does. bex extension over Render's MCP.",
 	}, s.serviceTool(s.Resume))
 
 	mcputil.AddTool(srv, &mcp.Tool{

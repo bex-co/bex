@@ -461,9 +461,15 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "{name} を一時停止しています…",
     description: "Toast shown after a suspend request is accepted",
   },
-  "services.toastResumeSuccess": {
-    message: "{name} を再開しています…",
-    description: "Toast shown after a resume request is accepted",
+  "services.toastResumed": {
+    message: "{name} を再開しました。",
+    description:
+      "Toast after a resume is accepted, Render's words (w3/m643); {name} is drawn in bold",
+  },
+  "services.toastResumeError": {
+    message: "{name} の再開中にエラーが発生しました。もう一度お試しください。",
+    description:
+      "Toast when a resume fails and the server names no reason, Render's words (w3/m643); {name} is drawn in bold",
   },
   "services.toastRestartSuccess": {
     message: "{name} を再起動しています…",
@@ -526,6 +532,11 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail header: a cron job's second fact line, before the last successful run's date (Render's \"Last successful run <date>\", w3/m555)",
   },
+  "services.headerLastRunUtc": {
+    message: "UTC：{time}",
+    description:
+      'Service-detail header: the tooltip on a cron job\'s last successful run date, shown only when the viewer\'s zone is not UTC; {time} is the instant in UTC as "Nov 21 05:00:00 PM" (Render\'s "UTC: <date>", w3/m643)',
+  },
   "services.headerRuns": {
     message: "実行",
     description:
@@ -545,6 +556,11 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "手動で一時停止中",
     description:
       "Title of the notice under a suspended service's header when its owner suspended it (Render's \"Manually suspended\", w3/m555, w3/107)",
+  },
+  "services.suspendedNoticeByYou": {
+    message: "あなたにより一時停止中",
+    description:
+      "Title of the notice under a suspended service's header when its owner suspended it in a Hobby workspace; every other plan reads services.suspendedNoticeManual (Render's \"Suspended by you\", w3/m643)",
   },
   "services.suspendedNoticeTitle": {
     message: "一時停止中",
@@ -6357,46 +6373,6 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "毎月 {day} 日 {time}",
     description:
       "Cron schedule preview phrase (w4/m188): monthly on a day of the month at HH:MM (UTC)",
-  },
-  "services.cronRunsEveryMinute": {
-    message: "毎分",
-    description:
-      'Cron job header, after "Runs <command>": the schedule every minute (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsEveryNMinutes": {
-    message: "{n} 分ごと",
-    description:
-      'Cron job header, after "Runs <command>": every {n} minutes (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsEveryHour": {
-    message: "毎時",
-    description:
-      'Cron job header, after "Runs <command>": every hour on the hour (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsHourlyAtMinute": {
-    message: "毎時 {minute} 分",
-    description:
-      'Cron job header, after "Runs <command>": hourly at minute {minute} (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsEveryNHours": {
-    message: "{n} 時間ごとの {minute} 分",
-    description:
-      'Cron job header, after "Runs <command>": at minute {minute}, every {n} hours (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsDailyAt": {
-    message: "毎日 UTC {time}",
-    description:
-      'Cron job header, after "Runs <command>": daily at {time} ("09:00 AM" in English, the 24-hour clock elsewhere), UTC (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsWeeklyAt": {
-    message: "毎週{day} UTC {time}",
-    description:
-      'Cron job header, after "Runs <command>": weekly on {day} (a services.cronDay* name) at {time}, UTC (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsMonthlyAt": {
-    message: "毎月 {day} 日 UTC {time}",
-    description:
-      'Cron job header, after "Runs <command>": monthly on day {day} at {time}, UTC (Render\'s cronstrue phrase, w3/m555)',
   },
   "services.cronDaySunday": {
     message: "日曜日",

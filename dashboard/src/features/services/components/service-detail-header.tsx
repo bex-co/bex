@@ -29,13 +29,14 @@ import {
 } from "@/common/components/ui/tooltip";
 import { CopyButton } from "@/common/components/copy-button";
 import { ReservedText } from "@/common/components/reserved-skeleton";
-import { InstantTooltip } from "@/common/components/instant-tooltip";
-import { LocalDateTime } from "@/common/components/local-time";
+import { LocalDateTimeWithZone } from "@/common/components/local-time";
 import { RelativeAge } from "@/common/components/relative-time";
+import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import {
   useTranslations,
   type Translate,
 } from "@/common/hooks/use-translations";
+import { formatInstantDetails } from "@/common/lib/format";
 import { safeHttpHref } from "@/common/lib/external-url";
 import { cn } from "@/common/lib/utils/utils";
 import { useEnvironments } from "@/features/environments/hooks/use-environments";
@@ -62,7 +63,7 @@ import {
   SERVICE_TYPE_LABEL,
 } from "@/features/services/lib/service-type";
 import { serviceBaseForType } from "@/features/services/lib/service-base";
-import { describeCronRun } from "@/features/services/lib/cron";
+import { describeCronRun } from "@/features/services/lib/cron-schedule-words";
 import { isNativeRuntime } from "@/features/services/lib/runtime";
 import { sshRemedy } from "@/features/services/lib/ssh-remedy";
 import { computePlanLink } from "@/features/services/lib/compute-page";
@@ -524,13 +525,14 @@ const COMMAND_CLASS = "min-w-[4ch] max-w-max grow basis-0 truncate";
  *
  * What runs is the command override, else a native runtime's start command,
  * else (a Dockerfile or image cron job) the image's own CMD, which Render
- * words "CMD in Dockerfile" for an image too. A schedule bex cannot put in
- * words reads as its expression.
+ * words "CMD in Dockerfile" for an image too. A schedule Render reads nothing
+ * for reads nothing here either (w3/m643).
  */
 function CronRunFacts({ service }: { service: ServiceView }) {
   const { t, i18n } = useTranslations();
-  const schedule = service.schedule?.trim() ?? "";
-  const words = schedule ? describeCronRun(schedule, t, i18n.language) : null;
+  const words = service.schedule
+    ? describeCronRun(service.schedule, i18n.language)
+    : null;
   const command = service.command?.trim()
     ? service.command
     : isNativeRuntime(service.runtime) && service.startCommand?.trim()
@@ -580,13 +582,7 @@ function CronRunFacts({ service }: { service: ServiceView }) {
         className="text-muted-foreground flex min-w-0 flex-wrap items-baseline gap-x-1.5 max-sm:self-center sm:basis-full"
       >
         <span className="shrink-0">{t("services.headerRuns")}</span> {what}{" "}
-        {words ? (
-          <span className="max-w-full shrink-0">{words}</span>
-        ) : schedule ? (
-          <code className={cn(codeClass, "max-w-full shrink-0 truncate")}>
-            {schedule}
-          </code>
-        ) : null}
+        {words ? <span className="max-w-full shrink-0">{words}</span> : null}
       </p>
       <p
         data-header-item="cron-last-run"
@@ -595,18 +591,49 @@ function CronRunFacts({ service }: { service: ServiceView }) {
         {service.lastSuccessfulRunAt ? (
           <>
             {t("services.headerLastRun")}{" "}
-            <InstantTooltip
-              value={service.lastSuccessfulRunAt}
-              className="text-foreground"
-            >
-              <LocalDateTime value={service.lastSuccessfulRunAt} as="span" />
-            </InstantTooltip>
+            <LastRunDate value={service.lastSuccessfulRunAt} />
           </>
         ) : (
           t("services.headerNoSuccessfulRuns")
         )}
       </p>
     </>
+  );
+}
+
+/**
+ * The last successful run's date as Render's header has it
+ * (`CronJobRunMetadata`, w3/m643): in the viewer's zone with the zone's name,
+ * "November 21, 2026 at 9:00 AM PST". Off UTC the date is a term underlined
+ * on hover whose tooltip reads the instant in UTC, "UTC: Nov 21 05:00:00 PM";
+ * a viewer on UTC gets no tooltip. Both read the viewer's zone, so both wait
+ * for hydration: until then the date is its placeholder, with no tooltip.
+ */
+function LastRunDate({ value }: { value: string }) {
+  const { t, i18n } = useTranslations();
+  const hydrated = useIsHydrated();
+  const utc = hydrated ? formatInstantDetails(value, i18n.language)?.utc : null;
+  if (!utc) {
+    return <LocalDateTimeWithZone value={value} className="text-foreground" />;
+  }
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <time
+          dateTime={value}
+          // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- the tooltip's trigger is focusable so keyboard users can reach its text
+          tabIndex={0}
+          className="text-foreground cursor-default rounded-sm underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
+          <LocalDateTimeWithZone value={value} as="span" />
+        </time>
+      </TooltipTrigger>
+      <TooltipContent>
+        <time dateTime={value}>
+          {t("services.headerLastRunUtc", { time: utc })}
+        </time>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -1022,6 +1049,10 @@ function HeaderFacts({
   );
 }
 
+/** The date the frame's last-run line is laid out with: the frame has none
+ *  of its own, and any date reads about as wide. */
+const SAMPLE_LAST_RUN = "2026-11-21T17:00:00Z";
+
 /** Nothing cached says otherwise: a service built from a repository. */
 const GIT_SOURCE: CachedServiceSource = {
   repository: true,
@@ -1149,12 +1180,21 @@ export function ServiceDetailHeaderSkeleton({
               >
                 <Skeleton className="h-4 w-64 max-w-full" />
               </div>
-              <div
+              {/* The ready line's words, a sample date in the viewer's zone
+                  included, laid out invisibly: with its zone the line wraps
+                  at 390 in English and other languages, and the frame wraps
+                  where it does (w3/m643). */}
+              <p
                 data-skeleton-item="cron-last-run"
-                className="flex h-5 min-w-0 items-center max-sm:col-span-2 lg:basis-full"
+                className="min-w-0 text-sm max-sm:col-span-2 lg:basis-full"
               >
-                <Skeleton className="h-4 w-60 max-w-full" />
-              </div>
+                <span className="relative inline-block max-w-full">
+                  <ReservedText>
+                    {t("services.headerLastRun")}{" "}
+                    <LocalDateTimeWithZone value={SAMPLE_LAST_RUN} />
+                  </ReservedText>
+                </span>
+              </p>
             </>
           ) : (
             <div

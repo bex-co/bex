@@ -625,9 +625,10 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}),
 		},
 		// latestDeployId is the id of the deploy row the mutation just opened:
-		// Create's first deploy (w3/m14), setRepo/setImage with deploy, and
-		// updateServicePlan (w3/105). The dashboard uses it to navigate straight
-		// to that in-flight deploy's page.
+		// Create's first deploy (w3/m14), setRepo/setImage with deploy,
+		// updateServicePlan (w3/105) and resumeService's service_resumed deploy
+		// (w3/m643). The dashboard uses it to navigate straight to that
+		// in-flight deploy's page.
 		//
 		// Null — never "" — on every other path, which is w4/131 and the third
 		// member of the url (w4/124) / maintenanceMode (w4/125) family: a

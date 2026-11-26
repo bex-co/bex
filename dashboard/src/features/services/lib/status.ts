@@ -48,6 +48,7 @@ function suspendedBy(
 export type SuspendedNoticeTitleKey =
   | "services.suspendedNoticeByPlatform"
   | "services.suspendedNoticeCrashLoop"
+  | "services.suspendedNoticeByYou"
   | "services.suspendedNoticeManual"
   | "services.suspendedNoticeTitle";
 
@@ -57,25 +58,33 @@ export type SuspendedNoticeTitleKey =
  * w3/107). bex's "billing" (spent Free instance hours, or included bandwidth
  * with no payment method) is one of the suspensions Render titles "Suspended
  * by Render"; its crash-loop suspension has Render's own title; an owner's is
- * "Manually suspended"; anything else is "Suspended".
+ * "Suspended by you" in a Hobby workspace and "Manually suspended" on every
+ * other plan, by the current workspace's plan (Render's `tier === TIER1`,
+ * TIER1 being Hobby, w3/m643); anything else is "Suspended".
  */
 export function suspendedNoticeTitleKey(
   s: Pick<
     ServiceView,
     "manuallySuspended" | "billingSuspended" | "crashLoopSuspended"
   >,
+  plan: string | null | undefined,
 ): SuspendedNoticeTitleKey {
   if (s.billingSuspended) return "services.suspendedNoticeByPlatform";
   if (s.crashLoopSuspended) return "services.suspendedNoticeCrashLoop";
-  if (s.manuallySuspended) return "services.suspendedNoticeManual";
+  if (s.manuallySuspended) {
+    return plan === "hobby"
+      ? "services.suspendedNoticeByYou"
+      : "services.suspendedNoticeManual";
+  }
   return "services.suspendedNoticeTitle";
 }
 
 /** The notice's title from a cached read's raw `suspenders`. */
 export function suspendedNoticeTitleKeyFor(
   suspenders: Suspenders,
+  plan: string | null | undefined,
 ): SuspendedNoticeTitleKey {
-  return suspendedNoticeTitleKey(suspendedBy(suspenders));
+  return suspendedNoticeTitleKey(suspendedBy(suspenders), plan);
 }
 
 /**

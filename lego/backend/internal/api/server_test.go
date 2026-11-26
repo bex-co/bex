@@ -1238,6 +1238,14 @@ func isVerbMethod(recv reflect.Type, m reflect.Method) bool {
 	if recv == reflect.TypeFor[*deploys.Service]() && m.Name == "DeferNewCommit" {
 		return false
 	}
+	// The deploy a Resume opens (w3/m643): apps.Service.Resume authorizes its
+	// caller and runs the resume's guards, then hands it the App it fetched,
+	// never a transport request. Its contracts live in
+	// deploys/resume_release_test.go, apps/resume_deploy_test.go and
+	// api/resume_deploy_e2e_test.go.
+	if recv == reflect.TypeFor[*deploys.Service]() && m.Name == "ResumeRelease" {
+		return false
+	}
 	// The deferred-deploy worker's run of an environment "Save and deploy"
 	// that waited (w4/667): the save that queued it authorized its caller, and
 	// the worker runs it as the platform. Its contracts live in

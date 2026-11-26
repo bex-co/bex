@@ -1,5 +1,6 @@
-import { useCallback, useState } from "react";
+import { createElement, useCallback, useState, type ReactNode } from "react";
 import { useMutation } from "@apollo/client/react";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
   SuspendServiceDocument,
@@ -7,8 +8,12 @@ import {
   RestartServerDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { adminOnlyErrorMessage } from "@/features/capabilities/lib/admin-only";
+import { isAdminOnlyRefusal } from "@/features/capabilities/lib/admin-only";
+import { relayableReason } from "@/common/lib/graphql-error";
+import { PLACEHOLDER_SENTINEL } from "@/common/lib/i18n-placeholder";
 import { sleep } from "@/common/lib/utils/time";
+import { NamedToast } from "@/features/services/components/named-toast";
+import { serviceBaseForType } from "@/features/services/lib/service-base";
 import { deriveStatus } from "@/features/services/lib/status";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
 import {
@@ -53,12 +58,6 @@ const CONVERGED: Record<LifecycleAction, (s: ServiceView) => boolean> = {
   restart: (s) => deriveStatus(s).key === "running",
 };
 
-const SUCCESS_KEY: Record<LifecycleAction, string> = {
-  suspend: "services.toastSuspendSuccess",
-  resume: "services.toastResumeSuccess",
-  restart: "services.toastRestartSuccess",
-};
-
 /**
  * Wires the services list's row actions to bex-api's Render-named mutations
  * (`suspendService`/`resumeService`/`restartServer`). The patch is accepted
@@ -69,30 +68,65 @@ const SUCCESS_KEY: Record<LifecycleAction, string> = {
  * `restartServer` opens a deploy-history row like every other rollout (w2/m30)
  * and restarts on the commit or image that is live, never the branch head
  * (w1/m148).
+ *
+ * A resume opens a deploy too, Render's service_resumed (w3/m643): as Render's
+ * Resume service does, it toasts "<name> has been resumed." and opens the
+ * deploy the mutation answers, staying put when it answers none; a failure
+ * toasts Render's "An error occurred while resuming <name>. Please try again."
  */
 export function useServiceLifecycle(
   opts: UseServiceLifecycleOptions,
 ): UseServiceLifecycleResult {
   const { refetch, pollIntervalMs = 2500, maxPolls = 12 } = opts;
   const { t } = useTranslations();
+  const navigate = useNavigate();
   const [pending, setPending] = useState<PendingLifecycle | null>(null);
 
   const [suspend] = useMutation(SuspendServiceDocument);
-  const [resume] = useMutation(ResumeServiceDocument);
+  const [resume] = useMutation(ResumeServiceDocument, {
+    // The resume's deploy joins the history and the Events feed.
+    refetchQueries: ["ServiceEvents", "Deploys"],
+  });
   const [restartServer] = useMutation(RestartServerDocument, {
     // Restart opens a deploy-history row, so refresh the active Events feed
     // and Deploys queries (history tab + the detail header's latest-deploy
     // chrome) wherever they're mounted.
     refetchQueries: ["ServiceEvents", "Deploys"],
   });
+  // A resume resolves to the deploy it opened (Render's service_resumed),
+  // null when it opened none; the other verbs open nothing to follow.
   const mutate: Record<
     LifecycleAction,
-    (id: string, confirmation?: string) => Promise<unknown>
+    (id: string, confirmation?: string) => Promise<string | null>
   > = {
-    suspend: (id, confirmation) =>
-      suspend({ variables: { id, confirm: confirmation } }),
-    resume: (id) => resume({ variables: { id } }),
-    restart: (id) => restartServer({ variables: { serviceId: id } }),
+    suspend: async (id, confirmation) => {
+      await suspend({ variables: { id, confirm: confirmation } });
+      return null;
+    },
+    resume: async (id) =>
+      (await resume({ variables: { id } })).data?.resumeService
+        ?.latestDeployId ?? null,
+    restart: async (id) => {
+      await restartServer({ variables: { serviceId: id } });
+      return null;
+    },
+  };
+
+  // Render's resume toasts set the name in bold.
+  const named = (key: string, name: string): ReactNode =>
+    createElement(NamedToast, {
+      text: t(key, { name: PLACEHOLDER_SENTINEL }),
+      name,
+    });
+  const succeeded: Record<LifecycleAction, (name: string) => ReactNode> = {
+    suspend: (name) => t("services.toastSuspendSuccess", { name }),
+    resume: (name) => named("services.toastResumed", name),
+    restart: (name) => t("services.toastRestartSuccess", { name }),
+  };
+  const failed: Record<LifecycleAction, (name: string) => ReactNode> = {
+    suspend: (name) => t("services.toastError", { name }),
+    resume: (name) => named("services.toastResumeError", name),
+    restart: (name) => t("services.toastError", { name }),
   };
 
   const pollUntilConverged = useCallback(
@@ -116,9 +150,17 @@ export function useServiceLifecycle(
     ) => {
       setPending({ id: service.id, action });
       try {
-        await mutate[action](service.id, confirmation);
-        toast.success(t(SUCCESS_KEY[action], { name: service.name }));
-        await pollUntilConverged(action, service.id);
+        const deployId = await mutate[action](service.id, confirmation);
+        toast.success(succeeded[action](service.name));
+        if (deployId) {
+          // The answer already reads resumed, and the page polled is left.
+          void navigate({
+            to: `${serviceBaseForType(service.type)}/$serviceId/deploys/$deployId`,
+            params: { serviceId: service.id, deployId },
+          });
+        } else {
+          await pollUntilConverged(action, service.id);
+        }
         return { status: "success" } as const;
       } catch (err) {
         const requiredConfirmation = protectedConfirmationFromError(err);
@@ -128,21 +170,22 @@ export function useServiceLifecycle(
             confirmation: requiredConfirmation,
           } as const;
         }
+        // The server's refusal when it names one, else the verb's own
+        // sentence (Render's, for a resume).
         toast.error(
-          adminOnlyErrorMessage(
-            err,
-            t("services.toastError", { name: service.name }),
-            t,
-          ),
+          isAdminOnlyRefusal(err)
+            ? t("capabilities.actionAdminOnly")
+            : relayableReason(err) || failed[action](service.name),
         );
         return { status: "error" } as const;
       } finally {
         setPending(null);
       }
     },
-    // mutate closes over the three stable mutate fns; t/pollUntilConverged are stable.
+    // mutate and the toast tables close over the stable mutate fns and t;
+    // navigate and pollUntilConverged are stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [t, pollUntilConverged],
+    [t, navigate, pollUntilConverged],
   );
 
   return { pending, run };

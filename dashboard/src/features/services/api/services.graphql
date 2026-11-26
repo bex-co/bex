@@ -53,12 +53,15 @@ mutation SuspendService($id: String!, $confirm: String) {
   }
 }
 
+# latestDeployId is the service_resumed deploy the resume opened (null when it
+# opened none), which Resume service opens, as Render's does (w3/m643).
 mutation ResumeService($id: String!) {
   resumeService(id: $id) {
     id
     suspended
     suspenders
     phase
+    latestDeployId
   }
 }
 

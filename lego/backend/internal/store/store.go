@@ -332,6 +332,12 @@ const (
 	// roll and the Deploys tab must be able to tell a restart from a
 	// just-deploy deploy (w4/m106).
 	TriggerRestart = "restart"
+	// TriggerServiceResumed is the deploy a Resume opens on the release the
+	// service was serving when it was suspended (w3/m643), in Render's own
+	// spelling: Render's deploy trigger enum carries service_resumed, and its
+	// dashboard opens the deploy its resume answers. It re-releases what ran,
+	// as a Restart does, so it builds nothing and records no repo or branch.
+	TriggerServiceResumed = "service_resumed"
 	// TriggerDeployedByRender is a deploy the platform itself started (the
 	// platform-rebuild fleet rebuild), in Render's own spelling.
 	TriggerDeployedByRender = "deployed_by_render"
@@ -344,7 +350,7 @@ const (
 
 // AllTriggers is every Trigger* value — the set REST conformance proves maps
 // onto Render's enum (w8/058). A guard test keeps it in step with the consts.
-var AllTriggers = []string{TriggerCreate, TriggerAPI, TriggerManual, TriggerDeployHook, TriggerRollback, TriggerNewCommit, TriggerConfigChange, TriggerSettingsChange, TriggerRestart, TriggerDeployedByRender, TriggerBlueprintSync}
+var AllTriggers = []string{TriggerCreate, TriggerAPI, TriggerManual, TriggerDeployHook, TriggerRollback, TriggerNewCommit, TriggerConfigChange, TriggerSettingsChange, TriggerRestart, TriggerServiceResumed, TriggerDeployedByRender, TriggerBlueprintSync}
 
 // ErrCommitNotFound is a commit lookup the repository's host answered with
 // "no such commit" (w8/280), as opposed to one that could not be made: the
@@ -3161,10 +3167,10 @@ func lockAppSource(ctx context.Context, tx pgx.Tx, appID string) (repo, branch s
 }
 
 // deploySource returns the Git repo and branch a deploy row records (w32/m608).
-// Image-backed deploys, image-override deploys, rollbacks, and restarts do not
-// build from a Git repo and record empty strings.
+// Image-backed deploys, image-override deploys, rollbacks, restarts and the
+// deploy a resume opens do not build from a Git repo and record empty strings.
 func deploySource(repo, branch, image, trigger string) (string, string) {
-	if repo == "" || image != "" || trigger == TriggerRollback || trigger == TriggerRestart {
+	if repo == "" || image != "" || trigger == TriggerRollback || trigger == TriggerRestart || trigger == TriggerServiceResumed {
 		return "", ""
 	}
 	return repo, branch

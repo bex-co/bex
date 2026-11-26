@@ -458,9 +458,15 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Suspending {name}…",
     description: "Toast shown after a suspend request is accepted",
   },
-  "services.toastResumeSuccess": {
-    message: "Resuming {name}…",
-    description: "Toast shown after a resume request is accepted",
+  "services.toastResumed": {
+    message: "{name} has been resumed.",
+    description:
+      "Toast after a resume is accepted, Render's words (w3/m643); {name} is drawn in bold",
+  },
+  "services.toastResumeError": {
+    message: "An error occurred while resuming {name}. Please try again.",
+    description:
+      "Toast when a resume fails and the server names no reason, Render's words (w3/m643); {name} is drawn in bold",
   },
   "services.toastRestartSuccess": {
     message: "Restarting {name}…",
@@ -521,6 +527,11 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail header: a cron job's second fact line, before the last successful run's date (Render's \"Last successful run <date>\", w3/m555)",
   },
+  "services.headerLastRunUtc": {
+    message: "UTC: {time}",
+    description:
+      'Service-detail header: the tooltip on a cron job\'s last successful run date, shown only when the viewer\'s zone is not UTC; {time} is the instant in UTC as "Nov 21 05:00:00 PM" (Render\'s "UTC: <date>", w3/m643)',
+  },
   "services.headerRuns": {
     message: "Runs",
     description:
@@ -540,6 +551,11 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Manually suspended",
     description:
       "Title of the notice under a suspended service's header when its owner suspended it (Render's \"Manually suspended\", w3/m555, w3/107)",
+  },
+  "services.suspendedNoticeByYou": {
+    message: "Suspended by you",
+    description:
+      "Title of the notice under a suspended service's header when its owner suspended it in a Hobby workspace; every other plan reads services.suspendedNoticeManual (Render's \"Suspended by you\", w3/m643)",
   },
   "services.suspendedNoticeTitle": {
     message: "Suspended",
@@ -6345,46 +6361,6 @@ const enServices: Record<string, TranslationEntry> = {
     message: "On day {day} of every month at {time}",
     description:
       "Cron schedule preview phrase (w4/m188): monthly on a day of the month at HH:MM (UTC)",
-  },
-  "services.cronRunsEveryMinute": {
-    message: "every minute",
-    description:
-      'Cron job header, after "Runs <command>": the schedule every minute (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsEveryNMinutes": {
-    message: "every {n} minutes",
-    description:
-      'Cron job header, after "Runs <command>": every {n} minutes (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsEveryHour": {
-    message: "every hour",
-    description:
-      'Cron job header, after "Runs <command>": every hour on the hour (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsHourlyAtMinute": {
-    message: "at {minute} minutes past the hour",
-    description:
-      'Cron job header, after "Runs <command>": hourly at minute {minute} (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsEveryNHours": {
-    message: "at {minute} minutes past the hour, every {n} hours",
-    description:
-      'Cron job header, after "Runs <command>": at minute {minute}, every {n} hours (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsDailyAt": {
-    message: "at {time} UTC",
-    description:
-      'Cron job header, after "Runs <command>": daily at {time} ("09:00 AM" in English, the 24-hour clock elsewhere), UTC (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsWeeklyAt": {
-    message: "at {time} UTC, only on {day}",
-    description:
-      'Cron job header, after "Runs <command>": weekly on {day} (a services.cronDay* name) at {time}, UTC (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsMonthlyAt": {
-    message: "at {time} UTC, on day {day} of the month",
-    description:
-      'Cron job header, after "Runs <command>": monthly on day {day} at {time}, UTC (Render\'s cronstrue phrase, w3/m555)',
   },
   "services.cronDaySunday": {
     message: "Sunday",

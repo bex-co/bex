@@ -459,9 +459,16 @@ const koServices: Record<string, TranslationEntry> = {
     message: "{name} 일시 중지 중…",
     description: "Toast shown after a suspend request is accepted",
   },
-  "services.toastResumeSuccess": {
-    message: "{name} 재개 중…",
-    description: "Toast shown after a resume request is accepted",
+  "services.toastResumed": {
+    message: "{name} 서비스가 재개되었습니다.",
+    description:
+      "Toast after a resume is accepted, Render's words (w3/m643); {name} is drawn in bold",
+  },
+  "services.toastResumeError": {
+    message:
+      "{name} 서비스를 재개하는 중 오류가 발생했습니다. 다시 시도하세요.",
+    description:
+      "Toast when a resume fails and the server names no reason, Render's words (w3/m643); {name} is drawn in bold",
   },
   "services.toastRestartSuccess": {
     message: "{name} 다시 시작 중…",
@@ -522,6 +529,11 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail header: a cron job's second fact line, before the last successful run's date (Render's \"Last successful run <date>\", w3/m555)",
   },
+  "services.headerLastRunUtc": {
+    message: "UTC: {time}",
+    description:
+      'Service-detail header: the tooltip on a cron job\'s last successful run date, shown only when the viewer\'s zone is not UTC; {time} is the instant in UTC as "Nov 21 05:00:00 PM" (Render\'s "UTC: <date>", w3/m643)',
+  },
   "services.headerRuns": {
     message: "실행",
     description:
@@ -541,6 +553,11 @@ const koServices: Record<string, TranslationEntry> = {
     message: "수동으로 일시 중지됨",
     description:
       "Title of the notice under a suspended service's header when its owner suspended it (Render's \"Manually suspended\", w3/m555, w3/107)",
+  },
+  "services.suspendedNoticeByYou": {
+    message: "직접 일시 중지함",
+    description:
+      "Title of the notice under a suspended service's header when its owner suspended it in a Hobby workspace; every other plan reads services.suspendedNoticeManual (Render's \"Suspended by you\", w3/m643)",
   },
   "services.suspendedNoticeTitle": {
     message: "일시 중지됨",
@@ -6314,46 +6331,6 @@ const koServices: Record<string, TranslationEntry> = {
     message: "매월 {day}일 {time}",
     description:
       "Cron schedule preview phrase (w4/m188): monthly on a day of the month at HH:MM (UTC)",
-  },
-  "services.cronRunsEveryMinute": {
-    message: "매분",
-    description:
-      'Cron job header, after "Runs <command>": the schedule every minute (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsEveryNMinutes": {
-    message: "{n}분마다",
-    description:
-      'Cron job header, after "Runs <command>": every {n} minutes (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsEveryHour": {
-    message: "매시간",
-    description:
-      'Cron job header, after "Runs <command>": every hour on the hour (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsHourlyAtMinute": {
-    message: "매시 {minute}분",
-    description:
-      'Cron job header, after "Runs <command>": hourly at minute {minute} (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsEveryNHours": {
-    message: "{n}시간마다 {minute}분",
-    description:
-      'Cron job header, after "Runs <command>": at minute {minute}, every {n} hours (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsDailyAt": {
-    message: "매일 UTC {time}",
-    description:
-      'Cron job header, after "Runs <command>": daily at {time} ("09:00 AM" in English, the 24-hour clock elsewhere), UTC (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsWeeklyAt": {
-    message: "매주 {day} UTC {time}",
-    description:
-      'Cron job header, after "Runs <command>": weekly on {day} (a services.cronDay* name) at {time}, UTC (Render\'s cronstrue phrase, w3/m555)',
-  },
-  "services.cronRunsMonthlyAt": {
-    message: "매월 {day}일 UTC {time}",
-    description:
-      'Cron job header, after "Runs <command>": monthly on day {day} at {time}, UTC (Render\'s cronstrue phrase, w3/m555)',
   },
   "services.cronDaySunday": {
     message: "일요일",

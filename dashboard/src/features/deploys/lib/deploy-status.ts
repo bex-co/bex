@@ -190,6 +190,8 @@ export function deployTriggerKey(trigger: string): string | null {
       return "deploys.triggerSettingsChange";
     case "restart":
       return "deploys.triggerRestart";
+    case "service_resumed":
+      return "deploys.triggerServiceResumed";
     case "deployed_by_render":
       return "deploys.triggerDeployedByRender";
     default:

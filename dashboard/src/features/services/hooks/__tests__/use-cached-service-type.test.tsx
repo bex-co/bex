@@ -17,12 +17,14 @@ const WORKSPACE = "tea-1";
 function setup<T>(
   seed: (cache: InMemoryCache) => void,
   hook: (id: string) => T,
+  plan?: string,
 ) {
   const cache = new InMemoryCache();
   seed(cache);
   const client = new ApolloClient({ cache, link: ApolloLink.empty() });
   const workspace = {
     currentWorkspaceId: WORKSPACE,
+    currentWorkspace: plan ? { id: WORKSPACE, plan } : null,
   } as WorkspaceContextValue;
   const wrapper = ({ children }: { children: ReactNode }) => (
     <ApolloProvider client={client}>
@@ -192,6 +194,29 @@ describe("useCachedServiceSource (w3/094)", () => {
     expect(read("srv-billing")).toMatchObject({
       suspendedNotice: "services.suspendedNoticeByPlatform",
     });
+  });
+
+  // w3/m643: the frame's title is the ready notice's, which names the
+  // current workspace's plan for an owner's suspension.
+  it.each([
+    ["hobby", "services.suspendedNoticeByYou"],
+    ["pro", "services.suspendedNoticeManual"],
+  ])("titles an owner's suspension on %s as %s", (plan, key) => {
+    const read = setup(
+      (cache) =>
+        writeServices(cache, [
+          {
+            id: "srv-off",
+            type: "web_service",
+            repo: "",
+            suspended: "suspended",
+            suspenders: ["user"],
+          },
+        ]),
+      useCachedServiceSource,
+      plan,
+    );
+    expect(read("srv-off")).toMatchObject({ suspendedNotice: key });
   });
 
   it("says an image pulled with a registry credential names it", () => {

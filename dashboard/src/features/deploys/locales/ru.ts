@@ -212,6 +212,11 @@ const ruDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy row: trigger=restart label (a Restart roll of the live release, w4/379)",
   },
+  "deploys.triggerServiceResumed": {
+    message: "Сервис возобновлён",
+    description:
+      "Deploy row: trigger=service_resumed label (the deploy a Resume opened on the release the service was serving, Render's service_resumed, w3/m643)",
+  },
   "deploys.triggerDeployedByRender": {
     message: "Пересборка платформой",
     description:

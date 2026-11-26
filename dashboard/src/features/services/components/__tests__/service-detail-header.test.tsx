@@ -19,7 +19,10 @@ import type { InstanceTypeView } from "@/features/services/hooks/use-instance-ty
 import type { LatestDeploySummary } from "@/features/deploys/hooks/use-latest-deploy";
 import { mockAllowedResourceActions } from "@/test/mocks/resource-actions";
 import { useShellGate } from "@/features/services/hooks/use-shell-gate";
-import { hydrateAcrossBoundary } from "@/test/hydration";
+import {
+  hydrateAcrossBoundary,
+  hydrateAcrossEnvironments,
+} from "@/test/hydration";
 
 // The instance-type chip and the Manual Deploy button both go through Apollo;
 // stub them at the hook boundary (the pattern every other panel's test uses) so
@@ -111,11 +114,23 @@ beforeEach(() => {
   restartServer.mockClear();
   triggerCronRun.mockClear();
   cronTriggering = false;
+  workspacePlan = "hobby";
 });
 
+// The current workspace's plan, which titles an owner's suspension (w3/m643).
+let workspacePlan = "hobby";
 vi.mock("@/features/workspaces/context/hooks", async () => {
   const { mockWorkspaceContext } = await import("@/test/mocks/workspace");
-  return mockWorkspaceContext();
+  const { useWorkspace } = mockWorkspaceContext();
+  return {
+    useWorkspace: () => {
+      const context = useWorkspace();
+      return {
+        ...context,
+        currentWorkspace: { ...context.currentWorkspace, plan: workspacePlan },
+      };
+    },
+  };
 });
 
 vi.mock(
@@ -722,11 +737,14 @@ describe("ServiceDetailHeader", () => {
     expect(screen.queryByText(/Schedule/)).not.toBeInTheDocument();
   });
 
+  // w3/m643: every schedule in cronstrue's words, as Render's header has it.
   it.each([
     ["* * * * *", "every minute"],
     ["*/5 * * * *", "every 5 minutes"],
     ["0 * * * *", "every hour"],
     ["30 13 * * 1", "at 01:30 PM UTC, only on Monday"],
+    ["0 9 * * 1-5", "at 09:00 AM UTC, Monday through Friday"],
+    ["*/40 * * * *", "every 40 minutes"],
   ])("words %s as %s", async (schedule, words) => {
     renderHeader(
       svc({ type: "cron_job", url: null, schedule, command: "./job" }),
@@ -734,17 +752,20 @@ describe("ServiceDetailHeader", () => {
     expect(await screen.findByText(words)).toBeInTheDocument();
   });
 
-  it("shows a schedule it cannot word as the expression", async () => {
+  // Render's header reads nothing after the command for a schedule its gate
+  // refuses, and shows no expression either.
+  it("shows nothing after the command for a schedule Render reads nothing for", async () => {
     renderHeader(
       svc({
         type: "cron_job",
         url: null,
-        schedule: "0 9 * * 1-5",
+        schedule: "*-5 * * * *",
         command: "./job",
       }),
     );
-    const expression = await screen.findByText("0 9 * * 1-5");
-    expect(expression.tagName).toBe("CODE");
+    const command = await screen.findByText("./job");
+    expect(command.closest("p")!.textContent!.trim()).toBe("Runs ./job");
+    expect(screen.queryByText("*-5 * * * *")).toBeNull();
   });
 
   it("names a native cron job's start command when nothing overrides it", async () => {
@@ -791,8 +812,11 @@ describe("ServiceDetailHeader", () => {
     },
   );
 
-  it("shows a cron job's last successful run as a local date, and no next run", async () => {
-    const lastRun = "2026-11-21T09:00:00Z";
+  // w3/m643: Render's `LL [at] LT z` in the viewer's zone. On UTC, the
+  // suite's zone, the date has no tooltip and is no focusable term.
+  it("shows a cron job's last successful run with its zone, no tooltip on UTC, and no next run", async () => {
+    const user = userEvent.setup();
+    const lastRun = "2026-11-21T17:00:00Z";
     const { container } = renderHeader(
       svc({
         type: "cron_job",
@@ -807,14 +831,56 @@ describe("ServiceDetailHeader", () => {
     const label = await screen.findByText(/^Last successful run/);
     const instant = label.querySelector("time")!;
     expect(instant).toHaveAttribute("dateTime", lastRun);
-    // Hydrated, the viewer's own clock: UTC in the suite.
     await waitFor(() =>
-      expect(instant).toHaveTextContent("November 21, 2026 at 9:00 AM"),
+      expect(label).toHaveTextContent(
+        "Last successful run November 21, 2026 at 5:00 PM UTC",
+      ),
     );
+    expect(label.querySelector("[tabindex]")).toBeNull();
+    await user.hover(instant);
+    expect(screen.queryByRole("tooltip")).toBeNull();
     expect(screen.queryByText(/Next run/)).not.toBeInTheDocument();
     expect(
       container.querySelector('time[datetime="2026-11-22T09:00:00Z"]'),
     ).toBeNull();
+  });
+
+  // Off UTC the date carries the viewer's zone and, hovered or focused,
+  // Render's tooltip: the instant in UTC as `MMM D hh:mm:ss A`.
+  it("shows a viewer in Los Angeles the date in PST and the UTC instant in a tooltip", async () => {
+    const previous = process.env.TZ;
+    process.env.TZ = "America/Los_Angeles";
+    try {
+      const user = userEvent.setup();
+      renderHeader(
+        svc({
+          type: "cron_job",
+          url: null,
+          schedule: "0 9 * * *",
+          command: "./job",
+          lastSuccessfulRunAt: "2026-11-21T17:00:00Z",
+        }),
+      );
+
+      const label = await screen.findByText(/^Last successful run/);
+      await waitFor(() =>
+        expect(label).toHaveTextContent(
+          "Last successful run November 21, 2026 at 9:00 AM PST",
+        ),
+      );
+      const term = label.querySelector("[tabindex='0']")!;
+      expect(term).toHaveClass("hover:underline");
+      expect(term).toHaveTextContent("November 21, 2026 at 9:00 AM PST");
+      await user.hover(term);
+      const tooltip = await screen.findByRole("tooltip");
+      expect(tooltip).toHaveTextContent(/^UTC: Nov 21 05:00:00 PM$/);
+      const time = document.querySelector('[data-slot="tooltip-content"] time');
+      expect(time).toHaveAttribute("dateTime", "2026-11-21T17:00:00Z");
+      expect(time).toHaveTextContent("UTC: Nov 21 05:00:00 PM");
+    } finally {
+      if (previous === undefined) delete process.env.TZ;
+      else process.env.TZ = previous;
+    }
   });
 
   it("advances a cron job's creation age for two minutes with unchanged service facts", async () => {
@@ -872,6 +938,49 @@ describe("ServiceDetailHeader", () => {
     });
     expect(probe.html).toContain('data-header-item="cron-last-run"');
     expect(probe.recovered).toEqual([]);
+  });
+
+  // w3/m643: the zone and the tooltip are the viewer's, so the server (UTC)
+  // renders neither and the browser draws both once hydrated.
+  it("hydrates a Los Angeles viewer's last run from a UTC server without a mismatch", async () => {
+    const service = svc({
+      type: "cron_job",
+      url: null,
+      schedule: "0 9 * * *",
+      command: "./job",
+      lastSuccessfulRunAt: "2026-11-21T17:00:00Z",
+    });
+    let hydrated = "";
+    let term: Element | null = null;
+    const probe = await hydrateAcrossEnvironments(
+      async () => {
+        const router = headerRouter(service);
+        await router.load();
+        return <RouterProvider router={router} />;
+      },
+      {
+        server: { timeZone: "UTC", language: "en" },
+        client: { timeZone: "America/Los_Angeles", language: "en" },
+        inspect: (container) => {
+          const line = container.querySelector(
+            '[data-header-item="cron-last-run"]',
+          )!;
+          hydrated = line.textContent ?? "";
+          term = line.querySelector("[tabindex='0']");
+        },
+      },
+    );
+    const server = document.createElement("div");
+    server.innerHTML = probe.html;
+    expect(
+      server.querySelector('[data-header-item="cron-last-run"]'),
+    ).toHaveTextContent(/^Last successful run$/);
+    expect(probe.recovered).toEqual([]);
+    expect(probe.failed).toEqual([]);
+    expect(hydrated).toBe(
+      "Last successful run November 21, 2026 at 9:00 AM PST",
+    );
+    expect(term).not.toBeNull();
   });
 
   it("says a cron job has no successful runs yet", async () => {
@@ -983,31 +1092,40 @@ describe("ServiceDetailHeader", () => {
     expect(await screen.findByRole("tooltip")).toHaveTextContent(text);
   });
 
-  // w3/107: Render's banner titles a suspension by who made it (`Lr`).
+  // w3/107: Render's banner titles a suspension by who made it (`Lr`), and
+  // an owner's by the current workspace's plan (w3/m643): "Suspended by you"
+  // on Hobby, "Manually suspended" on every other plan.
   it.each([
-    [{ manuallySuspended: true }, "Manually suspended"],
+    ["hobby", { manuallySuspended: true }, "Suspended by you"],
+    ["pro", { manuallySuspended: true }, "Manually suspended"],
+    ["scale", { manuallySuspended: true }, "Manually suspended"],
     [
+      "hobby",
       { crashLoopSuspended: true },
       "This service has been suspended in response to repeated crashes",
     ],
-    [{ billingSuspended: true }, "Suspended by bex"],
-    [{}, "Suspended"],
-  ])("titles the notice of a suspension by %o %j", async (by, title) => {
-    renderHeader(
-      svc({
-        type: "cron_job",
-        url: null,
-        schedule: "* * * * *",
-        suspended: true,
-        ...by,
-      }),
-      { onRun: vi.fn() },
-    );
-    const notice = await screen.findByRole("status");
-    expect(notice).toHaveTextContent(
-      `${title} You are not billed for suspended services. Resume service`,
-    );
-  });
+    ["hobby", { billingSuspended: true }, "Suspended by bex"],
+    ["hobby", {}, "Suspended"],
+  ])(
+    "on %s titles the notice of a suspension by %o %j",
+    async (plan, by, title) => {
+      workspacePlan = plan;
+      renderHeader(
+        svc({
+          type: "cron_job",
+          url: null,
+          schedule: "* * * * *",
+          suspended: true,
+          ...by,
+        }),
+        { onRun: vi.fn() },
+      );
+      const notice = await screen.findByRole("status");
+      expect(notice).toHaveTextContent(
+        `${title} You are not billed for suspended services. Resume service`,
+      );
+    },
+  );
 
   // w3/107: Render's Server page passes its header actions only while the
   // service runs (`state === "Running"`), the same rule as a cron job's, and
@@ -1046,7 +1164,7 @@ describe("ServiceDetailHeader", () => {
 
       const notice = await screen.findByRole("status");
       expect(notice).toHaveTextContent(
-        "Manually suspended You are not billed for suspended services. Resume service",
+        "Suspended by you You are not billed for suspended services. Resume service",
       );
       // The action slot is empty, so `empty:hidden` drops it from the row.
       expect(
@@ -1552,7 +1670,15 @@ describe("ServiceDetailHeaderSkeleton for a cron job", () => {
     ).length;
 
   it("reserves Trigger Run alone and the two facts lines while it runs", async () => {
-    renderHeader(svc({ type: "cron_job", url: null, schedule: "* * * * *" }));
+    // The frame lays its last-run line out with this date (w3/m643).
+    renderHeader(
+      svc({
+        type: "cron_job",
+        url: null,
+        schedule: "* * * * *",
+        lastSuccessfulRunAt: "2026-11-21T17:00:00Z",
+      }),
+    );
     const ready = await screen.findByRole("button", { name: "Trigger Run" });
     expect(ready.closest(".md\\:max-lg\\:col-start-2")!.children).toHaveLength(
       1,
@@ -1571,13 +1697,33 @@ describe("ServiceDetailHeaderSkeleton for a cron job", () => {
     for (const item of items) {
       const ready = document.querySelector(`[data-header-item="${item}"]`)!;
       const slot = container.querySelector(`[data-skeleton-item="${item}"]`)!;
-      // A text-sm line: 20px. On a phone the last run spans both columns,
-      // beside nothing; from `lg` each is its own line.
-      expect(slot).toHaveClass("h-5");
+      // On a phone the last run spans both columns, beside nothing; from
+      // `lg` each is its own line.
       const placement = (el: Element) =>
         [...el.classList].filter((c) => /col-span|basis/.test(c)).sort();
       expect(placement(slot)).toEqual(placement(ready));
     }
+    // The schedule's words are one text-sm line: 20px.
+    expect(
+      container.querySelector('[data-skeleton-item="cron-runs"]'),
+    ).toHaveClass("h-5");
+    // The last run's line, its zone included, wraps at 390 in most
+    // languages: the frame lays the ready line's words out invisibly, at its
+    // size, so it wraps where the ready one does.
+    const lastRun = container.querySelector(
+      '[data-skeleton-item="cron-last-run"]',
+    )!;
+    await waitFor(() =>
+      expect(lastRun).toHaveTextContent(
+        document.querySelector('[data-header-item="cron-last-run"]')!
+          .textContent!,
+      ),
+    );
+    expect(lastRun).toHaveTextContent(
+      "Last successful run November 21, 2026 at 5:00 PM UTC",
+    );
+    expect(lastRun).toHaveClass("text-sm");
+    expect(lastRun.querySelector(".invisible")).not.toBeNull();
     expect(
       container.querySelector('[data-skeleton-item="service-url"]'),
     ).toBeNull();

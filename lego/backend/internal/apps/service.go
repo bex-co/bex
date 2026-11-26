@@ -58,6 +58,13 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
+// ResumeDeployFunc resumes the already-authorized App a, named name, with a
+// deploy of the release it was serving (trigger service_resumed) and returns
+// that deploy's id. writeRow and resume are the resume's own row write and App
+// change, which ride the deploy's release write. "" with a nil error means it
+// wrote nothing, and the caller resumes a without a deploy.
+type ResumeDeployFunc func(ctx context.Context, name string, a *appv1alpha1.App, writeRow func() error, resume func(*appv1alpha1.App)) (string, error)
+
 // Service turns user intent (restart / suspend / resume) into App CR spec
 // patches, and reads Apps as the Render service shape. It is a thin policy layer
 // — the operator does the mechanism.
@@ -219,6 +226,11 @@ type Service struct {
 	// restart surface picks up the branch head (w1/m148). nil (tests, store off)
 	// => Restart only re-rolls the pods on the current spec.
 	RestartDeploy func(ctx context.Context, name string) error
+	// ResumeDeploy, when set (the composition root wires
+	// deploys.Service.ResumeRelease), resumes a service with a deploy of the
+	// release it was serving, as Render's resume opens one (w3/m643). nil
+	// (tests, store off) => Resume opens no deploy.
+	ResumeDeploy ResumeDeployFunc
 	// TriggerSourceDeploy starts one deploy after a dashboard Update Source save
 	// (w4/m593). Wired in the composition root to deploys.Service.TriggerManual
 	// when the deploy store is active; returns the opened deploy id. nil (tests,
@@ -830,9 +842,9 @@ type AppView struct {
 	// SetMaintenanceMode. See docs/render-artifacts/maintenance-mode.md.
 	MaintenanceMode MaintenanceModeView `json:"maintenanceMode"`
 	// LatestDeployID is the id of the deploy row a write just opened: Create's
-	// first deploy (w3/m14), a deploying source change (w4/m593), and a plan
-	// change (SetPlan, w3/105). The dashboard uses it to navigate to that
-	// in-flight deploy's page. Empty on Get/List.
+	// first deploy (w3/m14), a deploying source change (w4/m593), a plan
+	// change (SetPlan, w3/105) and a resume (w3/m643). The dashboard uses it
+	// to navigate to that in-flight deploy's page. Empty on Get/List.
 	//
 	// Both surfaces must keep that emptiness INVISIBLE rather than render it as
 	// a value: `omitempty` drops the key from REST (which carries the id in the
@@ -4910,7 +4922,9 @@ func (s *Service) Suspend(ctx context.Context, name string) (AppView, error) {
 }
 
 // Resume brings a suspended App back (spec.suspended = false); the operator
-// restores spec.replicas.
+// restores spec.replicas. With ResumeDeploy wired it does so with a deploy of
+// the release the service was serving, as Render's resume does, and returns
+// that deploy as LatestDeployID so the dashboard can open it (w3/m643).
 func (s *Service) Resume(ctx context.Context, name string) (AppView, error) {
 	return s.setSuspended(ctx, name, false)
 }
@@ -6291,17 +6305,22 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 	if suspended {
 		verb = core.AuditVerbSuspend
 	}
-	view, err := s.writeThroughStoreFetched(ctx, a,
-		func(ctx context.Context, id string) error { return s.Store.SetAppSuspended(ctx, id, suspended) },
-		func(a *appv1alpha1.App) {
-			a.Spec.Suspended = suspended
-			if !suspended {
-				delete(a.Annotations, core.AnnotFreeHoursSuspended)
-				delete(a.Annotations, core.AnnotBandwidthSuspended)
-				delete(a.Annotations, core.AnnotCrashLoopSuspended)
-				delete(a.Annotations, core.AnnotCrashLoopObserved)
-			}
-		})
+	writeRow := func(ctx context.Context, id string) error { return s.Store.SetAppSuspended(ctx, id, suspended) }
+	mutate := func(a *appv1alpha1.App) {
+		a.Spec.Suspended = suspended
+		if !suspended {
+			delete(a.Annotations, core.AnnotFreeHoursSuspended)
+			delete(a.Annotations, core.AnnotBandwidthSuspended)
+			delete(a.Annotations, core.AnnotCrashLoopSuspended)
+			delete(a.Annotations, core.AnnotCrashLoopObserved)
+		}
+	}
+	var view AppView
+	if suspended {
+		view, err = s.writeThroughStoreFetched(ctx, a, writeRow, mutate)
+	} else {
+		view, err = s.resume(ctx, name, a, writeRow, mutate)
+	}
 	if err != nil {
 		return AppView{}, err
 	}
@@ -6322,6 +6341,32 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 		s.Kick()
 	}
 	return view, nil
+}
+
+// resume writes a's resume through the deploy ResumeDeploy opens, returned as
+// LatestDeployID, or, when it opens none, as the plain write every other
+// intent verb makes.
+func (s *Service) resume(ctx context.Context, name string, a *appv1alpha1.App, writeRow func(context.Context, string) error, mutate func(*appv1alpha1.App)) (AppView, error) {
+	if id := managedAppID(a); s.ResumeDeploy != nil && s.Store != nil && id != "" {
+		if err := core.NotFoundIfDeleting(a); err != nil {
+			return AppView{}, err
+		}
+		deployID, err := s.ResumeDeploy(ctx, name, a,
+			func() error { return writeRow(ctx, id) },
+			func(a *appv1alpha1.App) {
+				mutate(a)
+				resourcemeta.Touch(a, s.Now())
+			})
+		if err != nil {
+			return AppView{}, err
+		}
+		if deployID != "" {
+			view := s.view(a)
+			view.LatestDeployID = deployID
+			return view, nil
+		}
+	}
+	return s.writeThroughStoreFetched(ctx, a, writeRow, mutate)
 }
 
 // suspensionLogger is an optional IntentStore extension, implemented by
