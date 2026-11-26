@@ -983,9 +983,19 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 	tee := newTurnTee(ctx, s.Store, sessionID, turn, storedBytes, s.transcriptQuota(), newReplayedTurn())
 	defer tee.close()
 	var partIndex int64 = -1
+	// cut is the POST half of the w3/m406 cut: the driver connection ended
+	// without its [DONE], so the turn's response is incomplete. An oversized
+	// part also arrives as an error, but like the read splice it stops the
+	// turn for good and settles with [DONE]; only a cut ends with an error.
+	cut := false
 	reader := bufio.NewReader(resp.Body)
 	for {
 		payload, done, err := readSSEData(reader, maxSSEPartBytes)
+		if err != nil && !errors.Is(err, errPartTooLarge) {
+			log.Printf("agent turn: driver stream cut without [DONE] (session=%s): %v", sessionID, err)
+			cut = true
+			break
+		}
 		if err != nil || done {
 			break
 		}
@@ -1007,6 +1017,10 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 	}
 	stopHeartbeat()
 	tee.close()
+	if cut {
+		sse.errorAndDone("turn stream cut")
+		return
+	}
 	sse.done()
 }
 

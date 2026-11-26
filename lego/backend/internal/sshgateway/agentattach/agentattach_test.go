@@ -976,6 +976,56 @@ func TestAgentTurnQuotaIsCumulative(t *testing.T) {
 	}
 }
 
+// A driver connection that ends without its [DONE] is the POST half of the
+// w3/m406 cut (TestAgentAttachDriverCutMidTurnClosesWithoutDone pins the GET
+// half): the turn's response is incomplete, so the stream ends with an error
+// part like every other turn failure — a silent [DONE] would read as a
+// finished turn and the client would never learn the rest is missing.
+func TestAgentTurnCutMidTurnEndsWithErrorNotSilentDone(t *testing.T) {
+	secret := []byte("shell-ticket-secret")
+	session := "ags-000000000000000000cut"
+	st := newFakeAttachStore()
+	driverMux := http.NewServeMux()
+	driverMux.HandleFunc("/turn", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		// One part, then the connection ends: a pod dying mid-turn.
+		_, _ = io.WriteString(w, "data: {\"type\":\"start\"}\n\n")
+	})
+	driver := httptest.NewServer(driverMux)
+	defer driver.Close()
+	host, portString, _ := net.SplitHostPort(strings.TrimPrefix(driver.URL, "http://"))
+	port, _ := strconv.Atoi(portString)
+
+	gw := newAttachGateway(st, fixedPodIP{ip: host}, secret, port)
+	gw.HeartbeatInterval = -1
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+
+	req, _ := http.NewRequest(http.MethodPost, srv.URL, strings.NewReader(`{"prompt":"go"}`))
+	req.Header.Set(TicketHeader, turnTicket(t, secret, session))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	if !strings.HasSuffix(strings.TrimSpace(string(body)), "data: [DONE]") {
+		t.Fatalf("cut turn did not end with [DONE]:\n%s", body)
+	}
+	payloads := dataPayloads(string(body))
+	if len(payloads) != 2 || payloads[0] != `{"type":"start"}` {
+		t.Fatalf("cut turn parts = %v, want the partial content first", payloads)
+	}
+	var errPart struct {
+		Type      string `json:"type"`
+		ErrorText string `json:"errorText"`
+	}
+	if err := json.Unmarshal([]byte(payloads[1]), &errPart); err != nil || errPart.Type != "error" || errPart.ErrorText == "" {
+		t.Fatalf("cut turn ends with %q, want an error part saying the turn is incomplete", payloads[1])
+	}
+}
+
 // TestAgentAttachReplayReadIsBounded pins that the replay read itself is
 // budgeted at the store: even a store holding more than the quota (e.g. rows
 // written before the cumulative fix) replays only the capped prefix.
