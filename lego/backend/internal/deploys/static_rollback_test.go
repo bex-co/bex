@@ -190,6 +190,61 @@ func TestRollbackRefusesTheLiveStaticCommit(t *testing.T) {
 	}
 }
 
+// A static site whose saved build commit is unknown must refuse a rollback to
+// its live deploy, not open a redundant one. A trigger without a commitId
+// resets spec.buildCommit to "" so Branch HEAD stays the default, and no
+// rollback, restart or source change re-stamps it — GitHub-off services live
+// there permanently. With the pin unknown, restoring the live deploy's
+// retained publication changes nothing but still restarts the site and mints
+// a redundant deploy: the w4/051 no-op the stamped pin refuses above. Truth
+// table for a live static row carrying commit C against the saved pin P:
+//   - P == C → refuse (already running; TestRollbackRefusesTheLiveStaticCommit)
+//   - P == "" → refuse (unknown: fail closed, like the image arm's saved-image
+//     comparison and the repo arm's empty-equals-empty, which both refuse when
+//     they cannot prove drift)
+//   - P != C, P != "" → allow (drifted: a failed newer trigger's recovery)
+func TestRollbackRefusesTheLiveStaticCommitWhenThePinIsUnknown(t *testing.T) {
+	ctx := context.Background()
+	ds := newFakeStore()
+	_, live := liveStaticDeploys(t, ds)
+	app := staticSite()
+	app.Spec.BuildCommit = ""
+	svc, _ := newService(ds, app, staticRecord(app, 2, "tea-1/site/rev-2/"))
+
+	if RollbackActionable(app, live) {
+		t.Error("the live static commit is not a target when the saved pin is unknown")
+	}
+	before, _ := ds.ListDeploys(ctx, "srv-site", store.DeployFilter{})
+	if _, err := svc.Rollback(ctx, "site", live.ID); !errors.Is(err, core.ErrConflict) {
+		t.Errorf("rollback to the live deploy with an unknown pin: err = %v, want ErrConflict", err)
+	}
+	if after, _ := ds.ListDeploys(ctx, "srv-site", store.DeployFilter{}); len(after) != len(before) {
+		t.Errorf("the refused rollback added a deploy row: %d, was %d", len(after), len(before))
+	}
+	_, _, pre := svc.deployPreconditions(ctx, app)
+	if pre != core.PrecondNoEligibleRollbackTarget {
+		t.Errorf("projection = %q, want no_eligible_rollback_target like the verb", pre)
+	}
+}
+
+// The complement: a pin drifted by a failed newer trigger still recovers —
+// the live deploy stays a target when the pin names a commit it did not publish.
+func TestRollbackToLiveStaticDeployRecoversADriftedPin(t *testing.T) {
+	ctx := context.Background()
+	ds := newFakeStore()
+	_, live := liveStaticDeploys(t, ds)
+	app := staticSite()
+	app.Spec.BuildCommit = "9f8e7d6c"
+	svc, _ := newService(ds, app, staticRecord(app, 2, "tea-1/site/rev-2/"))
+
+	if !RollbackActionable(app, live) {
+		t.Fatal("a live static deploy the saved pin moved past must stay a recovery target")
+	}
+	if _, err := svc.Rollback(ctx, "site", live.ID); err != nil {
+		t.Fatalf("rollback to the drifted live deploy: err = %v, want it opened", err)
+	}
+}
+
 // The capability projection answers what the verb will do: a static site with
 // an earlier published commit has a rollback target.
 func TestStaticSiteRollbackCapabilityMatchesTheVerb(t *testing.T) {
