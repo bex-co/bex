@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -158,11 +159,21 @@ func (s *Service) RollbackComparison(ctx context.Context, service, deployID stri
 	if err != nil {
 		return RollbackComparison{}, err
 	}
-	current, err := s.recordedRelease(ctx, a, live.Generation, groups)
+	// The live side shows the count live runs: the record's, unless live is
+	// itself a selected release (a rollback or restart serving), which the
+	// operator renders through the selection guard below. The target side
+	// always shows what a rollback will run: a rollback materializes through
+	// that guard, and its future generation can match no scale stamp on the
+	// App today.
+	liveSelected := false
+	if ref := a.ActiveReleaseConfig(); ref != nil && ref.SourceGeneration > 0 && ref.Generation == live.Generation {
+		liveSelected = true
+	}
+	current, err := s.recordedRelease(ctx, a, live.Generation, groups, previewInstances{selected: liveSelected, scaledRelease: live.Generation})
 	if err != nil {
 		return RollbackComparison{}, err
 	}
-	old, err := s.recordedRelease(ctx, a, target.Generation, groups)
+	old, err := s.recordedRelease(ctx, a, target.Generation, groups, previewInstances{selected: true})
 	if err != nil {
 		return RollbackComparison{}, err
 	}
@@ -196,10 +207,22 @@ func (s *Service) workspaceGroupNames(ctx context.Context, a *appv1alpha1.App) (
 	return names, nil
 }
 
+// previewInstances tells recordedSnapshot which instance count a release
+// from the record runs under the App's current saved state. selected is
+// whether this side materializes through the operator's selection guard
+// (projectRuntimeApp): a rollback always does; the live side only when the
+// live release is itself a selection. scaledRelease is the release
+// generation an explicit scale must stamp to supersede the record; 0
+// disables the arm.
+type previewInstances struct {
+	selected      bool
+	scaledRelease int64
+}
+
 // recordedRelease reads generation's record and the service's own env and
 // file copies. nil, with no error, when any of them is gone or the record
 // predates version 1: half a configuration would list changes that are not.
-func (s *Service) recordedRelease(ctx context.Context, a *appv1alpha1.App, generation int64, groups map[string]string) (*recordedRelease, error) {
+func (s *Service) recordedRelease(ctx context.Context, a *appv1alpha1.App, generation int64, groups map[string]string, preview previewInstances) (*recordedRelease, error) {
 	if generation <= 0 {
 		return nil, nil
 	}
@@ -216,7 +239,7 @@ func (s *Service) recordedRelease(ctx context.Context, a *appv1alpha1.App, gener
 	if spec.Version < 1 {
 		return nil, nil
 	}
-	r := &recordedRelease{snapshot: recordedSnapshot(a, spec), env: map[string]string{}, files: map[string]string{}}
+	r := &recordedRelease{snapshot: recordedSnapshot(a, spec, preview), env: map[string]string{}, files: map[string]string{}}
 	r.tier = recordedTier(rec[appv1alpha1.ReleaseRecordPodTemplateKey])
 	if t, ok := tiers.Compute.ByID(r.tier); ok {
 		r.snapshot.Plan = t.RenderPlan
@@ -292,7 +315,10 @@ func (s *Service) secretData(ctx context.Context, a *appv1alpha1.App, name strin
 // count, in the fields Render's snapshot names, for the rows that apply to a's
 // type: a cron job runs a command and has no instances, health check or
 // pre-deploy step, and only a web service has an HTTP health check path.
-func recordedSnapshot(a *appv1alpha1.App, spec appv1alpha1.ReleaseRecordSpec) ServiceConfigSnapshot {
+// The instance count is the one the release runs under the App's current
+// saved state (previewInstanceCount), so the page never lists a change the
+// rollback will not make.
+func recordedSnapshot(a *appv1alpha1.App, spec appv1alpha1.ReleaseRecordSpec, preview previewInstances) ServiceConfigSnapshot {
 	none := []string{}
 	snap := ServiceConfigSnapshot{EnvVarChanges: EnvVarChanges{none, none, none, none, none, none}}
 	command := spec.StartCommand
@@ -320,10 +346,35 @@ func recordedSnapshot(a *appv1alpha1.App, spec appv1alpha1.ReleaseRecordSpec) Se
 		snap.HealthCheckPath = *spec.HealthCheckPath
 	}
 	if spec.Replicas != nil {
-		// Zero is the default: one instance (the operator's effectiveReplicas).
-		snap.Instances = new(max(*spec.Replicas, 1))
+		snap.Instances = new(previewInstanceCount(a, spec, preview))
 	}
 	return snap
+}
+
+// previewInstanceCount is the instance count a release from spec's record
+// runs under a's current saved state. It mirrors the operator's selection
+// guard (projectRuntimeApp in release_config_selection.go): the record's
+// count runs unless an explicit scale stamped this release, or the saved
+// count moved on since the record was written — then the saved count wins.
+// A side that never materializes through that guard keeps the record's
+// count, as do records that predate SavedReplicas. Zero is the default: one
+// instance (the operator's effectiveReplicas).
+func previewInstanceCount(a *appv1alpha1.App, spec appv1alpha1.ReleaseRecordSpec, preview previewInstances) int32 {
+	count := int32(1)
+	if spec.Replicas != nil {
+		count = max(*spec.Replicas, 1)
+	}
+	if !preview.selected {
+		return count
+	}
+	if preview.scaledRelease > 0 &&
+		a.Annotations[appv1alpha1.AnnotationReleaseConfigScaled] == strconv.FormatInt(preview.scaledRelease, 10) {
+		return max(a.Spec.Replicas, 1)
+	}
+	if spec.SavedReplicas != nil && *spec.SavedReplicas != a.Spec.Replicas {
+		return max(a.Spec.Replicas, 1)
+	}
+	return count
 }
 
 // recordedTier is the compute tier whose CPU and memory the recorded pod
