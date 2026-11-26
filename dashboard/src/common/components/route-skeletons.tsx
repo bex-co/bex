@@ -2799,13 +2799,16 @@ export function ServiceMetricsSkeleton({
           <Skeleton className="h-8 w-40 max-lg:h-11 pointer-coarse:h-11" />
         </Region>
       ) : (
+        // MetricsFilters' row: the events and range selects (160 px, sharing
+        // a phone's width) and the timeline toggle, each 44 px tall below lg
+        // or on a coarse pointer, where the touch rule grows the ready ones.
         <Region
           name="metrics-filters"
-          className="flex flex-wrap items-center gap-3"
+          className="flex flex-wrap items-center gap-3 max-sm:flex-nowrap max-sm:gap-2"
         >
-          <Skeleton className="h-8 w-40" />
-          <Skeleton className="h-8 w-32" />
-          <Skeleton className="ml-auto size-8" />
+          <Skeleton className="h-8 w-40 max-lg:h-11 pointer-coarse:h-11 max-sm:w-auto max-sm:flex-1" />
+          <Skeleton className="h-8 w-40 max-lg:h-11 pointer-coarse:h-11 max-sm:w-auto max-sm:flex-1" />
+          <Skeleton className="ml-auto h-8 w-[38px] max-lg:size-11 pointer-coarse:size-11" />
         </Region>
       )}
       {!staticSite && !cronJob ? (

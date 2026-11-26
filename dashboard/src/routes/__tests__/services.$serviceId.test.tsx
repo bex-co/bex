@@ -219,9 +219,9 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
 
 // Rebuilds the real layout + the Logs child as a router rooted at `initialPath`,
 // mirroring the generated nesting (every tab lives under the
-// `/services/$serviceId` layout). The Events landing tab isn't mounted here —
-// it's a file route that reads its own params over Apollo; the nav assertions
-// below cover that it's the tab the shell points at.
+// `/services/$serviceId` layout). The other tabs are file routes that read
+// their own params over Apollo, so they mount here as stand-ins: whether the
+// service header shows is the layout's decision, made from the path alone.
 function renderAt(initialPath: string) {
   const rootRoute = createRootRoute();
   const homeRoute = createRoute({
@@ -239,10 +239,25 @@ function renderAt(initialPath: string) {
     path: "logs",
     component: () => <ServiceLogsPage serviceId="app" />,
   });
+  const standIns = [
+    "events",
+    "settings",
+    "env",
+    "deploys",
+    "metrics",
+    "shell",
+    "deploys/$deployId",
+  ].map((path) =>
+    createRoute({
+      getParentRoute: () => layoutRoute,
+      path,
+      component: () => <p>{`${path} page`}</p>,
+    }),
+  );
   const router = createRouter({
     routeTree: rootRoute.addChildren([
       homeRoute,
-      layoutRoute.addChildren([logsRoute]),
+      layoutRoute.addChildren([logsRoute, ...standIns]),
     ]),
     history: createMemoryHistory({ initialEntries: [initialPath] }),
     context: { client: {} as never, session: null },
@@ -341,7 +356,7 @@ describe("service header's latest deploy per role (w9/m621)", () => {
 
   it("a Billing member gets no badge, and the read is skipped", async () => {
     vi.mocked(useCapabilities).mockReturnValue(billingCapabilities());
-    renderAt("/services/app/logs");
+    renderAt("/services/app/settings");
 
     expect(
       await screen.findByRole("heading", { name: "app" }),
@@ -353,7 +368,7 @@ describe("service header's latest deploy per role (w9/m621)", () => {
 
   it("a Viewer sees the latest deploy", async () => {
     vi.mocked(useCapabilities).mockReturnValue(viewerCapabilities());
-    renderAt("/services/app/logs");
+    renderAt("/services/app/settings");
 
     expect(await screen.findByText("Latest deploy")).toBeInTheDocument();
     expect(useLatestDeploy).toHaveBeenCalledWith("app", { skip: false });
@@ -397,28 +412,83 @@ describe("service-detail layout routing", () => {
     // the viewer's filter bar (search box) marks the logs tab as rendered
     const search = await screen.findByPlaceholderText("Search logs");
     expect(search).toBeInTheDocument();
-    // …under the shared chrome: the header shows the name, type, and live URL
-    const heading = screen.getByRole("heading", { name: "app" });
-    expect(heading).toBeInTheDocument();
-    expect(screen.getByText("Web Service")).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "https://app.onbex.co" }),
-    ).toHaveAttribute("href", "https://app.onbex.co");
-
-    // The service header and tab content share one scroll container, so the
-    // header scrolls away instead of staying frozen above it. (The service nav
-    // moved into the resource-scoped sidebar, w1/m45 — outside this container.)
+    // …under the tab's heading, in the page's scroll container, beside the
+    // service's sidebar nav (w1/m45), which sits outside it.
+    const heading = screen.getByRole("heading", { name: "Logs" });
     const scrollContainer = heading.closest(".overflow-auto");
-    expect(scrollContainer).toContainElement(heading);
     expect(scrollContainer).toContainElement(search);
     const eventsLink = await screen.findByRole("link", { name: "Events" });
     expect(scrollContainer).not.toContainElement(eventsLink);
   });
 
+  it("draws the service header above a tab, in the tab's scroll container", async () => {
+    renderAt("/services/app/settings");
+
+    expect(await screen.findByText("settings page")).toBeInTheDocument();
+    // the header shows the name, type, and live URL
+    const heading = screen.getByRole("heading", { name: "app" });
+    expect(screen.getByText("Web Service")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "https://app.onbex.co" }),
+    ).toHaveAttribute("href", "https://app.onbex.co");
+    // The service header and tab content share one scroll container, so the
+    // header scrolls away instead of staying frozen above it.
+    const scrollContainer = heading.closest(".overflow-auto");
+    expect(scrollContainer).toContainElement(screen.getByText("settings page"));
+  });
+
+  // w3/106: Render's service and cron layouts pass `hideResourceHeader` on
+  // Logs, Metrics and Shell and on a deploy's page (walked signed in
+  // 2026-11-25), so those tools get the page's full height. The sidebar and
+  // the breadcrumb still name the service.
+  it.each([
+    ["Logs", "/services/app/logs", "Logs"],
+    ["Metrics", "/services/app/metrics", "Metrics"],
+    ["Shell", "/services/app/shell", "Shell"],
+    ["a deploy's page", "/services/app/deploys/dep-1", null],
+  ])("%s has no service header", async (_, path, tabHeading) => {
+    renderAt(path);
+
+    expect(
+      await screen.findByRole("link", { name: "Events" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "app" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Web Service")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Manual Deploy/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("navigation", { name: "Breadcrumbs" }),
+    ).toHaveTextContent("app");
+    if (tabHeading) {
+      expect(
+        screen.getByRole("heading", { level: 2, name: tabHeading }),
+      ).toBeInTheDocument();
+    } else {
+      expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
+    }
+  });
+
+  it.each([
+    ["Events", "/services/app/events"],
+    ["Deploys", "/services/app/deploys"],
+    ["Environment", "/services/app/env"],
+    ["Settings", "/services/app/settings"],
+  ])("%s keeps the service header", async (_, path) => {
+    renderAt(path);
+
+    expect(
+      await screen.findByRole("heading", { name: "app" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Web Service")).toBeInTheDocument();
+  });
+
   it("leaves document-title ownership with the parent route head", async () => {
     serverState.service = svc({ id: "app", name: "friendly" });
     document.title = "route-owned title";
-    renderAt("/services/app/logs");
+    renderAt("/services/app/settings");
 
     expect(
       await screen.findByRole("heading", { name: "friendly" }),
@@ -574,7 +644,7 @@ describe("service-detail layout routing", () => {
     "the pending header draws the source items of %s",
     async (_, source, items) => {
       cachedSource.value = source;
-      const { resolveLoader } = renderPendingAt("/services/app/metrics");
+      const { resolveLoader } = renderPendingAt("/services/app/deploys");
 
       await act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 50));
@@ -596,6 +666,34 @@ describe("service-detail layout routing", () => {
       });
     },
   );
+
+  // w3/106: the pending frame of a page with no service header draws no
+  // header frame either, so the tab's skeleton starts where its page will.
+  it("the pending frame on Metrics has no header frame, and the ready page no header", async () => {
+    probeMounts.length = 0;
+    const { resolveLoader } = renderPendingAt("/services/app/metrics");
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(probeMounts).toEqual([]);
+    expect(
+      document.querySelector('[data-skeleton-region="active-tab"]'),
+    ).not.toBeNull();
+    expect(
+      document.querySelector('[data-skeleton-region="service-header"]'),
+    ).toBeNull();
+    expect(screen.getByRole("heading", { name: "Metrics" })).toBeVisible();
+
+    await act(async () => {
+      resolveLoader({});
+    });
+    expect(await screen.findByText("Application Metrics")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "app" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Metrics" })).toBeVisible();
+  });
 
   it("shows a retryable error instead of not-found when the service query fails", async () => {
     serverState.service = null;

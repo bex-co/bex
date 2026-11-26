@@ -41,8 +41,8 @@ export function useLogPanelHeight<T extends HTMLElement>(
       // Where the panel sits with the page unscrolled, so a page already
       // scrolled (a phone's docked bar, a short desktop) measures the same.
       let top = el.getBoundingClientRect().top + (scroller?.scrollTop ?? 0);
-      // A phone's Logs tab docks its filter bar under the top bar once the
-      // service header scrolls away (`data-log-dock` inside the panel's
+      // A phone's Logs tab docks its filter bar under the top bar once what
+      // sits above it scrolls away (`data-log-dock` inside the panel's
       // `data-log-frame`), so the panel takes the screen under the docked
       // bar — about double what was left beside the header.
       const dock = el
@@ -64,8 +64,8 @@ export function useLogPanelHeight<T extends HTMLElement>(
     };
     measure();
     window.addEventListener("resize", measure);
-    // Whatever sits above the panel can change height after it mounts (the
-    // service header settling into more rows): measure again when the page's
+    // Whatever sits above the panel can change height after it mounts (a
+    // resource header settling into more rows): measure again when the page's
     // content resizes, not only the window.
     const content = scroller?.firstElementChild;
     const observer =

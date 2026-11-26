@@ -5,7 +5,7 @@ import { LOG_DOCK_MEDIA } from "@/features/logs/hooks/use-log-panel-height";
  * On a phone the Logs tab opens docked: its filter bar (the frame's first
  * child) under the top bar and the log filling the screen below, the newest
  * line and the stream status in view. The log is sized for that docked view,
- * so opening with the service header above it left the newest lines a screen
+ * so opening with a resource header above it left the newest lines a screen
  * below the fold; scrolling up still brings the header back. Before paint, so
  * nothing jumps; the loading frame docks the same way, so the lines land where
  * it stood.

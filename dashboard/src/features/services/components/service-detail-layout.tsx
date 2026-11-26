@@ -13,7 +13,10 @@ import {
 import { useSignInAgain } from "@/common/lib/auth/sign-in-again";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServer } from "@/features/services/hooks/use-server";
-import { serviceTabLabelKey } from "@/features/services/components/service-nav";
+import {
+  serviceHeaderHidden,
+  serviceTabLabelKey,
+} from "@/features/services/components/service-nav";
 import {
   useCachedServiceName,
   useCachedServiceSource,
@@ -37,7 +40,8 @@ import { DeployHistorySkeleton } from "@/features/deploys/components/deploy-hist
 
 /**
  * Shared chrome for every per-service page (Render's service-detail shape): the
- * overview header with lifecycle actions, the resource-scoped nav, and an
+ * overview header with lifecycle actions (left out on Logs, Metrics, Shell and
+ * a deploy's page, as Render does), the resource-scoped nav, and an
  * `<Outlet/>` for the active tab. Rendered by both service-detail route trees —
  * `/services/$serviceId` (compute types) and `/static/$serviceId` (static_site,
  * Render parity w5/m57). The parent route's network-only loader fills Apollo's
@@ -77,6 +81,10 @@ export function ServiceDetailLayout({
   // and the loaded tab carry the same heading.
   const tabLabelKey = useRouterState({
     select: (s) => serviceTabLabelKey(s.location.pathname, serviceId, base),
+  });
+  // From the pathname, so the pending frame leaves the header's frame out too.
+  const headerHidden = useRouterState({
+    select: (s) => serviceHeaderHidden(s.location.pathname, serviceId, base),
   });
 
   // Unknown service id: redirect home with a toast (w9/m55) — covering every
@@ -179,7 +187,7 @@ export function ServiceDetailLayout({
           data-touch-region=""
           className="relative min-h-0 flex-1 overflow-auto"
         >
-          {shownService ? (
+          {headerHidden ? null : shownService ? (
             <ServiceDetailHeader
               service={shownService}
               latestDeploy={latestDeploy}
@@ -191,8 +199,8 @@ export function ServiceDetailLayout({
             <PendingServiceHeader serviceId={serviceId} />
           )}
           {/* The page container the section layout's queries measure. The
-              scroller has no top padding (the service header scrolls away
-              above), so a sticky bar needs no offset. */}
+              scroller has no top padding (the service header, where there is
+              one, scrolls away above), so a sticky bar needs no offset. */}
           <div className="@container/page p-4 sm:p-6">
             {/* One column for every tab, the same measure as the header band
                 above it: the tab's content starts under the service name and

@@ -286,7 +286,7 @@ export function LogFilterBar({
   // A phone gets two even rows in reading order, [type | search | Options]
   // then [range | Filters], instead of four ragged ones that pushed
   // the first log line past the middle of the screen. It docks under the top bar
-  // as the service header scrolls away, and the log fills the screen below
+  // as whatever sits above it scrolls away, and the log fills the screen below
   // it (see useLogPanelHeight).
   return (
     <div data-log-dock="" className={LOG_FILTER_BAR_CLASS}>

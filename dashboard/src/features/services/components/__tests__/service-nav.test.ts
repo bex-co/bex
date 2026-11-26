@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { serviceNavGroups, serviceTabLabelKey } from "../service-nav";
+import {
+  serviceHeaderHidden,
+  serviceNavGroups,
+  serviceTabLabelKey,
+} from "../service-nav";
 import type { SidebarNavGroup } from "@/common/components/dashboard-layout/sidebar-nav-groups";
 
 const labels = (groups: SidebarNavGroup[]) =>
@@ -242,5 +246,46 @@ describe("serviceTabLabelKey (the detail layout's tab heading)", () => {
     );
     expect(serviceTabLabelKey("/services/srv-1", "srv-1")).toBe(null);
     expect(serviceTabLabelKey("/services/srv-2/logs", "srv-1")).toBe(null);
+  });
+});
+
+// w3/106: Render's service and cron layouts pass `hideResourceHeader` on
+// Logs, Metrics and Shell and on a deploy's (or a build's) detail.
+describe("serviceHeaderHidden (Render's hideResourceHeader)", () => {
+  it.each([
+    "/services/srv-1/logs",
+    "/services/srv-1/logs/",
+    "/services/srv-1/metrics",
+    "/services/srv-1/shell",
+    "/services/srv-1/deploys/dep-1",
+  ])("hides the header on %s", (path) => {
+    expect(serviceHeaderHidden(path, "srv-1")).toBe(true);
+  });
+
+  it("hides it on a static site's Metrics and deploy, under /static", () => {
+    expect(
+      serviceHeaderHidden("/static/site-1/metrics", "site-1", "/static"),
+    ).toBe(true);
+    expect(
+      serviceHeaderHidden("/static/site-1/deploys/dep-1", "site-1", "/static"),
+    ).toBe(true);
+  });
+
+  it.each([
+    "/services/srv-1",
+    "/services/srv-1/",
+    "/services/srv-1/deploys",
+    "/services/srv-1/events",
+    "/services/srv-1/runs",
+    "/services/srv-1/env",
+    "/services/srv-1/settings",
+    "/services/srv-1/compute",
+    "/services/srv-1/disk",
+    "/services/srv-1/logsx",
+    "/services/srv-1/deploys/dep-1/extra",
+    "/services/srv-2/logs",
+    "/static/srv-1/logs",
+  ])("keeps the header on %s", (path) => {
+    expect(serviceHeaderHidden(path, "srv-1")).toBe(false);
   });
 });

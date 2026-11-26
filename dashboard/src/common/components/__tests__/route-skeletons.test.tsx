@@ -702,6 +702,24 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     ).toHaveLength(5);
   });
 
+  // w3/106: MetricsFilters' row is two 160 px selects and a 38 px toggle, each
+  // 44 px tall below lg (the touch rule); a 32 px frame there started the
+  // cards 12 px above the page's at 390, and the range select was 32 px short.
+  it("draws a service's metrics toolbar at the ready row's sizes", () => {
+    const { container } = render(<ServiceMetricsSkeleton />);
+    const toolbar = container.querySelector(
+      '[data-skeleton-region="metrics-filters"]',
+    )!;
+    expect(toolbar).toHaveClass("max-sm:flex-nowrap", "max-sm:gap-2");
+    const [events, range, toggle] = toolbar.querySelectorAll(
+      '[data-slot="skeleton"]',
+    );
+    for (const select of [events, range]) {
+      expect(select).toHaveClass("h-8", "w-40", "max-lg:h-11", "max-sm:flex-1");
+    }
+    expect(toggle).toHaveClass("ml-auto", "h-8", "w-[38px]", "max-lg:size-11");
+  });
+
   it("keeps static metrics free of the application-metrics region", () => {
     const { container } = render(<ServiceMetricsSkeleton staticSite />);
     expect(regions(container)).toContain("network-metrics");

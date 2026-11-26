@@ -18,9 +18,10 @@ export const Route = createFileRoute("/services/$serviceId/deploys/$deployId")({
 });
 
 // The per-deploy page (w9/m1): Render's `/web/srv-…/deploys/dep-…` twin.
-// Nests under the `services.$serviceId` layout route, so the service header +
-// tab nav stay in place — only the deploy-specific header + log viewer render
-// into the shared `<Outlet/>`.
+// Nests under the `services.$serviceId` layout route, so the sidebar's tab nav
+// stays in place — only the deploy-specific header + log viewer render into
+// the shared `<Outlet/>`. The layout leaves the service header out here, as
+// Render does on a deploy's page (w3/106).
 function RouteComponent() {
   const { serviceId, deployId } = Route.useParams();
   const { r } = Route.useSearch();

@@ -60,7 +60,7 @@ The docs and the changelog still say Builds. The signed-in dashboard says **Depl
 | Connect (`ka`) renders only when the cron job has an internal address, SSH or outbound IPs (`items.length > 0 ? … : null`); none of the four walked cron jobs showed it | walk, bundle |
 | A suspended cron job's header has no action. Under the facts a notice (`Fr`, informative) reads **Manually suspended** (**Suspended by you** for one account tier, `TIER1`), "You are not billed for suspended services.", and an inline **Resume service** link. The link resumes at once, toasts "`<name>` has been resumed.", and opens the new build when the answer carries one; a failure toasts "An error occurred while resuming `<name>`. Please try again." | walk (the notice and its link), bundle (the rest) |
 | Other suspensions (billing, a removed card, crash loops, Render's own) get their own banners from `Lr`; the fallback reads **Suspended** with the same not-billed line | bundle |
-| Render hides the whole header on Logs, Metrics and Shell (`fluidWidth`) and on a deploy's or a build's detail (`hideResourceHeader`); every other cron page has it | bundle |
+| Render hides the whole header on Logs, Metrics and Shell (`fluidWidth`) and on a deploy's or a build's detail (`hideResourceHeader`); every other cron page has it. Walked signed in on 2026-11-25 for w3/106, on a cron job's Logs and a deploy's page, and on a web service's and a static site's pages: none drew the header, and the topbar's breadcrumb named the service and the page | walk (2026-11-25), bundle |
 
 **Trigger Run** (`ja`, `Ma`).
 
