@@ -93,6 +93,23 @@ function durationLabel(d: DeployRow, t: Translate): string {
 }
 
 /**
+ * Below the full table a row's Cancel or Rollback is placed over the row at
+ * touch height (44 px), centred on the row's last line, so it also reaches the
+ * lower half of the line above (w3/111). Every line it can reach leaves the
+ * action's width free: a line that can be the row's last (the trigger line, a
+ * reason); with no reason, the meta line above the trigger line on a phone,
+ * and the headline above the one-line meta once the list has room for that
+ * but not yet for the table's columns. The meta line takes a margin rather
+ * than padding, so an item too long for the line is cut at the action's edge
+ * instead of running under it.
+ */
+const ACTION_CLEARANCE = {
+  last: "@max-3xl/deploys:pr-28",
+  meta: "@max-2xl/deploys:mr-28",
+  headline: "@2xl/deploys:@max-3xl/deploys:pr-28",
+} as const;
+
+/**
  * The dedicated Deploys tab (w9/002): Render's standalone deploy-history
  * list — every deploy, filterable by status and paged with the keyset cursor
  * `deploys(serviceId, …)` has carried since w2/m31 — separate from the Events
@@ -267,11 +284,17 @@ export function DeploysListPage({
               (deployStatusVariant(d.status) === "destructive" &&
                 !d.failureReason &&
                 d.preDeployStatus !== "failed");
-            // Below the table the row's action sits on its last line.
             const reasonClass = cn(
               "col-start-2 line-clamp-2 break-words text-pretty",
-              hasListAction && "@max-3xl/deploys:pr-28",
+              hasListAction && ACTION_CLEARANCE.last,
             );
+            // A reason is the row's last line when it has one, so the action
+            // sits beside the reason and the lines above it stay as they are.
+            const actionReachesAbove =
+              hasListAction &&
+              !d.failureReason &&
+              !d.cancelReason &&
+              !d.stallReason;
             return (
               <TableRow
                 key={d.id}
@@ -303,6 +326,7 @@ export function DeploysListPage({
                     className={cn(
                       "col-start-2 min-w-0 after:rounded-md",
                       STRETCHED_LINK_CLASS,
+                      actionReachesAbove && ACTION_CLEARANCE.headline,
                     )}
                   >
                     {subject ? (
@@ -327,7 +351,12 @@ export function DeploysListPage({
                       phone, one line once the list has room for it, and the
                       table's own columns from there up. */}
                   <div className="col-start-2 flex min-w-0 flex-col gap-y-1 @2xl/deploys:flex-row @2xl/deploys:items-center @2xl/deploys:gap-x-1.5">
-                    <SeparatedMeta className="text-xs text-muted-foreground @2xl/deploys:shrink-0">
+                    <SeparatedMeta
+                      className={cn(
+                        "text-xs text-muted-foreground @2xl/deploys:shrink-0",
+                        actionReachesAbove && ACTION_CLEARANCE.meta,
+                      )}
+                    >
                       {/* Render's list links the short SHA to the commit's
                         diff on the forge; with no browsable repo (an
                         image-backed service) it stays plain text. */}
@@ -368,12 +397,16 @@ export function DeploysListPage({
                         </InstantTooltip>
                       ) : null}
                       {preDeploy ? (
+                        // The meta line's longest item in some languages
+                        // ("Comando previo al despliegue en ejecución"): on
+                        // a line of its own too narrow for it, it ends in an
+                        // ellipsis.
                         <span
-                          className={
-                            d.preDeployStatus === "failed"
-                              ? "text-destructive"
-                              : undefined
-                          }
+                          className={cn(
+                            "min-w-0 truncate",
+                            d.preDeployStatus === "failed" &&
+                              "text-destructive",
+                          )}
                         >
                           {t(preDeploy as Parameters<typeof t>[0])}
                         </span>
@@ -385,7 +418,7 @@ export function DeploysListPage({
                     <div
                       className={cn(
                         "flex min-w-0 text-xs whitespace-nowrap text-muted-foreground @2xl/deploys:before:mr-1.5 @2xl/deploys:before:content-['·'] @3xl/deploys:hidden",
-                        hasListAction || isLive ? "pr-28" : null,
+                        (hasListAction || isLive) && ACTION_CLEARANCE.last,
                       )}
                     >
                       <span className="truncate" title={triggerLabel}>
@@ -442,8 +475,9 @@ export function DeploysListPage({
                 {/* The row's right edge says what the deploy is to the
                     service now: the live one is marked, a previous one can
                     be rolled back to, an open one canceled. Below the full
-                    table it is placed over the row at touch height: beside the
-                    trigger line. */}
+                    table it is placed over the row at touch height, centred
+                    on its last line; the lines it reaches keep clear of it
+                    (ACTION_CLEARANCE). */}
                 <TableCell
                   role="cell"
                   className="absolute right-0 -bottom-0.5 z-10 flex h-11 items-center p-0 px-2 empty:hidden [&_button]:min-h-11 [&_button:enabled]:text-foreground/80 [&_button:enabled:hover]:text-foreground @3xl/deploys:static @3xl/deploys:h-auto @3xl/deploys:justify-self-end @3xl/deploys:empty:block @3xl/deploys:[&_button]:min-h-8"

@@ -695,6 +695,92 @@ describe("DeploysListPage", () => {
     ).toBeInTheDocument();
   });
 
+  // w3/111: below the full table the row's Cancel or Rollback is 44 px tall
+  // and centred on the row's last line (2 px past the row's bottom), so it
+  // reaches the lower half of the line above too: Cancel covered "Created 1
+  // minute ago" at 390. Every line it can reach leaves the action's 7rem lane
+  // free; a reason becomes the row's last line, and the lines above it keep
+  // their width.
+  it("keeps every line the row's action reaches clear of it below the full table (w3/111)", async () => {
+    state.deploys = [
+      row({
+        id: "dep-building",
+        status: "build_in_progress",
+        finishedAt: null,
+        preDeployStatus: "running",
+      }),
+      row({
+        id: "dep-stalled",
+        status: "update_in_progress",
+        finishedAt: null,
+        stallReason: "The health check has not passed for 5 minutes",
+      }),
+      row({ id: "dep-current", status: "live" }),
+      row({ id: "dep-expired", status: "deactivated", buildAvailable: false }),
+    ];
+    renderPage();
+    const lines = async (deployId: string) => {
+      const headline = await screen.findByTitle(deployId);
+      const tr = headline.closest("tr")!;
+      const metaAndTrigger = headline.nextElementSibling!;
+      return {
+        headline,
+        meta: metaAndTrigger.children[0],
+        trigger: metaAndTrigger.children[1],
+        action: tr.lastElementChild!,
+      };
+    };
+
+    const building = await lines("dep-building");
+    // The geometry the lane is measured against: a touch-height action,
+    // centred on the last line.
+    expect(building.action).toHaveClass(
+      "absolute",
+      "-bottom-0.5",
+      "h-11",
+      "[&_button]:min-h-11",
+      "@3xl/deploys:static",
+    );
+    expect(building.trigger).toHaveClass("@max-3xl/deploys:pr-28");
+    // A margin, so the meta line clips at the lane rather than under it.
+    expect(building.meta).toHaveClass("@max-2xl/deploys:mr-28");
+    expect(building.headline).toHaveClass(
+      "@2xl/deploys:@max-3xl/deploys:pr-28",
+    );
+    // An item too long for the narrowed line ends in an ellipsis.
+    expect(
+      within(building.meta as HTMLElement).getByText(
+        "Pre-deploy command running",
+      ),
+    ).toHaveClass("min-w-0", "truncate");
+
+    const stalled = await lines("dep-stalled");
+    expect(
+      screen.getByText("The health check has not passed for 5 minutes"),
+    ).toHaveClass("@max-3xl/deploys:pr-28");
+    expect(stalled.trigger).toHaveClass("@max-3xl/deploys:pr-28");
+    expect(stalled.meta).not.toHaveClass("@max-2xl/deploys:mr-28");
+    expect(stalled.headline).not.toHaveClass(
+      "@2xl/deploys:@max-3xl/deploys:pr-28",
+    );
+
+    // The Live badge is a line tall and stays beside its own line.
+    const current = await lines("dep-current");
+    expect(current.trigger).toHaveClass("@max-3xl/deploys:pr-28");
+    expect(current.meta).not.toHaveClass("@max-2xl/deploys:mr-28");
+    expect(current.headline).not.toHaveClass(
+      "@2xl/deploys:@max-3xl/deploys:pr-28",
+    );
+
+    // No action, no lane.
+    const expired = await lines("dep-expired");
+    expect(expired.trigger).not.toHaveClass("@max-3xl/deploys:pr-28");
+    expect(expired.meta).not.toHaveClass("@max-2xl/deploys:mr-28");
+    expect(expired.headline).not.toHaveClass(
+      "@2xl/deploys:@max-3xl/deploys:pr-28",
+    );
+  });
+
   it("uses a complete count only after pagination is exhausted", async () => {
     state.deploys = [row()];
     state.hasMore = false;
