@@ -210,6 +210,14 @@ type releaseSelector func(a *appv1alpha1.App) (store.Deploy, *appv1alpha1.Releas
 type selectedOpening struct {
 	rowTrigger        string
 	disableAutoDeploy bool
+	// selectionLost substitutes this error when the serving release can no
+	// longer be selected under the trigger lock, instead of refusing: the
+	// row write already ran, so refusing would leave the row resumed while
+	// the App still reads suspended. nil keeps the refusal (Restart has no
+	// caller fallback). A resume passes errResumeWithoutDeploy, so the
+	// caller resumes without a deploy — exactly as when the unlocked checks
+	// find nothing to re-release.
+	selectionLost error
 	// rowWrite runs under the trigger lock before the release write, as
 	// openRelease's rowWrite does; nil writes no row.
 	rowWrite func() error
@@ -310,6 +318,9 @@ func (s *Service) openServing(ctx context.Context, service string, a *appv1alpha
 		if err == nil {
 			err = s.refreshRegistryBinding(ctx, a, selected, refreshed)
 		}
+		if err != nil && o.selectionLost != nil {
+			err = o.selectionLost
+		}
 		return target, selected, err
 	}, o)
 	if err != nil {
@@ -332,11 +343,13 @@ func (s *Service) openServing(ctx context.Context, service string, a *appv1alpha
 // and App change; they ride the release write, so the operator brings the
 // service back once, onto the new release.
 //
-// "" with a nil error opens nothing and writes nothing, and the caller resumes
-// the service without a deploy: it is not store-managed, a deploy is in
-// flight (which brings it back itself, and a new release would replace it),
-// or its serving release cannot be selected (it never went live, its release
-// predates the records a Restart selects from, or reading it failed). An error
+// "" with a nil error opens no deploy, and the caller resumes the service
+// without one: it is not store-managed, a deploy is in flight (which brings
+// it back itself, and a new release would replace it), or its serving
+// release cannot be selected (it never went live, its release predates the
+// records a Restart selects from, or reading it failed) — before the row
+// write, when nothing is written, or after it, when the row already reads
+// resumed and the caller's plain write converges the App onto it. An error
 // is one from the writes themselves, once the serving release was selected
 // under the trigger lock.
 func (s *Service) ResumeRelease(ctx context.Context, service string, a *appv1alpha1.App, writeRow func() error, resume func(*appv1alpha1.App)) (string, error) {
@@ -360,6 +373,12 @@ func (s *Service) ResumeRelease(ctx context.Context, service string, a *appv1alp
 		// before anything is written: a deploy opened since keeps its
 		// release, and a serving release that can no longer be selected
 		// leaves the resume to the caller.
+		//
+		// Lost again while the release write itself selects, after the row
+		// write ran, selectionLost leaves the resume to the caller too:
+		// refusing then would report a failure that already half-happened
+		// (the row reads resumed while the App still reads suspended).
+		selectionLost: errResumeWithoutDeploy,
 		rowWrite: func() error {
 			if inFlight, err := s.deployInFlight(ctx, appID); err != nil || inFlight {
 				return cmp.Or(err, errResumeWithoutDeploy)

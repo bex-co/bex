@@ -18,6 +18,7 @@ package deploys
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -150,5 +151,66 @@ func TestResumeReleaseOpensNothingWithoutAReleaseToResume(t *testing.T) {
 	delete(app.Labels, store.LabelAppID)
 	if id, err := svc.ResumeRelease(context.Background(), "web", app, (&resumeCalls{}).write, (&resumeCalls{}).resume); err != nil || id != "" {
 		t.Errorf("ResumeRelease of an unmanaged App = %q, %v; want none", id, err)
+	}
+}
+
+// losingLiveReads answers ListDeploys from the wrapped store until the
+// serving (live-filtered) read that the locked selection makes, then either
+// fails it or answers empty. The unlocked selectServing and the rowWrite
+// re-check both pass, so the row write runs; only the selection the release
+// write would use is lost — a transient read failure, or the operator moving
+// the serving release on between the two locked reads.
+type losingLiveReads struct {
+	DeployStore
+	live int
+	fail error
+}
+
+func (s *losingLiveReads) ListDeploys(ctx context.Context, appID string, filter store.DeployFilter) ([]store.Deploy, error) {
+	if len(filter.Statuses) == 1 && filter.Statuses[0] == store.DeployLive {
+		s.live++
+		if s.live == 4 {
+			if s.fail != nil {
+				return nil, s.fail
+			}
+			return nil, nil
+		}
+	}
+	return s.DeployStore.ListDeploys(ctx, appID, filter)
+}
+
+// A serving release that stops being selectable after the resume's row write
+// leaves the resume to the caller — "", nil with the row written, so the
+// caller resumes without a deploy — instead of failing the resume after its
+// row already flipped to resumed while the App still reads suspended.
+func TestResumeReleaseFallsBackWhenSelectionIsLostAfterTheRowWrite(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		fail error
+	}{
+		{"read fails under the lock", errors.New("boom")},
+		{"release moved on under the lock", nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ds := newFakeStore()
+			seedDeploys(ds, store.Deploy{ID: "dep-live", Status: store.DeployLive, Image: "web:v1", ResolvedImage: "web@sha256:live", Generation: 1})
+			app := sampleApp("web", "srv-1")
+			app.Spec.Suspended = true
+			svc, cl := newService(&losingLiveReads{DeployStore: ds, fail: tc.fail}, app)
+			calls := &resumeCalls{}
+			id, err := svc.ResumeRelease(context.Background(), "web", app, calls.write, calls.resume)
+			if err != nil || id != "" {
+				t.Fatalf("ResumeRelease = %q, %v; want no deploy and no error", id, err)
+			}
+			if calls.rows != 1 {
+				t.Errorf("the resume's row write ran %d times, want 1: the caller resumes on the written row", calls.rows)
+			}
+			if n := len(ds.byApp["srv-1"]); n != 1 {
+				t.Errorf("%d deploy rows, want the 1 seeded: no service_resumed row opened", n)
+			}
+			if got := getApp(t, cl, "web"); !got.Spec.Suspended || got.Spec.ReleaseConfig != nil {
+				t.Errorf("the App changed: suspended %v, release %+v; the caller applies the resume", got.Spec.Suspended, got.Spec.ReleaseConfig)
+			}
+		})
 	}
 }
