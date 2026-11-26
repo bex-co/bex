@@ -81,6 +81,16 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy page: label of the fact naming the commit or image the deploy ran (Render's SOURCE)",
   },
+  "deploys.factScaling": {
+    message: "伸缩",
+    description:
+      "Deploy page (w1/m661, Render's DeployDetailsHeader): label of the fact counting the service's instances that run this deploy",
+  },
+  "deploys.scalingInstances_other": {
+    message: "{total} 个实例中的 {deployed} 个",
+    description:
+      "Deploy page (w1/m661): the Scaling fact's value; {deployed} is how many of the service's instances run this deploy and {total} how many it needs, both shown as numbers (other)",
+  },
   "deploys.factPreDeploy": {
     message: "预部署",
     description:

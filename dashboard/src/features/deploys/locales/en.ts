@@ -81,6 +81,21 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy page: label of the fact naming the commit or image the deploy ran (Render's SOURCE)",
   },
+  "deploys.factScaling": {
+    message: "Scaling",
+    description:
+      "Deploy page (w1/m661, Render's DeployDetailsHeader): label of the fact counting the service's instances that run this deploy",
+  },
+  "deploys.scalingInstances_one": {
+    message: "{deployed} of {total} instance",
+    description:
+      "Deploy page (w1/m661): the Scaling fact's value; {deployed} is how many of the service's instances run this deploy and {total} how many it needs, both shown as numbers (one)",
+  },
+  "deploys.scalingInstances_other": {
+    message: "{deployed} of {total} instances",
+    description:
+      "Deploy page (w1/m661): the Scaling fact's value; {deployed} is how many of the service's instances run this deploy and {total} how many it needs, both shown as numbers (other)",
+  },
   "deploys.factPreDeploy": {
     message: "Pre-deploy",
     description:

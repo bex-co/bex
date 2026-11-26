@@ -127,10 +127,8 @@ func CrashLoopRestarting(pods []corev1.Pod) bool {
 		if p.DeletionTimestamp != nil || p.Status.Phase == corev1.PodSucceeded || p.Status.Phase == corev1.PodFailed {
 			continue
 		}
-		for _, c := range p.Status.Conditions {
-			if c.Type == corev1.PodReady && c.Status == corev1.ConditionTrue {
-				return false
-			}
+		if podReady(p) {
+			return false
 		}
 		for _, cs := range p.Status.ContainerStatuses {
 			if cs.Name != core.AppContainer {

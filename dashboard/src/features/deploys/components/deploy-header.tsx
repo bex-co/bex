@@ -3,6 +3,7 @@ import {
   GitCommitHorizontal,
   Layers,
   Package,
+  SquareStack,
   Terminal,
   Timer,
   Zap,
@@ -10,6 +11,7 @@ import {
 import { Link } from "@tanstack/react-router";
 import { Fragment, useId, type ReactNode } from "react";
 import { CopyButton } from "@/common/components/copy-button";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useLocalDateTime } from "@/common/hooks/use-local-date";
 import { cn } from "@/common/lib/utils/utils";
@@ -39,6 +41,7 @@ import {
   DEPLOY_TITLE_ROW_CLASS,
 } from "./deploy-page-layout";
 import type { DeployView } from "../hooks/use-deploy";
+import type { DeployScalingFact } from "../hooks/use-deploy-scaling";
 
 /** "sha256:" plus the first 12 hex digits, Docker's short image id length. */
 function shortDigest(digest: string): string {
@@ -57,14 +60,17 @@ export interface DeployHeaderProps {
   buildSourceId?: string | null;
   /** Human-readable Build Source name when loaded. */
   buildSourceName?: string | null;
+  /** Render's Scaling fact (w1/m661), from useDeployScaling: absent when it
+   *  does not show, "loading" while its count is on its way. */
+  scaling?: DeployScalingFact;
 }
 
 /**
  * The deploy page's header (w9/m1/t003), laid out as Render's deploy page
  * is: the commit's subject as the page's title with the deploy's actions
  * beside it, then a grid of facts — Status, Duration, Deployed, Trigger,
- * Source, and Pre-deploy where Render's Scaling sits — each under a small
- * label beside an icon tile, and the image across the grid's width. The
+ * Source, Scaling (w1/m661) and Pre-deploy — each under a small label beside
+ * an icon tile, and the image across the grid's width. The
  * status words and icon come from the mappings the Deploys list and Events
  * tab use, so the surfaces cannot drift on what a status looks like.
  */
@@ -74,6 +80,7 @@ export function DeployHeader({
   repo,
   buildSourceId,
   buildSourceName,
+  scaling,
 }: DeployHeaderProps) {
   const { t } = useTranslations();
   const titleId = useId();
@@ -238,6 +245,20 @@ export function DeployHeader({
             </span>
           </DeployFact>
         ) : null}
+        {/* How many of the service's instances run this deploy (w1/m661):
+            Render's fact after Source, for a service that autoscales or runs
+            more than one instance. */}
+        {scaling ? (
+          <DeployFact icon={<SquareStack />} label={t("deploys.factScaling")}>
+            {scaling === "loading" ? (
+              <span className="flex h-5 items-center">
+                <Skeleton className="h-3.5 w-24" />
+              </span>
+            ) : (
+              <ScalingValue {...scaling} />
+            )}
+          </DeployFact>
+        ) : null}
         {preDeploy ? (
           <DeployFact icon={<Terminal />} label={t("deploys.factPreDeploy")}>
             <span
@@ -303,6 +324,44 @@ const STATUS_TEXT_CLASS: Record<DeployStatusKind, string> = {
   in_progress: "text-foreground",
   pending: "text-foreground",
 };
+
+// Stand-ins for the two numbers while translating, so the words around them
+// come out in the language's own order and the numbers can be set apart.
+// Private-use characters, which no translation contains.
+const DEPLOYED_SENTINEL = "\uE000";
+const TOTAL_SENTINEL = "\uE001";
+
+/** "1 of 2 instances", the numbers in strong monospace as on Render. */
+function ScalingValue({
+  deployed,
+  total,
+}: {
+  deployed: number;
+  total: number;
+}) {
+  const { t } = useTranslations();
+  const words = t("deploys.scalingInstances", {
+    count: total,
+    deployed: DEPLOYED_SENTINEL,
+    total: TOTAL_SENTINEL,
+  });
+  return (
+    <span className="text-muted-foreground" data-testid="deploy-scaling">
+      {words.split(/([\uE000\uE001])/).map((part, i) =>
+        part === DEPLOYED_SENTINEL || part === TOTAL_SENTINEL ? (
+          <strong
+            key={i}
+            className="font-mono leading-none font-medium text-foreground"
+          >
+            {part === DEPLOYED_SENTINEL ? deployed : total}
+          </strong>
+        ) : (
+          part
+        ),
+      )}
+    </span>
+  );
+}
 
 /**
  * An image reference, whole: where the line is too narrow it breaks after a

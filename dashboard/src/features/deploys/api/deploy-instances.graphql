@@ -1,0 +1,12 @@
+# The deploy page's Scaling fact (w1/m661): the service's instances with the
+# deploy each runs and its status — what Render's deploy header counts from its
+# own serverInstances. deployId is null when no deploy row records the
+# instance's release. The Web Shell's picker reads the same list without them
+# (ServiceInstances).
+query DeployInstances($id: String!) {
+  serviceInstances(id: $id) {
+    id
+    deployId
+    status
+  }
+}

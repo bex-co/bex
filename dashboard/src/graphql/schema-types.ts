@@ -7059,7 +7059,9 @@ export type ServiceEventDetails = {
 export type ServiceInstance = {
   __typename: 'ServiceInstance';
   createdAt: Maybe<Scalars['String']['output']>;
+  deployId: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
+  status: Maybe<Scalars['String']['output']>;
 };
 
 export type ServiceUsage = {

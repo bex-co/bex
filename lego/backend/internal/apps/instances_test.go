@@ -31,7 +31,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/graphql-go/graphql"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -191,7 +194,11 @@ func TestRESTServiceInstancesExactWireShape(t *testing.T) {
 	app := instanceTestApp()
 	created := time.Date(2026, 7, 14, 20, 30, 0, 0, time.UTC)
 	pod := instanceTestPod("web-abc-123", app.Name, "99999999-9999-9999-9999-999999999999", corev1.PodRunning, created)
+	// The pod's deploy is known (w1/m661), and REST still carries only
+	// Render's two public fields.
+	pod.Labels[core.PodLabelRevision] = "rev-7"
 	svc := instanceService(app, pod)
+	svc.Store = &recordingStore{releaseDeploys: map[releaseKey]string{{testServiceID, 7}: "dep-live"}}
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
@@ -216,7 +223,174 @@ func TestRESTServiceInstancesExactWireShape(t *testing.T) {
 		if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil || len(raw[0]) != 2 {
 			t.Fatalf("wire shape contains fields beyond id/createdAt: %v %#v", err, raw)
 		}
+		// A Kubernetes client reads a pod's creation time in the local zone.
+		want := `[{"id":"` + ids.ServiceInstanceID(testServiceID, pod.Name) + `","createdAt":"` + created.Local().Format(time.RFC3339) + `"}]`
+		if got := strings.TrimSpace(rec.Body.String()); got != want {
+			t.Fatalf("body = %s, want byte for byte %s", got, want)
+		}
 	})
+}
+
+// revisionPod is an instance pod created for the release revision names, in
+// phase; a Running one is Ready unless the phase is starting, a Running pod
+// that is not Ready yet.
+func revisionPod(name, app, revision string, phase corev1.PodPhase, created time.Time) *corev1.Pod {
+	ready := phase == corev1.PodRunning
+	if phase == starting {
+		phase, ready = corev1.PodRunning, false
+	}
+	pod := instanceTestPod(name, app, "uid-"+name, phase, created)
+	if revision != "" {
+		pod.Labels[core.PodLabelRevision] = revision
+	}
+	if phase == corev1.PodRunning {
+		status := corev1.ConditionFalse
+		if ready {
+			status = corev1.ConditionTrue
+		}
+		pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: status}}
+	}
+	return pod
+}
+
+// starting stands for a Running pod that is not Ready yet in revisionPod.
+const starting corev1.PodPhase = "Starting"
+
+// w1/m661: each instance names the deploy row of the release its pod was
+// created for, and its status (instanceStatus). A release no
+// deploy row records, and a pod with no release revision, name no deploy.
+func TestListInstanceDeploysNamesEachInstancesDeployAndStatus(t *testing.T) {
+	app := instanceTestApp()
+	base := time.Date(2026, 11, 26, 9, 0, 0, 0, time.UTC)
+	untracked := revisionPod("web-untracked", app.Name, "rev-5", corev1.PodUnknown, base.Add(3*time.Minute))
+	surge := revisionPod("web-surge", app.Name, "rev-4", starting, base.Add(2*time.Minute))
+	rolled := revisionPod("web-rolled", app.Name, "rev-4", corev1.PodRunning, base.Add(time.Minute))
+	old := revisionPod("web-old", app.Name, "rev-3", corev1.PodRunning, base)
+	unlabeled := revisionPod("web-unlabeled", app.Name, "", corev1.PodRunning, base.Add(-time.Minute))
+	svc := instanceService(app, untracked, surge, rolled, old, unlabeled)
+	svc.Store = &recordingStore{releaseDeploys: map[releaseKey]string{
+		{testServiceID, 3}: "dep-old",
+		{testServiceID, 4}: "dep-new",
+		// Another service's row of generation 5 is not this one's.
+		{"srv-other", 5}: "dep-other",
+	}}
+
+	got, err := svc.ListInstanceDeploys(context.Background(), testServiceID)
+	if err != nil {
+		t.Fatalf("ListInstanceDeploys: %v", err)
+	}
+	want := []struct {
+		pod            *corev1.Pod
+		deploy, status string
+	}{
+		{untracked, "", "unknown"},
+		{surge, "dep-new", "pending"},
+		{rolled, "dep-new", "running"},
+		{old, "dep-old", "running"},
+		{unlabeled, "", "running"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("instances = %+v, want %d", got, len(want))
+	}
+	public, err := svc.ListInstances(context.Background(), testServiceID)
+	if err != nil {
+		t.Fatalf("ListInstances: %v", err)
+	}
+	for i, w := range want {
+		if got[i].ID != ids.ServiceInstanceID(testServiceID, w.pod.Name) || got[i].DeployID != w.deploy || got[i].Status != w.status {
+			t.Errorf("instance %d = %s deploy %q status %q, want %s deploy %q status %q", i,
+				got[i].ID, got[i].DeployID, got[i].Status, w.pod.Name, w.deploy, w.status)
+		}
+		if got[i].ID != public[i].ID || !got[i].CreatedAt.Equal(public[i].CreatedAt) {
+			t.Errorf("instance %d = %s %s, REST's = %+v: the two lists disagree", i, got[i].ID, got[i].CreatedAt, public[i])
+		}
+	}
+}
+
+// A store-less bex-api records no deploys, so its instances name none; a
+// store that cannot answer fails GraphQL's read and never REST's, which does
+// not read deploys.
+func TestListInstanceDeploysWithoutAStore(t *testing.T) {
+	app := instanceTestApp()
+	pod := revisionPod("web-a", app.Name, "rev-2", corev1.PodRunning, time.Now())
+
+	got, err := instanceService(app, pod).ListInstanceDeploys(context.Background(), testServiceID)
+	if err != nil || len(got) != 1 || got[0].DeployID != "" || got[0].Status != "running" {
+		t.Fatalf("store-less instances = %+v, %v; want one running instance with no deploy", got, err)
+	}
+
+	failing := instanceService(app, pod)
+	failing.Store = &recordingStore{err: errors.New("deploys unreadable")}
+	if _, err := failing.ListInstanceDeploys(context.Background(), testServiceID); err == nil {
+		t.Fatal("ListInstanceDeploys answered over a store that cannot read deploys")
+	}
+	if public, err := failing.ListInstances(context.Background(), testServiceID); err != nil || len(public) != 1 {
+		t.Fatalf("ListInstances over an unreadable store = %+v, %v; want the instance", public, err)
+	}
+}
+
+// An instance's status is its pod's phase, but a Running pod runs only once
+// it is Ready: starting, failing its health check or crash-looping, it is
+// still pending, so it does not count toward a deploy's Scaling.
+func TestInstanceStatusIsThePodPhaseOnceReady(t *testing.T) {
+	created := time.Now()
+	crashLooping := revisionPod("crash", "web", "rev-1", starting, created)
+	crashLooping.Status.ContainerStatuses = []corev1.ContainerStatus{{Name: core.AppContainer, RestartCount: 4,
+		State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "CrashLoopBackOff"}}}}
+	for _, tc := range []struct {
+		pod  *corev1.Pod
+		want string
+	}{
+		{revisionPod("pending", "web", "rev-1", corev1.PodPending, created), "pending"},
+		{revisionPod("ready", "web", "rev-1", corev1.PodRunning, created), "running"},
+		{revisionPod("starting", "web", "rev-1", starting, created), "pending"},
+		{crashLooping, "pending"},
+		{instanceTestPod("no-conditions", "web", "u", corev1.PodRunning, created), "pending"},
+		{revisionPod("succeeded", "web", "rev-1", corev1.PodSucceeded, created), "succeeded"},
+		{revisionPod("failed", "web", "rev-1", corev1.PodFailed, created), "failed"},
+		{revisionPod("unknown", "web", "rev-1", corev1.PodUnknown, created), "unknown"},
+		{revisionPod("unreported", "web", "rev-1", "", created), "unknown"},
+	} {
+		if got := instanceStatus(tc.pod); got != tc.want {
+			t.Errorf("instanceStatus(%s) = %q, want %q", tc.pod.Name, got, tc.want)
+		}
+	}
+}
+
+// GraphQL serviceInstances answers deployId (null for no deploy) and status
+// beside id and createdAt, under the same authorization as REST.
+func TestGraphQLServiceInstancesDeployAndStatus(t *testing.T) {
+	app := instanceTestApp()
+	created := time.Date(2026, 11, 26, 9, 0, 0, 0, time.UTC)
+	live := revisionPod("web-live", app.Name, "rev-9", corev1.PodRunning, created)
+	untracked := revisionPod("web-untracked", app.Name, "rev-10", starting, created.Add(time.Minute))
+	svc := instanceService(app, live, untracked)
+	svc.Store = &recordingStore{releaseDeploys: map[releaseKey]string{{testServiceID, 9}: "dep-live"}}
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	query := `{ serviceInstances(id: "` + testServiceID + `") { id createdAt deployId status } }`
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: query})
+	if len(res.Errors) > 0 {
+		t.Fatalf("gql: %v", res.Errors)
+	}
+	got, _ := json.Marshal(res.Data)
+	want := `{"serviceInstances":[` +
+		`{"createdAt":"2026-11-26T09:01:00Z","deployId":null,"id":"` + ids.ServiceInstanceID(testServiceID, untracked.Name) + `","status":"pending"},` +
+		`{"createdAt":"2026-11-26T09:00:00Z","deployId":"dep-live","id":"` + ids.ServiceInstanceID(testServiceID, live.Name) + `","status":"running"}]}`
+	if string(got) != want {
+		t.Fatalf("serviceInstances =\n%s\nwant\n%s", got, want)
+	}
+
+	svc.Authz = &fakeChecker{allow: false}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "intruder", Method: "oauth2"})
+	res = graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: query})
+	if len(res.Errors) == 0 || !strings.Contains(res.Errors[0].Message, "forbidden") {
+		t.Fatalf("an unauthorized read = %v, %v; want forbidden", res.Data, res.Errors)
+	}
 }
 
 func TestRESTServiceInstancesEmptyMissingAndForeignWorkspace(t *testing.T) {

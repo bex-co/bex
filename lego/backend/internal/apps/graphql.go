@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"maps"
-	"time"
 
 	"github.com/graphql-go/graphql"
 
@@ -704,12 +703,18 @@ var instanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 
 // serviceInstanceGQLType backs serviceInstances — Render's per-service instance
 // list ({id, createdAt}), the source for the Web Shell instance picker (w2/m55)
-// and Render's own instance-selection UX. Mirrors REST GET /v1/services/{id}/instances.
+// and Render's own instance-selection UX. Mirrors REST GET /v1/services/{id}/instances,
+// plus the two facts Render's dashboard reads for a deploy page's Scaling
+// fact (w1/m661): the deploy the instance runs (null when no deploy row
+// records its release) and its status. Render's public serviceInstance has
+// neither, so REST and MCP do not either.
 var serviceInstanceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ServiceInstance",
 	Fields: graphql.Fields{
-		"id":        gqlutil.StrField(func(v ServiceInstanceView) any { return v.ID }),
-		"createdAt": gqlutil.StrField(func(v ServiceInstanceView) any { return v.CreatedAt.UTC().Format(time.RFC3339) }),
+		"id":        gqlutil.StrField(func(v ServiceInstanceDeployView) any { return v.ID }),
+		"createdAt": gqlutil.TimeField(func(v ServiceInstanceDeployView) any { return v.CreatedAt }),
+		"deployId":  gqlutil.OptionalStrField(func(v ServiceInstanceDeployView) any { return v.DeployID }),
+		"status":    gqlutil.StrField(func(v ServiceInstanceDeployView) any { return v.Status }),
 	},
 })
 
@@ -1391,8 +1396,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		},
 		// serviceInstances: Render's per-service instance list ({id, createdAt}) —
 		// the source for the Web Shell instance picker (w2/m55). Mirrors REST
-		// GET /v1/services/{id}/instances via the same ListInstances verb.
-		"serviceInstances": gqlutil.IDVerb(graphql.NewList(serviceInstanceGQLType), s.ListInstances),
+		// GET /v1/services/{id}/instances, with each instance's deploy and
+		// status beside them (ListInstanceDeploys, w1/m661).
+		"serviceInstances": gqlutil.IDVerb(graphql.NewList(serviceInstanceGQLType), s.ListInstanceDeploys),
 		// serviceNameAvailable: the create form's debounced availability check
 		// (w4/m19), a bex extension backing the "Name is already in use" +
 		// suggestion UX.

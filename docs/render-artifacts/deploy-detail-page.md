@@ -72,6 +72,28 @@ bex has no service previews (`.pm/DO_NOT_DO.md`), so Render's "not on a preview"
 
 **REST and MCP.** Render's public deploy object (`render-public-api-1.json`) carries none of these facts, so REST and MCP deploys are unchanged.
 
+## Scaling
+
+Recorded 2026-11-26 for `w1/m661` from Render's public dashboard bundle (entry `index-D5V4ZgbE.js`, read the same day): the `DeployDetailsHeader` chunk (the fact and its words), `useDeployDetails` (when the header gets it), and `index`'s count and the `ServerDeploysProvider` that reads the instances. No frontend or owner flag gates it: the step timeline's `instance_overview` flag in the same hook gates only the trace queries ([w1/155](../../.pm/w1/blocked/155.md)).
+
+**The words.** The last fact of the deploy header's grid, after Status, Duration, Deployed, Trigger and Source, is labelled **Scaling**, with Render's `Scaling` icon (three cascading rectangles) in its tile. Its value is "`<deployed>` of `<total>` instances": the two numbers bold, monospace and in the primary text colour, "of" and "instances" faint.
+
+**The count.** `deployed` is the number of the service's instances whose `deployID` is this deploy and whose `status` is `SUCCEEDED` or `RUNNING`. `total` is the autoscaling minimum (`autoscalingConfig.min`, 1 when unset) when autoscaling is on, and the instance count (`extraInstances + 1`) otherwise; the fact shows `max(deployed, total)`, so it never reads fewer instances in all than run this deploy. A service that neither autoscales nor runs more than one instance has no Scaling fact, and neither has a service whose instances have not loaded yet.
+
+**When it shows.** Only on a deploy that is `LIVE`, `QUEUED` or in progress (`CREATED`, `BUILDING`, `PREDEPLOY`, `IN_PROGRESS`), or that was in progress at some moment since the page opened, so a deploy watched until it fails or is canceled keeps its last count. A past (`DELETED`, bex's `deactivated`), failed or canceled deploy opened afresh shows none.
+
+**The instances.** The service's deploys context reads `serverInstances`, `server(id) { instances { id status deployID } }`, only when the service has extra instances or autoscales, and never for a static site. It reads them again on `serviceInstancesUpdated` (`{ id instances { id } }`) and on each deploy event. An instance's `status` is one of `FAILED`, `PENDING`, `RUNNING`, `SUCCEEDED` and `UNKNOWN`, Kubernetes' five pod phases. Render's public REST `serviceInstance` has only `id` and `createdAt` (pinned `render-public-api-1.json`), and its MCP server lists no instances.
+
+**Elsewhere.** The same count, as "`<deployed>` / `<total>`", is the **Instances** column of each row on Render's deploys list and the "Instances:" fact of the most-recent-deploy bar at the top of a service's pages. `w1/m661` covers the deploy page's header only; the other two are [w1/168](../../.pm/w1/168.md).
+
+**bex.** GraphQL `serviceInstances(id)` now also answers each instance's `deployId` and `status`. REST `GET /v1/services/{id}/instances` stays Render's two public fields, byte for byte, and bex's MCP server, like Render's, lists no instances.
+
+- **The deploy** is the deploy row of the release the instance's pod was created for: the pod's `app.bex.co/revision` (`rev-<generation>`) names the release generation, and the row of that generation is the deploy (`DeployIDByGeneration`). A release no deploy row records, such as an environment group link's re-roll (w2/m94), answers null rather than a guess.
+- **The status** is the pod's phase in lower case (`pending`, `running`, `succeeded`, `failed`, `unknown`), except that a `Running` pod counts as `running` only once Kubernetes reports it Ready. One still starting, failing its health check or crash-looping (its phase stays `Running`) is `pending`, so a deploy's count grows as its instances start serving, not as their containers start. Render's documents do not say whether its `RUNNING` waits for the health check; a count that called a crash-looping rollout "2 of 2" would mislead either way. Terminating and finished pods are no instances, as before.
+- **The header** shows the fact after Source (and the Build Source facts, a bex extension) and before Pre-deploy, under Render's rule and words, with lucide's `SquareStack` for Render's icon. A total of one reads "1 of 1 instance", in the singular, where Render's literal always says "instances"; the other seven languages take their own plural forms. While the count of a service that scales out is on its way, the fact keeps its place with a placeholder; a first read that fails shows no fact.
+- **Freshness.** The page reads the instances every 3 seconds while the deploy is queued or in progress, once more the moment it leaves that state, and at the page's 25-second baseline after, where Render is pushed each change (`serviceInstancesUpdated`).
+- **Measured on dev-1 (2026-11-26)**, a 2-instance Starter web service (disposable): a restart's page read "0 of 2", "1 of 2" 10 seconds later and "2 of 2" as it went live, without a reload. An image deploy, which starts every new instance at once (w4/571), read "0 of 2" and then "2 of 2" when both were Ready, 15 seconds before it went live. A single-instance service and a deactivated deploy showed no fact, and the single-instance service read "1 of 2 instances" once autoscaling with a minimum of 2 was on.
+
 ## Recorded drift
 
 The lifecycle/timestamp gap recorded by `w5/m29` is closed by `w2/m38`. The commit-author timestamp drift is closed by `w2/m42`: bex captures the resolved Git author timestamp once at deploy-open and exposes it on REST, GraphQL, MCP, and the dashboard, while still omitting it when resolution is unavailable. Remaining drift is explicit:

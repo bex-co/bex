@@ -3521,7 +3521,9 @@ type ServiceEventDetails {
 
 type ServiceInstance {
   createdAt: String
+  deployId: String
   id: String
+  status: String
 }
 
 type ServiceUsage {

@@ -14,6 +14,7 @@ import { useServer } from "@/features/services/hooks/use-server";
 import { ActivityGate } from "@/features/capabilities/components/activity-gate";
 import { LogsGate } from "@/features/capabilities/components/logs-gate";
 import { useDeploy, type DeployView } from "../hooks/use-deploy";
+import { useDeployScaling } from "../hooks/use-deploy-scaling";
 import { useCanceledStepEnd } from "../hooks/use-canceled-step-end";
 import { deployWindowEnd } from "../lib/deploy-window";
 import { deployTitle } from "../lib/deploy-presentation";
@@ -72,6 +73,7 @@ function DeployDetail({
   const { source: buildSource } = useBuildSource(
     service?.buildSourceId ?? null,
   );
+  const scaling = useDeployScaling(serviceId, service, deploy);
 
   // A dead deploy id under a live service redirects to that service's Deploys
   // tab — the nearest live parent — not all the way home (w9/m55). A dead
@@ -174,6 +176,7 @@ function DeployDetail({
           }
           buildSourceId={service?.buildSourceId}
           buildSourceName={buildSource?.name}
+          scaling={scaling}
           actions={
             deploy && !rollback ? (
               <DeployActions

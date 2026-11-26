@@ -81,6 +81,16 @@ const koDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy page: label of the fact naming the commit or image the deploy ran (Render's SOURCE)",
   },
+  "deploys.factScaling": {
+    message: "스케일링",
+    description:
+      "Deploy page (w1/m661, Render's DeployDetailsHeader): label of the fact counting the service's instances that run this deploy",
+  },
+  "deploys.scalingInstances_other": {
+    message: "인스턴스 {total}개 중 {deployed}개",
+    description:
+      "Deploy page (w1/m661): the Scaling fact's value; {deployed} is how many of the service's instances run this deploy and {total} how many it needs, both shown as numbers (other)",
+  },
   "deploys.factPreDeploy": {
     message: "사전 배포",
     description:

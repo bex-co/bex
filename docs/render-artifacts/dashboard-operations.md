@@ -124,7 +124,7 @@ Grouped by product area, then sorted by name.
 | `serverCacheEvents` | query | matched | ADR018 § Services & lifecycle: Edge caching (`serviceDetails.cache.profile`); Cache purge |
 | `serverCacheProfileQuery` | query | matched | ADR018 § Services & lifecycle: Edge caching (`serviceDetails.cache.profile`); Cache purge |
 | `ServerDeployEndedEvents` | query | matched | ADR018 § Services & lifecycle: Service events / activity feed |
-| `serverInstances` | query | matched | ADR018 § Services & lifecycle: List live service instances |
+| `serverInstances` | query | matched | ADR018 § Services & lifecycle: List live service instances; its `status` and `deployID` are GraphQL `serviceInstances`' `status` and `deployId`, which the deploy page's Scaling fact counts ([deploy-detail-page.md § Scaling](deploy-detail-page.md#scaling), `w1/m661`) |
 | `serverIpAllowList` | query | matched | ADR018 § Custom domains: Inbound IP allowlist (`ipAllowList`) for web services + static sites |
 | `serverOwnerLimits` | query | matched | ADR018 § Identity, workspaces & account: Workspace resource-cap visibility |
 | `serverPlans` | query | matched | ADR018 § Services & lifecycle: Get service; List services |

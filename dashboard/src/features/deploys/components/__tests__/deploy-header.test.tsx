@@ -328,4 +328,60 @@ describe("DeployHeader", () => {
     expect(screen.queryByTestId("deploy-build-id")).not.toBeInTheDocument();
     expect(screen.queryByTestId("deploy-build-source")).not.toBeInTheDocument();
   });
+
+  // w1/m661: Render's Scaling fact, "N of M instances", its numbers set apart.
+  it.each([
+    [0, 2, "0 of 2 instances"],
+    [1, 2, "1 of 2 instances"],
+    [2, 2, "2 of 2 instances"],
+    [1, 1, "1 of 1 instance"],
+  ])("shows Scaling %i of %i as %j", (deployed, total, words) => {
+    render(
+      <DeployHeader
+        deploy={deploy({ status: "update_in_progress" })}
+        scaling={{ deployed, total }}
+      />,
+    );
+    const fact = screen.getByText("Scaling").closest("div");
+    expect(fact).toHaveTextContent(words);
+    const numbers = screen
+      .getByTestId("deploy-scaling")
+      .querySelectorAll("strong");
+    expect([...numbers].map((n) => n.textContent)).toEqual([
+      String(deployed),
+      String(total),
+    ]);
+  });
+
+  it("keeps the Scaling fact's place while its count loads", () => {
+    render(<DeployHeader deploy={deploy()} scaling="loading" />);
+    expect(screen.getByText("Scaling")).toBeInTheDocument();
+    expect(screen.queryByTestId("deploy-scaling")).not.toBeInTheDocument();
+  });
+
+  it("shows no Scaling fact when the deploy has none", () => {
+    render(<DeployHeader deploy={deploy()} scaling={null} />);
+    expect(screen.queryByText("Scaling")).not.toBeInTheDocument();
+  });
+
+  it("sets Scaling after Source and before Pre-deploy, as Render does", () => {
+    render(
+      <DeployHeader
+        deploy={deploy({
+          commitId: "deadbeef1234",
+          preDeployStatus: "succeeded",
+        })}
+        scaling={{ deployed: 2, total: 2 }}
+      />,
+    );
+    const labels = [...document.querySelectorAll("dt")].map((dt) =>
+      dt.textContent?.trim(),
+    );
+    const source = labels.indexOf("Source");
+    expect(labels.slice(source, source + 3)).toEqual([
+      "Source",
+      "Scaling",
+      "Pre-deploy",
+    ]);
+  });
 });

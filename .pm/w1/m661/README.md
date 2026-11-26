@@ -1,19 +1,19 @@
 # w1 · m661 — A multi-instance deploy's page shows "Scaling: N of M instances", as on Render
 
-**Worker:** worker1 **Goal:** the deploy header of a service that runs more than one instance, or autoscales, shows Render's **Scaling** fact, how many instances run this deploy out of how many it needs, live while the deploy rolls out. **Status:** todo
+**Worker:** worker1 **Goal:** the deploy header of a service that runs more than one instance, or autoscales, shows Render's **Scaling** fact, how many instances run this deploy out of how many it needs, live while the deploy rolls out. **Status:** todo (t001–t004, t006–t008 done; t005's dev-1 walk passed, its production walk is left)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Record Render's Scaling rule in `deploy-detail-page.md` | 30m | — |
-| [t002](t002.md) | GraphQL `ServiceInstance` answers the deploy each instance runs and its status | 2h | t001 |
-| [t003](t003.md) | The deploy header's Scaling fact, in all eight locales | 1h30m | t002 |
-| [t004](t004.md) | The deploy page's pending frame still matches its ready state at 1440 and 390 px | 20m | t003 |
+| [t001](done/t001.md) | Record Render's Scaling rule in `deploy-detail-page.md` — **DONE** | 30m | — |
+| [t002](done/t002.md) | GraphQL `ServiceInstance` answers the deploy each instance runs and its status — **DONE** | 2h | t001 |
+| [t003](done/t003.md) | The deploy header's Scaling fact, in all eight locales — **DONE** | 1h30m | t002 |
+| [t004](done/t004.md) | The deploy page's pending frame still matches its ready state at 1440 and 390 px — **DONE** | 20m | t003 |
 | [t005](t005.md) | Walk a rolling deploy on dev-1 and on production | 45m | t004 |
-| [t006](t006.md) | Render parity | 20m | t005 |
-| [t007](t007.md) | Simplify | 15m | t006 |
-| [t008](t008.md) | Test coverage | 30m | t006 |
+| [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 30m | t006 |
 | [t009](t009.md) | Closeout | 15m | t007, t008 |
 
 ## Definition of done

@@ -99,6 +99,11 @@ vi.mock("@/features/services/hooks/use-build-sources", () => ({
 vi.mock("../../hooks/use-deploy", () => ({
   useDeploy: vi.fn(() => deployState),
 }));
+// The Scaling fact's reads have their own real-Apollo suite
+// (use-deploy-scaling.test.tsx).
+vi.mock("../../hooks/use-deploy-scaling", () => ({
+  useDeployScaling: () => null,
+}));
 // The canceled-step window has its own real-Apollo suite
 // (deploy-detail-canceled-step.test.tsx); these deploys never need it.
 vi.mock("../../hooks/use-canceled-step-end", async (importOriginal) => ({

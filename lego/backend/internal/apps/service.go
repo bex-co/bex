@@ -423,6 +423,10 @@ type IntentStore interface {
 	// rollout.Tracker seam that carries a prior release's provenance onto
 	// config_change re-rolls (w4/m100). Zero when none exists.
 	LatestDeployCommit(ctx context.Context, appID string) (store.CommitInfo, error)
+	// DeployIDByGeneration names the deploy row of a release generation, ""
+	// when none records it: the deploy an instance runs (ListInstanceDeploys,
+	// w1/m661).
+	DeployIDByGeneration(ctx context.Context, appID string, generation int64) (string, error)
 	// DeleteApp removes the apps row — the single writer of intent for a
 	// store-managed App's existence. Delete keeps this durable row until every
 	// external, name-keyed secret has been purged, then removes it before the CR.
@@ -515,6 +519,25 @@ const (
 type ServiceInstanceView struct {
 	ID        string    `json:"id"`
 	CreatedAt time.Time `json:"createdAt"`
+}
+
+// ServiceInstanceDeployView is a service instance as GraphQL answers it
+// (w1/m661): Render's two public fields, plus the deploy the instance runs and
+// its status, which Render's dashboard reads (`serverInstances`) to count a
+// deploy page's Scaling fact. REST and MCP keep Render's public two fields
+// (ListInstances).
+type ServiceInstanceDeployView struct {
+	ID        string
+	CreatedAt time.Time
+	// DeployID is the deploy (dep-…) of the release the instance's pod was
+	// created for; "" when no deploy row records that release.
+	DeployID string
+	// Status is Render's instance status, pending, running, succeeded, failed
+	// or unknown (instanceStatus).
+	Status string
+	// revision is the pod's release revision (rev-<generation>), which names
+	// DeployID.
+	revision string
 }
 
 // AppView is the neutral, bex-native projection of an App — spec intent +
@@ -1776,26 +1799,76 @@ func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 //     the short interval before Kubernetes finishes deleting old Pods. The
 //     latter includes auto-sleep's scale-to-zero state.
 func (s *Service) ListInstances(ctx context.Context, name string) ([]ServiceInstanceView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
+	_, instances, err := s.listInstances(ctx, name)
 	if err != nil {
 		return nil, err
 	}
+	out := make([]ServiceInstanceView, len(instances))
+	for i, instance := range instances {
+		out[i] = ServiceInstanceView{ID: instance.ID, CreatedAt: instance.CreatedAt}
+	}
+	return out, nil
+}
 
-	out := make([]ServiceInstanceView, 0)
+// ListInstanceDeploys is ListInstances with each instance's deploy and status
+// (w1/m661), GraphQL's serviceInstances. The deploy is the row of the release
+// generation the pod's revision label names; a release no deploy row records
+// answers no deploy rather than a guess.
+func (s *Service) ListInstanceDeploys(ctx context.Context, name string) ([]ServiceInstanceDeployView, error) {
+	a, instances, err := s.listInstances(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	deploys := map[string]string{}
+	for i := range instances {
+		revision := instances[i].revision
+		deployID, known := deploys[revision]
+		if !known {
+			if deployID, err = s.releaseDeployID(ctx, a, revision); err != nil {
+				return nil, err
+			}
+			deploys[revision] = deployID
+		}
+		instances[i].DeployID = deployID
+	}
+	return instances, nil
+}
+
+// releaseDeployID is the deploy row of the release revision names, "" when it
+// names no release generation or no row records one: an environment group
+// link re-rolls a release without a deploy (w2/m94).
+func (s *Service) releaseDeployID(ctx context.Context, a *appv1alpha1.App, revision string) (string, error) {
+	generation, ok := appv1alpha1.RevisionGeneration(revision)
+	appID := a.Labels[core.LabelAppID]
+	if !ok || appID == "" || s.Store == nil {
+		return "", nil
+	}
+	return s.Store.DeployIDByGeneration(ctx, appID, generation)
+}
+
+// listInstances authorizes name and lists its instances newest first, under
+// ListInstances' inclusion policy.
+func (s *Service) listInstances(ctx context.Context, name string) (*appv1alpha1.App, []ServiceInstanceDeployView, error) {
+	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	out := make([]ServiceInstanceDeployView, 0)
 	serviceType := effectiveType(a.Spec.Type)
 	if a.Spec.Suspended || a.Status.Phase == appv1alpha1.PhaseHibernated {
-		return out, nil
+		return a, out, nil
 	}
 	switch serviceType {
 	case appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker:
 		// These are the Deployment-backed service types.
 	default:
-		return out, nil
+		return a, out, nil
 	}
 
 	pods, err := s.OwnAppPods(ctx, a)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	serviceID := publicID(a)
 	for i := range pods {
@@ -1803,9 +1876,11 @@ func (s *Service) ListInstances(ctx context.Context, name string) ([]ServiceInst
 		if pod.DeletionTimestamp != nil || pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
 			continue
 		}
-		out = append(out, ServiceInstanceView{
+		out = append(out, ServiceInstanceDeployView{
 			ID:        ids.ServiceInstanceID(serviceID, pod.Name),
 			CreatedAt: pod.CreationTimestamp.Time,
+			Status:    instanceStatus(pod),
+			revision:  pod.Labels[core.PodLabelRevision],
 		})
 	}
 	sort.Slice(out, func(i, j int) bool {
@@ -1814,7 +1889,38 @@ func (s *Service) ListInstances(ctx context.Context, name string) ([]ServiceInst
 		}
 		return out[i].CreatedAt.After(out[j].CreatedAt)
 	})
-	return out, nil
+	return a, out, nil
+}
+
+// instanceStatus is a pod's status in Render's instance vocabulary, whose five
+// values are Kubernetes' pod phases, in lower case. An instance runs once it
+// is Ready: one still starting or failing its health check (a crash-looping
+// container keeps its pod's phase Running) is pending, so a deploy's Scaling
+// count grows as its instances start serving. A phase Kubernetes has not
+// reported is unknown.
+func instanceStatus(pod *corev1.Pod) string {
+	switch phase := pod.Status.Phase; phase {
+	case corev1.PodRunning:
+		if podReady(pod) {
+			return "running"
+		}
+		return "pending"
+	case corev1.PodPending, corev1.PodSucceeded, corev1.PodFailed:
+		return strings.ToLower(string(phase))
+	default:
+		return "unknown"
+	}
+}
+
+// podReady reports Kubernetes' Ready condition: every container is up and
+// passing its readiness probe.
+func podReady(pod *corev1.Pod) bool {
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.PodReady {
+			return condition.Status == corev1.ConditionTrue
+		}
+	}
+	return false
 }
 
 // SSHInstanceTarget is one Ready pod selected for an interactive session.
@@ -2052,17 +2158,7 @@ func readyCurrentAppPod(pod *corev1.Pod, activeImage, activeRevision string) boo
 	if activeImage == "" || activeRevision == "" || pod.DeletionTimestamp != nil || pod.Status.Phase != corev1.PodRunning {
 		return false
 	}
-	if pod.Labels[core.PodLabelRevision] != activeRevision {
-		return false
-	}
-	ready := false
-	for _, condition := range pod.Status.Conditions {
-		if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
-			ready = true
-			break
-		}
-	}
-	if !ready {
+	if pod.Labels[core.PodLabelRevision] != activeRevision || !podReady(pod) {
 		return false
 	}
 	for _, container := range pod.Spec.Containers {

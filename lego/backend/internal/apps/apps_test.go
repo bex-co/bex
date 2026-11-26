@@ -770,6 +770,16 @@ type recordingStore struct {
 	// test asking for one has to ask for it explicitly (w4/m126).
 	protectedErr error
 	environments map[string]store.Environment
+	// releaseDeploys names the deploy row of an App's release generation,
+	// DeployIDByGeneration's answer (w1/m661); a release absent from it has
+	// none.
+	releaseDeploys map[releaseKey]string
+}
+
+// releaseKey is one App's release generation.
+type releaseKey struct {
+	appID      string
+	generation int64
 }
 
 func (r *recordingStore) GetEnvironment(_ context.Context, id string) (store.Environment, error) {
@@ -866,6 +876,13 @@ func (r *recordingStore) LatestDeployCommit(_ context.Context, _ string) (store.
 		return store.CommitInfo{}, r.err
 	}
 	return r.priorCommit, nil
+}
+
+func (r *recordingStore) DeployIDByGeneration(_ context.Context, appID string, generation int64) (string, error) {
+	if r.err != nil {
+		return "", r.err
+	}
+	return r.releaseDeploys[releaseKey{appID, generation}], nil
 }
 
 func (r *recordingStore) DeleteApp(_ context.Context, id string) error {

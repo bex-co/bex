@@ -24,7 +24,9 @@ import {
 // Status, Duration, Deployed, Trigger, Source, Pre-deploy and the full-width
 // Image at their values' usual widths. The skeleton reserves the fullest
 // common header (a repo-built image with a pre-deploy step), so a deploy with
-// less settles upward into place rather than shoving the log down.
+// less settles upward into place rather than shoving the log down. A service
+// that scales out puts its Scaling fact (w1/m661) in the sixth place, at the
+// same 36px; only one that also runs a pre-deploy step adds a row.
 const FACTS = [
   { value: "w-12" },
   { value: "w-14" },
