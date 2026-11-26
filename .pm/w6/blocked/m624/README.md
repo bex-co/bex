@@ -63,3 +63,11 @@ The note's directions, weighed against the code at `3dd1fccbae` and upstream sou
 - **fsn1.** `GET /v1/server_types/115` reads cx33 `available: false` in fsn1, nbg1 and hel1 again. w1/144 saw the same flag while Hetzner created a cx33 (2026-11-16), so the flag does not decide. The roll itself is the probe, as the gate says: re-apply the control-plane hunk of `3ac4bb829d` and watch its first surge. If Hetzner refuses it, revert first and park again with the date a day later.
 - **Not approved:** the cpx32 fallback for the control plane (ADR053) is still the user's to take through `/unblock w6`.
 - **Result: parked again.** `b93fb1ccce` re-applied the hunk, and Hetzner refused the first surge, `bex-control-plane-nwbmc`, at 10:56:55Z (`resource_unavailable` for cx33 in fsn1). `a184c14412` reverted it, and KCP was back on its three members at 10:58:26Z with no server left at Hetzner. cpx32 also read unavailable in fsn1 at 10:59Z. Next probe from 2026-11-26T11:00Z, the same way ([t003](t003.md)).
+
+## Gate check (2026-11-26, `/loopx w6`)
+
+- **Source:** verified evidence; the `/loopx w6` board listed m624 under `blocked.ready`.
+- **Pin.** Production's newest pin, `chore(deploy): pin platform images to 11695fb886cb` (`ec6211f2ca`), carries `10549cd8b2` (t001's operator change). The date gate 2026-11-26T11:00Z has passed (checked 13:53Z).
+- **fsn1.** `GET /v1/server_types/115` reads cx33 `available: false` in fsn1, nbg1 and hel1 at 13:54Z; cpx32 (`server_types/110`) reads `available: true` in fsn1. The flag does not decide (w1/144), so the roll itself is the probe: re-apply the control-plane hunk of `3ac4bb829d` and watch its first surge. If Hetzner refuses it, wait for that push's app-cluster run to finish, then revert, and park again with the date a day later.
+- **Not approved:** the cpx32 fallback for the control plane (ADR053) is still the user's to take through `/unblock w6`.
+- KCP `bex-control-plane` stood on its three members (`ff5b6`, `mmgdq`, `zvxjm`, all up to date) before the roll, and no app-cluster run was in progress.
