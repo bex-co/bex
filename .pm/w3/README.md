@@ -131,6 +131,7 @@ Develop against `.pm/w3/dev-3/`, this worker's own isolated stack on the shared 
 - [ ] **m636** — [Services created before bex's default cutoffs build on Render's dated defaults](m636/README.md) (10 tasks) ← `/pm-brainstorm one render aspect for w1` item 5, reshaped from a decision note into Render's behavior by verification (AGENTS.md parity rule), filed 2026-11-25 by `/pm` · moved from w1 on 2026-11-25 (user request)
 - [ ] **m637** — [Render's per-language version pages are watched daily](m637/README.md) (8 tasks) ← `/pm-brainstorm one render aspect for w1` item 2, verified and filed 2026-11-25 by `/pm`; file after m636 · moved from w1 on 2026-11-25 (user request)
 - [ ] **m638** — [Rust's latest stable reaches native Rust builds within about a day](m638/README.md) (8 tasks) ← `/pm-brainstorm one render aspect for w1` item 3, verified and filed 2026-11-25 by `/pm`; Rust 1.101.0 is due 2026-12-24 · moved from w1 on 2026-11-25 (user request)
+- [ ] **m656** — [A Postgres database warns that it is almost full, as Render's does](m656/README.md) (8 tasks, ~5h) ← `/pm-brainstorm one aspect of render parity for w3` 2026-11-25 item 2 (Render's bundle `index-D5V4ZgbE.js`: `database { storageUsedPercent storageUsed storageTotal }` and the rule `> 80%` used with `< 5 GiB` free, on Info and Plan; bex has no warning): GraphQL's three fields from the fullest instance's kubelet bytes over the logical size, and Render's warning with its two links
 
 ## Inbox
 
