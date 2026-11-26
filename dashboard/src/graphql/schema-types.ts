@@ -3089,9 +3089,10 @@ export type MutationCreateProjectArgs = {
 export type MutationCreateRegistryCredentialArgs = {
   authToken: Scalars['String']['input'];
   expiresAt?: InputMaybe<Scalars['String']['input']>;
-  host: Scalars['String']['input'];
+  host?: InputMaybe<Scalars['String']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
+  registry?: InputMaybe<Scalars['String']['input']>;
   username: Scalars['String']['input'];
 };
 
@@ -6364,6 +6365,7 @@ export type RegistryCredential = {
   id: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
   ownerId: Maybe<Scalars['String']['output']>;
+  registry: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;
   updatedAt: Maybe<Scalars['String']['output']>;
   username: Maybe<Scalars['String']['output']>;

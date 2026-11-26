@@ -195,6 +195,36 @@ func TestMCP_RegistryCredentialsCRUDNeverLeaksSecret(t *testing.T) {
 	callToolError(t, cs, "get_registry_credential", map[string]any{"id": created.ID})
 }
 
+// create_registry_credential takes Render's registry enum as REST and GraphQL
+// do (w4/m670), so all three create the same credential from the same input.
+func TestMCP_CreateRegistryCredentialTakesRendersRegistry(t *testing.T) {
+	srv := NewServer(&core.Base{Client: fakeClient(), Namespace: "default"}, Deps{
+		RegistryCredsStore: newFakeRCStore(), Secrets: newFakeRCSecretKV(),
+	})
+	cs := mcpSession(t, srv)
+
+	for _, tc := range []struct {
+		args           map[string]any
+		registry, host string
+	}{
+		{map[string]any{"registry": "GITHUB"}, "GITHUB", "ghcr.io"},
+		{map[string]any{"registry": "AWS_ECR", "host": "123456789012.dkr.ecr.us-east-1.amazonaws.com"}, "AWS_ECR", "123456789012.dkr.ecr.us-east-1.amazonaws.com"},
+		{map[string]any{"host": "registry.example.com:5000"}, "", "registry.example.com:5000"},
+	} {
+		tc.args["username"], tc.args["authToken"] = "alice", "hunter2"
+		got := callTool[struct{ Registry, Host string }](t, cs, "create_registry_credential", tc.args)
+		if got.Registry != tc.registry || got.Host != tc.host {
+			t.Errorf("create_registry_credential(%v) = %+v, want registry %q host %q", tc.args, got, tc.registry, tc.host)
+		}
+	}
+	for _, args := range []map[string]any{
+		{"registry": "GOOGLE_ARTIFACT", "username": "alice", "authToken": "hunter2"},
+		{"registry": "GITHUB", "host": "docker.io", "username": "alice", "authToken": "hunter2"},
+	} {
+		callToolError(t, cs, "create_registry_credential", args)
+	}
+}
+
 func TestMCP_ServiceRegistryCredentialCreateAndClear(t *testing.T) {
 	st := newFakeRCStore()
 	secrets := newFakeRCSecretKV()

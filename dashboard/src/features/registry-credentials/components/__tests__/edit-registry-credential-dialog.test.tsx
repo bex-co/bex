@@ -37,6 +37,7 @@ vi.mock(
 const entry: RegistryCredentialView = {
   id: "rgc-1",
   name: "GHCR prod",
+  registry: "GITHUB",
   host: "ghcr.io",
   username: "alice",
   expiresAt: null,
@@ -64,13 +65,54 @@ async function openDialog() {
 }
 
 describe("EditRegistryCredentialDialog", () => {
-  it("prefills the editable fields from the detail read and shows host read-only", async () => {
+  it("prefills the editable fields from the detail read and shows the registry read-only", async () => {
     await openDialog();
     // Seeded from the registryCredential detail read, not the list row.
     expect(screen.getByDisplayValue("alice-detail")).toBeInTheDocument();
     expect(screen.getByDisplayValue("GHCR prod (detail)")).toBeInTheDocument();
-    const host = screen.getByDisplayValue("ghcr.io");
-    expect(host).toBeDisabled();
+    // w4/m670: Render's Update Credential order, the registry read-only.
+    const registry = screen.getByLabelText("Registry");
+    expect(registry).toHaveValue("GitHub (ghcr.io)");
+    expect(registry).toBeDisabled();
+    expect(
+      screen
+        .getAllByText(/^(Name|Registry|Username|Personal Access Token)$/)
+        .map((el) => el.textContent),
+    ).toEqual(["Name", "Registry", "Username", "Personal Access Token"]);
+  });
+
+  // A credential created through the API for any other host still opens and
+  // saves here (w2/m14); the dialog offers Render's five registries only.
+  it("opens a self-hosted registry's credential with its host and saves it", async () => {
+    detail.credential = {
+      ...entry,
+      registry: null,
+      host: "registry.example.com:5000",
+      name: "Self-hosted",
+      username: "robot",
+    };
+    const user = await openDialog();
+    expect(screen.getByLabelText("Registry")).toHaveValue(
+      "registry.example.com:5000",
+    );
+    const username = screen.getByDisplayValue("robot");
+    await user.clear(username);
+    await user.type(username, "robot2");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(update).toHaveBeenCalledWith({
+      id: "rgc-1",
+      name: "Self-hosted",
+      username: "robot2",
+      authToken: undefined,
+    });
+  });
+
+  it("labels a Docker credential's secret Personal Access Token or Password", async () => {
+    detail.credential = { ...entry, registry: "DOCKER", host: "docker.io" };
+    await openDialog();
+    expect(
+      screen.getByLabelText("Personal Access Token or Password"),
+    ).toBeInTheDocument();
   });
 
   it("refuses an over-long or blank name inline (w21/036)", async () => {

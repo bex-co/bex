@@ -59,29 +59,25 @@ const jaRegistryCredentials: Record<string, TranslationEntry> = {
     description: "Button that opens the create dialog",
   },
   "registryCredentials.createTitle": {
-    message: "レジストリ認証情報を追加",
-    description: "Create dialog title",
+    message: "認証情報を追加",
+    description: "Add Credential dialog title (Render's)",
   },
   "registryCredentials.createDescription": {
-    message:
-      "安全に保存されます。パスワードとトークンは、この後は二度と表示されません。",
-    description: "Create dialog description",
+    message: "外部の{link}の保存について詳しく見る。",
+    description:
+      "Add Credential dialog description; {link} is createDescriptionLink, linking bex's private-registry docs",
   },
   "registryCredentials.fieldHost": {
     message: "レジストリホスト",
     description: "Create dialog host field label",
-  },
-  "registryCredentials.fieldHostPlaceholder": {
-    message: "例: ghcr.io, docker.io, registry.gitlab.com",
-    description: "Create dialog host field placeholder",
   },
   "registryCredentials.fieldUsername": {
     message: "ユーザー名",
     description: "Create dialog username field label",
   },
   "registryCredentials.fieldAuthToken": {
-    message: "パスワードまたはアクセストークン",
-    description: "Create dialog secret field label",
+    message: "パーソナルアクセストークン",
+    description: "Credential secret field label",
   },
   "registryCredentials.hostInvalid": {
     message:
@@ -108,27 +104,23 @@ const jaRegistryCredentials: Record<string, TranslationEntry> = {
       "Inline error under a registry password or token over the 64 KiB limit (w21/053)",
   },
   "registryCredentials.fieldName": {
-    message: "表示名",
-    description: "Create dialog optional display-name field label",
-  },
-  "registryCredentials.fieldNameOptional": {
-    message: "（任意。省略するとホスト名になります）",
-    description: "Create dialog display-name field's optional hint",
+    message: "名前",
+    description: "Credential name field label (required)",
   },
   "registryCredentials.createCancel": {
     message: "キャンセル",
     description: "Create dialog cancel button",
   },
   "registryCredentials.createSubmit": {
-    message: "追加",
-    description: "Create dialog submit button",
+    message: "認証情報を追加",
+    description: "Add Credential dialog submit button",
   },
   "registryCredentials.createSuccess": {
     message: "{host} の認証情報を追加しました",
     description: "Toast on a successful create",
   },
   "registryCredentials.createError": {
-    message: "{host} の認証情報を追加できませんでした",
+    message: "レジストリ認証情報を追加できませんでした",
     description: "Toast on a failed create",
   },
   "registryCredentials.delete": {
@@ -150,16 +142,12 @@ const jaRegistryCredentials: Record<string, TranslationEntry> = {
   },
   "registryCredentials.editDescription": {
     message:
-      "認証情報の名前やユーザー名の変更、トークンのローテーションができます。レジストリホストは変更できません。",
+      "認証情報の名前やユーザー名の変更、トークンのローテーションができます。レジストリは変更できません。",
     description: "Edit-credential dialog description",
   },
   "registryCredentials.editSubmit": {
     message: "変更を保存",
     description: "Edit-credential dialog submit button",
-  },
-  "registryCredentials.fieldHostImmutable": {
-    message: "レジストリホストは作成後に変更できません。",
-    description: "Hint under the read-only host field in the edit dialog",
   },
   "registryCredentials.fieldAuthTokenKeep": {
     message: "現在のトークンを維持する場合は空欄のままにしてください",
@@ -216,6 +204,75 @@ const jaRegistryCredentials: Record<string, TranslationEntry> = {
   "registryCredentials.neverExpires": {
     message: "無期限",
     description: "Expiry-status text for a credential with no expiry set",
+  },
+  "registryCredentials.createDescriptionLink": {
+    message: "レジストリ認証情報",
+    description: "Link text inside createDescription",
+  },
+  "registryCredentials.fieldNamePlaceholder": {
+    message: "マイ認証情報",
+    description: "Credential name field placeholder",
+  },
+  "registryCredentials.fieldRegistry": {
+    message: "レジストリ",
+    description: "Add Credential dialog Registry select label",
+  },
+  "registryCredentials.fieldRegistryPlaceholder": {
+    message: "レジストリを選択",
+    description: "Registry select placeholder before a registry is chosen",
+  },
+  "registryCredentials.fieldHostHint": {
+    message: "イメージ URL の先頭にあるホスト（パスは含めません）。",
+    description:
+      "Hint under the Registry host field (Google Artifact and AWS ECR only)",
+  },
+  "registryCredentials.hostRegistryMismatch": {
+    message: "{example} のような {registry} のホストを入力してください。",
+    description:
+      "Inline error under a Registry host that belongs to another registry; {registry} is the chosen registry's name, {example} an example host",
+  },
+  "registryCredentials.fieldAuthTokenOrPassword": {
+    message: "パーソナルアクセストークンまたはパスワード",
+    description:
+      "Credential secret field label for Docker, which also takes a password",
+  },
+  "registryCredentials.helpGithub": {
+    message:
+      "{link} の {path} で、{permission} 権限を持つパーソナルアクセストークンを作成してください。",
+    description:
+      "Help under the Registry select for GitHub; {permission} is read:packages, {link} links GitHub's new-token page, {path} is GitHub's menu path",
+  },
+  "registryCredentials.helpGitlab": {
+    message:
+      "{link} で {path} に移動し、{permission} 権限を持つパーソナルアクセストークンを作成してください。",
+    description:
+      "Help under the Registry select for GitLab; {permission} is read registry, {link} links GitLab's token page, {path} is GitLab's menu path",
+  },
+  "registryCredentials.helpDocker": {
+    message:
+      "Docker Hub のユーザー名とパスワードを入力するか、{link} の {path} で {permission} アクセス権限を持つアクセストークンを作成し、パスワードの代わりに使用してください。",
+    description:
+      "Help under the Registry select for Docker; {permission} is read, {link} links Docker Hub's security settings, {path} is Docker Hub's menu path",
+  },
+  "registryCredentials.helpGoogle": {
+    message:
+      "{link} で {permission} 権限を持つサービスアカウントを作成してください。",
+    description:
+      "Help under the Registry select for Google Artifact; {permission} is the reader role, {link} links Google Cloud's service account page",
+  },
+  "registryCredentials.helpEcr": {
+    message:
+      "ユーザー名は ECR リポジトリを所有する AWS アカウント ID です。パーソナルアクセストークンは {command} コマンドを実行して取得します。詳しくは{link}を参照してください。",
+    description:
+      "Help under the Registry select for AWS ECR; {command} is the aws CLI command, {link} is helpEcrLink",
+  },
+  "registryCredentials.helpEcrLink": {
+    message: "AWS のドキュメント",
+    description: "Link text to the AWS ECR authentication docs inside helpEcr",
+  },
+  "registryCredentials.fieldRegistryImmutable": {
+    message: "レジストリは作成後に変更できません。",
+    description: "Hint under the read-only Registry in the edit dialog",
   },
 };
 

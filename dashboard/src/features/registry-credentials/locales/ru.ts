@@ -59,29 +59,25 @@ const ruRegistryCredentials: Record<string, TranslationEntry> = {
     description: "Button that opens the create dialog",
   },
   "registryCredentials.createTitle": {
-    message: "Добавить учётные данные реестра",
-    description: "Create dialog title",
+    message: "Добавить учётные данные",
+    description: "Add Credential dialog title (Render's)",
   },
   "registryCredentials.createDescription": {
-    message:
-      "Хранятся в защищённом виде. Пароль или токен больше не будет показан.",
-    description: "Create dialog description",
+    message: "Подробнее о хранении внешних {link}.",
+    description:
+      "Add Credential dialog description; {link} is createDescriptionLink, linking bex's private-registry docs",
   },
   "registryCredentials.fieldHost": {
     message: "Хост реестра",
     description: "Create dialog host field label",
-  },
-  "registryCredentials.fieldHostPlaceholder": {
-    message: "напр. ghcr.io, docker.io, registry.gitlab.com",
-    description: "Create dialog host field placeholder",
   },
   "registryCredentials.fieldUsername": {
     message: "Имя пользователя",
     description: "Create dialog username field label",
   },
   "registryCredentials.fieldAuthToken": {
-    message: "Пароль или токен доступа",
-    description: "Create dialog secret field label",
+    message: "Персональный токен доступа",
+    description: "Credential secret field label",
   },
   "registryCredentials.hostInvalid": {
     message:
@@ -108,27 +104,23 @@ const ruRegistryCredentials: Record<string, TranslationEntry> = {
       "Inline error under a registry password or token over the 64 KiB limit (w21/053)",
   },
   "registryCredentials.fieldName": {
-    message: "Отображаемое название",
-    description: "Create dialog optional display-name field label",
-  },
-  "registryCredentials.fieldNameOptional": {
-    message: "(необязательно — по умолчанию хост)",
-    description: "Create dialog display-name field's optional hint",
+    message: "Название",
+    description: "Credential name field label (required)",
   },
   "registryCredentials.createCancel": {
     message: "Отменить",
     description: "Create dialog cancel button",
   },
   "registryCredentials.createSubmit": {
-    message: "Добавить",
-    description: "Create dialog submit button",
+    message: "Добавить учётные данные",
+    description: "Add Credential dialog submit button",
   },
   "registryCredentials.createSuccess": {
     message: "Учётные данные для {host} добавлены",
     description: "Toast on a successful create",
   },
   "registryCredentials.createError": {
-    message: "Не удалось добавить учётные данные для {host}",
+    message: "Не удалось добавить учётные данные реестра",
     description: "Toast on a failed create",
   },
   "registryCredentials.delete": {
@@ -150,16 +142,12 @@ const ruRegistryCredentials: Record<string, TranslationEntry> = {
   },
   "registryCredentials.editDescription": {
     message:
-      "Переименуйте учётные данные, измените имя пользователя или смените токен. Хост реестра изменить нельзя.",
+      "Переименуйте учётные данные, измените имя пользователя или смените токен. Реестр изменить нельзя.",
     description: "Edit-credential dialog description",
   },
   "registryCredentials.editSubmit": {
     message: "Сохранить изменения",
     description: "Edit-credential dialog submit button",
-  },
-  "registryCredentials.fieldHostImmutable": {
-    message: "Хост реестра нельзя изменить после создания.",
-    description: "Hint under the read-only host field in the edit dialog",
   },
   "registryCredentials.fieldAuthTokenKeep": {
     message: "Оставьте пустым, чтобы сохранить текущий токен",
@@ -216,6 +204,74 @@ const ruRegistryCredentials: Record<string, TranslationEntry> = {
   "registryCredentials.neverExpires": {
     message: "Бессрочно",
     description: "Expiry-status text for a credential with no expiry set",
+  },
+  "registryCredentials.createDescriptionLink": {
+    message: "учётных данных реестров",
+    description: "Link text inside createDescription",
+  },
+  "registryCredentials.fieldNamePlaceholder": {
+    message: "Мои учётные данные",
+    description: "Credential name field placeholder",
+  },
+  "registryCredentials.fieldRegistry": {
+    message: "Реестр",
+    description: "Add Credential dialog Registry select label",
+  },
+  "registryCredentials.fieldRegistryPlaceholder": {
+    message: "Выберите реестр",
+    description: "Registry select placeholder before a registry is chosen",
+  },
+  "registryCredentials.fieldHostHint": {
+    message: "Хост в начале URL образа, без пути.",
+    description:
+      "Hint under the Registry host field (Google Artifact and AWS ECR only)",
+  },
+  "registryCredentials.hostRegistryMismatch": {
+    message: "Введите хост {registry}, например {example}.",
+    description:
+      "Inline error under a Registry host that belongs to another registry; {registry} is the chosen registry's name, {example} an example host",
+  },
+  "registryCredentials.fieldAuthTokenOrPassword": {
+    message: "Персональный токен доступа или пароль",
+    description:
+      "Credential secret field label for Docker, which also takes a password",
+  },
+  "registryCredentials.helpGithub": {
+    message:
+      "Создайте персональный токен доступа с разрешением {permission} в {link} {path}.",
+    description:
+      "Help under the Registry select for GitHub; {permission} is read:packages, {link} links GitHub's new-token page, {path} is GitHub's menu path",
+  },
+  "registryCredentials.helpGitlab": {
+    message:
+      "Создайте персональный токен доступа с разрешением {permission} в {link}: откройте {path}.",
+    description:
+      "Help under the Registry select for GitLab; {permission} is read registry, {link} links GitLab's token page, {path} is GitLab's menu path",
+  },
+  "registryCredentials.helpDocker": {
+    message:
+      "Введите имя пользователя и пароль Docker Hub или создайте токен доступа с разрешением {permission}, чтобы использовать его вместо пароля: {link} {path}.",
+    description:
+      "Help under the Registry select for Docker; {permission} is read, {link} links Docker Hub's security settings, {path} is Docker Hub's menu path",
+  },
+  "registryCredentials.helpGoogle": {
+    message: "Создайте сервисный аккаунт с разрешением {permission} в {link}.",
+    description:
+      "Help under the Registry select for Google Artifact; {permission} is the reader role, {link} links Google Cloud's service account page",
+  },
+  "registryCredentials.helpEcr": {
+    message:
+      "Имя пользователя — это ID аккаунта AWS, которому принадлежит репозиторий ECR. Персональный токен доступа — это вывод команды {command}. Подробнее — в {link}.",
+    description:
+      "Help under the Registry select for AWS ECR; {command} is the aws CLI command, {link} is helpEcrLink",
+  },
+  "registryCredentials.helpEcrLink": {
+    message: "документации AWS",
+    description: "Link text to the AWS ECR authentication docs inside helpEcr",
+  },
+  "registryCredentials.fieldRegistryImmutable": {
+    message: "Реестр нельзя изменить после создания.",
+    description: "Hint under the read-only Registry in the edit dialog",
   },
 };
 

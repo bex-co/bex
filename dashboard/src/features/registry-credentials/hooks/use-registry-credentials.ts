@@ -10,25 +10,34 @@ import {
   skipPollWhenHidden,
 } from "@/common/lib/polling";
 import type { RegistryCredentialView } from "@/features/registry-credentials/types";
+import { isRenderRegistry } from "@/features/registry-credentials/lib/registries";
 
 type RawCredential = NonNullable<
-  RegistryCredentialsQuery["registryCredentials"]
->[number];
+  NonNullable<RegistryCredentialsQuery["registryCredentials"]>[number]
+>;
+
+/** One GraphQL `RegistryCredential` row (list or detail read) as the view. */
+export function toCredentialView(
+  c: RawCredential & { id: string },
+): RegistryCredentialView {
+  return {
+    id: c.id,
+    name: c.name ?? c.host ?? "",
+    registry: isRenderRegistry(c.registry) ? c.registry : null,
+    host: c.host ?? "",
+    username: c.username ?? "",
+    expiresAt: c.expiresAt ?? null,
+    status: c.status ?? "active",
+    createdAt: c.createdAt ?? null,
+  };
+}
 
 function toViews(
   raw: RegistryCredentialsQuery["registryCredentials"] | undefined,
 ): RegistryCredentialView[] {
   return (raw ?? [])
-    .filter((c): c is NonNullable<RawCredential> & { id: string } => !!c?.id)
-    .map((c) => ({
-      id: c.id,
-      name: c.name ?? c.host ?? "",
-      host: c.host ?? "",
-      username: c.username ?? "",
-      expiresAt: c.expiresAt ?? null,
-      status: c.status ?? "active",
-      createdAt: c.createdAt ?? null,
-    }));
+    .filter((c): c is RawCredential & { id: string } => !!c?.id)
+    .map(toCredentialView);
 }
 
 export interface UseRegistryCredentialsResult {

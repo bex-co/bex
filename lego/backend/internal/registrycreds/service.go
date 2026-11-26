@@ -81,6 +81,9 @@ type CredentialView struct {
 	ID   string
 	Name string
 	Host string
+	// Registry is Render's enum for Host (w4/420, w4/m670), "" for a
+	// self-hosted registry Render has no value for.
+	Registry string
 	// OwnerID is the workspace this credential belongs to — Render's
 	// `ownerId` scoping field, mirroring AppView/KeyValueView's OwnerID.
 	OwnerID   string
@@ -120,6 +123,7 @@ func toView(c store.RegistryCredential, now time.Time) CredentialView {
 		ID:        c.ID,
 		Name:      c.Name,
 		Host:      c.Host,
+		Registry:  renderRegistry(c.Host),
 		OwnerID:   c.WorkspaceID,
 		Username:  c.Username,
 		CreatedBy: c.CreatedBy,

@@ -4147,6 +4147,11 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "Управление учётными данными реестра",
     description: "Link from a service credential selector to account settings",
   },
+  "services.registryCredentialAdd": {
+    message: "Добавить учётные данные",
+    description:
+      "First item of every Credential dropdown: opens the Add Credential dialog in place (w4/m670)",
+  },
   "services.registryCredentialSettingsTitle": {
     message: "Учётные данные реестра образов",
     description: "Service Settings private-image credential card title",

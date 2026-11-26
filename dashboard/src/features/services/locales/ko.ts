@@ -4118,6 +4118,11 @@ const koServices: Record<string, TranslationEntry> = {
     message: "레지스트리 자격 증명 관리",
     description: "Link from a service credential selector to account settings",
   },
+  "services.registryCredentialAdd": {
+    message: "자격 증명 추가",
+    description:
+      "First item of every Credential dropdown: opens the Add Credential dialog in place (w4/m670)",
+  },
   "services.registryCredentialSettingsTitle": {
     message: "이미지 레지스트리 자격 증명",
     description: "Service Settings private-image credential card title",

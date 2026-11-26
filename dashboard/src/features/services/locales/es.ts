@@ -4172,6 +4172,11 @@ const esServices: Record<string, TranslationEntry> = {
     message: "Gestionar credenciales de registro",
     description: "Link from a service credential selector to account settings",
   },
+  "services.registryCredentialAdd": {
+    message: "Añadir credencial",
+    description:
+      "First item of every Credential dropdown: opens the Add Credential dialog in place (w4/m670)",
+  },
   "services.registryCredentialSettingsTitle": {
     message: "Credencial del registro de imágenes",
     description: "Service Settings private-image credential card title",

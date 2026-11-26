@@ -26,6 +26,8 @@ import {
 } from "@/features/registry-credentials/lib/credential-fields";
 import { useUpdateRegistryCredential } from "@/features/registry-credentials/hooks/use-update-registry-credential";
 import { useRegistryCredential } from "@/features/registry-credentials/hooks/use-registry-credential";
+import { RegistryHelp } from "@/features/registry-credentials/components/registry-help";
+import { REGISTRY_LABELS } from "@/features/registry-credentials/lib/registries";
 import type { RegistryCredentialView } from "@/features/registry-credentials/types";
 
 export interface EditRegistryCredentialDialogProps {
@@ -35,7 +37,8 @@ export interface EditRegistryCredentialDialogProps {
 /**
  * Edit / rotate an existing registry credential (w5/m60): rename, change the
  * username, or rotate the token. The editable fields prefill from the dedicated
- * `registryCredential` detail read; host is immutable so it's shown read-only.
+ * `registryCredential` detail read; the registry and its host are immutable, so
+ * they're shown read-only, in Render's field order (w4/m670).
  * The token field is always blank with "leave blank to keep" semantics — the
  * stored secret is never returned by the server, so it can never be echoed here.
  *
@@ -119,7 +122,7 @@ function EditForm({
   const [authToken, setAuthToken] = useState("");
 
   // The username and token the server refuses are marked in place and hold Save
-  // (w21/053); the host is immutable.
+  // (w21/053); the registry and host are immutable.
   const usernameReason = usernameError(username);
   const tokenReason = authTokenError(authToken);
   const canSubmit =
@@ -141,18 +144,46 @@ function EditForm({
     <>
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="rc-edit-host">
-            {t("registryCredentials.fieldHost")}
+          <Label htmlFor="rc-edit-name">
+            {t("registryCredentials.fieldName")}
           </Label>
           <Input
-            id="rc-edit-host"
-            value={seed.host}
-            disabled
-            className="font-mono text-sm"
+            id="rc-edit-name"
+            maxLength={100}
+            aria-invalid={isInvalidLabel(name)}
+            aria-describedby={
+              isInvalidLabel(name) ? "rc-edit-name-error" : undefined
+            }
+            value={name}
+            onChange={(e) => setName(e.target.value)}
           />
-          <p className="text-muted-foreground text-xs">
-            {t("registryCredentials.fieldHostImmutable")}
+          <LabelError id="rc-edit-name-error" value={name} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="rc-edit-registry">
+            {t("registryCredentials.fieldRegistry")}
+          </Label>
+          {/* Read only, as Render's Update Credential shows it: the registry
+              and its host, or the host alone for a self-hosted registry. */}
+          <Input
+            id="rc-edit-registry"
+            value={
+              seed.registry
+                ? `${REGISTRY_LABELS[seed.registry]} (${seed.host})`
+                : seed.host
+            }
+            disabled
+            aria-describedby="rc-edit-registry-hint"
+          />
+          <p
+            id="rc-edit-registry-hint"
+            className="text-muted-foreground text-xs"
+          >
+            {t("registryCredentials.fieldRegistryImmutable")}
           </p>
+          {seed.registry ? (
+            <RegistryHelp registry={seed.registry} name={name} />
+          ) : null}
         </div>
         <div className="space-y-2">
           <Label htmlFor="rc-edit-username">
@@ -176,7 +207,11 @@ function EditForm({
         </div>
         <div className="space-y-2">
           <Label htmlFor="rc-edit-auth-token">
-            {t("registryCredentials.fieldAuthToken")}
+            {t(
+              seed.registry === "DOCKER"
+                ? "registryCredentials.fieldAuthTokenOrPassword"
+                : "registryCredentials.fieldAuthToken",
+            )}
           </Label>
           <Input
             id="rc-edit-auth-token"
@@ -198,22 +233,6 @@ function EditForm({
           <p className="text-muted-foreground text-xs">
             {t("registryCredentials.fieldAuthTokenKeepHint")}
           </p>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="rc-edit-name">
-            {t("registryCredentials.fieldName")}
-          </Label>
-          <Input
-            id="rc-edit-name"
-            maxLength={100}
-            aria-invalid={isInvalidLabel(name)}
-            aria-describedby={
-              isInvalidLabel(name) ? "rc-edit-name-error" : undefined
-            }
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <LabelError id="rc-edit-name-error" value={name} />
         </div>
       </div>
       <DialogFooter>

@@ -45,7 +45,8 @@ type getCredentialArgs struct {
 
 type createCredentialArgs struct {
 	Name      string `json:"name,omitempty" jsonschema:"a human display label; defaults to host when omitted"`
-	Host      string `json:"host" jsonschema:"the registry hostname the credential authenticates to, e.g. ghcr.io, docker.io, registry.gitlab.com"`
+	Registry  string `json:"registry,omitempty" jsonschema:"Render's registry enum: GITHUB (ghcr.io), GITLAB (registry.gitlab.com), DOCKER (docker.io), GOOGLE_ARTIFACT or AWS_ECR; GOOGLE_ARTIFACT and AWS_ECR also need host. Give registry, host, or both when they agree"`
+	Host      string `json:"host,omitempty" jsonschema:"the registry hostname the credential authenticates to, e.g. ghcr.io, docker.io, registry.gitlab.com, us-docker.pkg.dev, or a self-hosted registry Render's enum cannot name; optional when registry names a registry with one host"`
 	Username  string `json:"username" jsonschema:"the registry username"`
 	AuthToken string `json:"authToken" jsonschema:"the registry password or access token — stored, never returned by any tool after this call"`
 	ExpiresAt string `json:"expiresAt,omitempty" jsonschema:"RFC3339 timestamp the credential expires at, if it does (e.g. a short-lived AWS ECR token); omit for a credential that never expires"`
@@ -98,12 +99,16 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "create_registry_credential",
 		Description: "Store a credential for a private external image registry (Docker Hub, GHCR, GitLab Container Registry, ECR, etc.), so a create_web_service call whose image references that host can pull successfully. bex extension — Render's own MCP server has no registry-credential tools.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createCredentialArgs) (*mcp.CallToolResult, credentialWire, error) {
+		host, err := createHost(in.Registry, in.Host)
+		if err != nil {
+			return nil, credentialWire{}, err
+		}
 		expiresAt, err := parseExpiresAt(in.ExpiresAt)
 		if err != nil {
 			return nil, credentialWire{}, err
 		}
 		v, err := s.Create(ctx, CreateRequest{
-			OwnerID: core.NamedWorkspace(ctx), Name: in.Name, Host: in.Host, Username: in.Username,
+			OwnerID: core.NamedWorkspace(ctx), Name: in.Name, Host: host, Username: in.Username,
 			Secret: in.AuthToken, ExpiresAt: expiresAt,
 		})
 		if err != nil {

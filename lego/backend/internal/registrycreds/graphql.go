@@ -27,8 +27,11 @@ import (
 var credentialGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "RegistryCredential",
 	Fields: graphql.Fields{
-		"id":        gqlutil.StrField(func(v CredentialView) any { return v.ID }),
-		"name":      gqlutil.StrField(func(v CredentialView) any { return v.Name }),
+		"id":   gqlutil.StrField(func(v CredentialView) any { return v.ID }),
+		"name": gqlutil.StrField(func(v CredentialView) any { return v.Name }),
+		// registry is Render's enum for the host, as every REST read carries
+		// it (w4/m670); "" for a self-hosted registry, as REST omits it.
+		"registry":  gqlutil.StrField(func(v CredentialView) any { return v.Registry }),
 		"host":      gqlutil.StrField(func(v CredentialView) any { return v.Host }),
 		"username":  gqlutil.StrField(func(v CredentialView) any { return v.Username }),
 		"ownerId":   gqlutil.StrField(func(v CredentialView) any { return v.OwnerID }),
@@ -77,21 +80,29 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createRegistryCredential": &graphql.Field{
 			Type: credentialGQLType,
 			Args: graphql.FieldConfigArgument{
-				"ownerId":   gqlutil.Arg(graphql.String),
-				"name":      gqlutil.Arg(graphql.String),
-				"host":      gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
+				"name":    gqlutil.Arg(graphql.String),
+				// registry is Render's enum and host bex's extension, resolved
+				// as REST's create resolves them (w4/m670): either alone, or
+				// both when they agree.
+				"registry":  gqlutil.Arg(graphql.String),
+				"host":      gqlutil.Arg(graphql.String),
 				"username":  gqlutil.ReqArg(graphql.String),
 				"authToken": gqlutil.ReqArg(graphql.String),
 				"expiresAt": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
+				host, err := createHost(gqlutil.Str(p.Args, "registry"), gqlutil.Str(p.Args, "host"))
+				if err != nil {
+					return nil, err
+				}
 				expiresAt, err := parseExpiresAt(gqlutil.Str(p.Args, "expiresAt"))
 				if err != nil {
 					return nil, err
 				}
 				return s.Create(p.Context, CreateRequest{
 					OwnerID: gqlutil.Str(p.Args, "ownerId"), Name: gqlutil.Str(p.Args, "name"),
-					Host: p.Args["host"].(string), Username: p.Args["username"].(string),
+					Host: host, Username: p.Args["username"].(string),
 					Secret: p.Args["authToken"].(string), ExpiresAt: expiresAt,
 				})
 			},

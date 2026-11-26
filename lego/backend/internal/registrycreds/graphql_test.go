@@ -231,3 +231,62 @@ func TestGraphQLNonDefaultWorkspaceCredentialIsFullyReachable(t *testing.T) {
 		t.Errorf("tea-other list after delete = %+v, want empty", list)
 	}
 }
+
+// GraphQL createRegistryCredential takes Render's registry enum and resolves
+// it with REST's code (w4/m670): the Add credential dialog sends it, and a
+// read carries the enum back, "" for a self-hosted registry.
+func TestGraphQLCreateTakesRendersRegistryAsRESTDoes(t *testing.T) {
+	s, _, _ := newTestService()
+	schema := testSchema(s)
+	ctx := context.Background()
+	create := func(args string) *graphql.Result {
+		return graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+			RequestString: `mutation { createRegistryCredential(` + args + `, username: "u", authToken: "t") { id registry host } }`})
+	}
+	for _, tc := range []struct{ args, registry, host string }{
+		{`name: "a", registry: "DOCKER"`, "DOCKER", "docker.io"},
+		{`name: "b", registry: "GITHUB"`, "GITHUB", "ghcr.io"},
+		{`name: "c", registry: "GITLAB"`, "GITLAB", "registry.gitlab.com"},
+		{`name: "d", registry: "GOOGLE_ARTIFACT", host: "us-docker.pkg.dev"`, "GOOGLE_ARTIFACT", "us-docker.pkg.dev"},
+		{`name: "e", registry: "AWS_ECR", host: "123456789012.dkr.ecr.us-east-1.amazonaws.com"`, "AWS_ECR", "123456789012.dkr.ecr.us-east-1.amazonaws.com"},
+		{`name: "f", host: "ghcr.io"`, "GITHUB", "ghcr.io"},
+		{`name: "g", host: "registry.example.com:5000"`, "", "registry.example.com:5000"},
+	} {
+		res := create(tc.args)
+		if len(res.Errors) > 0 {
+			t.Fatalf("create(%s): %v", tc.args, res.Errors)
+		}
+		created := res.Data.(map[string]any)["createRegistryCredential"].(map[string]any)
+		if created["host"] != tc.host {
+			t.Errorf("create(%s) host = %v, want %q", tc.args, created["host"], tc.host)
+		}
+		var wantRegistry any = tc.registry // "" for a self-hosted registry
+		if created["registry"] != wantRegistry {
+			t.Errorf("create(%s) registry = %v, want %v", tc.args, created["registry"], wantRegistry)
+		}
+		res = graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+			RequestString: `{ registryCredentials { id registry } }`})
+		found := false
+		for _, row := range res.Data.(map[string]any)["registryCredentials"].([]any) {
+			row := row.(map[string]any)
+			if row["id"] == created["id"] {
+				found = row["registry"] == wantRegistry
+			}
+		}
+		if !found {
+			t.Errorf("list does not read %s back with registry %v", created["id"], wantRegistry)
+		}
+	}
+	// The refusals are REST's, word for word.
+	for args, want := range map[string]string{
+		`name: "x", registry: "GOOGLE_ARTIFACT"`:           "needs host",
+		`name: "x", registry: "GITHUB", host: "docker.io"`: "registry GITHUB does not match host",
+		`name: "x", registry: "QUAY"`:                      "registry must be one of",
+		`name: "x"`:                                        "host, username, and secret are required",
+	} {
+		res := create(args)
+		if len(res.Errors) == 0 || !strings.Contains(res.Errors[0].Message, want) {
+			t.Errorf("create(%s) errors = %v, want one saying %q", args, res.Errors, want)
+		}
+	}
+}

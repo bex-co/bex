@@ -25,11 +25,23 @@ describe("useRegistryCredentials", () => {
             __typename: "RegistryCredential",
             id: "rgc-1",
             name: "GHCR prod",
+            registry: "GITHUB",
             host: "ghcr.io",
             username: "alice",
             expiresAt: null,
             status: "active",
             createdAt: "2026-07-01T00:00:00Z",
+          },
+          {
+            __typename: "RegistryCredential",
+            id: "rgc-2",
+            name: "Self-hosted",
+            registry: null,
+            host: "registry.example.com:5000",
+            username: "bob",
+            expiresAt: null,
+            status: "active",
+            createdAt: null,
           },
           null,
           {
@@ -54,11 +66,23 @@ describe("useRegistryCredentials", () => {
       {
         id: "rgc-1",
         name: "GHCR prod",
+        registry: "GITHUB",
         host: "ghcr.io",
         username: "alice",
         expiresAt: null,
         status: "active",
         createdAt: "2026-07-01T00:00:00Z",
+      },
+      // A self-hosted registry has no Render enum (w4/m670).
+      {
+        id: "rgc-2",
+        name: "Self-hosted",
+        registry: null,
+        host: "registry.example.com:5000",
+        username: "bob",
+        expiresAt: null,
+        status: "active",
+        createdAt: null,
       },
     ]);
   });

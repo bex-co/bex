@@ -58,7 +58,7 @@ type credentialWire struct {
 
 func toWire(v CredentialView) credentialWire {
 	return credentialWire{
-		ID: v.ID, Name: v.Name, Registry: renderRegistry(v.Host), Host: v.Host, Username: v.Username, OwnerID: v.OwnerID,
+		ID: v.ID, Name: v.Name, Registry: v.Registry, Host: v.Host, Username: v.Username, OwnerID: v.OwnerID,
 		ExpiresAt: v.ExpiresAt, Status: v.Status, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt,
 	}
 }

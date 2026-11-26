@@ -6,6 +6,7 @@ import {
   skipPollWhenHidden,
 } from "@/common/lib/polling";
 import type { RegistryCredentialView } from "@/features/registry-credentials/types";
+import { toCredentialView } from "@/features/registry-credentials/hooks/use-registry-credentials";
 
 export interface UseRegistryCredentialResult {
   credential: RegistryCredentialView | null;
@@ -18,7 +19,7 @@ export interface UseRegistryCredentialResult {
  * (w5/m60) — the edit dialog's readback source. Mount it only when the detail is
  * actually needed (the edit dialog mounts it on open); the secret is never part
  * of the read (structurally absent), so a prefill can only ever carry
- * name/host/username/expiry, never the stored token.
+ * name/registry/host/username/expiry, never the stored token.
  */
 export function useRegistryCredential(id: string): UseRegistryCredentialResult {
   const { currentWorkspaceId } = useWorkspace();
@@ -32,16 +33,6 @@ export function useRegistryCredential(id: string): UseRegistryCredentialResult {
   });
   const raw = data?.registryCredential;
   const credential: RegistryCredentialView | null =
-    raw && raw.id
-      ? {
-          id: raw.id,
-          name: raw.name ?? raw.host ?? "",
-          host: raw.host ?? "",
-          username: raw.username ?? "",
-          expiresAt: raw.expiresAt ?? null,
-          status: raw.status ?? "active",
-          createdAt: raw.createdAt ?? null,
-        }
-      : null;
+    raw && raw.id ? toCredentialView({ ...raw, id: raw.id }) : null;
   return { credential, loading: !resolved || loading, error: !!error };
 }

@@ -7,7 +7,13 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface CreateRegistryCredentialInput {
-  host: string;
+  /** Render's registry enum (GITHUB, GITLAB, DOCKER, GOOGLE_ARTIFACT, AWS_ECR). */
+  registry?: string;
+  /**
+   * The registry host: needed with Google Artifact and ECR, whose hosts name
+   * a project or account and region, and alone for a self-hosted registry.
+   */
+  host?: string;
   username: string;
   authToken: string;
   /** Display label; blank defaults to host server-side. */
@@ -17,8 +23,11 @@ export interface CreateRegistryCredentialInput {
 }
 
 export interface UseCreateRegistryCredentialResult {
-  /** Fires createRegistryCredential; resolves true on success (toasted either way). */
-  create: (input: CreateRegistryCredentialInput) => Promise<boolean>;
+  /**
+   * Fires createRegistryCredential; resolves the new credential's id on
+   * success and null on failure (toasted either way).
+   */
+  create: (input: CreateRegistryCredentialInput) => Promise<string | null>;
   busy: boolean;
 }
 
@@ -42,29 +51,29 @@ export function useCreateRegistryCredential(): UseCreateRegistryCredentialResult
         const { data } = await mutate({
           variables: {
             ownerId: currentWorkspaceId,
-            host: input.host,
+            registry: input.registry || null,
+            host: input.host || null,
             username: input.username,
             authToken: input.authToken,
             name: input.name || null,
             expiresAt: input.expiresAt || null,
           },
         });
+        const created = data?.createRegistryCredential;
+        if (!created?.id) {
+          throw new Error("createRegistryCredential returned no credential");
+        }
         // Name the host bex-api stored (it drops a pasted scheme or trailing
-        // slash and folds Docker Hub aliases), not the text typed (w4/149).
-        toast.success(
-          t("registryCredentials.createSuccess", {
-            host: data?.createRegistryCredential?.host || input.host,
-          }),
-        );
-        return true;
+        // slash, folds Docker Hub aliases and fills in a registry's one host),
+        // not the text typed (w4/149).
+        const host = created.host || input.host || "";
+        toast.success(t("registryCredentials.createSuccess", { host }));
+        return created.id;
       } catch (err) {
         toast.error(
-          mutationErrorMessage(
-            err,
-            t("registryCredentials.createError", { host: input.host }),
-          ),
+          mutationErrorMessage(err, t("registryCredentials.createError")),
         );
-        return false;
+        return null;
       } finally {
         setBusy(false);
       }

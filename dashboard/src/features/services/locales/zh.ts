@@ -4017,6 +4017,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "管理镜像仓库凭据",
     description: "Link from a service credential selector to account settings",
   },
+  "services.registryCredentialAdd": {
+    message: "添加凭据",
+    description:
+      "First item of every Credential dropdown: opens the Add Credential dialog in place (w4/m670)",
+  },
   "services.registryCredentialSettingsTitle": {
     message: "镜像仓库凭据",
     description: "Service Settings private-image credential card title",

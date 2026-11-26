@@ -39,6 +39,7 @@ function cred(
   return {
     id: "rgc-1",
     name: "GHCR prod",
+    registry: "GITHUB",
     host: "ghcr.io",
     username: "alice",
     expiresAt: null,
@@ -60,7 +61,12 @@ describe("RegistryCredentialsPanel", () => {
   it("lists the workspace's credentials", () => {
     state.credentials = [
       cred({ id: "rgc-1", name: "GHCR prod" }),
-      cred({ id: "rgc-2", name: "docker.io", host: "docker.io" }),
+      cred({
+        id: "rgc-2",
+        name: "docker.io",
+        registry: "DOCKER",
+        host: "docker.io",
+      }),
     ];
     render(<RegistryCredentialsPanel />);
 

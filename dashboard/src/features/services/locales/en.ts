@@ -4105,6 +4105,11 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Manage registry credentials",
     description: "Link from a service credential selector to account settings",
   },
+  "services.registryCredentialAdd": {
+    message: "Add credential",
+    description:
+      "First item of every Credential dropdown: opens the Add Credential dialog in place (w4/m670)",
+  },
   "services.registryCredentialSettingsTitle": {
     message: "Image registry credential",
     description: "Service Settings private-image credential card title",

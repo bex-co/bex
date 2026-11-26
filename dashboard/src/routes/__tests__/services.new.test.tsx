@@ -178,6 +178,7 @@ vi.mock("@/features/git/hooks/use-disconnect-git", () => ({
 const PRIVATE_REGISTRY_CREDENTIAL: RegistryCredentialView = {
   id: "rgc-private",
   name: "Private GHCR",
+  registry: "GITHUB",
   host: "ghcr.io",
   username: "robot",
   expiresAt: null,
@@ -199,6 +200,31 @@ vi.mock(
       ...registryCredentialsState,
       error: undefined,
       refetch: vi.fn(),
+    }),
+  }),
+);
+
+// The Credential dropdown's Add credential dialog (w4/m670): a create lands
+// in the list the dropdown reads, as the refetch would bring it.
+const createRegistryCredential = vi.fn(
+  async (input: { name?: string; registry?: string }) => {
+    registryCredentialsState.credentials = [
+      ...registryCredentialsState.credentials,
+      {
+        ...PRIVATE_REGISTRY_CREDENTIAL,
+        id: "rgc-added",
+        name: input.name ?? "",
+      },
+    ];
+    return "rgc-added";
+  },
+);
+vi.mock(
+  "@/features/registry-credentials/hooks/use-create-registry-credential",
+  () => ({
+    useCreateRegistryCredential: () => ({
+      create: createRegistryCredential,
+      busy: false,
     }),
   }),
 );
@@ -413,6 +439,7 @@ beforeEach(() => {
   nameAvailabilityState.checking = false;
   registryCredentialsState.credentials = [PRIVATE_REGISTRY_CREDENTIAL];
   registryCredentialsState.loading = false;
+  createRegistryCredential.mockClear();
   envGroupsState.groups = [];
   envGroupsState.loading = false;
   envGroupsState.error = undefined;
@@ -1118,6 +1145,68 @@ describe("NewServicePage", () => {
         expect.objectContaining({
           image: "ghcr.io/acme/private-web:latest",
           registryCredentialId: "rgc-private",
+        }),
+      );
+    });
+
+    // w4/m670: Render's Credential dropdown starts with Add credential, which
+    // adds one over the half-filled form and selects it.
+    it("adds a credential from the dropdown and selects it, leaving the form as typed", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("tab", { name: /Existing Image/i }),
+      );
+      await user.type(
+        screen.getByPlaceholderText("docker.io/library/nginx:latest"),
+        "ghcr.io/acme/private-web:latest",
+      );
+      await user.clear(screen.getByLabelText("Name"));
+      await user.type(screen.getByLabelText("Name"), "web-private");
+      await user.click(screen.getByRole("radio", { name: /Starter/i }));
+
+      await user.click(
+        screen.getByRole("combobox", { name: /Registry credential/i }),
+      );
+      const options = screen.getAllByRole("option");
+      expect(options[0]).toHaveTextContent("Add credential");
+      await user.click(options[0]);
+      const dialog = await screen.findByRole("dialog");
+      await user.type(within(dialog).getByLabelText("Name"), "Added GHCR");
+      await user.click(
+        within(dialog).getByRole("combobox", { name: "Registry" }),
+      );
+      await user.click(await screen.findByRole("option", { name: "GitHub" }));
+      await user.type(within(dialog).getByLabelText("Username"), "robot");
+      await user.type(
+        within(dialog).getByLabelText("Personal Access Token"),
+        "ghp_token",
+      );
+      await user.click(
+        within(dialog).getByRole("button", { name: "Add Credential" }),
+      );
+
+      expect(createRegistryCredential).toHaveBeenCalledWith(
+        expect.objectContaining({ registry: "GITHUB", name: "Added GHCR" }),
+      );
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("combobox", { name: /Registry credential/i }),
+      ).toHaveTextContent("Added GHCR (ghcr.io)");
+      // Nothing else in the form moved.
+      expect(
+        screen.getByPlaceholderText("docker.io/library/nginx:latest"),
+      ).toHaveValue("ghcr.io/acme/private-web:latest");
+      expect(screen.getByLabelText("Name")).toHaveValue("web-private");
+      expect(screen.getByRole("radio", { name: /Starter/i })).toBeChecked();
+
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "web-private",
+          plan: "starter",
+          image: "ghcr.io/acme/private-web:latest",
+          registryCredentialId: "rgc-added",
         }),
       );
     });

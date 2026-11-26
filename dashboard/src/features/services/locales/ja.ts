@@ -4147,6 +4147,11 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "レジストリ認証情報を管理",
     description: "Link from a service credential selector to account settings",
   },
+  "services.registryCredentialAdd": {
+    message: "認証情報を追加",
+    description:
+      "First item of every Credential dropdown: opens the Add Credential dialog in place (w4/m670)",
+  },
   "services.registryCredentialSettingsTitle": {
     message: "イメージレジストリ認証情報",
     description: "Service Settings private-image credential card title",

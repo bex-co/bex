@@ -2116,7 +2116,7 @@ type Mutation {
   createOrganizationWorkspace(name: String!, organizationId: String!, privacy: String): Workspace
   createPlannedBlueprint(autoSync: Boolean, branch: String, existingResources: String, name: String!, ownerId: String, path: String, repo: String!): BlueprintPlanResult
   createProject(environments: [ProjectEnvironmentInput!], name: String!, ownerId: String!): Project
-  createRegistryCredential(authToken: String!, expiresAt: String, host: String!, name: String, ownerId: String, username: String!): RegistryCredential
+  createRegistryCredential(authToken: String!, expiresAt: String, host: String, name: String, ownerId: String, registry: String, username: String!): RegistryCredential
   createRouterKey(name: String!, ownerId: String!): Boolean
   createSSHKey(name: String!, publicKey: String!): SSHKey
   createSandbox(buildId: String, buildName: String, env: [EnvVarInput!], idleTimeoutSeconds: Int, name: String, networkPolicy: SandboxNetworkPolicyInput, ownerId: String, plan: String, region: String, sandboxGroupId: String, snapshotId: String, snapshotName: String, template: String, timeoutSeconds: Int): Sandbox
@@ -2887,6 +2887,7 @@ type RegistryCredential {
   id: String
   name: String
   ownerId: String
+  registry: String
   status: String
   updatedAt: String
   username: String

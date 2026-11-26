@@ -4182,6 +4182,11 @@ const deServices: Record<string, TranslationEntry> = {
     message: "Registry-Zugangsdaten verwalten",
     description: "Link from a service credential selector to account settings",
   },
+  "services.registryCredentialAdd": {
+    message: "Zugangsdaten hinzufügen",
+    description:
+      "First item of every Credential dropdown: opens the Add Credential dialog in place (w4/m670)",
+  },
   "services.registryCredentialSettingsTitle": {
     message: "Registry-Zugangsdaten für Images",
     description: "Service Settings private-image credential card title",
