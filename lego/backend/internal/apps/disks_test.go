@@ -173,6 +173,41 @@ func TestAddDiskRefusesReservedAndMalformedMountPaths(t *testing.T) {
 	}
 }
 
+// TestAddDiskMountPathLengthBoundary pins the length half of the
+// client/server mount-path agreement (dashboard's diskMountPathError mirrors
+// it): 255 bytes are allowed, 256 refused, and the cap counts bytes, not
+// characters, so a short-looking multibyte path can still refuse.
+func TestAddDiskMountPathLengthBoundary(t *testing.T) {
+	at255 := "/" + strings.Repeat("a", 254)
+	if len(at255) != 255 {
+		t.Fatalf("fixture is %d bytes, want 255", len(at255))
+	}
+	svc, _, _ := newDiskService(diskEligibleApp("web"))
+	if _, err := svc.AddDisk(context.Background(), "web", "data", at255, 10); err != nil {
+		t.Fatalf("255-byte mount path refused: %v", err)
+	}
+	over := "/" + strings.Repeat("b", 255)
+	multibyte := "/" + strings.Repeat("é", 128) // 1 + 2*128 = 257 bytes
+	for _, tc := range []struct{ name, path string }{
+		{"256 ascii bytes", over},
+		{"129 characters but 257 bytes", multibyte},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, _, st := newDiskService(diskEligibleApp("web"))
+			_, err := svc.AddDisk(context.Background(), "web", "data", tc.path, 10)
+			if !errors.Is(err, core.ErrBadRequest) {
+				t.Fatalf("AddDisk(%d bytes) error = %v, want bad request", len(tc.path), err)
+			}
+			if err == nil || !strings.Contains(err.Error(), "at most 255") {
+				t.Fatalf("error %q does not name the 255 cap", err)
+			}
+			if len(st.disks) != 0 {
+				t.Fatal("a refused disk still wrote a billable row")
+			}
+		})
+	}
+}
+
 func TestUpdateDiskGrowsButNeverShrinks(t *testing.T) {
 	svc, cl, _ := newDiskService(diskEligibleApp("web"))
 	created, err := svc.AddDisk(context.Background(), "web", "data", "/var/data", 10)

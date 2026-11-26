@@ -29,6 +29,8 @@ export const DISK_MIN_SIZE_GB = 1;
  * and bex-api refuses it too (w4/732).
  */
 export const DISK_MAX_SIZE_GB = 1000;
+/** bex-api's mount-path cap, in bytes (`validateDiskMountPath`). */
+export const DISK_MOUNT_PATH_MAX_BYTES = 255;
 
 /** The service types validateDisk accepts: a long-running instance to mount on. */
 const DISK_ELIGIBLE_TYPES: readonly string[] = [
@@ -62,10 +64,18 @@ const RESERVED_MOUNT_PATHS = [
   "/bex-health",
 ];
 
-/** The mount-path rules the CRD enforces, for a trimmed path. */
+/**
+ * The mount-path rules the CRD enforces, for a trimmed path. The length cap
+ * counts UTF-8 bytes, as Go's `len` does on bex-api, so a short-looking
+ * multibyte path still refuses past 255 bytes. The order matches bex-api's
+ * `validateDiskMountPath`, so a path breaking two rules names the same one on
+ * both sides.
+ */
 export function diskMountPathError(path: string): Reason | null {
   if (path === "") return "services.diskMountPathRequired";
   if (!path.startsWith("/")) return "services.diskMountPathAbsolute";
+  if (new TextEncoder().encode(path).length > DISK_MOUNT_PATH_MAX_BYTES)
+    return "services.diskMountPathTooLong";
   if (path.endsWith("/")) return "services.diskMountPathNotRoot";
   if (RESERVED_MOUNT_PATHS.includes(path)) {
     return "services.diskMountPathReserved";

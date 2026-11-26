@@ -4656,6 +4656,10 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "マウントパスは絶対パス（/ で始まる）である必要があります。",
     description: "Client-side validation: relative mount path",
   },
+  "services.diskMountPathTooLong": {
+    message: "マウントパスは255文字以内である必要があります。",
+    description: "Client-side validation: mount path over bex-api's length cap",
+  },
   "services.diskMountPathNotRoot": {
     message:
       "マウントパスにルートディレクトリは指定できず、末尾にスラッシュも付けられません。",

@@ -4697,6 +4697,10 @@ const esServices: Record<string, TranslationEntry> = {
     message: "La ruta de montaje debe ser absoluta (empezar por /).",
     description: "Client-side validation: relative mount path",
   },
+  "services.diskMountPathTooLong": {
+    message: "La ruta de montaje debe tener como máximo 255 caracteres.",
+    description: "Client-side validation: mount path over bex-api's length cap",
+  },
   "services.diskMountPathNotRoot": {
     message:
       "La ruta de montaje no puede ser el directorio raíz ni terminar con una barra.",

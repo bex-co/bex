@@ -4624,6 +4624,10 @@ const koServices: Record<string, TranslationEntry> = {
     message: "마운트 경로는 절대 경로(/로 시작)여야 합니다.",
     description: "Client-side validation: relative mount path",
   },
+  "services.diskMountPathTooLong": {
+    message: "마운트 경로는 최대 255자여야 합니다.",
+    description: "Client-side validation: mount path over bex-api's length cap",
+  },
   "services.diskMountPathNotRoot": {
     message: "마운트 경로는 루트 디렉터리이거나 슬래시로 끝날 수 없습니다.",
     description: "Client-side validation: root or trailing slash",
