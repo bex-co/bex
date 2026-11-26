@@ -62,10 +62,7 @@ type Pending = {
   answer: (response: ApolloLink.Result) => void;
   fail: (error: Error) => void;
   field:
-    | "serverActions"
-    | "deployActions"
-    | "databaseActions"
-    | "keyValueActions";
+    "serverActions" | "deployActions" | "databaseActions" | "keyValueActions";
 };
 
 let client: ApolloClient;
@@ -208,11 +205,11 @@ describe("resource action projection freshness", () => {
       </Wrapper>,
     );
     await waitFor(() => {
-      const buttons = screen.getAllByRole("button", {
+      // An allowed Rollback is a link to its Confirm Rollback page (w1/m646).
+      const links = screen.getAllByRole("link", {
         name: /^Rollback to dep-/,
       });
-      expect(buttons).toHaveLength(20);
-      for (const button of buttons) expect(button).toBeEnabled();
+      expect(links).toHaveLength(20);
     });
     expect(requests).toEqual([
       {

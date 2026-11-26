@@ -5630,51 +5630,6 @@ const koServices: Record<string, TranslationEntry> = {
     message: "롤백",
     description: "Button to roll back to a specific deploy",
   },
-  "services.eventsRollbackConfirmTitle": {
-    message: "이 배포로 롤백할까요?",
-    description: "Rollback confirm dialog title",
-  },
-  "services.eventsRollbackConfirmBody": {
-    message:
-      "서비스가 이 배포의 이미지와 보존된 구성으로 실행됩니다. 저장된 설정은 변경되지 않으며 다음 표준 배포 때 적용됩니다. 자동 배포가 꺼집니다. 보존된 구성이 없는 이전 배포는 이미지만 복원합니다.",
-    description: "Rollback confirm dialog body",
-  },
-  "services.eventsRollbackConfirmBodyCommit": {
-    message:
-      "서비스가 이 배포의 이미지({commit}에서 빌드됨)와 보존된 구성으로 실행됩니다. 저장된 설정은 변경되지 않으며 다음 표준 배포 때 적용됩니다. 자동 배포가 꺼집니다. 보존된 구성이 없는 이전 배포는 이미지만 복원합니다.",
-    description:
-      "Rollback confirm dialog body naming the commit being restored",
-  },
-  "services.eventsRollbackConfirmBodyNoAutoDeploy": {
-    message:
-      "서비스가 이 배포의 이미지와 보존된 구성으로 실행됩니다. 저장된 설정은 변경되지 않으며 다음 표준 배포 때 적용됩니다. 보존된 구성이 없는 이전 배포는 이미지만 복원합니다.",
-    description:
-      "Rollback confirm dialog body when the service's auto-deploy is already off (always so for an image-backed service), so no auto-deploy sentence (w4/554)",
-  },
-  "services.eventsRollbackConfirmBodyCommitNoAutoDeploy": {
-    message:
-      "서비스가 이 배포의 이미지({commit}에서 빌드됨)와 보존된 구성으로 실행됩니다. 저장된 설정은 변경되지 않으며 다음 표준 배포 때 적용됩니다. 보존된 구성이 없는 이전 배포는 이미지만 복원합니다.",
-    description:
-      "Rollback confirm dialog body naming the commit, when the service's auto-deploy is already off (w4/554)",
-  },
-  "services.eventsRollbackConfirmBodyStatic": {
-    message:
-      "이 배포를 기준으로 사이트가 다시 게시됩니다. 저장된 설정은 변경되지 않으며 자동 배포가 꺼집니다.",
-    description:
-      "Rollback confirm dialog body for a static site: it re-publishes the deploy's files, it has no image or instances (w4/m141)",
-  },
-  "services.eventsRollbackConfirmBodyStaticCommit": {
-    message:
-      "이 배포({commit})를 기준으로 사이트가 다시 게시됩니다. 저장된 설정은 변경되지 않으며 자동 배포가 꺼집니다.",
-    description:
-      "Static-site rollback confirm dialog body naming the commit being re-published (w4/m141)",
-  },
-  "services.eventsRollbackConfirmTagPull": {
-    message:
-      "{image}은(는) 태그입니다. 롤백은 이 태그가 지금 가리키는 이미지를 가져오며, 이 배포가 실행한 이미지와 다를 수 있습니다. 태그가 더 이상 없으면 롤백이 실패합니다.",
-    description:
-      "Rollback confirm sentence for a deploy whose image is a registry tag, not a digest: Render pulls the tag again (render.com/docs/rollbacks, w4/m432)",
-  },
   "services.eventsRollbackAria": {
     message: "{target}(으)로 롤백",
     description:

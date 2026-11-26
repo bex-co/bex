@@ -5730,51 +5730,6 @@ const deServices: Record<string, TranslationEntry> = {
     message: "Rollback",
     description: "Button to roll back to a specific deploy",
   },
-  "services.eventsRollbackConfirmTitle": {
-    message: "Auf dieses Deployment zurücksetzen?",
-    description: "Rollback confirm dialog title",
-  },
-  "services.eventsRollbackConfirmBody": {
-    message:
-      "Der Service führt das Image dieses Deployments und die gespeicherte Konfiguration aus. Gespeicherte Einstellungen bleiben unverändert und gelten ab dem nächsten regulären Deployment. Auto-Deploy wird deaktiviert. Bei älteren Deployments ohne gespeicherte Konfiguration wird nur das Image wiederhergestellt.",
-    description: "Rollback confirm dialog body",
-  },
-  "services.eventsRollbackConfirmBodyCommit": {
-    message:
-      "Der Service führt das Image dieses Deployments (gebaut aus {commit}) und die gespeicherte Konfiguration aus. Gespeicherte Einstellungen bleiben unverändert und gelten ab dem nächsten regulären Deployment. Auto-Deploy wird deaktiviert. Bei älteren Deployments ohne gespeicherte Konfiguration wird nur das Image wiederhergestellt.",
-    description:
-      "Rollback confirm dialog body naming the commit being restored",
-  },
-  "services.eventsRollbackConfirmBodyNoAutoDeploy": {
-    message:
-      "Der Service führt das Image dieses Deployments und die gespeicherte Konfiguration aus. Gespeicherte Einstellungen bleiben unverändert und gelten ab dem nächsten regulären Deployment. Bei älteren Deployments ohne gespeicherte Konfiguration wird nur das Image wiederhergestellt.",
-    description:
-      "Rollback confirm dialog body when the service's auto-deploy is already off (always so for an image-backed service), so no auto-deploy sentence (w4/554)",
-  },
-  "services.eventsRollbackConfirmBodyCommitNoAutoDeploy": {
-    message:
-      "Der Service führt das Image dieses Deployments (gebaut aus {commit}) und die gespeicherte Konfiguration aus. Gespeicherte Einstellungen bleiben unverändert und gelten ab dem nächsten regulären Deployment. Bei älteren Deployments ohne gespeicherte Konfiguration wird nur das Image wiederhergestellt.",
-    description:
-      "Rollback confirm dialog body naming the commit, when the service's auto-deploy is already off (w4/554)",
-  },
-  "services.eventsRollbackConfirmBodyStatic": {
-    message:
-      "Die Website wird erneut aus diesem Deployment veröffentlicht. Gespeicherte Einstellungen bleiben unverändert und Auto-Deploy wird deaktiviert.",
-    description:
-      "Rollback confirm dialog body for a static site: it re-publishes the deploy's files, it has no image or instances (w4/m141)",
-  },
-  "services.eventsRollbackConfirmBodyStaticCommit": {
-    message:
-      "Die Website wird erneut aus diesem Deployment, {commit}, veröffentlicht. Gespeicherte Einstellungen bleiben unverändert und Auto-Deploy wird deaktiviert.",
-    description:
-      "Static-site rollback confirm dialog body naming the commit being re-published (w4/m141)",
-  },
-  "services.eventsRollbackConfirmTagPull": {
-    message:
-      "{image} ist ein Tag: Das Rollback lädt das Image, auf das er jetzt zeigt. Es kann sich von dem unterscheiden, das dieses Deployment ausgeführt hat, und das Rollback schlägt fehl, wenn der Tag nicht mehr existiert.",
-    description:
-      "Rollback confirm sentence for a deploy whose image is a registry tag, not a digest: Render pulls the tag again (render.com/docs/rollbacks, w4/m432)",
-  },
   "services.eventsRollbackAria": {
     message: "Rollback auf {target}",
     description:

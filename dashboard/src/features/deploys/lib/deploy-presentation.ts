@@ -100,25 +100,6 @@ export function deploySubject(
   return (commitMessage ?? "").split("\n")[0].trim();
 }
 
-/**
- * `<short-sha> <subject>` for a deploy's commit — the exact identity the
- * history row renders, so the rollback confirm dialog can name the code it is
- * about to restore in the same words the row behind it uses (w4/m110 t003).
- * Empty when the deploy has no resolvable commit (the `w9/001` contract: an
- * image-backed or unresolvable-repo deploy), which keeps the caller on its
- * generic copy instead of naming nothing.
- */
-export function deployCommitLabel(
-  commitId: string | null | undefined,
-  commitMessage: string | null | undefined,
-): string {
-  const sha = (commitId ?? "").trim();
-  if (!sha) return "";
-  const subject = deploySubject(commitMessage);
-  const short = sha.slice(0, 7);
-  return subject ? `${short} ${subject}` : short;
-}
-
 export function deployMatchesSearch(
   deploy: { id: string; commitId: string; commitMessage: string },
   search: string,

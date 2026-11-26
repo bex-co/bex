@@ -1067,6 +1067,183 @@ const jaDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy page: toast shown when copying the Build Source ID fails",
   },
+  "deploys.rollbackTitle": {
+    message: "ロールバックの確認",
+    description:
+      "Rollback page (w1/m646): the block's title, Render's \"Confirm Rollback\"",
+  },
+  "deploys.rollbackLead": {
+    message: "ロールバックすると、一部の設定変更が元に戻ります。",
+    description:
+      "Rollback page: the block's lead sentence, before the Learn more link",
+  },
+  "deploys.rollbackLearnMore": {
+    message: "詳細を見る",
+    description:
+      "Rollback page: link to the rollbacks documentation after the lead sentence",
+  },
+  "deploys.rollbackLoading": {
+    message: "設定の変更を読み込んでいます",
+    description:
+      "Rollback page: accessible name of the spinner while the comparison loads",
+  },
+  "deploys.rollbackUnavailable": {
+    message:
+      "現在公開中のデプロイの設定を読み込めませんでした。このデプロイにロールバックすると、予期しない設定変更が発生する可能性があります。",
+    description:
+      "Rollback page: Render's sentence when the comparison failed or either deploy's configuration is not recorded",
+  },
+  "deploys.rollbackNoChanges": {
+    message: "このデプロイ以降、設定の変更はありません。",
+    description:
+      "Rollback page: nothing differs between the live deploy and this one",
+  },
+  "deploys.rollbackRowStartCommand": {
+    message: "開始コマンド",
+    description: "Rollback page: row label for a changed start command",
+  },
+  "deploys.rollbackRowPreDeployCommand": {
+    message: "プレデプロイコマンド",
+    description: "Rollback page: row label for a changed pre-deploy command",
+  },
+  "deploys.rollbackRowDockerCommand": {
+    message: "Docker コマンド",
+    description: "Rollback page: row label for a changed Docker command",
+  },
+  "deploys.rollbackRowHealthCheckPath": {
+    message: "ヘルスチェックパス",
+    description: "Rollback page: row label for a changed health check path",
+  },
+  "deploys.rollbackRowInstances": {
+    message: "インスタンス",
+    description: "Rollback page: row label for a changed instance count",
+  },
+  "deploys.rollbackRowEnvVars": {
+    message: "環境変数",
+    description:
+      "Rollback page: row label for the changed environment variables",
+  },
+  "deploys.rollbackRowEnvGroup": {
+    message: "環境グループ",
+    description: "Rollback page: row label for environment group changes",
+  },
+  "deploys.rollbackRowSecretFiles": {
+    message: "シークレットファイル",
+    description: "Rollback page: row label for changed secret files",
+  },
+  "deploys.rollbackRowPlan": {
+    message: "プラン",
+    description: "Rollback page: row label for the plan warning",
+  },
+  "deploys.rollbackNone": {
+    message: "なし",
+    description:
+      "Rollback page: a command or path that is not set, on either side of a change",
+  },
+  "deploys.rollbackChange": {
+    message: "設定の変更",
+    description: "Rollback page: accessible name of one before/after change",
+  },
+  "deploys.rollbackRemoved": {
+    message: "削除",
+    description:
+      "Rollback page: accessible name of a change's minus line (the live value)",
+  },
+  "deploys.rollbackAdded": {
+    message: "追加",
+    description:
+      "Rollback page: accessible name of a change's plus line (the value after the rollback)",
+  },
+  "deploys.rollbackEnvKey": {
+    message: "キー",
+    description:
+      "Rollback page: environment variable table's key column header",
+  },
+  "deploys.rollbackEnvValue": {
+    message: "値",
+    description:
+      "Rollback page: environment variable table's value column header; every value is masked",
+  },
+  "deploys.rollbackSecretFileAdded": {
+    message:
+      "シークレットファイル {name} はこのデプロイの後に追加されました。ロールバックではこのファイルは無視されます。",
+    description:
+      "Rollback page: a secret file that did not exist at this deploy; {name} is the file name",
+  },
+  "deploys.rollbackSecretFileDeleted": {
+    message:
+      "シークレットファイル {name} はこのデプロイの後に削除されました。ロールバックによりファイルが復元されます。",
+    description:
+      "Rollback page: a secret file deleted since this deploy; {name} is the file name",
+  },
+  "deploys.rollbackSecretFileChanged": {
+    message:
+      "シークレットファイル {name} はこのデプロイの後に変更されました。ロールバックにより元の内容に戻ります。",
+    description:
+      "Rollback page: a secret file whose contents changed since this deploy; {name} is the file name",
+  },
+  "deploys.rollbackGroupUnlink": {
+    message:
+      "このデプロイの後にサービスに追加された環境グループ {name} は、ロールバックによりリンクが解除されます。",
+    description:
+      "Rollback page: an environment group linked since this deploy; {name} is the group name",
+  },
+  "deploys.rollbackGroupLink": {
+    message:
+      "このデプロイの後にサービスから削除された環境グループ {name} は、ロールバックにより再びリンクされます。",
+    description:
+      "Rollback page: an environment group unlinked since this deploy; {name} is the group name",
+  },
+  "deploys.rollbackGroupDeleted_other": {
+    message:
+      "このデプロイにリンクされていた {n} 個の環境グループは、その後削除されています。復元することはできません。",
+    description:
+      "Rollback page: several groups this deploy linked were deleted; {n} is the count",
+  },
+  "deploys.rollbackGroupCurrentValues": {
+    message:
+      "ロールバックでは、このデプロイにリンクされている環境グループの現在のキーと値が使用されます。",
+    description:
+      "Rollback page: shown whenever this deploy linked any environment group",
+  },
+  "deploys.rollbackPlanWarning": {
+    message:
+      "現在のプランは、このデプロイで当初使用されていたプランよりも CPU とメモリの割り当てが少なくなっています。ロールバックを成功させるには、別のプランに変更する必要がある場合があります。",
+    description:
+      "Rollback page: the saved plan is smaller than the one this deploy ran on",
+  },
+  "deploys.rollbackStaticNotice": {
+    message: "{what}への変更はロールバックされません。",
+    description:
+      "Rollback page, static site: {what} is deploys.rollbackStaticNoticeWhat, in bold",
+  },
+  "deploys.rollbackStaticNoticeWhat": {
+    message: "リダイレクト、リライト、ヘッダー",
+    description: "Rollback page, static site: what a rollback keeps current",
+  },
+  "deploys.rollbackAutoDeployTitle": {
+    message: "自動デプロイ",
+    description:
+      "Rollback page: title of the warning that the rollback turns auto-deploy off",
+  },
+  "deploys.rollbackAutoDeployBody": {
+    message: "意図しないデプロイを防ぐため、このサービスでは無効になります。",
+    description:
+      "Rollback page: the auto-deploy warning's text, after its title",
+  },
+  "deploys.rollbackConfirm": {
+    message: "このデプロイにロールバック",
+    description: "Rollback page: the button that starts the rollback",
+  },
+  "deploys.rollbackCancel": {
+    message: "キャンセル",
+    description:
+      "Rollback page: the button that goes back to the deploy without rolling back",
+  },
+  "deploys.rollbackErrorTitle": {
+    message: "エラー:",
+    description: "Rollback page: label before the reason a rollback failed",
+  },
 };
 
 export default jaDeploys;

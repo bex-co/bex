@@ -66,14 +66,31 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
 }));
 
 const serverState: {
-  service: { id: string; repo?: string | null; buildSourceId?: string | null; autoDeploy?: boolean | null } | undefined;
+  service:
+    | {
+        id: string;
+        repo?: string | null;
+        buildSourceId?: string | null;
+        autoDeploy?: boolean | null;
+      }
+    | undefined;
 } = { service: undefined };
 const buildSourceState: {
-  source: { id: string; name: string; kind: "git" | "image"; source: string; nativeRuntime: null } | null;
+  source: {
+    id: string;
+    name: string;
+    kind: "git" | "image";
+    source: string;
+    nativeRuntime: null;
+  } | null;
 } = { source: null };
 
 vi.mock("@/features/services/hooks/use-server", () => ({
-  useServer: () => ({ service: serverState.service, loading: false, error: undefined }),
+  useServer: () => ({
+    service: serverState.service,
+    loading: false,
+    error: undefined,
+  }),
 }));
 vi.mock("@/features/services/hooks/use-build-sources", () => ({
   useBuildSource: () => ({ source: buildSourceState.source, loading: false }),
@@ -113,6 +130,21 @@ vi.mock("../deploy-header", () => ({
 }));
 vi.mock("../deploy-actions", () => ({
   DeployActions: () => <div data-testid="deploy-actions" />,
+}));
+vi.mock("../deploy-rollback", () => ({
+  DeployRollback: ({
+    status,
+    autoDeployOn,
+  }: {
+    status?: string;
+    autoDeployOn?: boolean;
+  }) => (
+    <div
+      data-testid="deploy-rollback"
+      data-status={status ?? ""}
+      data-auto-deploy={String(autoDeployOn)}
+    />
+  ),
 }));
 vi.mock("../deploy-timeline", () => ({
   DeployTimeline: () => <div data-testid="deploy-timeline" />,
@@ -203,6 +235,23 @@ describe("DeployDetailPage per role (w9/m621, w9/145)", () => {
 });
 
 describe("DeployDetailPage", () => {
+  // w1/m646: the deploy's /rollback route is Render's Confirm Rollback page,
+  // the deploy's header over the rollback section in place of its log.
+  it("puts the Confirm Rollback section in place of the log on its route", () => {
+    serverState.service = { autoDeploy: true } as never;
+    deployState.deploy = { ...deployState.deploy, status: "deactivated" };
+    render(<DeployDetailPage serviceId="web" deployId="dep-1" rollback />);
+
+    expect(screen.getByTestId("deploy-header")).toBeInTheDocument();
+    expect(screen.queryByTestId("deploy-actions")).not.toBeInTheDocument();
+    const section = screen.getByTestId("deploy-rollback");
+    expect(section).toHaveAttribute("data-status", "deactivated");
+    expect(section).toHaveAttribute("data-auto-deploy", "true");
+    for (const part of ["deploy-timeline", "build-log"]) {
+      expect(screen.queryByTestId(part)).not.toBeInTheDocument();
+    }
+  });
+
   it("renders the shared actions, timeline, and deploy log viewer", () => {
     render(<DeployDetailPage serviceId="web" deployId="dep-1" />);
 

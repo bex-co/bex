@@ -250,6 +250,23 @@ func (s *Service) scopeAuthorized(ctx context.Context, a *appv1alpha1.App, reque
 	return a, ctx, canonical, nil
 }
 
+// EnvironmentKeysAccess is the access a service's env var keys and secret
+// file names are read with on its Environment page: can_view_sensitive, and
+// the Admin role in a protected environment. deploys.RollbackComparison names
+// those keys, so it asks this first (w1/m646). Nothing is read. A function,
+// not a Service method, so the verb sweeps do not take it for a verb: its
+// check belongs to the verb that asks.
+func EnvironmentKeysAccess(s *Service) func(ctx context.Context, service string) error {
+	return func(ctx context.Context, service string) error {
+		// A closure names no verb, so the check records this function's name (w21/093).
+		_, _, _, err := s.scope(core.WithAuditVerb(ctx, AuditVerbEnvironmentKeysAccess), core.RelCanViewSensitive, service)
+		return err
+	}
+}
+
+// AuditVerbEnvironmentKeysAccess is the audit verb of EnvironmentKeysAccess's check.
+const AuditVerbEnvironmentKeysAccess = "secrets.EnvironmentKeysAccess"
+
 // readMap fetches exactly the map under the request's tenant. Legacy
 // default-tenant data is deliberately not migrated on a tenant request: once
 // same-named services can exist in multiple workspaces, a bare

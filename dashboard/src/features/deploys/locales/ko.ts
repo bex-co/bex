@@ -1059,6 +1059,182 @@ const koDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy page: toast shown when copying the Build Source ID fails",
   },
+  "deploys.rollbackTitle": {
+    message: "롤백 확인",
+    description:
+      "Rollback page (w1/m646): the block's title, Render's \"Confirm Rollback\"",
+  },
+  "deploys.rollbackLead": {
+    message: "롤백하면 일부 구성 변경 사항이 되돌려집니다.",
+    description:
+      "Rollback page: the block's lead sentence, before the Learn more link",
+  },
+  "deploys.rollbackLearnMore": {
+    message: "자세히 알아보기",
+    description:
+      "Rollback page: link to the rollbacks documentation after the lead sentence",
+  },
+  "deploys.rollbackLoading": {
+    message: "구성 변경 사항을 불러오는 중",
+    description:
+      "Rollback page: accessible name of the spinner while the comparison loads",
+  },
+  "deploys.rollbackUnavailable": {
+    message:
+      "현재 라이브 배포의 구성을 불러올 수 없습니다. 이 배포로 롤백하면 예상치 못한 구성 변경이 발생할 수 있습니다.",
+    description:
+      "Rollback page: Render's sentence when the comparison failed or either deploy's configuration is not recorded",
+  },
+  "deploys.rollbackNoChanges": {
+    message: "이 배포 이후 구성 변경 사항이 없습니다.",
+    description:
+      "Rollback page: nothing differs between the live deploy and this one",
+  },
+  "deploys.rollbackRowStartCommand": {
+    message: "시작 명령",
+    description: "Rollback page: row label for a changed start command",
+  },
+  "deploys.rollbackRowPreDeployCommand": {
+    message: "사전 배포 명령",
+    description: "Rollback page: row label for a changed pre-deploy command",
+  },
+  "deploys.rollbackRowDockerCommand": {
+    message: "Docker 명령",
+    description: "Rollback page: row label for a changed Docker command",
+  },
+  "deploys.rollbackRowHealthCheckPath": {
+    message: "헬스 체크 경로",
+    description: "Rollback page: row label for a changed health check path",
+  },
+  "deploys.rollbackRowInstances": {
+    message: "인스턴스",
+    description: "Rollback page: row label for a changed instance count",
+  },
+  "deploys.rollbackRowEnvVars": {
+    message: "환경 변수",
+    description:
+      "Rollback page: row label for the changed environment variables",
+  },
+  "deploys.rollbackRowEnvGroup": {
+    message: "환경 그룹",
+    description: "Rollback page: row label for environment group changes",
+  },
+  "deploys.rollbackRowSecretFiles": {
+    message: "시크릿 파일",
+    description: "Rollback page: row label for changed secret files",
+  },
+  "deploys.rollbackRowPlan": {
+    message: "요금제",
+    description: "Rollback page: row label for the plan warning",
+  },
+  "deploys.rollbackNone": {
+    message: "없음",
+    description:
+      "Rollback page: a command or path that is not set, on either side of a change",
+  },
+  "deploys.rollbackChange": {
+    message: "구성 변경",
+    description: "Rollback page: accessible name of one before/after change",
+  },
+  "deploys.rollbackRemoved": {
+    message: "제거됨",
+    description:
+      "Rollback page: accessible name of a change's minus line (the live value)",
+  },
+  "deploys.rollbackAdded": {
+    message: "추가됨",
+    description:
+      "Rollback page: accessible name of a change's plus line (the value after the rollback)",
+  },
+  "deploys.rollbackEnvKey": {
+    message: "키",
+    description:
+      "Rollback page: environment variable table's key column header",
+  },
+  "deploys.rollbackEnvValue": {
+    message: "값",
+    description:
+      "Rollback page: environment variable table's value column header; every value is masked",
+  },
+  "deploys.rollbackSecretFileAdded": {
+    message:
+      "시크릿 파일 {name}은(는) 이 배포 이후에 추가되었습니다. 롤백 시 이 파일은 무시됩니다.",
+    description:
+      "Rollback page: a secret file that did not exist at this deploy; {name} is the file name",
+  },
+  "deploys.rollbackSecretFileDeleted": {
+    message:
+      "시크릿 파일 {name}은(는) 이 배포 이후에 삭제되었습니다. 롤백하면 파일이 복원됩니다.",
+    description:
+      "Rollback page: a secret file deleted since this deploy; {name} is the file name",
+  },
+  "deploys.rollbackSecretFileChanged": {
+    message:
+      "시크릿 파일 {name}은(는) 이 배포 이후에 변경되었습니다. 롤백하면 원래 내용으로 되돌아갑니다.",
+    description:
+      "Rollback page: a secret file whose contents changed since this deploy; {name} is the file name",
+  },
+  "deploys.rollbackGroupUnlink": {
+    message:
+      "롤백하면 이 배포 이후 서비스에 추가된 환경 그룹 {name}의 연결이 해제됩니다.",
+    description:
+      "Rollback page: an environment group linked since this deploy; {name} is the group name",
+  },
+  "deploys.rollbackGroupLink": {
+    message:
+      "롤백하면 이 배포 이후 서비스에서 제거된 환경 그룹 {name}이(가) 다시 연결됩니다.",
+    description:
+      "Rollback page: an environment group unlinked since this deploy; {name} is the group name",
+  },
+  "deploys.rollbackGroupDeleted_other": {
+    message:
+      "이 배포에 연결되어 있던 환경 그룹 {n}개가 그 후 삭제되었습니다. 삭제된 그룹은 복원할 수 없습니다.",
+    description:
+      "Rollback page: several groups this deploy linked were deleted; {n} is the count",
+  },
+  "deploys.rollbackGroupCurrentValues": {
+    message: "롤백 시 이 배포에 연결된 환경 그룹의 현재 키와 값이 사용됩니다.",
+    description:
+      "Rollback page: shown whenever this deploy linked any environment group",
+  },
+  "deploys.rollbackPlanWarning": {
+    message:
+      "현재 요금제의 CPU 및 메모리 할당량이 이 배포에 원래 사용된 요금제보다 적습니다. 롤백이 성공하려면 다른 요금제로 변경해야 할 수 있습니다.",
+    description:
+      "Rollback page: the saved plan is smaller than the one this deploy ran on",
+  },
+  "deploys.rollbackStaticNotice": {
+    message: "{what}에 대한 변경 사항은 롤백되지 않습니다.",
+    description:
+      "Rollback page, static site: {what} is deploys.rollbackStaticNoticeWhat, in bold",
+  },
+  "deploys.rollbackStaticNoticeWhat": {
+    message: "리디렉션, 리라이트, 헤더",
+    description: "Rollback page, static site: what a rollback keeps current",
+  },
+  "deploys.rollbackAutoDeployTitle": {
+    message: "자동 배포",
+    description:
+      "Rollback page: title of the warning that the rollback turns auto-deploy off",
+  },
+  "deploys.rollbackAutoDeployBody": {
+    message: "의도치 않은 배포를 막기 위해 이 서비스에서 비활성화됩니다.",
+    description:
+      "Rollback page: the auto-deploy warning's text, after its title",
+  },
+  "deploys.rollbackConfirm": {
+    message: "이 배포로 롤백",
+    description: "Rollback page: the button that starts the rollback",
+  },
+  "deploys.rollbackCancel": {
+    message: "취소",
+    description:
+      "Rollback page: the button that goes back to the deploy without rolling back",
+  },
+  "deploys.rollbackErrorTitle": {
+    message: "오류:",
+    description: "Rollback page: label before the reason a rollback failed",
+  },
 };
 
 export default koDeploys;

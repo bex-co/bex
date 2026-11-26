@@ -5725,51 +5725,6 @@ const ptServices: Record<string, TranslationEntry> = {
     message: "Rollback",
     description: "Button to roll back to a specific deploy",
   },
-  "services.eventsRollbackConfirmTitle": {
-    message: "Fazer rollback para este deploy?",
-    description: "Rollback confirm dialog title",
-  },
-  "services.eventsRollbackConfirmBody": {
-    message:
-      "O serviço executará a imagem e a configuração retida deste deploy. As configurações salvas permanecem inalteradas e são aplicadas no próximo deploy padrão. O deploy automático será desativado. Deploys mais antigos sem configuração retida restauram somente a imagem.",
-    description: "Rollback confirm dialog body",
-  },
-  "services.eventsRollbackConfirmBodyCommit": {
-    message:
-      "O serviço executará a imagem deste deploy (criada a partir de {commit}) e a configuração retida. As configurações salvas permanecem inalteradas e são aplicadas no próximo deploy padrão. O deploy automático será desativado. Deploys mais antigos sem configuração retida restauram somente a imagem.",
-    description:
-      "Rollback confirm dialog body naming the commit being restored",
-  },
-  "services.eventsRollbackConfirmBodyNoAutoDeploy": {
-    message:
-      "O serviço executará a imagem e a configuração retida deste deploy. As configurações salvas permanecem inalteradas e são aplicadas no próximo deploy padrão. Deploys mais antigos sem configuração retida restauram somente a imagem.",
-    description:
-      "Rollback confirm dialog body when the service's auto-deploy is already off (always so for an image-backed service), so no auto-deploy sentence (w4/554)",
-  },
-  "services.eventsRollbackConfirmBodyCommitNoAutoDeploy": {
-    message:
-      "O serviço executará a imagem deste deploy (criada a partir de {commit}) e a configuração retida. As configurações salvas permanecem inalteradas e são aplicadas no próximo deploy padrão. Deploys mais antigos sem configuração retida restauram somente a imagem.",
-    description:
-      "Rollback confirm dialog body naming the commit, when the service's auto-deploy is already off (w4/554)",
-  },
-  "services.eventsRollbackConfirmBodyStatic": {
-    message:
-      "O site será publicado novamente a partir deste deploy. As configurações salvas permanecem inalteradas e o deploy automático será desativado.",
-    description:
-      "Rollback confirm dialog body for a static site: it re-publishes the deploy's files, it has no image or instances (w4/m141)",
-  },
-  "services.eventsRollbackConfirmBodyStaticCommit": {
-    message:
-      "O site será publicado novamente a partir deste deploy, {commit}. As configurações salvas permanecem inalteradas e o deploy automático será desativado.",
-    description:
-      "Static-site rollback confirm dialog body naming the commit being re-published (w4/m141)",
-  },
-  "services.eventsRollbackConfirmTagPull": {
-    message:
-      "{image} é uma tag: o rollback baixa a imagem que ela indica agora, que pode ser diferente da que esta implantação executou, e falha se a tag não existir mais.",
-    description:
-      "Rollback confirm sentence for a deploy whose image is a registry tag, not a digest: Render pulls the tag again (render.com/docs/rollbacks, w4/m432)",
-  },
   "services.eventsRollbackAria": {
     message: "Rollback para {target}",
     description:

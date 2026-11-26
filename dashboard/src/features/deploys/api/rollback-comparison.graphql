@@ -1,0 +1,43 @@
+# Render's rollbackComparison read behind its Confirm Rollback page
+# (internal/deploys/rollback_comparison.go, w1/m646;
+# docs/render-artifacts/rollback-comparison.md): the live release's
+# configuration beside the target deploy's. Names only, never a value.
+query RollbackComparison($serviceId: String!, $deployId: String!) {
+  rollbackComparison(serviceId: $serviceId, deployId: $deployId) {
+    currentPlanLower
+    currentLiveDeploy {
+      id
+      serviceConfigSnapshot {
+        ...RollbackSnapshotFields
+      }
+    }
+    deploy {
+      id
+      serviceConfigSnapshot {
+        ...RollbackSnapshotFields
+      }
+    }
+  }
+}
+
+fragment RollbackSnapshotFields on ServiceConfigSnapshot {
+  runCommand
+  preDeployCommand
+  dockerCommand
+  healthCheckPath
+  instances
+  plan
+  deletedEnvGroupCount
+  envGroups {
+    id
+    name
+  }
+  envVarChanges {
+    createdVarKeys
+    deletedVarKeys
+    updatedVarKeys
+    createdFileKeys
+    deletedFileKeys
+    updatedFileKeys
+  }
+}

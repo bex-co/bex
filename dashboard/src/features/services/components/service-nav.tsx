@@ -198,7 +198,8 @@ export function serviceTabLabelKey(
 
 /**
  * Whether `pathname` is a page Render draws without the service header (w3/106):
- * Logs, Metrics and Shell, and a deploy's detail. Render's service and cron
+ * Logs, Metrics and Shell, and a deploy's detail and its Confirm Rollback
+ * page (w1/m646, the same DeployContainer). Render's service and cron
  * layouts pass `hideResourceHeader` there (`CronJob-*.js` `ya`, walked signed
  * in 2026-11-25), giving the log explorer, the charts, the terminal and the
  * deploy's log the page's full height. Every other page keeps the header.
@@ -211,7 +212,7 @@ export function serviceHeaderHidden(
   const prefix = `${base}/${serviceId}/`;
   const path = pathname.replace(/\/+$/, "");
   if (!path.startsWith(prefix)) return false;
-  return /^(?:logs|metrics|shell|deploys\/[^/]+)$/.test(
+  return /^(?:logs|metrics|shell|deploys\/[^/]+(?:\/rollback)?)$/.test(
     path.slice(prefix.length),
   );
 }

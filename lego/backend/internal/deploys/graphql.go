@@ -92,6 +92,89 @@ var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// The rollbackComparison read's types (w1/m646): Render's snapshotFields,
+// docs/render-artifacts/rollback-comparison.md. An empty command or path is
+// null, as an absent one is, so a client compares them as Render's does.
+var keysType = graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))
+
+var envVarChangesGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "EnvVarChanges",
+	Fields: graphql.Fields{
+		"createdVarKeys":  gqlutil.Typed(keysType, func(c EnvVarChanges) any { return c.CreatedVarKeys }),
+		"deletedVarKeys":  gqlutil.Typed(keysType, func(c EnvVarChanges) any { return c.DeletedVarKeys }),
+		"updatedVarKeys":  gqlutil.Typed(keysType, func(c EnvVarChanges) any { return c.UpdatedVarKeys }),
+		"createdFileKeys": gqlutil.Typed(keysType, func(c EnvVarChanges) any { return c.CreatedFileKeys }),
+		"deletedFileKeys": gqlutil.Typed(keysType, func(c EnvVarChanges) any { return c.DeletedFileKeys }),
+		"updatedFileKeys": gqlutil.Typed(keysType, func(c EnvVarChanges) any { return c.UpdatedFileKeys }),
+	},
+})
+
+var snapshotEnvGroupGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ServiceConfigSnapshotEnvGroup",
+	Fields: graphql.Fields{
+		"id":   gqlutil.ReqStrField(func(g SnapshotEnvGroup) any { return g.ID }),
+		"name": gqlutil.ReqStrField(func(g SnapshotEnvGroup) any { return g.Name }),
+	},
+})
+
+var serviceConfigSnapshotGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ServiceConfigSnapshot",
+	Fields: graphql.Fields{
+		"runCommand":       gqlutil.OptionalStrField(func(s ServiceConfigSnapshot) any { return s.RunCommand }),
+		"preDeployCommand": gqlutil.OptionalStrField(func(s ServiceConfigSnapshot) any { return s.PreDeployCommand }),
+		"dockerCommand":    gqlutil.OptionalStrField(func(s ServiceConfigSnapshot) any { return s.DockerCommand }),
+		"healthCheckPath":  gqlutil.OptionalStrField(func(s ServiceConfigSnapshot) any { return s.HealthCheckPath }),
+		"instances": gqlutil.IntField(func(s ServiceConfigSnapshot) any {
+			if s.Instances == nil {
+				return nil
+			}
+			return *s.Instances
+		}),
+		// plan is the compute plan the release ran on, in Render's spelling
+		// ("starter", "pro_plus"); null when the record does not show it.
+		"plan": gqlutil.OptionalStrField(func(s ServiceConfigSnapshot) any { return s.Plan }),
+		"envGroups": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(snapshotEnvGroupGQLType))), func(s ServiceConfigSnapshot) any {
+			if s.EnvGroups == nil {
+				return []SnapshotEnvGroup{}
+			}
+			return s.EnvGroups
+		}),
+		"deletedEnvGroupCount": gqlutil.Typed(graphql.NewNonNull(graphql.Int), func(s ServiceConfigSnapshot) any { return s.DeletedEnvGroupCount }),
+		"envVarChanges":        gqlutil.Typed(graphql.NewNonNull(envVarChangesGQLType), func(s ServiceConfigSnapshot) any { return s.EnvVarChanges }),
+	},
+})
+
+var comparedDeployGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "RollbackComparisonDeploy",
+	Fields: graphql.Fields{
+		"id": gqlutil.ReqStrField(func(d ComparedDeploy) any { return d.ID }),
+		// null when the release keeps no configuration record.
+		"serviceConfigSnapshot": gqlutil.Typed(serviceConfigSnapshotGQLType, func(d ComparedDeploy) any {
+			if d.Snapshot == nil {
+				return nil
+			}
+			return *d.Snapshot
+		}),
+	},
+})
+
+var rollbackComparisonGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "RollbackComparison",
+	Fields: graphql.Fields{
+		"currentLiveDeploy": gqlutil.Typed(comparedDeployGQLType, func(c RollbackComparison) any {
+			if c.CurrentLiveDeploy == nil {
+				return nil
+			}
+			return *c.CurrentLiveDeploy
+		}),
+		"deploy": gqlutil.Typed(graphql.NewNonNull(comparedDeployGQLType), func(c RollbackComparison) any { return c.Deploy }),
+		// currentPlanLower stands in for Render's serverPlans: true when the
+		// saved plan, which a rollback keeps, is below the one the target ran
+		// on, so the page shows Render's plan warning.
+		"currentPlanLower": gqlutil.ReqBoolField(func(c RollbackComparison) any { return c.CurrentPlanLower }),
+	},
+})
+
 var deployHookGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DeployHook",
 	Fields: graphql.Fields{
@@ -169,6 +252,15 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Args: deployMutationArgs,
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Get(p.Context, p.Args["serviceId"].(string), p.Args["deployId"].(string))
+			},
+		},
+		// rollbackComparison is Render's read behind its Confirm Rollback page
+		// (w1/m646): the live release's configuration beside the target's.
+		"rollbackComparison": &graphql.Field{
+			Type: rollbackComparisonGQLType,
+			Args: deployMutationArgs,
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.RollbackComparison(p.Context, p.Args["serviceId"].(string), p.Args["deployId"].(string))
 			},
 		},
 	}

@@ -427,6 +427,7 @@ var keyPermissionOps = map[string][]core.KeyAction{
 	"GQL Query.project":                                                     {core.KeyProjectsView},
 	"GQL Query.projectMetrics":                                              {core.KeyMonitoringMetrics},
 	"GQL Query.projects":                                                    {core.KeyProjectsView},
+	"GQL Query.rollbackComparison":                                          {core.KeyDeploysRollback},
 	"GQL Query.savedSearch":                                                 {core.KeyProjectsView},
 	"GQL Query.savedSearches":                                               {core.KeyProjectsView},
 	"GQL Query.pushEventUrgencies":                                          {core.KeyNoGrant},

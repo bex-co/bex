@@ -1,12 +1,9 @@
 import { useCallback, useState } from "react";
 import { useMutation } from "@apollo/client/react";
-import { useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import { RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import {
-  CancelDeployDocument,
-  RollbackServiceDocument,
-} from "@/graphql/definitions";
+import { CancelDeployDocument } from "@/graphql/definitions";
 import { Button } from "@/common/components/ui/button";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { DEPLOY_REFETCH_QUERIES } from "@/common/lib/fetch-policy";
@@ -17,7 +14,6 @@ import {
   isCancelableDeployStatus,
   isRollbackableDeployStatus,
 } from "@/features/deploys/lib/deploy-status";
-import { deployCommitLabel } from "@/features/deploys/lib/deploy-presentation";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { ConfirmGateStatus } from "@/features/capabilities/components/confirm-gate-status";
 import {
@@ -27,11 +23,6 @@ import {
 import { getAccessGeneration } from "@/features/capabilities/lib/access-generation";
 import { useBoundActionConfirm } from "@/features/capabilities/hooks/use-bound-action-confirm";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
-import { useAskForProtectedConfirmation } from "@/common/providers/protected-retry-context";
-import {
-  ProtectedConfirmationDismissed,
-  withProtectedRetry,
-} from "@/features/services/lib/protected-confirmation";
 import {
   decisionForSelectedRollback,
   gateAction,
@@ -41,25 +32,20 @@ import {
   type ResourceActionId,
 } from "@/features/capabilities/lib/resource-actions";
 
-type ConfirmAction = "cancel" | "rollback";
+// The Rollback control, a link to the Confirm Rollback page or, while the
+// role or a precondition refuses it, a disabled button with the reason.
+const ROLLBACK_CONTROL_CLASS =
+  "h-8 gap-1.5 px-0 text-muted-foreground hover:text-foreground";
 
 export interface DeployActionsProps {
   serviceId: string;
   deployId: string;
   status: string;
   /**
-   * The selected deploy's commit, when the caller has it. Present => the
-   * rollback confirm dialog names `<short-sha> <subject>`; absent or
-   * unresolvable => it keeps the generic body (w4/m110 t003).
+   * The selected deploy's commit, when the caller has it: its short sha names
+   * the row's controls for a screen reader (w4/m141).
    */
   commitId?: string | null;
-  commitMessage?: string | null;
-  /**
-   * The image reference the selected deploy ran from. A registry tag (no
-   * `@sha256:` digest) is pulled again by a rollback, so the confirm dialog
-   * says so (w4/m432); a digest or absent image adds nothing.
-   */
-  image?: string | null;
   /**
    * The selected deploy's trigger (`create`, `api`, `deploy_hook`, …). It is
    * used for exactly one thing: a `create` deploy is the service's FIRST build,
@@ -75,12 +61,6 @@ export interface DeployActionsProps {
    * Absent or true leaves the row to its status.
    */
   buildAvailable?: boolean | null;
-  /**
-   * The service's auto-deploy is on, so the rollback turns it off. False (an
-   * image-backed service, or one already off) leaves that sentence out of the
-   * confirmation (w4/554); absent keeps it.
-   */
-  autoDeployOn?: boolean;
   onChanged?: () => void;
   /** A list shares its service-wide projection across all deploy rows. */
   projection?: ResourceActionsState;
@@ -91,23 +71,20 @@ export interface DeployActionsProps {
  * Status eligibility binds the selected deploy; operation permission and
  * shared preconditions come from deployActions. Service-wide
  * no_eligible_rollback_target does not disable an older selected eligible
- * row (w6/m143/t003).
+ * row (w6/m143/t003). Rollback is a link to the deploy's Confirm Rollback
+ * page, as on Render (w1/m646, DeployRollback); Cancel confirms in a dialog.
  */
 export function DeployActions({
   serviceId,
   deployId,
   status,
   commitId,
-  commitMessage,
-  image,
   trigger,
   buildAvailable,
-  autoDeployOn = true,
   onChanged,
   projection,
 }: DeployActionsProps) {
   const { t } = useTranslations();
-  const navigate = useNavigate();
   const router = useRouter();
   const base = useServiceBase();
   const { currentWorkspaceId } = useWorkspace();
@@ -148,7 +125,6 @@ export function DeployActions({
     openConfirm,
     clearConfirm,
     recheckBeforeDispatch,
-    isIntentCurrent,
     isResultCurrent,
   } = useBoundActionConfirm({
     resourceId: serviceId,
@@ -159,13 +135,8 @@ export function DeployActions({
     CancelDeployDocument,
     { refetchQueries: DEPLOY_REFETCH_QUERIES },
   );
-  const [rollbackService, { loading: rollingBack }] = useMutation(
-    RollbackServiceDocument,
-    { refetchQueries: DEPLOY_REFETCH_QUERIES },
-  );
-  const askForConfirmation = useAskForProtectedConfirmation();
   const [checking, setChecking] = useState(false);
-  const busy = checking || canceling || rollingBack;
+  const busy = checking || canceling;
 
   function reasonFor(action: "cancel_deploy" | "rollback"): string | undefined {
     if (deployActions.status !== "ready") {
@@ -186,86 +157,41 @@ export function DeployActions({
   const cancelReason = statusCancel ? reasonFor("cancel_deploy") : undefined;
   const rollbackReason = statusRollback ? reasonFor("rollback") : undefined;
 
-  const confirm: ConfirmAction | null =
-    pending?.action === "cancel_deploy"
-      ? "cancel"
-      : pending?.action === "rollback"
-        ? "rollback"
-        : null;
+  const confirm = pending?.action === "cancel_deploy";
   // An open confirmation survives a routine permission refresh but cannot
   // dispatch until access is fresh again (w4/m159).
-  const confirmBlocked =
-    blockedReason ??
-    (confirm === "cancel"
-      ? cancelReason
-      : confirm === "rollback"
-        ? rollbackReason
-        : undefined);
+  const confirmBlocked = blockedReason ?? (confirm ? cancelReason : undefined);
 
   async function handleConfirm() {
     if (busy || !pending || confirmBlocked) return;
-    const action = pending.action;
     setChecking(true);
     let dispatched = false;
     try {
       const { ok, binding } = await recheckBeforeDispatch();
       if (!ok || !binding) return;
       dispatched = true;
-      if (action === "cancel_deploy") {
-        const dispatchedAccessGeneration = getAccessGeneration();
-        await cancelDeploy({
-          variables: {
-            serviceId: binding.resourceId,
-            deployId: binding.deployId ?? deployId,
-          },
-        });
-        // The mutation already ran; only a context change (not a routine
-        // permission refresh) makes its result obsolete. The canceled row
-        // loses its Cancel and may unmount this control first (w4/623).
-        if (
-          !isResultCurrent(
-            binding,
-            dispatchedAccessGeneration,
-            () => router.state.location.pathname,
-          )
+      const dispatchedAccessGeneration = getAccessGeneration();
+      await cancelDeploy({
+        variables: {
+          serviceId: binding.resourceId,
+          deployId: binding.deployId ?? deployId,
+        },
+      });
+      // The mutation already ran; only a context change (not a routine
+      // permission refresh) makes its result obsolete. The canceled row
+      // loses its Cancel and may unmount this control first (w4/623).
+      if (
+        !isResultCurrent(
+          binding,
+          dispatchedAccessGeneration,
+          () => router.state.location.pathname,
         )
-          return;
-        toast.success(t("services.cancelDeploySuccess"));
-      } else if (action === "rollback") {
-        // A rollback swaps the running code: a protected member answers with
-        // the phrase to retry with (w4/m176).
-        const { data } = await withProtectedRetry(
-          askForConfirmation,
-          (confirm) =>
-            rollbackService({
-              variables: {
-                serviceId: binding.resourceId,
-                deployId: binding.deployId ?? deployId,
-                confirm,
-              },
-            }),
-        );
-        if (!isIntentCurrent(binding)) return;
-        const rollbackId = data?.rollbackService?.id;
-        if (!rollbackId)
-          throw new Error("rollbackService returned no deploy id");
-        toast.success(t("services.rollbackSuccess"));
-        void navigate({
-          to: `${base}/$serviceId/deploys/$deployId`,
-          params: { serviceId, deployId: rollbackId },
-        });
-      }
+      )
+        return;
+      toast.success(t("services.cancelDeploySuccess"));
       onChanged?.();
     } catch (err) {
-      if (err instanceof ProtectedConfirmationDismissed) return;
-      toast.error(
-        mutationErrorMessage(
-          err,
-          action === "cancel_deploy"
-            ? t("services.cancelDeployError")
-            : t("services.rollbackError"),
-        ),
-      );
+      toast.error(mutationErrorMessage(err, t("services.cancelDeployError")));
     } finally {
       // An access lapse mid-check keeps the same-context dialog for a new
       // click; a refusal has already closed it.
@@ -274,39 +200,13 @@ export function DeployActions({
     }
   }
 
-  function open(action: ConfirmAction) {
-    const id: ResourceActionId =
-      action === "cancel" ? "cancel_deploy" : "rollback";
-    const reason = action === "cancel" ? cancelReason : rollbackReason;
-    if (reason) return;
-    openConfirm(id);
+  function openCancel() {
+    if (cancelReason) return;
+    openConfirm("cancel_deploy");
   }
 
   if (!statusCancel && !statusRollback) return null;
 
-  // Name the code the rollback restores; a commit-less deploy keeps the
-  // generic body rather than naming nothing (w4/m110 t003). A static site is
-  // re-published, with no image or instances to speak of (w4/m141).
-  const commit = deployCommitLabel(commitId, commitMessage);
-  const staticSite = base === "/static";
-  const baseRollbackBody = staticSite
-    ? commit
-      ? t("services.eventsRollbackConfirmBodyStaticCommit", { commit })
-      : t("services.eventsRollbackConfirmBodyStatic")
-    : !autoDeployOn
-      ? commit
-        ? t("services.eventsRollbackConfirmBodyCommitNoAutoDeploy", { commit })
-        : t("services.eventsRollbackConfirmBodyNoAutoDeploy")
-      : commit
-        ? t("services.eventsRollbackConfirmBodyCommit", { commit })
-        : t("services.eventsRollbackConfirmBody");
-  // Render: "With a tag, Render pulls the latest image under that tag, which
-  // may differ from the original" (render.com/docs/rollbacks, w4/m432).
-  const tag = image?.trim() ?? "";
-  const rollbackBody =
-    !staticSite && tag !== "" && !tag.includes("@")
-      ? `${baseRollbackBody} ${t("services.eventsRollbackConfirmTagPull", { image: tag })}`
-      : baseRollbackBody;
   // Each row's controls name their deploy, so two rows are not two identical
   // "Rollback" buttons to a screen reader (w4/m141, as w4/084 did for revoke).
   const shortSha = (commitId ?? "").trim().slice(0, 7);
@@ -321,7 +221,7 @@ export function DeployActions({
               size="sm"
               variant="outline"
               disabled={busy || !!cancelReason}
-              onClick={() => open("cancel")}
+              onClick={openCancel}
               aria-label={t("services.eventsCancelDeployAria", { target })}
             >
               {t("services.eventsCancelDeploy")}
@@ -330,38 +230,47 @@ export function DeployActions({
         ) : null}
         {statusRollback ? (
           <PermissionTooltip reason={rollbackReason}>
-            <Button
-              size="sm"
-              variant="link"
-              disabled={busy || !!rollbackReason}
-              onClick={() => open("rollback")}
-              aria-label={t("services.eventsRollbackAria", { target })}
-              className="h-8 gap-1.5 px-0 text-muted-foreground hover:text-foreground"
-            >
-              <RotateCcw />
-              {t("services.eventsRollback")}
-            </Button>
+            {rollbackReason || busy ? (
+              <Button
+                size="sm"
+                variant="link"
+                disabled
+                aria-label={t("services.eventsRollbackAria", { target })}
+                className={ROLLBACK_CONTROL_CLASS}
+              >
+                <RotateCcw />
+                {t("services.eventsRollback")}
+              </Button>
+            ) : (
+              <Button
+                asChild
+                size="sm"
+                variant="link"
+                className={ROLLBACK_CONTROL_CLASS}
+              >
+                <Link
+                  to={`${base}/$serviceId/deploys/$deployId/rollback`}
+                  params={{ serviceId, deployId }}
+                  aria-label={t("services.eventsRollbackAria", { target })}
+                >
+                  <RotateCcw />
+                  {t("services.eventsRollback")}
+                </Link>
+              </Button>
+            )}
           </PermissionTooltip>
         ) : null}
       </div>
 
       <ConfirmDialog
-        open={confirm !== null}
+        open={confirm}
         onOpenChange={(openState) => !openState && clearConfirm()}
-        title={
-          confirm === "cancel"
-            ? t("services.eventsCancelConfirmTitle")
-            : t("services.eventsRollbackConfirmTitle")
-        }
-        description={
-          confirm === "cancel"
-            ? t(
-                trigger === "create"
-                  ? "services.eventsCancelConfirmBodyFirstDeploy"
-                  : "services.eventsCancelConfirmBody",
-              )
-            : rollbackBody
-        }
+        title={t("services.eventsCancelConfirmTitle")}
+        description={t(
+          trigger === "create"
+            ? "services.eventsCancelConfirmBodyFirstDeploy"
+            : "services.eventsCancelConfirmBody",
+        )}
         cancelLabel={t("services.eventsConfirmCancel")}
         confirmLabel={t("services.eventsConfirmProceed")}
         pending={busy}

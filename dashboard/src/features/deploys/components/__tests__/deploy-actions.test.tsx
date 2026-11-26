@@ -12,7 +12,6 @@ import {
 } from "@tanstack/react-router";
 import { DeployActions } from "../deploy-actions";
 import { toResourceSnapshot } from "@/features/capabilities/lib/resource-actions";
-import { codedGraphQLError } from "@/test/mocks/apollo";
 
 const cancelDeploy = vi.fn();
 const rollbackService = vi.fn();
@@ -44,11 +43,6 @@ vi.mock("sonner", () => ({
     warning: vi.fn(),
     error: (...args: unknown[]) => toastError(...args),
   },
-}));
-
-const ask = vi.fn();
-vi.mock("@/common/providers/protected-retry-context", () => ({
-  useAskForProtectedConfirmation: () => ask,
 }));
 
 vi.mock("@/features/workspaces/context/hooks", () => ({
@@ -97,11 +91,8 @@ function renderActions(
   status: string,
   commit?: {
     commitId?: string | null;
-    commitMessage?: string | null;
-    image?: string | null;
     trigger?: string | null;
     buildAvailable?: boolean | null;
-    autoDeployOn?: boolean;
   },
 ) {
   const root = createRootRoute();
@@ -114,16 +105,19 @@ function renderActions(
         deployId="dep-1"
         status={status}
         commitId={commit?.commitId}
-        commitMessage={commit?.commitMessage}
-        image={commit?.image}
         trigger={commit?.trigger}
         buildAvailable={commit?.buildAvailable}
-        autoDeployOn={commit?.autoDeployOn}
       />
     ),
   });
+  // Rollback is a link to the deploy's Confirm Rollback page (w1/m646).
+  const rollbackPage = createRoute({
+    getParentRoute: () => root,
+    path: "/services/$serviceId/deploys/$deployId/rollback",
+    component: () => <p>confirm rollback</p>,
+  });
   const router = createRouter({
-    routeTree: root.addChildren([route]),
+    routeTree: root.addChildren([route, rollbackPage]),
     history: createMemoryHistory({
       initialEntries: ["/services/web/deploys/dep-1"],
     }),
@@ -183,7 +177,6 @@ beforeEach(() => {
   toastSuccess.mockReset();
   cancelDeploy.mockReset();
   rollbackService.mockReset();
-  ask.mockReset();
   apolloQuery.mockReset();
   deployState = {
     status: "ready",
@@ -286,131 +279,45 @@ describe("DeployActions", () => {
     // The row is not cancelable either, so nothing renders for it.
     await vi.waitFor(() => {
       expect(
-        screen.queryByRole("button", { name: /^Rollback to / }),
+        screen.queryByRole("link", { name: /^Rollback to / }),
       ).not.toBeInTheDocument();
     });
-    expect(rollbackService).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("button", { name: /^Rollback to / }),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps Rollback when the build is stored or its state is unknown", async () => {
     renderActions("deactivated", { buildAvailable: true });
     expect(
-      await screen.findByRole("button", { name: /^Rollback to / }),
+      await screen.findByRole("link", { name: /^Rollback to / }),
     ).toBeInTheDocument();
   });
 
-  it("rolls back a deactivated deploy and navigates to the new deploy", async () => {
-    rollbackService.mockResolvedValue({
-      data: {
-        rollbackService: { id: "dep-rollback", status: "update_in_progress" },
-      },
-    });
+  // Render's Rollback opens the deploy's Confirm Rollback page, which lists
+  // what the rollback changes before anything runs (w1/m646).
+  it("opens the deploy's Confirm Rollback page and dispatches nothing", async () => {
     const user = userEvent.setup();
     const router = renderActions("deactivated");
 
     await user.click(
-      await screen.findByRole("button", { name: /^Rollback to / }),
+      await screen.findByRole("link", { name: /^Rollback to / }),
     );
-    const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
-
-    expect(rollbackService).toHaveBeenCalledWith({
-      variables: { serviceId: "web", deployId: "dep-1" },
-    });
-    await vi.waitFor(() => {
-      expect(router.state.location.pathname).toBe(
-        "/services/web/deploys/dep-rollback",
-      );
-    });
-  });
-
-  // w4/m176: a rollback swaps the running code, so a protected member refuses
-  // with the phrase; the dashboard asks for exactly that phrase and retries.
-  it("retries a protected rollback with the server-issued phrase", async () => {
-    rollbackService
-      .mockRejectedValueOnce(
-        codedGraphQLError("PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED", {
-          confirm: "sudo repoint service web",
-          name: "web",
-        }),
-      )
-      .mockResolvedValueOnce({
-        data: {
-          rollbackService: { id: "dep-rollback", status: "update_in_progress" },
-        },
-      });
-    ask.mockResolvedValue("sudo repoint service web");
-    const user = userEvent.setup();
-    const router = renderActions("deactivated");
-
-    await user.click(
-      await screen.findByRole("button", { name: /^Rollback to / }),
-    );
-    const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
 
     await vi.waitFor(() => {
       expect(router.state.location.pathname).toBe(
-        "/services/web/deploys/dep-rollback",
+        "/services/web/deploys/dep-1/rollback",
       );
     });
-    expect(ask).toHaveBeenCalledWith("sudo repoint service web", "web");
-    expect(rollbackService).toHaveBeenNthCalledWith(2, {
-      variables: {
-        serviceId: "web",
-        deployId: "dep-1",
-        confirm: "sudo repoint service web",
-      },
-    });
-    expect(toastError).not.toHaveBeenCalled();
-  });
-
-  it("stays quiet when the protected phrase is dismissed", async () => {
-    rollbackService.mockRejectedValueOnce(
-      codedGraphQLError("PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED", {
-        confirm: "sudo repoint service web",
-      }),
-    );
-    ask.mockResolvedValue(null);
-    const user = userEvent.setup();
-    renderActions("deactivated");
-
-    await user.click(
-      await screen.findByRole("button", { name: /^Rollback to / }),
-    );
-    const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
-
-    await vi.waitFor(() => expect(ask).toHaveBeenCalled());
-    expect(rollbackService).toHaveBeenCalledTimes(1);
-    expect(toastError).not.toHaveBeenCalled();
-  });
-
-  it("does not navigate when rollback omits the new deploy id", async () => {
-    rollbackService.mockResolvedValue({
-      data: { rollbackService: { id: null, status: "update_in_progress" } },
-    });
-    const user = userEvent.setup();
-    const router = renderActions("deactivated");
-
-    await user.click(
-      await screen.findByRole("button", { name: /^Rollback to / }),
-    );
-    await user.click(
-      within(await screen.findByRole("alertdialog")).getByRole("button", {
-        name: "Proceed",
-      }),
-    );
-
-    await vi.waitFor(() => expect(rollbackService).toHaveBeenCalled());
-    expect(router.state.location.pathname).toBe("/services/web/deploys/dep-1");
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(rollbackService).not.toHaveBeenCalled();
   });
 
   it("offers rollback for a deactivated deploy that previously went live", async () => {
     renderActions("deactivated");
 
     expect(
-      await screen.findByRole("button", { name: /^Rollback to / }),
+      await screen.findByRole("link", { name: /^Rollback to / }),
     ).toBeInTheDocument();
   });
 
@@ -418,46 +325,47 @@ describe("DeployActions", () => {
     renderActions("live");
 
     expect(
-      screen.queryByRole("button", { name: /^Rollback to / }),
+      screen.queryByRole("link", { name: /^Rollback to / }),
     ).not.toBeInTheDocument();
   });
 
-  it("refetches the service header's own query after cancel and rollback", async () => {
+  it("refetches the service header's own query after cancel", async () => {
     renderActions("update_in_progress");
 
-    for (const name of ["CancelDeploy", "RollbackService"]) {
-      expect(mutationOptions[name]?.refetchQueries).toEqual([
-        "Server",
-        "Deploys",
-        "ServiceEvents",
-      ]);
-    }
+    expect(mutationOptions.CancelDeploy?.refetchQueries).toEqual([
+      "Server",
+      "Deploys",
+      "ServiceEvents",
+    ]);
   });
 
   it("offers neither action for a failed deploy", async () => {
     renderActions("build_failed");
 
     expect(
-      screen.queryByRole("button", { name: /^Rollback to / }),
+      screen.queryByRole("link", { name: /^Rollback to / }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /^Cancel deploy / }),
     ).not.toBeInTheDocument();
   });
 
-  it("dispatches zero rollback mutations when create is denied", async () => {
+  it("offers no way to the rollback page when the role may not roll back", async () => {
     deployState = {
       status: "ready",
       snapshot: deniedCreateSnapshot,
       refresh: vi.fn().mockResolvedValue(undefined),
     };
     const user = userEvent.setup();
-    renderActions("deactivated");
+    const router = renderActions("deactivated");
 
     const btn = await screen.findByRole("button", { name: /^Rollback to / });
     expect(btn).toBeDisabled();
+    expect(
+      screen.queryByRole("link", { name: /^Rollback to / }),
+    ).not.toBeInTheDocument();
     await user.click(btn);
-    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/services/web/deploys/dep-1");
     expect(rollbackService).not.toHaveBeenCalled();
   });
 
@@ -492,112 +400,11 @@ describe("DeployActions", () => {
     expect(btn).not.toHaveAttribute("aria-disabled", "true");
   });
 
-  // w4/m110 t003: the last checkpoint before an irreversible rollout must
-  // answer "roll back to WHAT?". The row behind the dialog shows the commit;
-  // for months the dialog did not.
-  it("names the commit being restored in the rollback confirm dialog", async () => {
+  // The cancel dialog says what happens to the live version and to saved
+  // changes (w1/m152 t003, w4/334) but names no commit.
+  it("leaves the cancel confirm copy free of the commit", async () => {
     const user = userEvent.setup();
-    renderActions("deactivated", {
-      commitId: "039c3471ad2f6c9f2d8f5ab0c8d4e1f2a3b4c5d6",
-      commitMessage: "Add Render deployment configuration\n\nbody line",
-    });
-
-    await user.click(
-      await screen.findByRole("button", { name: /^Rollback to / }),
-    );
-    const dialog = await screen.findByRole("alertdialog");
-    expect(dialog).toHaveTextContent(
-      "039c347 Add Render deployment configuration",
-    );
-    // The subject only — never the commit body.
-    expect(dialog).not.toHaveTextContent("body line");
-    // No raw interpolation placeholder leaked through.
-    expect(dialog.textContent ?? "").not.toContain("{commit}");
-  });
-
-  it("keeps the generic rollback body when the deploy has no commit", async () => {
-    const user = userEvent.setup();
-    renderActions("deactivated", { commitId: null, commitMessage: null });
-
-    await user.click(
-      await screen.findByRole("button", { name: /^Rollback to / }),
-    );
-    const dialog = await screen.findByRole("alertdialog");
-    // Runtime restoration must not imply overwriting saved settings. Disclose
-    // the dashboard auto-deploy behavior and the legacy image-only limitation.
-    expect(dialog).toHaveTextContent(
-      "The service will run this deploy's image and retained configuration. Saved settings stay unchanged and apply with the next standard deploy. Auto-deploy will be turned off. Older deploys without retained configuration restore only the image.",
-    );
-    expect(dialog.textContent ?? "").not.toContain("built from");
-  });
-
-  // w4/554: a rollback turns auto-deploy off only where it is on; an
-  // image-backed service's, or one already off, leaves the sentence out.
-  it.each([
-    [
-      null,
-      "The service will run this deploy's image and retained configuration.",
-    ],
-    ["039c3471ad2f6c9f2d8f5ab0c8d4e1f2a3b4c5d6", "(built from 039c347"],
-  ])(
-    "leaves auto-deploy out of the rollback when it is off (commit %s)",
-    async (commitId, body) => {
-      const user = userEvent.setup();
-      renderActions("deactivated", {
-        commitId,
-        commitMessage: commitId ? "Ship it" : null,
-        autoDeployOn: false,
-      });
-
-      await user.click(
-        await screen.findByRole("button", { name: /^Rollback to / }),
-      );
-      const dialog = await screen.findByRole("alertdialog");
-      expect(dialog).toHaveTextContent(body);
-      expect(dialog).toHaveTextContent(
-        "Older deploys without retained configuration restore only the image.",
-      );
-      expect(dialog).not.toHaveTextContent(/auto-deploy/i);
-    },
-  );
-
-  // w4/m432, Render's rollbacks page: "With a tag, Render pulls the latest
-  // image under that tag ... A digest always refers to the same image."
-  it.each([
-    ["docker.io/acme/web:v1", true],
-    ["docker.io/acme/web@sha256:" + "a".repeat(64), false],
-    ["acme/web:v1@sha256:" + "a".repeat(64), false],
-    [null, false],
-  ])(
-    "says a tag rollback pulls what the tag names now (image %s)",
-    async (image, tag) => {
-      const user = userEvent.setup();
-      renderActions("deactivated", { image, autoDeployOn: false });
-
-      await user.click(
-        await screen.findByRole("button", { name: /^Rollback to / }),
-      );
-      const dialog = await screen.findByRole("alertdialog");
-      const sentence =
-        "is a tag: the rollback pulls the image it names now, which may differ from the one this deploy ran, and fails if the tag no longer exists.";
-      if (tag) {
-        expect(dialog).toHaveTextContent(`${image} ${sentence}`);
-      } else {
-        expect(dialog).not.toHaveTextContent(sentence);
-      }
-      expect(dialog.textContent ?? "").not.toContain("{image}");
-    },
-  );
-
-  // The cancel dialog is untouched by the commit threading: it says what
-  // happens to the live version and to saved changes (w1/m152 t003, w4/334)
-  // but names no commit.
-  it("leaves the cancel confirm copy free of the commit threading", async () => {
-    const user = userEvent.setup();
-    renderActions("update_in_progress", {
-      commitId: "039c3471",
-      commitMessage: "Add Render deployment configuration",
-    });
+    renderActions("update_in_progress", { commitId: "039c3471" });
 
     await user.click(
       await screen.findByRole("button", { name: /^Cancel deploy / }),
@@ -664,30 +471,11 @@ describe("DeployActions — the cancel dialog tells the truth about what stays l
   }
 });
 
-// w4/m141: the button enabled an older rollbackable row over the service-wide
-// no_eligible_rollback_target (w6/m143/t003), and the dispatch recheck then
-// judged the raw summary and returned without a word. One rule now.
-describe("DeployActions dispatch recheck (w4/m141)", () => {
-  const noTargetRows = {
-    data: {
-      deployActions: [
-        {
-          action: "cancel_deploy",
-          outcome: "allowed",
-          reason: null,
-          precondition: "no_active_deploy",
-        },
-        {
-          action: "rollback",
-          outcome: "allowed",
-          reason: null,
-          precondition: "no_eligible_rollback_target",
-        },
-      ],
-    },
-  };
-
-  it("dispatches a rollback of a selected eligible row the service-wide summary missed", async () => {
+// w4/m141: a selected rollbackable row stays a target when the service-wide
+// summary found none (w6/m143/t003); the page it opens rechecks the grant
+// before dispatching (deploy-rollback.test.tsx).
+describe("DeployActions — the Rollback link", () => {
+  it("links an eligible row the service-wide summary missed", async () => {
     deployState.snapshot = toResourceSnapshot("tea-test", "web", [
       {
         action: "rollback",
@@ -696,55 +484,17 @@ describe("DeployActions dispatch recheck (w4/m141)", () => {
         precondition: "no_eligible_rollback_target",
       },
     ]);
-    apolloQuery.mockResolvedValue(noTargetRows);
-    rollbackService.mockResolvedValue({
-      data: { rollbackService: { id: "dep-9" } },
-    });
-    const user = userEvent.setup();
     renderActions("deactivated");
 
-    await user.click(
-      await screen.findByRole("button", { name: /^Rollback to / }),
-    );
-    await user.click(await screen.findByRole("button", { name: "Proceed" }));
-
-    expect(rollbackService).toHaveBeenCalledTimes(1);
-    expect(toastError).not.toHaveBeenCalled();
-  });
-
-  it("says why when the recheck refuses, instead of closing silently", async () => {
-    apolloQuery.mockResolvedValue({
-      data: {
-        deployActions: [
-          {
-            action: "rollback",
-            outcome: "allowed",
-            reason: null,
-            precondition: "suspended",
-          },
-        ],
-      },
-    });
-    const user = userEvent.setup();
-    renderActions("deactivated");
-
-    await user.click(
-      await screen.findByRole("button", { name: /^Rollback to / }),
-    );
-    await user.click(await screen.findByRole("button", { name: "Proceed" }));
-
-    expect(rollbackService).not.toHaveBeenCalled();
-    expect(toastError).toHaveBeenCalledTimes(1);
-    expect(String(toastError.mock.calls[0][0])).not.toBe("");
+    expect(
+      await screen.findByRole("link", { name: /^Rollback to / }),
+    ).toHaveAttribute("href", "/services/web/deploys/dep-1/rollback");
   });
 
   it("names each row's controls after the deploy they act on", async () => {
-    renderActions("deactivated", {
-      commitId: "80b423bc1234",
-      commitMessage: "first",
-    });
+    renderActions("deactivated", { commitId: "80b423bc1234" });
     expect(
-      await screen.findByRole("button", {
+      await screen.findByRole("link", {
         name: "Rollback to 80b423b (dep-1)",
       }),
     ).toBeInTheDocument();
@@ -753,8 +503,8 @@ describe("DeployActions dispatch recheck (w4/m141)", () => {
   // WCAG 2.5.3 Label in Name (w4/466): "click Rollback" must reach the button.
   it("starts the Rollback control's accessible name with its visible label", async () => {
     renderActions("deactivated", { commitId: "80b423bc1234" });
-    const button = await screen.findByRole("button", { name: /^Rollback/ });
-    expect(button).toHaveTextContent("Rollback");
-    expect(button.getAttribute("aria-label")).toMatch(/^Rollback/);
+    const link = await screen.findByRole("link", { name: /^Rollback/ });
+    expect(link).toHaveTextContent("Rollback");
+    expect(link.getAttribute("aria-label")).toMatch(/^Rollback/);
   });
 });

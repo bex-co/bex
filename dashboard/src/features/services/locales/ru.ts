@@ -5715,51 +5715,6 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "Откатить",
     description: "Button to roll back to a specific deploy",
   },
-  "services.eventsRollbackConfirmTitle": {
-    message: "Откатиться к этому деплою?",
-    description: "Rollback confirm dialog title",
-  },
-  "services.eventsRollbackConfirmBody": {
-    message:
-      "Сервис будет работать на образе этого деплоя и сохранённой конфигурации. Сохранённые настройки не изменятся и применятся при следующем стандартном деплое. Автодеплой будет отключён. Для старых деплоев без сохранённой конфигурации восстанавливается только образ.",
-    description: "Rollback confirm dialog body",
-  },
-  "services.eventsRollbackConfirmBodyCommit": {
-    message:
-      "Сервис будет работать на образе этого деплоя (собранном из {commit}) и сохранённой конфигурации. Сохранённые настройки не изменятся и применятся при следующем стандартном деплое. Автодеплой будет отключён. Для старых деплоев без сохранённой конфигурации восстанавливается только образ.",
-    description:
-      "Rollback confirm dialog body naming the commit being restored",
-  },
-  "services.eventsRollbackConfirmBodyNoAutoDeploy": {
-    message:
-      "Сервис будет работать на образе этого деплоя и сохранённой конфигурации. Сохранённые настройки не изменятся и применятся при следующем стандартном деплое. Для старых деплоев без сохранённой конфигурации восстанавливается только образ.",
-    description:
-      "Rollback confirm dialog body when the service's auto-deploy is already off (always so for an image-backed service), so no auto-deploy sentence (w4/554)",
-  },
-  "services.eventsRollbackConfirmBodyCommitNoAutoDeploy": {
-    message:
-      "Сервис будет работать на образе этого деплоя (собранном из {commit}) и сохранённой конфигурации. Сохранённые настройки не изменятся и применятся при следующем стандартном деплое. Для старых деплоев без сохранённой конфигурации восстанавливается только образ.",
-    description:
-      "Rollback confirm dialog body naming the commit, when the service's auto-deploy is already off (w4/554)",
-  },
-  "services.eventsRollbackConfirmBodyStatic": {
-    message:
-      "Сайт будет опубликован заново из этого деплоя. Сохранённые настройки не изменятся, а автодеплой будет отключён.",
-    description:
-      "Rollback confirm dialog body for a static site: it re-publishes the deploy's files, it has no image or instances (w4/m141)",
-  },
-  "services.eventsRollbackConfirmBodyStaticCommit": {
-    message:
-      "Сайт будет опубликован заново из этого деплоя, {commit}. Сохранённые настройки не изменятся, а автодеплой будет отключён.",
-    description:
-      "Static-site rollback confirm dialog body naming the commit being re-published (w4/m141)",
-  },
-  "services.eventsRollbackConfirmTagPull": {
-    message:
-      "{image} — это тег: откат загрузит образ, на который он указывает сейчас. Он может отличаться от образа, который запускал этот деплой, а если тега больше нет, откат завершится ошибкой.",
-    description:
-      "Rollback confirm sentence for a deploy whose image is a registry tag, not a digest: Render pulls the tag again (render.com/docs/rollbacks, w4/m432)",
-  },
   "services.eventsRollbackAria": {
     message: "Откатиться к {target}",
     description:

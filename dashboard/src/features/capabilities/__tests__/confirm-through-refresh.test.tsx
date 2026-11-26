@@ -138,12 +138,12 @@ function answer(name: QueryName) {
         serverActions: decisions(["suspend", "resume", "restart"], {}),
       },
     };
-  // The service-wide summary says no rollback target; the selected
-  // deactivated row must still be one (w6/m143, w4/m141).
+  // The service-wide summary says no deploy is active; the selected
+  // in-progress row must still be cancelable (w4/m141).
   return {
     data: {
       deployActions: decisions(["deploy", "cancel_deploy", "rollback"], {
-        rollback: "no_eligible_rollback_target",
+        cancel_deploy: "no_active_deploy",
       }),
     },
   };
@@ -184,6 +184,9 @@ beforeEach(() => {
   setAutoDeploy.mockResolvedValue(true);
   rollbackService.mockResolvedValue({
     data: { rollbackService: { id: "dep-rb" } },
+  });
+  cancelDeploy.mockResolvedValue({
+    data: { cancelDeploy: { id: "dep-old", status: "canceled" } },
   });
   apolloQuery
     .mockReset()
@@ -367,21 +370,22 @@ const consumers: Consumer[] = [
     open: () => pickMenuItem(/^Actions for /, "Restart"),
   },
   {
-    name: "deploy row → Rollback (DeployActions, selected-row adjustment)",
+    // Rollback confirms on its own page (w1/m646, deploy-rollback.test.tsx).
+    name: "deploy row → Cancel (DeployActions, selected-row adjustment)",
     confirmLabel: "Proceed",
     render: () => {
       renderWithProvider(
         <DeployActions
           serviceId="srv-first"
           deployId="dep-old"
-          status="deactivated"
+          status="update_in_progress"
         />,
       );
-      return { dispatched: () => rollbackService.mock.calls.length };
+      return { dispatched: () => cancelDeploy.mock.calls.length };
     },
     open: async () => {
       fireEvent.click(
-        screen.getByRole("button", { name: "Rollback to dep-old" }),
+        screen.getByRole("button", { name: "Cancel deploy dep-old" }),
       );
     },
   },

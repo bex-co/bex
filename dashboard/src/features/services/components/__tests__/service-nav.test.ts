@@ -258,6 +258,8 @@ describe("serviceHeaderHidden (Render's hideResourceHeader)", () => {
     "/services/srv-1/metrics",
     "/services/srv-1/shell",
     "/services/srv-1/deploys/dep-1",
+    // The deploy's Confirm Rollback page is the deploy page (w1/m646).
+    "/services/srv-1/deploys/dep-1/rollback",
   ])("hides the header on %s", (path) => {
     expect(serviceHeaderHidden(path, "srv-1")).toBe(true);
   });

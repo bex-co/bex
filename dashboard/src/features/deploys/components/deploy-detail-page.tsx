@@ -13,7 +13,7 @@ import { useBuildSource } from "@/features/services/hooks/use-build-sources";
 import { useServer } from "@/features/services/hooks/use-server";
 import { ActivityGate } from "@/features/capabilities/components/activity-gate";
 import { LogsGate } from "@/features/capabilities/components/logs-gate";
-import { useDeploy } from "../hooks/use-deploy";
+import { useDeploy, type DeployView } from "../hooks/use-deploy";
 import { useCanceledStepEnd } from "../hooks/use-canceled-step-end";
 import { deployWindowEnd } from "../lib/deploy-window";
 import { deployTitle } from "../lib/deploy-presentation";
@@ -22,6 +22,7 @@ import { DeployHeader } from "./deploy-header";
 import { DeployLogPanel } from "./deploy-log-panel";
 import { DeployTimeline } from "./deploy-timeline";
 import { DeployActions } from "./deploy-actions";
+import { DeployRollback } from "./deploy-rollback";
 import { DEPLOY_BODY_CLASS, DEPLOY_PAGE_TOP_CLASS } from "./deploy-page-layout";
 
 export interface DeployDetailPageProps {
@@ -31,6 +32,11 @@ export interface DeployDetailPageProps {
   range?: LogRange;
   /** Writes the range back to the URL (undefined clears `?r=`). */
   onRangeChange?: (range: LogRange | undefined) => void;
+  /**
+   * The deploy's `/rollback` route (w1/m646): Render's Confirm Rollback
+   * section stands in place of the log, and the header offers no Rollback.
+   */
+  rollback?: boolean;
 }
 
 /**
@@ -55,6 +61,7 @@ function DeployDetail({
   deployId,
   range,
   onRangeChange,
+  rollback = false,
 }: DeployDetailPageProps) {
   const { t } = useTranslations();
   const base = useServiceBase();
@@ -79,37 +86,6 @@ function DeployDetail({
     [serviceId, base],
   );
   useNotFoundRedirect(notFound, deploysTab);
-
-  // The log window: `?r=` overrides with [now - range, now) — open-ended so
-  // the viewer keeps polling live, exactly like a still-running deploy.
-  // Memoized on the range value so re-renders don't shift the window (and
-  // re-fire the three log queries) every second.
-  const window = useMemo(() => {
-    if (range) return { start: rangeStart(range), end: undefined };
-    return undefined;
-  }, [range]);
-
-  // A canceled deploy's continued pre-deploy step widens its own window to
-  // the step's end fact; while that resolves the window stays unknown (the
-  // panel's loading state), never the known-truncated cancellation bound.
-  const stepEnd = useCanceledStepEnd(serviceId, deploy);
-  const deployStart =
-    stepEnd.status === "checking"
-      ? undefined
-      : (deploy?.createdAt ?? undefined);
-  // A live deploy's primary URL block (w32/m567) and the Blueprint's
-  // one-time initialDeployHook (w33/m435) come after the deploy is live, so
-  // its log runs past `finishedAt`: the window stays open while the hook
-  // runs and closes where the log ends.
-  const deployEnd =
-    stepEnd.status === "found" ? stepEnd.end : deployWindowEnd(deploy);
-
-  const limitedWindow =
-    stepEnd.status === "error"
-      ? { onRetry: stepEnd.retry }
-      : stepEnd.status === "missing"
-        ? {}
-        : undefined;
 
   // The way back to the list this deploy was opened from — on a phone the
   // sidebar that names it is a drawer away.
@@ -198,54 +174,120 @@ function DeployDetail({
           buildSourceId={service?.buildSourceId}
           buildSourceName={buildSource?.name}
           actions={
-            deploy ? (
+            deploy && !rollback ? (
               <DeployActions
                 serviceId={serviceId}
                 deployId={deploy.id}
                 status={deploy.status}
                 commitId={deploy.commitId}
-                commitMessage={deploy.commitMessage}
-                image={deploy.image}
                 trigger={deploy.trigger}
                 buildAvailable={deploy.buildAvailable}
-                autoDeployOn={service ? service.autoDeploy === true : undefined}
               />
             ) : undefined
           }
         />
       </div>
-      {/* Render's deploy page goes from its facts straight to the log; the
-          step-by-step timeline is the supporting record, beside it on a wide
-          screen and under it otherwise. */}
-      <div className={DEPLOY_BODY_CLASS}>
-        {/* Keyed per deploy: the live build tail keeps its rows through a pause
-            (w4/m192), so a same-service deploy switch must start a fresh reader
-            rather than carry the previous build's streamed lines. A Viewer
-            reads the deploy but not its logs (w9/145): the role's reason
-            stands in for the panel, and neither its reads nor its build
-            tail start. */}
-        <LogsGate>
-          <DeployLogPanel
-            key={deployId}
-            resource={serviceId}
-            title={deployTitle(deploy?.commitMessage, deployId)}
-            deployId={deployId}
-            startTime={window ? window.start : deployStart}
-            endTime={window ? window.end : deployEnd}
-            // Render's deploy page passes the deploy's creation whatever the
-            // range: its log lines' From start (w4/716).
-            startedAt={deploy?.createdAt ?? undefined}
-            hasPreDeploy={
-              !!deploy?.preDeployStatus || !!deploy?.initialDeployHookStatus
-            }
-            followBuild={deploy?.status === "build_in_progress"}
-            range={range}
-            onRangeChange={onRangeChange}
-            limitedWindow={limitedWindow}
-          />
-        </LogsGate>
-        <DeployTimeline serviceId={serviceId} deploy={deploy} />
-      </div>
+      {rollback ? (
+        <DeployRollback
+          serviceId={serviceId}
+          deployId={deployId}
+          status={deploy?.status}
+          buildAvailable={deploy?.buildAvailable}
+          autoDeployOn={service?.autoDeploy === true}
+        />
+      ) : (
+        <DeployBody
+          serviceId={serviceId}
+          deployId={deployId}
+          deploy={deploy}
+          range={range}
+          onRangeChange={onRangeChange}
+        />
+      )}
+    </div>
+  );
+}
+
+interface DeployBodyProps {
+  serviceId: string;
+  deployId: string;
+  deploy: DeployView | null;
+  range?: LogRange;
+  onRangeChange?: (range: LogRange | undefined) => void;
+}
+
+/** The deploy's log beside its status timeline, the page's body off its
+ *  `/rollback` route. */
+function DeployBody({
+  serviceId,
+  deployId,
+  deploy,
+  range,
+  onRangeChange,
+}: DeployBodyProps) {
+  // The log window: `?r=` overrides with [now - range, now) — open-ended so
+  // the viewer keeps polling live, exactly like a still-running deploy.
+  // Memoized on the range value so re-renders don't shift the window (and
+  // re-fire the three log queries) every second.
+  const window = useMemo(() => {
+    if (range) return { start: rangeStart(range), end: undefined };
+    return undefined;
+  }, [range]);
+
+  // A canceled deploy's continued pre-deploy step widens its own window to
+  // the step's end fact; while that resolves the window stays unknown (the
+  // panel's loading state), never the known-truncated cancellation bound.
+  const stepEnd = useCanceledStepEnd(serviceId, deploy);
+  const deployStart =
+    stepEnd.status === "checking"
+      ? undefined
+      : (deploy?.createdAt ?? undefined);
+  // A live deploy's primary URL block (w32/m567) and the Blueprint's
+  // one-time initialDeployHook (w33/m435) come after the deploy is live, so
+  // its log runs past `finishedAt`: the window stays open while the hook
+  // runs and closes where the log ends.
+  const deployEnd =
+    stepEnd.status === "found" ? stepEnd.end : deployWindowEnd(deploy);
+
+  const limitedWindow =
+    stepEnd.status === "error"
+      ? { onRetry: stepEnd.retry }
+      : stepEnd.status === "missing"
+        ? {}
+        : undefined;
+
+  // Render's deploy page goes from its facts straight to the log; the
+  // step-by-step timeline is the supporting record, beside it on a wide
+  // screen and under it otherwise.
+  return (
+    <div className={DEPLOY_BODY_CLASS}>
+      {/* Keyed per deploy: the live build tail keeps its rows through a pause
+          (w4/m192), so a same-service deploy switch must start a fresh reader
+          rather than carry the previous build's streamed lines. A Viewer
+          reads the deploy but not its logs (w9/145): the role's reason
+          stands in for the panel, and neither its reads nor its build
+          tail start. */}
+      <LogsGate>
+        <DeployLogPanel
+          key={deployId}
+          resource={serviceId}
+          title={deployTitle(deploy?.commitMessage, deployId)}
+          deployId={deployId}
+          startTime={window ? window.start : deployStart}
+          endTime={window ? window.end : deployEnd}
+          // Render's deploy page passes the deploy's creation whatever the
+          // range: its log lines' From start (w4/716).
+          startedAt={deploy?.createdAt ?? undefined}
+          hasPreDeploy={
+            !!deploy?.preDeployStatus || !!deploy?.initialDeployHookStatus
+          }
+          followBuild={deploy?.status === "build_in_progress"}
+          range={range}
+          onRangeChange={onRangeChange}
+          limitedWindow={limitedWindow}
+        />
+      </LogsGate>
+      <DeployTimeline serviceId={serviceId} deploy={deploy} />
     </div>
   );
 }

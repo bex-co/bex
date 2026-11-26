@@ -5671,51 +5671,6 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "ロールバック",
     description: "Button to roll back to a specific deploy",
   },
-  "services.eventsRollbackConfirmTitle": {
-    message: "このデプロイにロールバックしますか？",
-    description: "Rollback confirm dialog title",
-  },
-  "services.eventsRollbackConfirmBody": {
-    message:
-      "サービスは、このデプロイのイメージと保持されている設定で実行されます。保存済みの設定は変更されず、次回の通常のデプロイで適用されます。自動デプロイはオフになります。保持されている設定がない古いデプロイでは、イメージのみが復元されます。",
-    description: "Rollback confirm dialog body",
-  },
-  "services.eventsRollbackConfirmBodyCommit": {
-    message:
-      "サービスは、このデプロイのイメージ（{commit} からビルド）と保持されている設定で実行されます。保存済みの設定は変更されず、次回の通常のデプロイで適用されます。自動デプロイはオフになります。保持されている設定がない古いデプロイでは、イメージのみが復元されます。",
-    description:
-      "Rollback confirm dialog body naming the commit being restored",
-  },
-  "services.eventsRollbackConfirmBodyNoAutoDeploy": {
-    message:
-      "サービスは、このデプロイのイメージと保持されている設定で実行されます。保存済みの設定は変更されず、次回の通常のデプロイで適用されます。保持されている設定がない古いデプロイでは、イメージのみが復元されます。",
-    description:
-      "Rollback confirm dialog body when the service's auto-deploy is already off (always so for an image-backed service), so no auto-deploy sentence (w4/554)",
-  },
-  "services.eventsRollbackConfirmBodyCommitNoAutoDeploy": {
-    message:
-      "サービスは、このデプロイのイメージ（{commit} からビルド）と保持されている設定で実行されます。保存済みの設定は変更されず、次回の通常のデプロイで適用されます。保持されている設定がない古いデプロイでは、イメージのみが復元されます。",
-    description:
-      "Rollback confirm dialog body naming the commit, when the service's auto-deploy is already off (w4/554)",
-  },
-  "services.eventsRollbackConfirmBodyStatic": {
-    message:
-      "このデプロイからサイトを再公開します。保存済みの設定は変更されず、自動デプロイはオフになります。",
-    description:
-      "Rollback confirm dialog body for a static site: it re-publishes the deploy's files, it has no image or instances (w4/m141)",
-  },
-  "services.eventsRollbackConfirmBodyStaticCommit": {
-    message:
-      "このデプロイ（{commit}）からサイトを再公開します。保存済みの設定は変更されず、自動デプロイはオフになります。",
-    description:
-      "Static-site rollback confirm dialog body naming the commit being re-published (w4/m141)",
-  },
-  "services.eventsRollbackConfirmTagPull": {
-    message:
-      "{image} はタグです。ロールバックはこのタグが現在指すイメージを取得します。このデプロイで実行したイメージと異なる場合があり、タグが存在しなくなっているとロールバックは失敗します。",
-    description:
-      "Rollback confirm sentence for a deploy whose image is a registry tag, not a digest: Render pulls the tag again (render.com/docs/rollbacks, w4/m432)",
-  },
   "services.eventsRollbackAria": {
     message: "{target} にロールバック",
     description:

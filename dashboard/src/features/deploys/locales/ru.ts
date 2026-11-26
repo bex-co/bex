@@ -1089,6 +1089,202 @@ const ruDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy page: toast shown when copying the Build Source ID fails",
   },
+  "deploys.rollbackTitle": {
+    message: "Подтверждение отката",
+    description:
+      "Rollback page (w1/m646): the block's title, Render's \"Confirm Rollback\"",
+  },
+  "deploys.rollbackLead": {
+    message: "Откат отменяет некоторые изменения конфигурации.",
+    description:
+      "Rollback page: the block's lead sentence, before the Learn more link",
+  },
+  "deploys.rollbackLearnMore": {
+    message: "Подробнее.",
+    description:
+      "Rollback page: link to the rollbacks documentation after the lead sentence",
+  },
+  "deploys.rollbackLoading": {
+    message: "Загрузка изменений конфигурации",
+    description:
+      "Rollback page: accessible name of the spinner while the comparison loads",
+  },
+  "deploys.rollbackUnavailable": {
+    message:
+      "Не удалось загрузить конфигурацию текущего работающего деплоя. Откат к этому деплою может привести к непредвиденным изменениям конфигурации.",
+    description:
+      "Rollback page: Render's sentence when the comparison failed or either deploy's configuration is not recorded",
+  },
+  "deploys.rollbackNoChanges": {
+    message: "С момента этого деплоя конфигурация не менялась.",
+    description:
+      "Rollback page: nothing differs between the live deploy and this one",
+  },
+  "deploys.rollbackRowStartCommand": {
+    message: "Команда запуска",
+    description: "Rollback page: row label for a changed start command",
+  },
+  "deploys.rollbackRowPreDeployCommand": {
+    message: "Команда перед деплоем",
+    description: "Rollback page: row label for a changed pre-deploy command",
+  },
+  "deploys.rollbackRowDockerCommand": {
+    message: "Команда Docker",
+    description: "Rollback page: row label for a changed Docker command",
+  },
+  "deploys.rollbackRowHealthCheckPath": {
+    message: "Путь проверки работоспособности",
+    description: "Rollback page: row label for a changed health check path",
+  },
+  "deploys.rollbackRowInstances": {
+    message: "Инстансы",
+    description: "Rollback page: row label for a changed instance count",
+  },
+  "deploys.rollbackRowEnvVars": {
+    message: "Переменные окружения",
+    description:
+      "Rollback page: row label for the changed environment variables",
+  },
+  "deploys.rollbackRowEnvGroup": {
+    message: "Группа окружения",
+    description: "Rollback page: row label for environment group changes",
+  },
+  "deploys.rollbackRowSecretFiles": {
+    message: "Секретные файлы",
+    description: "Rollback page: row label for changed secret files",
+  },
+  "deploys.rollbackRowPlan": {
+    message: "Тариф",
+    description: "Rollback page: row label for the plan warning",
+  },
+  "deploys.rollbackNone": {
+    message: "нет",
+    description:
+      "Rollback page: a command or path that is not set, on either side of a change",
+  },
+  "deploys.rollbackChange": {
+    message: "Изменение конфигурации",
+    description: "Rollback page: accessible name of one before/after change",
+  },
+  "deploys.rollbackRemoved": {
+    message: "Удалено",
+    description:
+      "Rollback page: accessible name of a change's minus line (the live value)",
+  },
+  "deploys.rollbackAdded": {
+    message: "Добавлено",
+    description:
+      "Rollback page: accessible name of a change's plus line (the value after the rollback)",
+  },
+  "deploys.rollbackEnvKey": {
+    message: "Ключ",
+    description:
+      "Rollback page: environment variable table's key column header",
+  },
+  "deploys.rollbackEnvValue": {
+    message: "Значение",
+    description:
+      "Rollback page: environment variable table's value column header; every value is masked",
+  },
+  "deploys.rollbackSecretFileAdded": {
+    message:
+      "Секретный файл {name} был добавлен после этого деплоя. Откат его проигнорирует.",
+    description:
+      "Rollback page: a secret file that did not exist at this deploy; {name} is the file name",
+  },
+  "deploys.rollbackSecretFileDeleted": {
+    message:
+      "Секретный файл {name} был удалён после этого деплоя. Откат восстановит файл.",
+    description:
+      "Rollback page: a secret file deleted since this deploy; {name} is the file name",
+  },
+  "deploys.rollbackSecretFileChanged": {
+    message:
+      "Секретный файл {name} был изменён после этого деплоя. Откат вернёт исходное содержимое.",
+    description:
+      "Rollback page: a secret file whose contents changed since this deploy; {name} is the file name",
+  },
+  "deploys.rollbackGroupUnlink": {
+    message:
+      "Откат отвяжет группу окружения {name}, которая была подключена к сервису после этого деплоя.",
+    description:
+      "Rollback page: an environment group linked since this deploy; {name} is the group name",
+  },
+  "deploys.rollbackGroupLink": {
+    message:
+      "Откат подключит группу окружения {name}, которая была отвязана от сервиса после этого деплоя.",
+    description:
+      "Rollback page: an environment group unlinked since this deploy; {name} is the group name",
+  },
+  "deploys.rollbackGroupDeleted_one": {
+    message:
+      "Этот деплой был связан с {n} группой окружения, которая с тех пор удалена. Её нельзя восстановить.",
+    description:
+      "Rollback page: one group this deploy linked was deleted; {n} is the count",
+  },
+  "deploys.rollbackGroupDeleted_few": {
+    message:
+      "Этот деплой был связан с {n} группами окружения, которые с тех пор удалены. Их нельзя восстановить.",
+    description:
+      "Rollback page: several groups this deploy linked were deleted; {n} is the count",
+  },
+  "deploys.rollbackGroupDeleted_many": {
+    message:
+      "Этот деплой был связан с {n} группами окружения, которые с тех пор удалены. Их нельзя восстановить.",
+    description:
+      "Rollback page: several groups this deploy linked were deleted; {n} is the count",
+  },
+  "deploys.rollbackGroupDeleted_other": {
+    message:
+      "Этот деплой был связан с {n} группами окружения, которые с тех пор удалены. Их нельзя восстановить.",
+    description:
+      "Rollback page: several groups this deploy linked were deleted; {n} is the count",
+  },
+  "deploys.rollbackGroupCurrentValues": {
+    message:
+      "Откат будет использовать текущие ключи и значения групп окружения, подключённых к этому деплою.",
+    description:
+      "Rollback page: shown whenever this deploy linked any environment group",
+  },
+  "deploys.rollbackPlanWarning": {
+    message:
+      "В вашем текущем тарифе меньше CPU и памяти, чем в тарифе, на котором изначально работал этот деплой. Чтобы откат прошёл успешно, возможно, потребуется перейти на другой тариф.",
+    description:
+      "Rollback page: the saved plan is smaller than the one this deploy ran on",
+  },
+  "deploys.rollbackStaticNotice": {
+    message: "Откат не затронет изменения {what}.",
+    description:
+      "Rollback page, static site: {what} is deploys.rollbackStaticNoticeWhat, in bold",
+  },
+  "deploys.rollbackStaticNoticeWhat": {
+    message: "редиректов, рерайтов и заголовков",
+    description: "Rollback page, static site: what a rollback keeps current",
+  },
+  "deploys.rollbackAutoDeployTitle": {
+    message: "Автодеплой",
+    description:
+      "Rollback page: title of the warning that the rollback turns auto-deploy off",
+  },
+  "deploys.rollbackAutoDeployBody": {
+    message:
+      "Будет отключён для этого сервиса, чтобы избежать случайных деплоев.",
+    description:
+      "Rollback page: the auto-deploy warning's text, after its title",
+  },
+  "deploys.rollbackConfirm": {
+    message: "Откатиться к этому деплою",
+    description: "Rollback page: the button that starts the rollback",
+  },
+  "deploys.rollbackCancel": {
+    message: "Отменить",
+    description:
+      "Rollback page: the button that goes back to the deploy without rolling back",
+  },
+  "deploys.rollbackErrorTitle": {
+    message: "Ошибка:",
+    description: "Rollback page: label before the reason a rollback failed",
+  },
 };
 
 export default ruDeploys;

@@ -893,6 +893,18 @@ export const ROUTE_SKELETON_MANIFEST = {
     shape: "deploy-detail",
     regions: ["deploy-header", "deploy-logs", "deploy-timeline"],
   },
+  "/services/$serviceId/deploys/$deployId/rollback": {
+    kind: "render",
+    owner: "routes/services.$serviceId.deploys.$deployId_.rollback.tsx",
+    shape: "deploy-rollback",
+    regions: ["deploy-header", "deploy-rollback"],
+  },
+  "/static/$serviceId/deploys/$deployId/rollback": {
+    kind: "render",
+    owner: "routes/static.$serviceId.deploys.$deployId_.rollback.tsx",
+    shape: "deploy-rollback",
+    regions: ["deploy-header", "deploy-rollback"],
+  },
   "/services/$serviceId/deploys/": {
     kind: "render",
     owner: "routes/services.$serviceId.deploys.index.tsx",

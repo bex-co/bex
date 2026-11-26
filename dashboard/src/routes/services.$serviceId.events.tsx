@@ -372,16 +372,12 @@ function ServiceEventsFeed({ serviceId }: { serviceId: string }) {
                           deployId={deployId}
                           status={status}
                           commitId={details?.commitId}
-                          commitMessage={details?.commitMessage}
                           // The events feed carries the trigger as Render's
                           // flag object rather than the deploys list's string;
                           // firstBuild is the same cause as trigger "create"
                           // (w4/103).
                           trigger={
                             details?.trigger?.firstBuild ? "create" : undefined
-                          }
-                          autoDeployOn={
-                            service ? service.autoDeploy === true : undefined
                           }
                           onChanged={() => void refetch()}
                         />
@@ -720,10 +716,7 @@ function EventRow({
         ) : null}
         {type === "artifact_source_changed" &&
         (fromBuildSourceId || toBuildSourceId) ? (
-          <ArtifactSourceChange
-            from={fromBuildSourceId}
-            to={toBuildSourceId}
-          />
+          <ArtifactSourceChange from={fromBuildSourceId} to={toBuildSourceId} />
         ) : null}
         {branchFrom && branchTo ? (
           <p>
@@ -1022,9 +1015,7 @@ function ArtifactSourceChange({
     );
   }
   if (to) {
-    return (
-      <p>{t("services.eventsArtifactSourceLinked", { to: label(to) })}</p>
-    );
+    return <p>{t("services.eventsArtifactSourceLinked", { to: label(to) })}</p>;
   }
   if (from) {
     return (

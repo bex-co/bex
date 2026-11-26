@@ -1968,6 +1968,16 @@ export type EnvVar = {
   value: Maybe<Scalars['String']['output']>;
 };
 
+export type EnvVarChanges = {
+  __typename: 'EnvVarChanges';
+  createdFileKeys: Array<Scalars['String']['output']>;
+  createdVarKeys: Array<Scalars['String']['output']>;
+  deletedFileKeys: Array<Scalars['String']['output']>;
+  deletedVarKeys: Array<Scalars['String']['output']>;
+  updatedFileKeys: Array<Scalars['String']['output']>;
+  updatedVarKeys: Array<Scalars['String']['output']>;
+};
+
 export type EnvVarInput = {
   generateValue?: InputMaybe<Scalars['Boolean']['input']>;
   key: Scalars['String']['input'];
@@ -5056,6 +5066,7 @@ export type Query = {
   repoBranches: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   repoRuntimeDetection: Maybe<RepoRuntimeDetection>;
   repos: Maybe<Array<Maybe<Repo>>>;
+  rollbackComparison: Maybe<RollbackComparison>;
   routerAvailable: Maybe<Scalars['Boolean']['output']>;
   routerOverview: Maybe<RouterOverview>;
   sandbox: Maybe<Sandbox>;
@@ -5859,6 +5870,12 @@ export type QueryReposArgs = {
 };
 
 
+export type QueryRollbackComparisonArgs = {
+  deployId: Scalars['String']['input'];
+  serviceId: Scalars['String']['input'];
+};
+
+
 export type QueryRouterAvailableArgs = {
   ownerId: Scalars['String']['input'];
 };
@@ -6237,6 +6254,19 @@ export type ResourceLimits = {
   services: Maybe<ResourceCap>;
 };
 
+export type RollbackComparison = {
+  __typename: 'RollbackComparison';
+  currentLiveDeploy: Maybe<RollbackComparisonDeploy>;
+  currentPlanLower: Scalars['Boolean']['output'];
+  deploy: RollbackComparisonDeploy;
+};
+
+export type RollbackComparisonDeploy = {
+  __typename: 'RollbackComparisonDeploy';
+  id: Scalars['String']['output'];
+  serviceConfigSnapshot: Maybe<ServiceConfigSnapshot>;
+};
+
 export type RouterKey = {
   __typename: 'RouterKey';
   accessKey: Scalars['String']['output'];
@@ -6558,6 +6588,25 @@ export type ServiceEnvVarArgs = {
 
 export type ServiceSecretFileArgs = {
   name: Scalars['String']['input'];
+};
+
+export type ServiceConfigSnapshot = {
+  __typename: 'ServiceConfigSnapshot';
+  deletedEnvGroupCount: Scalars['Int']['output'];
+  dockerCommand: Maybe<Scalars['String']['output']>;
+  envGroups: Array<ServiceConfigSnapshotEnvGroup>;
+  envVarChanges: EnvVarChanges;
+  healthCheckPath: Maybe<Scalars['String']['output']>;
+  instances: Maybe<Scalars['Int']['output']>;
+  plan: Maybe<Scalars['String']['output']>;
+  preDeployCommand: Maybe<Scalars['String']['output']>;
+  runCommand: Maybe<Scalars['String']['output']>;
+};
+
+export type ServiceConfigSnapshotEnvGroup = {
+  __typename: 'ServiceConfigSnapshotEnvGroup';
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
 };
 
 export type ServiceDisk = {

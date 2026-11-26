@@ -25,14 +25,16 @@ describe("route skeleton manifest (w5/m79)", () => {
     const classified = Object.keys(ROUTE_SKELETON_MANIFEST).sort();
 
     expect(classified).toEqual(generated);
-    // 129: + a Key Value instance's index, Info, Logs and Metrics pages and
+    // 131: + a deploy's Confirm Rollback page under /services and /static
+    // (w1/m646).
+    // 129 before them: + a Key Value instance's index, Info, Logs and Metrics pages and
     // its sub-path landing (w3/m649).
     // 124 before them: + a Postgres database's index, Info, Logs, Metrics,
     // Plan, Apps and Recovery pages and its sub-path landing (w3/m641).
     // 116 before them: + /build-sources/$buildSourceId detail layout, Builds index,
     // Build Detail, Services, Environment, and Settings routes (w2/m614).
     // 110 before them: + /build-sources and /build-sources/new (w2/m613).
-    expect(classified).toHaveLength(129);
+    expect(classified).toHaveLength(131);
   });
 
   it("points every classification at a real route owner", () => {

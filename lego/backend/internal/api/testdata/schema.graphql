@@ -1628,6 +1628,15 @@ type EnvVar {
   value: String
 }
 
+type EnvVarChanges {
+  createdFileKeys: [String!]!
+  createdVarKeys: [String!]!
+  deletedFileKeys: [String!]!
+  deletedVarKeys: [String!]!
+  updatedFileKeys: [String!]!
+  updatedVarKeys: [String!]!
+}
+
 input EnvVarInput {
   generateValue: Boolean
   key: String!
@@ -2732,6 +2741,7 @@ type Query {
   repoBranches(ownerId: String, repo: String!): [String]
   repoRuntimeDetection(branch: String!, ownerId: String, repo: String!, rootDir: String): RepoRuntimeDetection
   repos(ownerId: String): [Repo]
+  rollbackComparison(deployId: String!, serviceId: String!): RollbackComparison
   routerAvailable(ownerId: String!): Boolean
   routerOverview(ownerId: String!): RouterOverview
   sandbox(id: String!, ownerId: String): Sandbox
@@ -2857,6 +2867,17 @@ type ResourceLimits {
   pipelineMinutesExceeded: Boolean
   postgres: ResourceCap
   services: ResourceCap
+}
+
+type RollbackComparison {
+  currentLiveDeploy: RollbackComparisonDeploy
+  currentPlanLower: Boolean!
+  deploy: RollbackComparisonDeploy!
+}
+
+type RollbackComparisonDeploy {
+  id: String!
+  serviceConfigSnapshot: ServiceConfigSnapshot
 }
 
 type RouterKey {
@@ -3147,6 +3168,23 @@ type Service {
   undeployedChangesReason: String
   updatedAt: String
   url: String
+}
+
+type ServiceConfigSnapshot {
+  deletedEnvGroupCount: Int!
+  dockerCommand: String
+  envGroups: [ServiceConfigSnapshotEnvGroup!]!
+  envVarChanges: EnvVarChanges!
+  healthCheckPath: String
+  instances: Int
+  plan: String
+  preDeployCommand: String
+  runCommand: String
+}
+
+type ServiceConfigSnapshotEnvGroup {
+  id: String!
+  name: String!
 }
 
 type ServiceDisk {

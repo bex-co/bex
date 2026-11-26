@@ -1069,6 +1069,189 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy page: toast shown when copying the Build Source ID fails",
   },
+  "deploys.rollbackTitle": {
+    message: "Confirm Rollback",
+    description:
+      "Rollback page (w1/m646): the block's title, Render's \"Confirm Rollback\"",
+  },
+  "deploys.rollbackLead": {
+    message: "Rolling back reverts certain configuration changes.",
+    description:
+      "Rollback page: the block's lead sentence, before the Learn more link",
+  },
+  "deploys.rollbackLearnMore": {
+    message: "Learn more.",
+    description:
+      "Rollback page: link to the rollbacks documentation after the lead sentence",
+  },
+  "deploys.rollbackLoading": {
+    message: "Loading the configuration changes",
+    description:
+      "Rollback page: accessible name of the spinner while the comparison loads",
+  },
+  "deploys.rollbackUnavailable": {
+    message:
+      "Unable to load configuration for the current live deploy. Rolling back to this deploy could cause unanticipated configuration changes.",
+    description:
+      "Rollback page: Render's sentence when the comparison failed or either deploy's configuration is not recorded",
+  },
+  "deploys.rollbackNoChanges": {
+    message: "No configuration changes since this deploy.",
+    description:
+      "Rollback page: nothing differs between the live deploy and this one",
+  },
+  "deploys.rollbackRowStartCommand": {
+    message: "Start Command",
+    description: "Rollback page: row label for a changed start command",
+  },
+  "deploys.rollbackRowPreDeployCommand": {
+    message: "Pre-Deploy Command",
+    description: "Rollback page: row label for a changed pre-deploy command",
+  },
+  "deploys.rollbackRowDockerCommand": {
+    message: "Docker Command",
+    description: "Rollback page: row label for a changed Docker command",
+  },
+  "deploys.rollbackRowHealthCheckPath": {
+    message: "Health Check Path",
+    description: "Rollback page: row label for a changed health check path",
+  },
+  "deploys.rollbackRowInstances": {
+    message: "Instances",
+    description: "Rollback page: row label for a changed instance count",
+  },
+  "deploys.rollbackRowEnvVars": {
+    message: "Environment Variables",
+    description:
+      "Rollback page: row label for the changed environment variables",
+  },
+  "deploys.rollbackRowEnvGroup": {
+    message: "Environment Group",
+    description: "Rollback page: row label for environment group changes",
+  },
+  "deploys.rollbackRowSecretFiles": {
+    message: "Secret Files",
+    description: "Rollback page: row label for changed secret files",
+  },
+  "deploys.rollbackRowPlan": {
+    message: "Plan",
+    description: "Rollback page: row label for the plan warning",
+  },
+  "deploys.rollbackNone": {
+    message: "none",
+    description:
+      "Rollback page: a command or path that is not set, on either side of a change",
+  },
+  "deploys.rollbackChange": {
+    message: "Configuration change",
+    description: "Rollback page: accessible name of one before/after change",
+  },
+  "deploys.rollbackRemoved": {
+    message: "Removed",
+    description:
+      "Rollback page: accessible name of a change's minus line (the live value)",
+  },
+  "deploys.rollbackAdded": {
+    message: "Added",
+    description:
+      "Rollback page: accessible name of a change's plus line (the value after the rollback)",
+  },
+  "deploys.rollbackEnvKey": {
+    message: "Key",
+    description:
+      "Rollback page: environment variable table's key column header",
+  },
+  "deploys.rollbackEnvValue": {
+    message: "Value",
+    description:
+      "Rollback page: environment variable table's value column header; every value is masked",
+  },
+  "deploys.rollbackSecretFileAdded": {
+    message:
+      "Secret file {name} was added after this deploy. The rollback will ignore it.",
+    description:
+      "Rollback page: a secret file that did not exist at this deploy; {name} is the file name",
+  },
+  "deploys.rollbackSecretFileDeleted": {
+    message:
+      "Secret file {name} was deleted after this deploy. The rollback will restore the file.",
+    description:
+      "Rollback page: a secret file deleted since this deploy; {name} is the file name",
+  },
+  "deploys.rollbackSecretFileChanged": {
+    message:
+      "Secret file {name} was changed after this deploy. The rollback will revert to the original contents.",
+    description:
+      "Rollback page: a secret file whose contents changed since this deploy; {name} is the file name",
+  },
+  "deploys.rollbackGroupUnlink": {
+    message:
+      "The rollback will unlink environment group {name} which was added to the service after this deploy.",
+    description:
+      "Rollback page: an environment group linked since this deploy; {name} is the group name",
+  },
+  "deploys.rollbackGroupLink": {
+    message:
+      "The rollback will link environment group {name} which was removed from the service after this deploy.",
+    description:
+      "Rollback page: an environment group unlinked since this deploy; {name} is the group name",
+  },
+  "deploys.rollbackGroupDeleted_one": {
+    message:
+      "This deploy was linked to {n} environment group that has since been deleted. It cannot be restored.",
+    description:
+      "Rollback page: one group this deploy linked was deleted; {n} is the count",
+  },
+  "deploys.rollbackGroupDeleted_other": {
+    message:
+      "This deploy was linked to {n} environment groups that have since been deleted. They cannot be restored.",
+    description:
+      "Rollback page: several groups this deploy linked were deleted; {n} is the count",
+  },
+  "deploys.rollbackGroupCurrentValues": {
+    message:
+      "The rollback will use current keys and values for environment groups linked to this deploy.",
+    description:
+      "Rollback page: shown whenever this deploy linked any environment group",
+  },
+  "deploys.rollbackPlanWarning": {
+    message:
+      "Your current plan has lower CPU and memory allocations than the plan originally used for this deploy. You may need to switch to a different plan for the rollback to succeed.",
+    description:
+      "Rollback page: the saved plan is smaller than the one this deploy ran on",
+  },
+  "deploys.rollbackStaticNotice": {
+    message: "Changes made to {what} will not be rolled back.",
+    description:
+      "Rollback page, static site: {what} is deploys.rollbackStaticNoticeWhat, in bold",
+  },
+  "deploys.rollbackStaticNoticeWhat": {
+    message: "redirects, rewrites, and headers",
+    description: "Rollback page, static site: what a rollback keeps current",
+  },
+  "deploys.rollbackAutoDeployTitle": {
+    message: "Auto-Deploy",
+    description:
+      "Rollback page: title of the warning that the rollback turns auto-deploy off",
+  },
+  "deploys.rollbackAutoDeployBody": {
+    message: "will be disabled for this service to prevent accidental deploys.",
+    description:
+      "Rollback page: the auto-deploy warning's text, after its title",
+  },
+  "deploys.rollbackConfirm": {
+    message: "Rollback to this deploy",
+    description: "Rollback page: the button that starts the rollback",
+  },
+  "deploys.rollbackCancel": {
+    message: "Cancel",
+    description:
+      "Rollback page: the button that goes back to the deploy without rolling back",
+  },
+  "deploys.rollbackErrorTitle": {
+    message: "Error:",
+    description: "Rollback page: label before the reason a rollback failed",
+  },
 };
 
 export default enDeploys;

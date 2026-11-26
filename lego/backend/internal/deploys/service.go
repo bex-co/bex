@@ -305,6 +305,16 @@ type Service struct {
 	// time. Source-save validation is deliberately read-only so it cannot replace
 	// the active release's deterministic pull Secret before this point.
 	PullSecrets PullSecretPreparer
+	// EnvironmentKeys authorizes reading a service's env var keys and secret
+	// file names, as its Environment page does (secrets.EnvironmentKeysAccess):
+	// RollbackComparison names them (w1/m646). nil leaves can_view_activity the
+	// only gate.
+	EnvironmentKeys func(ctx context.Context, service string) error
+	// EnvGroupIDsByName is the acting workspace's env groups, name to id
+	// (envgroups.Service's GroupIDsByName). RollbackComparison names a
+	// rollback's linked groups and counts the deleted ones with it; nil counts
+	// every recorded group as surviving, named by its id.
+	EnvGroupIDsByName func(ctx context.Context) (map[string]string, error)
 }
 
 // deployWorkspace resolves the workspace whose GitHub connection owns this

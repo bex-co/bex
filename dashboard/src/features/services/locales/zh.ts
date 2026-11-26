@@ -5512,50 +5512,6 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "回滚",
     description: "Button to roll back to a specific deploy",
   },
-  "services.eventsRollbackConfirmTitle": {
-    message: "回滚到此次部署？",
-    description: "Rollback confirm dialog title",
-  },
-  "services.eventsRollbackConfirmBody": {
-    message:
-      "服务将使用此部署的镜像和保留的配置运行。已保存的设置保持不变，将在下次常规部署时应用。自动部署将被关闭。未保留配置的较旧部署只会恢复镜像。",
-    description: "Rollback confirm dialog body",
-  },
-  "services.eventsRollbackConfirmBodyCommit": {
-    message:
-      "服务将使用此部署的镜像（基于 {commit} 构建）和保留的配置运行。已保存的设置保持不变，将在下次常规部署时应用。自动部署将被关闭。未保留配置的较旧部署只会恢复镜像。",
-    description:
-      "Rollback confirm dialog body naming the commit being restored",
-  },
-  "services.eventsRollbackConfirmBodyNoAutoDeploy": {
-    message:
-      "服务将使用此部署的镜像和保留的配置运行。已保存的设置保持不变，将在下次常规部署时应用。未保留配置的较旧部署只会恢复镜像。",
-    description:
-      "Rollback confirm dialog body when the service's auto-deploy is already off (always so for an image-backed service), so no auto-deploy sentence (w4/554)",
-  },
-  "services.eventsRollbackConfirmBodyCommitNoAutoDeploy": {
-    message:
-      "服务将使用此部署的镜像（基于 {commit} 构建）和保留的配置运行。已保存的设置保持不变，将在下次常规部署时应用。未保留配置的较旧部署只会恢复镜像。",
-    description:
-      "Rollback confirm dialog body naming the commit, when the service's auto-deploy is already off (w4/554)",
-  },
-  "services.eventsRollbackConfirmBodyStatic": {
-    message: "站点将按此部署重新发布。已保存的设置保持不变，自动部署将被关闭。",
-    description:
-      "Rollback confirm dialog body for a static site: it re-publishes the deploy's files, it has no image or instances (w4/m141)",
-  },
-  "services.eventsRollbackConfirmBodyStaticCommit": {
-    message:
-      "站点将按此部署（{commit}）重新发布。已保存的设置保持不变，自动部署将被关闭。",
-    description:
-      "Static-site rollback confirm dialog body naming the commit being re-published (w4/m141)",
-  },
-  "services.eventsRollbackConfirmTagPull": {
-    message:
-      "{image} 是一个标签：回滚会拉取该标签当前指向的镜像，可能与此部署运行的镜像不同；如果该标签已不存在，回滚将失败。",
-    description:
-      "Rollback confirm sentence for a deploy whose image is a registry tag, not a digest: Render pulls the tag again (render.com/docs/rollbacks, w4/m432)",
-  },
   "services.eventsRollbackAria": {
     message: "回滚到 {target}",
     description:

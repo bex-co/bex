@@ -402,6 +402,7 @@ var classifiedOps = map[string]string{
 	"GQL Query.repoBranches":                                                core.OpClassRead,
 	"GQL Query.repoRuntimeDetection":                                        core.OpClassRead,
 	"GQL Query.repos":                                                       core.OpClassRead,
+	"GQL Query.rollbackComparison":                                          core.OpClassRead,
 	"GQL Query.routerAvailable":                                             core.OpClassRead,
 	"GQL Query.routerOverview":                                              core.OpClassSensitive,
 	"GQL Query.sandbox":                                                     core.OpClassRead,

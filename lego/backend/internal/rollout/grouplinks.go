@@ -208,10 +208,17 @@ func SortGroupRefs(refs []string) []string {
 
 // isGroupRef reports whether ref names an env group's env or files Secret.
 func isGroupRef(ref string) bool {
+	_, ok := GroupID(ref)
+	return ok
+}
+
+// GroupID is the env group whose env or files Secret ref names
+// ("<evg-id>-env", "<evg-id>-files"); false when ref names no group's.
+func GroupID(ref string) (string, bool) {
 	gid, ok := strings.CutSuffix(ref, "-env")
 	if !ok {
 		gid, ok = strings.CutSuffix(ref, "-files")
 	}
 	kind, isID := id.KindOf(gid)
-	return ok && isID && kind == id.EnvGroup
+	return gid, ok && isID && kind == id.EnvGroup
 }

@@ -181,6 +181,7 @@ import {
   DeployBackLinkSkeleton,
   DeployHeaderSkeleton,
   DeployLogToolbarSkeleton,
+  DeployRollbackSectionSkeleton,
   DeployTimelineCardSkeleton,
 } from "@/features/deploys/components/deploy-page-skeletons";
 import {
@@ -2579,6 +2580,22 @@ export function DeployDetailSkeleton() {
           <DeployTimelineCardSkeleton />
         </Region>
       </div>
+    </PendingFrame>
+  );
+}
+
+/** A deploy's Confirm Rollback page (w1/m646): the deploy header, then the
+ *  rollback section in place of the log and timeline. */
+export function DeployRollbackSkeleton() {
+  return (
+    <PendingFrame route="deploy-rollback" className="space-y-6">
+      <Region name="deploy-header" className={DEPLOY_PAGE_TOP_CLASS}>
+        <DeployBackLinkSkeleton />
+        <DeployHeaderSkeleton />
+      </Region>
+      <Region name="deploy-rollback">
+        <DeployRollbackSectionSkeleton />
+      </Region>
     </PendingFrame>
   );
 }

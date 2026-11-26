@@ -489,13 +489,8 @@ export function DeploysListPage({
                       deployId={d.id}
                       status={d.status}
                       commitId={d.commitId}
-                      image={d.image}
-                      commitMessage={d.commitMessage}
                       trigger={d.trigger}
                       buildAvailable={d.buildAvailable}
-                      autoDeployOn={
-                        service ? service.autoDeploy === true : undefined
-                      }
                     />
                   ) : isLive ? (
                     <Badge className="pointer-events-none mr-2">

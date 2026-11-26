@@ -528,66 +528,33 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
     const gone = renderEvents("app");
     expect(await screen.findByText(/dep-live-001/)).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /^Rollback to / }),
+      screen.queryByRole("link", { name: /^Rollback to / }),
     ).not.toBeInTheDocument();
     gone.unmount();
 
     mockUseQuery.mockImplementation(availability(true));
     renderEvents("app");
     expect(
-      await screen.findByRole("button", { name: /^Rollback to / }),
+      await screen.findByRole("link", { name: /^Rollback to / }),
     ).toBeInTheDocument();
     mockUseQuery.mockReset();
   });
 
-  it("navigates to the rollback deploy's own page once the mutation resolves its id", async () => {
+  // Rollback opens the deploy's Confirm Rollback page, which lists what the
+  // rollback changes and dispatches it from there (w1/m646).
+  it("links a previous deploy's Rollback to its Confirm Rollback page", async () => {
     mockUseQuery.mockReturnValue({
       data: { serviceEvents: [deactivatedDeployEvent()] },
       loading: false,
       refetch: vi.fn(),
     });
-    rollbackService.mockResolvedValue({
-      data: { rollbackService: { id: "dep-rollback-1", status: "live" } },
-    });
 
-    const user = userEvent.setup();
-    const { router } = renderEvents("app");
+    renderEvents("app");
 
-    await user.click(
-      await screen.findByRole("button", { name: /^Rollback to / }),
-    );
-    const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
-
-    expect(rollbackService).toHaveBeenCalledWith({
-      variables: { serviceId: "app", deployId: "dep-live-001" },
-    });
-    await vi.waitFor(() => {
-      expect(router.state.location.pathname).toBe(
-        "/services/app/deploys/dep-rollback-1",
-      );
-    });
-  });
-
-  it("does not navigate when the rollback mutation rejects", async () => {
-    mockUseQuery.mockReturnValue({
-      data: { serviceEvents: [deactivatedDeployEvent()] },
-      loading: false,
-      refetch: vi.fn(),
-    });
-    rollbackService.mockRejectedValue(new Error("conflict"));
-
-    const user = userEvent.setup();
-    const { router } = renderEvents("app");
-
-    await user.click(
-      await screen.findByRole("button", { name: /^Rollback to / }),
-    );
-    const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
-
-    expect(rollbackService).toHaveBeenCalled();
-    expect(router.state.location.pathname).toBe("/services/app/events");
+    expect(
+      await screen.findByRole("link", { name: /^Rollback to / }),
+    ).toHaveAttribute("href", "/services/app/deploys/dep-live-001/rollback");
+    expect(rollbackService).not.toHaveBeenCalled();
   });
 });
 
@@ -1576,9 +1543,9 @@ describe("ServiceEventsPage — a deploy's trigger is named the way the Deploys 
     expect(
       await screen.findByText("Zero-downtime redeploy ended"),
     ).toBeInTheDocument();
-    expect(
-      screen.getAllByText("Zero-downtime redeploy started"),
-    ).toHaveLength(2);
+    expect(screen.getAllByText("Zero-downtime redeploy started")).toHaveLength(
+      2,
+    );
     expect(screen.getByText("Node replaced")).toBeInTheDocument();
     expect(screen.getByText("Node removed by autoscaling")).toBeInTheDocument();
   });

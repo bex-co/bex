@@ -5731,51 +5731,6 @@ const esServices: Record<string, TranslationEntry> = {
     message: "Revertir",
     description: "Button to roll back to a specific deploy",
   },
-  "services.eventsRollbackConfirmTitle": {
-    message: "¿Revertir a este despliegue?",
-    description: "Rollback confirm dialog title",
-  },
-  "services.eventsRollbackConfirmBody": {
-    message:
-      "El servicio ejecutará la imagen de este despliegue y la configuración conservada. La configuración guardada no cambia y se aplica con el próximo despliegue estándar. El despliegue automático se desactivará. Los despliegues antiguos sin configuración conservada restauran solo la imagen.",
-    description: "Rollback confirm dialog body",
-  },
-  "services.eventsRollbackConfirmBodyCommit": {
-    message:
-      "El servicio ejecutará la imagen de este despliegue (compilada desde {commit}) y la configuración conservada. La configuración guardada no cambia y se aplica con el próximo despliegue estándar. El despliegue automático se desactivará. Los despliegues antiguos sin configuración conservada restauran solo la imagen.",
-    description:
-      "Rollback confirm dialog body naming the commit being restored",
-  },
-  "services.eventsRollbackConfirmBodyNoAutoDeploy": {
-    message:
-      "El servicio ejecutará la imagen de este despliegue y la configuración conservada. La configuración guardada no cambia y se aplica con el próximo despliegue estándar. Los despliegues antiguos sin configuración conservada restauran solo la imagen.",
-    description:
-      "Rollback confirm dialog body when the service's auto-deploy is already off (always so for an image-backed service), so no auto-deploy sentence (w4/554)",
-  },
-  "services.eventsRollbackConfirmBodyCommitNoAutoDeploy": {
-    message:
-      "El servicio ejecutará la imagen de este despliegue (compilada desde {commit}) y la configuración conservada. La configuración guardada no cambia y se aplica con el próximo despliegue estándar. Los despliegues antiguos sin configuración conservada restauran solo la imagen.",
-    description:
-      "Rollback confirm dialog body naming the commit, when the service's auto-deploy is already off (w4/554)",
-  },
-  "services.eventsRollbackConfirmBodyStatic": {
-    message:
-      "El sitio se volverá a publicar desde este despliegue. La configuración guardada no cambia y el despliegue automático se desactivará.",
-    description:
-      "Rollback confirm dialog body for a static site: it re-publishes the deploy's files, it has no image or instances (w4/m141)",
-  },
-  "services.eventsRollbackConfirmBodyStaticCommit": {
-    message:
-      "El sitio se volverá a publicar desde este despliegue, {commit}. La configuración guardada no cambia y el despliegue automático se desactivará.",
-    description:
-      "Static-site rollback confirm dialog body naming the commit being re-published (w4/m141)",
-  },
-  "services.eventsRollbackConfirmTagPull": {
-    message:
-      "{image} es una etiqueta: la reversión descarga la imagen que nombra ahora, que puede ser distinta de la que ejecutó este despliegue, y falla si la etiqueta ya no existe.",
-    description:
-      "Rollback confirm sentence for a deploy whose image is a registry tag, not a digest: Render pulls the tag again (render.com/docs/rollbacks, w4/m432)",
-  },
   "services.eventsRollbackAria": {
     message: "Revertir a {target}",
     description:

@@ -156,7 +156,7 @@ Grouped by product area, then sorted by name.
 | `minimalPreviewServers` | query | non-goal | DO_NOT_DO: PR preview environments |
 | `previewServerCreatedOrDeleted` | subscription | non-goal | DO_NOT_DO: PR preview environments |
 | `previewServers` | query | non-goal | DO_NOT_DO: PR preview environments |
-| `rollbackComparison` | query | gap | `w1/m646` (the rollback confirmation lists what the rollback changes) |
+| `rollbackComparison` | query | partial | ADR018 § Deploys: Rollback (the Confirm Rollback page, w1/m646); a static site's comparison is `w1/156` |
 | `rollbackToDeploy` | mutation | matched | ADR018 § Deploys: Rollback |
 | `serverCapableOfPreviews` | query | non-goal | DO_NOT_DO: PR preview environments |
 | `ServerHeaderDeploys` | query | matched | ADR018 § Deploys: List / get deploy objects |
