@@ -134,7 +134,7 @@ spec:
           # The kpack ClusterStore imports this complete Paketo builder image;
           # keep the value aligned with deploy/gitops/charts/kpack/platform.yaml.
           - name: BEX_CNB_BUILDER
-            value: paketobuildpacks/builder-jammy-base@sha256:4ba599c03e4b0e32306960039a33a45c0c26f8e8368097d190f4f62a4a6b3483
+            value: paketobuildpacks/builder-jammy-base@sha256:906ba1546346a9102a1d3b583bda361ebeedca286ca537e87c282c32cc1a14f2
           # Registry auth (w7/m8, docs/ADR022-tenant-isolation.md § Registry access
           # control): Zot denies anonymous catalog/pull/push. The build Job mounts
           # this build-namespace Secret to authenticate its push. Per-App pull

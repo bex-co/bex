@@ -30,9 +30,10 @@ import (
 // (2026-10-29): every native build's final stage starts from it, with the
 // selected runtime copied on top. Pin only a digest that one
 // native-common-image.yml families run published and passed on every family
-// case; this one is run 44906752907 (w6/m549, the first with magic-wormhole;
-// w8/335 adopted run 43900534897's, w8/m91 t008 run 43883107194's).
-var nativeCommonBase = "ghcr.io/bex-co/bex-cnb-run@sha256:49dbbd727e03549a766053bf39556105be99561fff5b2377fb7ac3ba37341266"
+// case; this one is run 45839946482 (w3/m635, on buildpack-deps:bookworm's
+// 2026-11-24 rebuild; w6/m549 adopted run 44906752907's, the first with
+// magic-wormhole, w8/335 run 43900534897's, w8/m91 t008 run 43883107194's).
+var nativeCommonBase = "ghcr.io/bex-co/bex-cnb-run@sha256:9c3fac2fc2a764c83434eb28e9821bd734f64bbce68efe42d6593cff29280df5"
 
 // nativeRuntimeArtifacts reuses approved runtime TREES, never their final
 // system base. Keys are exact selected upstream identities; a line artifact

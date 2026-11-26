@@ -5,9 +5,9 @@
       "id": "cnb-builder",
       "kind": "builder",
       "upstream": "docker.io/paketobuildpacks/builder-jammy-base:latest",
-      "committed": "paketobuildpacks/builder-jammy-base@sha256:4ba599c03e4b0e32306960039a33a45c0c26f8e8368097d190f4f62a4a6b3483",
-      "resolved_at": "2026-11-26T12:50:00Z",
-      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): builder-jammy-base latest, linux/amd64 manifest as before, stack io.buildpacks.stacks.jammy unchanged, lifecycle 0.21.30 (was 0.21.29) and 135 buildpack entries as before; built on the stack released 2026-11-26T00:51:36Z; Paketo had published no builder for the 12:43:57Z stack at review, and kpack's ClusterStack takes the newer stack images",
+      "committed": "paketobuildpacks/builder-jammy-base@sha256:906ba1546346a9102a1d3b583bda361ebeedca286ca537e87c282c32cc1a14f2",
+      "resolved_at": "2026-11-26T15:45:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): builder-jammy-base latest, linux/amd64 manifest as before, stack io.buildpacks.stacks.jammy unchanged and built on the stack released 2026-11-26T12:43:57Z (the cnb-stack-build and cnb-stack-run pins), lifecycle 0.21.30 (was 0.21.29) and 135 buildpack entries as before",
       "files": [
         "lego/operator/cmd/manager/main.go",
         "lego/operator/config/manager/manager.yaml",
@@ -40,9 +40,9 @@
       "id": "cnb-run-image",
       "kind": "stack",
       "upstream": "ghcr.io/bex-co/bex-cnb-run:latest",
-      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:77061d60c38fbf20f8b78fc9c8bdd580bc264d6612bbeed6852e3f51e932d8e5",
-      "resolved_at": "2026-11-16T11:32:54Z",
-      "source": "ghcr.io multi-arch index (linux/amd64 + linux/arm64), cnb-run-image.yml run 43855831573 from e097d59c0 on run-jammy-base sha256:6031575989ab… (w6/m291, 2026-11-16): both platforms passed the libatomic1 ldconfig gate and Node 26 startup check before the signature and the latest tag; revision label e097d59c0, stack io.buildpacks.stacks.jammy and CNB user 1002:1000 verified on both platforms",
+      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:69aa695c7ce153936d8777e5603c8f8e1764902246525cc58f5a55eb74e17d21",
+      "resolved_at": "2026-11-26T14:45:00Z",
+      "source": "ghcr.io multi-arch index (linux/amd64 + linux/arm64), cnb-run-image.yml run 45839852703 from 9874e5ea21 on run-jammy-base sha256:031b3fa694e7… (stack released 2026-11-26T12:43:57Z, w3/m635): both platforms passed the libatomic1 ldconfig gate and Node 26 startup check before the signature and the latest tag; the signature verifies against cnb-run-image.yml on refs/heads/main; revision label 9874e5ea21, stack io.buildpacks.stacks.jammy and CNB user 1002:1000 verified on both platforms",
       "files": [
         "deploy/gitops/charts/kpack/platform.yaml"
       ]
@@ -562,9 +562,9 @@
       "id": "native-common-bookworm",
       "kind": "native-base",
       "upstream": "ghcr.io/bex-co/bex-cnb-run:native-common-bookworm",
-      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:49dbbd727e03549a766053bf39556105be99561fff5b2377fb7ac3ba37341266",
-      "resolved_at": "2026-11-21T13:12:00Z",
-      "source": "native-common-image.yml families run 44906752907 on c64b14cfd: published, scanned and signed by native-base-image.yml, passed its network-off magic-wormhole round trip, then the complete AMD64 utility cohort and all 39 family cases (ruby/ruby40 on its re-run after Docker Hub answered 429), each generated image also running the Shell wormhole probe (w6/m549; adds Debian's magic-wormhole 0.12.0-1.1 and its Python closure to w8/335's sha256:4b809600). A newer native-common-bookworm tag is a candidate for the next families run, not an adoption.",
+      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:9c3fac2fc2a764c83434eb28e9821bd734f64bbce68efe42d6593cff29280df5",
+      "resolved_at": "2026-11-26T15:39:00Z",
+      "source": "native-common-image.yml families run 45839946482 on 9874e5ea21: published, scanned and signed by native-base-image.yml from buildpack-deps:bookworm sha256:c82cc01646f8… (Debian bookworm root @1795392000), passed its network-off magic-wormhole round trip, then the complete AMD64 utility cohort and all 39 family cases, each generated image also running the Shell wormhole probe (w3/m635; replaces w6/m549's sha256:49dbbd72…). A newer native-common-bookworm tag is a candidate for the next families run, not an adoption; every native*.go push republishes the tag.",
       "files": [
         "lego/operator/internal/build/nativebases.go"
       ]

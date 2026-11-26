@@ -1,6 +1,6 @@
 # w3 · m635 — Build toolchain pins are fresh again and #201 closes
 
-**Worker:** worker3 **Goal:** every pinned build-toolchain image equals its upstream at review time, the native Bun 1.4 and Ruby 3.3 / 3.4 / 4.0 lines carry the current patches, and the freshness monitor closes #201 on its own run. **Status:** in progress (t001, t002 done)
+**Worker:** worker3 **Goal:** every pinned build-toolchain image equals its upstream at review time, the native Bun 1.4 and Ruby 3.3 / 3.4 / 4.0 lines carry the current patches, and the freshness monitor closes #201 on its own run. **Status:** in progress (t001–t005, t007, t008 done)
 
 ## Tasks (in order)
 
@@ -8,13 +8,13 @@
 | --- | --- | --- | --- |
 | t001 | [Re-resolve the drift and list what moves](done/t001.md) — **DONE** | 20m | — |
 | t002 | [Bump the native Bun and Ruby lines](done/t002.md) — **DONE** | 45m | t001 |
-| t003 | Refresh the Paketo builder and stack images | 45m | t001 |
-| t004 | Adopt the rebuilt native-common-bookworm image | 30m | t001 |
-| t005 | Qualify the new images on dev-3 | 60m | t002, t003, t004 |
-| t006 | Production check and #201 closes | 30m | t005 |
-| t007 | Simplify | 15m | t006 |
-| t008 | Test coverage | 30m | t006 |
-| t009 | Closeout | 10m | t008 |
+| t003 | [Refresh the Paketo builder and stack images](done/t003.md) — **DONE** | 45m | t001 |
+| t004 | [Adopt the rebuilt native-common-bookworm image](done/t004.md) — **DONE** | 30m | t001 |
+| t005 | [Qualify the new images on dev-3](done/t005.md) — **DONE** | 60m | t002, t003, t004 |
+| t006 | [Production check and #201 closes](t006.md) | 30m | t005 |
+| t007 | [Simplify](done/t007.md) — **DONE** | 15m | t006 |
+| t008 | [Test coverage](done/t008.md) — **DONE** | 30m | t006 |
+| t009 | [Closeout](t009.md) | 10m | t008 |
 
 ## Definition of done
 
@@ -36,7 +36,7 @@
 
 | id | #201 | upstream | committed → observed | carries |
 | --- | --- | --- | --- | --- |
-| `cnb-builder` | yes | `docker.io/paketobuildpacks/builder-jammy-base:latest` | `5cd813b83496…` → `4ba599c03e4b…` | lifecycle 0.21.29 → 0.21.30, 135 buildpacks, stack `io.buildpacks.stacks.jammy` |
+| `cnb-builder` | yes | `docker.io/paketobuildpacks/builder-jammy-base:latest` | `5cd813b83496…` → `4ba599c03e4b…`, then `906ba1546346…` at 15:45Z | lifecycle 0.21.29 → 0.21.30, 135 buildpacks, stack `io.buildpacks.stacks.jammy` |
 | `cnb-run-image` |  | `ghcr.io/bex-co/bex-cnb-run:latest` | `77061d60c38f…` → `c01de4f8624d…` | the same Paketo run base, republished by `cnb-run-image.yml` run 45019148491; rebuilt on the new `cnb-stack-run` instead |
 | `cnb-stack-build` | yes | `docker.io/paketobuildpacks/build-jammy-base:latest` | `5fce29993757…` → `267bfd510aa3…`, then `763449c86cdd…` at 13:37Z | stack released 2026-11-26T00:51:36Z, then again at 12:43:57Z (was 2026-11-16) |
 | `cnb-stack-run` | yes | `docker.io/paketobuildpacks/run-jammy-base:latest` | `6031575989ab…` → `64ca273de9e3…`, then `031b3fa694e7…` at 13:37Z | stack released 2026-11-26T00:51:36Z, then again at 12:43:57Z (was 2026-11-16) |
@@ -62,7 +62,7 @@
 | `native-ruby-4-0` | yes | `docker.io/library/ruby:4.0-bookworm` | `862aacfe5415…` → `a74fe73b00b1…` | Ruby 4.0.9 → 4.0.10 |
 | `native-rust` |  | `docker.io/library/rust:1-bookworm` | `ade39a710ef8…` → `75d26c23c24c…` | Rust 1.100.0 (unchanged) |
 
-A second `resolve` at 13:37Z found only the two Paketo stacks moved again (their second release of the day), and the pins take that release. Paketo had published no builder for it, so the builder stays on the 00:51Z stack's, as the reviewed builder and stack were paired before (w6/m291). The second `resolve` also ran the new line-version check (t008) against the registries: every line's `version` field equals the patch its image records.
+A second `resolve` at 13:37Z found only the two Paketo stacks moved again (their second release of the day), and the pins take that release. Paketo published that release's builder (`906ba1546346…`, lifecycle 0.21.30) by a third `resolve` at 15:45Z, which the adoption commit takes; that `resolve` found no other drift. The second `resolve` also ran the new line-version check (t008) against the registries: every line's `version` field equals the patch its image records.
 
 Every official image above was rebuilt on the Debian root `@1795392000` (was `@1793827419`) and keeps its suite (bookworm, or trixie for Elixir 1.18–1.20); linux/amd64 and linux/arm64 are both published.
 
