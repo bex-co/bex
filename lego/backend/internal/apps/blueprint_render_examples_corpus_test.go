@@ -49,6 +49,8 @@ var knownBlueprintGaps = []string{}
 // they are third-party files, so they are not vendored). Opt-in:
 // BEX_RENDER_EXAMPLES_DIR=<dir of *.yaml>. The render-examples job of
 // .github/workflows/render-schema-drift.yml fetches and runs it weekly (w33/001).
+// Its client checks each resource the validation dry-runs against the CRDs'
+// schemas, as production's server-side dry run does (w6/183).
 func TestRenderExamplesCorpus(t *testing.T) {
 	dir := os.Getenv("BEX_RENDER_EXAMPLES_DIR")
 	if dir == "" {
@@ -59,7 +61,7 @@ func TestRenderExamplesCorpus(t *testing.T) {
 		t.Fatalf("no corpus files in %s: %v", dir, err)
 	}
 	sort.Strings(files)
-	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	svc := &Service{Base: &core.Base{Client: crdValidatingClient(t), Namespace: "default"}}
 	valid := 0
 	for _, f := range files {
 		raw, err := os.ReadFile(f)

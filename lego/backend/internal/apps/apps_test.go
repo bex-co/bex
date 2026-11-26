@@ -51,12 +51,16 @@ import (
 // (rendertest.Stamped), so the REST responses validated by validated() carry
 // the createdAt Render requires.
 func fakeClient(objs ...client.Object) client.Client {
+	return fakeClientBuilder(objs...).WithInterceptorFuncs(rendertest.StampOnCreate).Build()
+}
+
+// fakeClientBuilder is fakeClient before its interceptors.
+func fakeClientBuilder(objs ...client.Object) *fake.ClientBuilder {
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = appv1alpha1.AddToScheme(scheme)
 	return fake.NewClientBuilder().WithScheme(scheme).
-		WithObjects(rendertest.Stamped(objs...)...).
-		WithInterceptorFuncs(rendertest.StampOnCreate).WithReturnManagedFields().Build()
+		WithObjects(rendertest.Stamped(objs...)...).WithReturnManagedFields()
 }
 
 func sampleApp(name string) *appv1alpha1.App {

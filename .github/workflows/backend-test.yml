@@ -33,6 +33,8 @@ on:
       - "docs/render-artifacts/fixtures/render-webhook-vocabulary-*.json"
       - "lego/cli/testdata/**"
       - "lego/operator/config/api/deployment.yaml"
+      # internal/apps reads every CRD by directory (crdValidatingClient, w6/183).
+      - "lego/operator/config/crd/bases/*.yaml"
       - "lego/operator/config/s3gw/deployment.yaml"
       - "scripts/stripe-billing-*.sh"
       - "scripts/stripe-billing-setup.py"
@@ -72,6 +74,7 @@ on:
       - "docs/render-artifacts/fixtures/render-webhook-vocabulary-*.json"
       - "lego/cli/testdata/**"
       - "lego/operator/config/api/deployment.yaml"
+      - "lego/operator/config/crd/bases/*.yaml"
       - "lego/operator/config/s3gw/deployment.yaml"
       - "scripts/stripe-billing-*.sh"
       - "scripts/stripe-billing-setup.py"

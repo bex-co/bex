@@ -34,8 +34,9 @@ import (
 
 // TestInvalidFieldsErrorNamesTheFields pins the 400 a CRD refusal becomes,
 // against the status a live API server returned for a server-side dry-run of
-// an App whose startCommand was 5,000 bytes (w5/m116): the field cause, without
-// the object's name or the fieldless note that CEL rules went unchecked.
+// an App whose startCommand was 5,000 bytes (w5/m116; the CRD has had no
+// command cap since w6/183): the field cause, without the object's name or the
+// fieldless note that CEL rules went unchecked.
 func TestInvalidFieldsErrorNamesTheFields(t *testing.T) {
 	live := &apierrors.StatusError{ErrStatus: metav1.Status{
 		Status: metav1.StatusFailure, Code: 422, Reason: metav1.StatusReasonInvalid,

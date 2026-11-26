@@ -764,16 +764,20 @@ type AppSpec struct {
 	// BuildCommand is Render's native-runtime build command. It is required by
 	// the API when Runtime is a language and ignored for Dockerfile/buildpack
 	// builds. The command runs from RootDir in the generated native build image.
+	//
+	// Like StartCommand, PreDeployCommand and InitialDeployHook (and the status
+	// records that copy them), it has no length cap: Render's API schema sets
+	// none, and its pg_pinecone_render template inlines a 4,717-byte
+	// dockerCommand that a 4096-byte cap refused (w6/183). The request body and
+	// object size limits bound it instead.
 	// +optional
-	// +kubebuilder:validation:MaxLength=4096
 	BuildCommand string `json:"buildCommand,omitempty"`
 
 	// StartCommand is Render's runtime launch command. For a native runtime it
 	// becomes the generated image's CMD; for docker or a prebuilt image it is
 	// dockerCommand and overrides the image command on Deployments/CronJobs
-	// when non-empty.
+	// when non-empty. No length cap (BuildCommand).
 	// +optional
-	// +kubebuilder:validation:MaxLength=4096
 	StartCommand string `json:"startCommand,omitempty"`
 
 	// Builder is bex's internal/extension build strategy. "auto" preserves the
@@ -949,7 +953,6 @@ type AppSpec struct {
 	// for cron_job (its own Command already runs the image) and static_site (no
 	// running container). See docs/ADR004-app-deployment.md.
 	// +optional
-	// +kubebuilder:validation:MaxLength=4096
 	PreDeployCommand string `json:"preDeployCommand,omitempty"`
 
 	// InitialDeployHook is Render's Blueprint initialDeployHook: a one-time
@@ -960,7 +963,6 @@ type AppSpec struct {
 	// status.initialDeployHookCompleted and nothing selects it again. See
 	// docs/ADR004-app-deployment.md § Initial deploy hook.
 	// +optional
-	// +kubebuilder:validation:MaxLength=4096
 	InitialDeployHook string `json:"initialDeployHook,omitempty"`
 
 	// IdleTTLSeconds a free web service may go without traffic (HTTP requests it
@@ -1724,7 +1726,6 @@ type PreDeployStatus struct {
 	// Empty for a step refused before its Job existed (no build minutes left,
 	// an infrastructure fault).
 	// +optional
-	// +kubebuilder:validation:MaxLength=4096
 	Command string `json:"command,omitempty"`
 
 	// Native reports that Command ran as arguments to a native image's
@@ -1934,7 +1935,6 @@ type ReleaseRolloutStatus struct {
 	// launch (a Docker image, with or without a Docker Command, a prebuilt
 	// image, or the image's own command).
 	// +optional
-	// +kubebuilder:validation:MaxLength=4096
 	Command string `json:"command,omitempty"`
 
 	// WebConcurrency is the WEB_CONCURRENCY default the app container got

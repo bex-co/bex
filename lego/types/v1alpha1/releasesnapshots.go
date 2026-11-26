@@ -212,7 +212,6 @@ type ReleaseRuntimeSettings struct {
 	// +kubebuilder:validation:Maximum=300
 	MaxShutdownDelaySeconds *int32 `json:"maxShutdownDelaySeconds,omitempty"`
 	// +optional
-	// +kubebuilder:validation:MaxLength=4096
 	PreDeployCommand string `json:"preDeployCommand,omitempty"`
 }
 

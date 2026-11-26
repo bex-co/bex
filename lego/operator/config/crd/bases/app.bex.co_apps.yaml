@@ -146,7 +146,12 @@ spec:
                   BuildCommand is Render's native-runtime build command. It is required by
                   the API when Runtime is a language and ignored for Dockerfile/buildpack
                   builds. The command runs from RootDir in the generated native build image.
-                maxLength: 4096
+
+                  Like StartCommand, PreDeployCommand and InitialDeployHook (and the status
+                  records that copy them), it has no length cap: Render's API schema sets
+                  none, and its pg_pinecone_render template inlines a 4,717-byte
+                  dockerCommand that a 4096-byte cap refused (w6/183). The request body and
+                  object size limits bound it instead.
                 type: string
               buildCommit:
                 description: |-
@@ -639,7 +644,6 @@ spec:
                   next release goes live; one success sets
                   status.initialDeployHookCompleted and nothing selects it again. See
                   docs/ADR004-app-deployment.md § Initial deploy hook.
-                maxLength: 4096
                 type: string
               ipAllowList:
                 description: |-
@@ -774,7 +778,6 @@ spec:
                   unchanged). Applies to web_service/private_service/background_worker; ignored
                   for cron_job (its own Command already runs the image) and static_site (no
                   running container). See docs/ADR004-app-deployment.md.
-                maxLength: 4096
                 type: string
               previewNotificationsEnabled:
                 description: |-
@@ -865,7 +868,6 @@ spec:
                         - web-image-configured-v1
                         type: string
                       preDeployCommand:
-                        maxLength: 4096
                         type: string
                     type: object
                   sourceGeneration:
@@ -1001,8 +1003,7 @@ spec:
                   StartCommand is Render's runtime launch command. For a native runtime it
                   becomes the generated image's CMD; for docker or a prebuilt image it is
                   dockerCommand and overrides the image command on Deployments/CronJobs
-                  when non-empty.
-                maxLength: 4096
+                  when non-empty. No length cap (BuildCommand).
                 type: string
               subdomain:
                 description: |-
@@ -1586,7 +1587,6 @@ spec:
                       ($PORT unexpanded), recorded when the operator launched the step's Job.
                       Empty for a step refused before its Job existed (no build minutes left,
                       an infrastructure fault).
-                    maxLength: 4096
                     type: string
                   containerStartedAt:
                     description: |-
@@ -1878,7 +1878,6 @@ spec:
                       ($PORT unexpanded), recorded when the operator launched the step's Job.
                       Empty for a step refused before its Job existed (no build minutes left,
                       an infrastructure fault).
-                    maxLength: 4096
                     type: string
                   containerStartedAt:
                     description: |-
@@ -2102,7 +2101,6 @@ spec:
                       native image, as configured ($PORT unexpanded); empty for any other
                       launch (a Docker image, with or without a Docker Command, a prebuilt
                       image, or the image's own command).
-                    maxLength: 4096
                     type: string
                   firstExit:
                     description: |-
