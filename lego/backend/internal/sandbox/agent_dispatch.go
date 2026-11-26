@@ -19,9 +19,12 @@ package sandbox
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log"
 	"strconv"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -81,4 +84,46 @@ func (l *AgentSessionLifecycle) CleanupAgentDispatches(ctx context.Context, disp
 		}
 	}
 	return cleanupErr
+}
+
+// earlierAttempt is what an earlier create of this session turn left, for a
+// repeated create (AgentSessionSandbox.Repeat, w3/m405). OpenSandbox's create
+// is not idempotent, and one whose answer was lost may have made the sandbox:
+// a running one is the repeat's answer, and every other one, half created or
+// failed, is ended so the new create leaves the turn exactly one.
+func (s *Service) earlierAttempt(ctx context.Context, workspace string, bindings map[string]string) (Sandbox, bool, error) {
+	session, turn := bindings[agentsession.LabelSession], bindings[agentsession.LabelDispatchTurn]
+	if turn == "" {
+		return Sandbox{}, false, fmt.Errorf("%w: a repeated agent sandbox create needs its dispatch turn", core.ErrBadRequest)
+	}
+	key, err := s.agentSessionKey(ctx, workspace)
+	if err != nil {
+		return Sandbox{}, false, err
+	}
+	rows, err := s.Client.ListByMetadata(ctx, key, map[string]string{agentsession.LabelSession: session, agentsession.LabelDispatchTurn: turn})
+	if err != nil {
+		return Sandbox{}, false, err
+	}
+	var kept *osSandbox
+	for i := range rows {
+		raw := &rows[i]
+		if !validOwnedSandbox(*raw, workspace) || raw.Metadata[agentsession.LabelSession] != session || raw.Metadata[agentsession.LabelDispatchTurn] != turn {
+			continue
+		}
+		if kept == nil && mapOpenSandboxStatus(raw.Status.State) == StatusRunning {
+			kept = raw
+			continue
+		}
+		log.Printf("sandbox create: a repeat ends sandbox %s (%s) an earlier attempt left (workspace=%s session=%s turn=%s)", raw.ID, raw.Status.State, workspace, session, turn)
+		if err := s.terminateObserved(ctx, key, raw); err != nil {
+			return Sandbox{}, false, err
+		}
+	}
+	if kept == nil {
+		return Sandbox{}, false, nil
+	}
+	log.Printf("sandbox create: a repeat takes running sandbox %s an earlier attempt made (workspace=%s session=%s turn=%s)", kept.ID, workspace, session, turn)
+	s.Meter.Observe(ctx, *kept)
+	s.Meter.Label(ctx, *kept)
+	return s.sandboxView(*kept, workspace), true, nil
 }

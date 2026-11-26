@@ -10,6 +10,27 @@ controller:
     bex.co/pool: platform
   tolerations:
     - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
+  # w3/m405 t004: two replicas on different platform nodes, one leader at a
+  # time (the chart's leaderElection stays on), and a drain evicts one at a
+  # time, so a platform roll never leaves BatchSandboxes unreconciled. The
+  # lifecycle server beside it cannot do the same: its only store is SQLite on
+  # a ReadWriteOnce volume (deploy/opensandbox/server-in-cluster.yaml), so it
+  # stays one Recreate replica, and bex-api repeats the creates its restart
+  # does not serve (agentsessions createRepeatBackoff).
+  replicaCount: 2
+  podDisruptionBudget:
+    enabled: true
+    maxUnavailable: 1
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: opensandbox
+                control-plane: controller-manager
   snapshot:
     # Privileged commit/unpause Jobs run outside tenant baseline-PSS namespaces.
     jobNamespace: opensandbox-snapshot

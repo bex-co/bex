@@ -1185,6 +1185,12 @@ type AgentSessionSandbox struct {
 	// the pod is seen waiting for room on the sandbox pool (ADR047 §
 	// w10/m497), so the session can say it is waiting before the create ends.
 	PoolFull func()
+	// Repeat marks a create sent again after one the runtime could not serve
+	// (IsTransientCreateFailure), which may have made the turn's sandbox all
+	// the same: a running sandbox of the turn is this create's answer, and
+	// any other is ended before the new create, so a turn never has two
+	// (w3/m405). DriverEnv must name the turn.
+	Repeat bool
 }
 
 // CreateAgentSessionSandbox is the narrow trusted lifecycle seam used by the
@@ -1212,7 +1218,7 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, s
 	env[ModelAPIKeyEnvVar] = spec.ModelAPIKey
 	return s.createAgentSandbox(ctx, agentSandbox{
 		workspaceID: spec.WorkspaceID, template: spec.Template, principal: spec.SessionID,
-		repository: spec.Repository, branch: spec.Branch, env: env, image: spec.Image, poolFull: spec.PoolFull,
+		repository: spec.Repository, branch: spec.Branch, env: env, image: spec.Image, poolFull: spec.PoolFull, repeat: spec.Repeat,
 		// Setup policy belongs to the session, not this attempt. A late
 		// failure must not delete a newer generation's policy; durable
 		// dispatch recovery removes this attempt's sandbox independently.
@@ -1238,13 +1244,15 @@ func (s *Service) requireAgentSandboxes(workspaceID, principal string) error {
 
 // agentSandbox is an agent template sandbox and the principal its binding
 // labels name: a session, or a repository environment build. prepareEgress
-// installs the principal's policy before the Pod exists.
+// installs the principal's policy before the Pod exists. repeat is
+// AgentSessionSandbox.Repeat.
 type agentSandbox struct {
 	workspaceID, template, principal, repository, branch string
 	env                                                  map[string]string
 	image                                                AgentImage
 	prepareEgress                                        func(namespace string) error
 	poolFull                                             func()
+	repeat                                               bool
 }
 
 func (s *Service) createAgentSandbox(ctx context.Context, a agentSandbox) (Sandbox, error) {
@@ -1274,6 +1282,11 @@ func (s *Service) createAgentSandbox(ctx context.Context, a agentSandbox) (Sandb
 	}
 	if err := a.prepareEgress(store.SandboxNamespace(a.workspaceID)); err != nil {
 		return Sandbox{}, err
+	}
+	if a.repeat {
+		if box, ok, err := s.earlierAttempt(ctx, a.workspaceID, bindings); err != nil || ok {
+			return box, err
+		}
 	}
 	policy := &NetworkPolicy{Default: NetworkPolicyDenyAll}
 	// The egress allowlist (a JSON array) and model endpoint (a URL) are NOT

@@ -573,7 +573,7 @@ On 2026-11-17 and 18, seven sessions failed with `SANDBOX_START_FAILED` while th
 
 **The wait: only `pool_full`, for up to an hour.**
 
-- **Attempts.** Each attempt is one OpenSandbox create. Its own 300 s wait holds the pod in the scheduler's queue, so the session starts as soon as room frees during it. An attempt that ends `pool_full` is followed by another after 15 s (`sandboxWaitBackoff`). Before each new attempt, bex-api ends any sandbox of this turn that survived (`CleanupAgentDispatches` by the turn's labels), so a wait never leaves two sandboxes for one turn. w3/m405's t002 has not shipped; this is the same guarantee, built on the turn label.
+- **Attempts.** Each attempt is one OpenSandbox create. Its own 300 s wait holds the pod in the scheduler's queue, so the session starts as soon as room frees during it. An attempt that ends `pool_full` is followed by another after 15 s (`sandboxWaitBackoff`). Before each new attempt, bex-api ends any sandbox of this turn that survived (`CleanupAgentDispatches` by the turn's labels), so a wait never leaves two sandboxes for one turn. w3/m405's repeat (below) keeps the same guarantee by the same labels.
 - **Bound.** One hour (`sandboxWaitBound`), and never more than the turn ceiling (`BEX_AGENT_TURN_TIMEOUT`: 4 h in production, 30 min by default). The routines' turns on the interim node ran from 8 to 68 minutes (ADR105 § Until the AX42-1 arrives), so an hour lets a burst of hourly starts drain behind the turns already running. A pool still full after that is undersized: the alert below fires, and the turn fails with cause `pool_full` and words that say how long it waited.
 - **Every other cause fails at once** with its own words. A retry would not change an image that does not pull, a runtime that does not start or a quota that refuses.
 - **Keep-alive.** Before every attempt, one transaction (`MarkAgentDispatchWaiting`) checks that the session is still unbound on this turn, in `creating` or `redispatching`, and not archived. It stamps `agent_sessions.sandbox_wait_since` once, moves the dispatch's `next_check_at` to 16 minutes ahead (`sandboxWaitLease`) and stores the dispatch's input (`agent_session_dispatches.wait_spec`, below). The dispatch's 15-minute background ceiling (`dispatchTimeout`) restarts with each attempt of a waiting dispatch and is not lifted for any other, so a replica still waiting always ends its own wait a minute before its lease runs out.
@@ -588,7 +588,7 @@ On 2026-11-17 and 18, seven sessions failed with `SANDBOX_START_FAILED` while th
   - A watcher on the session row cancels the attempt in flight within 10 s, and the next attempt's check refuses.
   - A create that already answered binds nothing: `RecordAgentSessionDispatch`'s CAS refuses a canceled session and tears its sandbox down.
   - An archived waiting session fails with "The session was archived while it waited for a sandbox machine, so it did not start."
-- **Boundary with w3/m405.** Transient create faults stay in w3/m405: a dropped connection, a 502/503/504, `SANDBOX_RUNTIME_UNAVAILABLE`, and the server's `KUBERNETES::API_ERROR` 500s. w3/m405's definition of done keeps `SANDBOX_START_FAILED` failing at once, and this milestone changes exactly one case of it: `pool_full`, which waits. When w3/m405 retries a transient fault, it wraps the same create this wait repeats.
+- **Boundary with w3/m405.** Transient create faults are w3/m405's (below): a dropped connection, a 502/503/504, `SANDBOX_RUNTIME_UNAVAILABLE`, and the server's `KUBERNETES::API_ERROR` 500s. `SANDBOX_START_FAILED` still fails at once, except `pool_full`, which waits. Both repeat the same create, in the same loop (`createWaitingForRoom`).
 
 **Surfaces.**
 
@@ -607,6 +607,17 @@ On 2026-11-17 and 18, seven sessions failed with `SANDBOX_START_FAILED` while th
 - A new `waiting` outcome on `bex_agent_session_provision_seconds`, for each attempt that ended `pool_full`.
 
 `AgentSandboxPoolFull` fires when sessions have been waiting for 15 minutes. `AgentSessionProvisionFailing`'s denominator leaves the `waiting` attempts out, so a burst of waits neither hides nor raises its failure ratio.
+
+### w3/m405 — a create the sandbox runtime did not serve is repeated (2026-11-26)
+
+On 2026-11-12 the platform node running the one OpenSandbox lifecycle server was drained during a roll (w1/144). The server refused bex-api's connections from 09:35:11 to about 09:37 UTC while its pod moved and its volume reattached, and a session that started at 09:36 failed its turn with `sandbox create failed` (`SANDBOX_RUNTIME_UNAVAILABLE` in the log). Devin is the reference: a hiccup in its own infrastructure does not fail the user's turn. The server cannot run a second replica ([ADR042 D1](ADR042-sandbox-cluster-substrate.md)), so bex-api now rides the gap out.
+
+- **What is repeated** (`sandbox.IsTransientCreateFailure`): `SANDBOX_RUNTIME_UNAVAILABLE` (a refused or unmade connection, a plain 503), any other 503 (the server's tenant lookup or Kubernetes client not ready), the server's `KUBERNETES::API_ERROR` 500 (its own Kubernetes API failing, as in [ADR105](ADR105-agent-sandbox-hetzner-bare-metal.md)'s 2026-11 creates), a 502 or 504 without the server's own code, and a connection that ended before the answer. Everything else is an answer about the sandbox and still fails the turn at once with its reason and code: the capacity limit, `SANDBOX_START_FAILED` (a full pool waits, above), every 4xx and every other 500.
+- **Bound.** Repeats wait 2, 5, 10, 20 and then 30 s, eight in all (157 s, `createRepeatBackoff`), and none starts more than 3 minutes after the first such failure (`createRepeatBound`), well inside the dispatch's 15-minute ceiling. A runtime still not serving after that fails the turn with today's `sandbox create failed` and no code.
+- **Never two sandboxes.** After a dropped connection or a 502/504 the server may have made the sandbox. Each repeat is sent with `AgentSessionSandbox.Repeat`: it lists the session's sandboxes of this turn by the binding labels (`bex.co/agent-session`, `bex.co/agent-dispatch-turn`), takes a running one as its answer, and ends any other before it creates. The setup egress policy is prepared again, as for every create.
+- **Only while the session waits.** Before each repeat the dispatch reads the session: a cancel, archive or newer turn during the pause ends the dispatch, and whatever the failed create made is ended. A repeat is never sent for an editor's start (ADR054 D8), which a person retries.
+- **A retained disk is not blamed.** A dispatch booting from a stopped turn's disk whose creates the runtime did not serve does not fall back to a fresh sandbox, and the disk stays kept for the next message.
+- **Signal.** Each repeat is logged with its number and cause, a start after repeats says on which, and `bex_agent_session_sandbox_create_repeats_total` counts them. The dispatch is still one `bex_agent_session_provision_seconds` sample, covering all of its creates.
 
 ### w5/m81 — lifecycle latency instrumentation (2026-08-27)
 

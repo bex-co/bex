@@ -1026,27 +1026,29 @@ type bootedSandbox struct {
 }
 
 // createSessionSandbox creates the dispatch's sandbox from image with env.
-// poolFull is called once if the create sees its pod waiting for room.
-func (s *Service) createSessionSandbox(ctx context.Context, record store.AgentSession, spec dispatchSpec, image sandbox.AgentImage, env map[string]string, poolFull func()) (sandbox.Sandbox, error) {
+// poolFull is called once if the create sees its pod waiting for room; repeat
+// is sandbox.AgentSessionSandbox.Repeat.
+func (s *Service) createSessionSandbox(ctx context.Context, record store.AgentSession, spec dispatchSpec, image sandbox.AgentImage, env map[string]string, repeat bool, poolFull func()) (sandbox.Sandbox, error) {
 	return s.Sandbox.CreateAgentSessionSandbox(ctx, sandbox.AgentSessionSandbox{
 		WorkspaceID: record.WorkspaceID, Template: spec.template, SessionID: record.ID, Repository: record.Repo, Branch: record.Branch,
 		ModelEndpoint: spec.modelEndpoint, ModelAPIKey: spec.modelAPIKey, Egress: spec.egress, DriverEnv: env, Image: image,
-		PoolFull: poolFull,
+		PoolFull: poolFull, Repeat: repeat,
 	})
 }
 
 // bootSandbox creates the dispatch's sandbox: from the retained disk it
 // claimed, else from a fresh image (ADR047 D12). Either waits while the pool
 // has no room (createWaitingForRoom). A sandbox that cannot start from the
-// disk, for any reason but the capacity limit or a full pool, which a fresh
-// one meets as well, is retried once from a fresh sandbox, which never fails
+// disk, for any reason but the capacity limit, a full pool or a runtime that
+// did not serve its creates, which a fresh one meets as well, is retried once
+// from a fresh sandbox, which never fails
 // the turn for the optimization, and the turn says so in its note. The disk
 // is then released as unusable. If the fresh sandbox does not start either,
 // the disk was not at fault: it stays claimed, and the dispatch lets it go.
 func (s *Service) bootSandbox(ctx context.Context, record store.AgentSession, spec dispatchSpec, repoEnv store.AgentRepoEnvironment) (bootedSandbox, error) {
 	image, env := s.dispatchImage(ctx, repoEnv, spec)
 	sb, waited, err := s.createWaitingForRoom(ctx, record, spec, image, env)
-	if err == nil || spec.retained == nil || sandbox.IsCapacityLimit(err) || sandbox.IsPoolFull(err) || errors.Is(err, errWaitEnded) || ctx.Err() != nil {
+	if err == nil || spec.retained == nil || sandbox.IsCapacityLimit(err) || sandbox.IsPoolFull(err) || sandbox.IsTransientCreateFailure(err) || errors.Is(err, errWaitEnded) || ctx.Err() != nil {
 		return bootedSandbox{Sandbox: sb, image: image, retained: spec.retained, waited: waited}, err
 	}
 	log.Printf("agent-session dispatch: sandbox from the retained disk failed, retrying fresh (session=%s image=%s): %v", record.ID, spec.retained.ID, err)

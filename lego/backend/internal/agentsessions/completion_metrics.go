@@ -57,6 +57,10 @@ type CompletionMetrics struct {
 	// label is always pool_full; it names what the sessions wait on.
 	sandboxWaiting *prometheus.GaugeVec
 	sandboxWait    *prometheus.HistogramVec
+	// createRepeats counts the creates a dispatch sent again because the
+	// sandbox runtime did not serve the last one (w3/m405). The dispatch's
+	// provisionLatency sample still covers all of its creates, once.
+	createRepeats prometheus.Counter
 }
 
 // waitOutcome is how a dispatch's wait for a sandbox machine ended.
@@ -173,8 +177,12 @@ func NewCompletionMetrics(reg prometheus.Registerer) *CompletionMetrics {
 			// One create's 300 s wait through the hour bound.
 			Buckets: []float64{30, 60, 120, 300, 600, 900, 1200, 1800, 2700, 3600},
 		}, []string{"outcome"}),
+		createRepeats: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "bex_agent_session_sandbox_create_repeats_total",
+			Help: "Agent-session sandbox creates sent again because the sandbox runtime did not serve the previous one.",
+		}),
 	}
-	reg.MustRegister(m.statusReads, m.convergences, m.turnOutcomes, m.turnDuration, m.provisionLatency, m.retentions, m.sandboxWaiting, m.sandboxWait)
+	reg.MustRegister(m.statusReads, m.convergences, m.turnOutcomes, m.turnDuration, m.provisionLatency, m.retentions, m.sandboxWaiting, m.sandboxWait, m.createRepeats)
 	return m
 }
 
@@ -189,6 +197,13 @@ func (m *CompletionMetrics) waitBegan() {
 func (m *CompletionMetrics) waitOver() {
 	if m != nil {
 		m.sandboxWaiting.WithLabelValues(string(sandbox.StartCausePoolFull)).Dec()
+	}
+}
+
+// createRepeated counts one repeated create.
+func (m *CompletionMetrics) createRepeated() {
+	if m != nil {
+		m.createRepeats.Inc()
 	}
 }
 

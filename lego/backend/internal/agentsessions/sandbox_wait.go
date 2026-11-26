@@ -223,7 +223,10 @@ func startingPhase(phase string) bool { return phase == PhaseCreating || phase =
 // creates it again, until it is placed, the session leaves the wait or
 // sandboxWaitLimit passes. Before each new create it ends any sandbox of this
 // turn that survived the last one, so a wait never leaves two sandboxes for
-// one turn. Every other start failure ends the dispatch at once.
+// one turn. A create the sandbox runtime did not serve is sent again as a
+// repeat (sandbox.AgentSessionSandbox.Repeat), within createRepeats' bounds,
+// while the session still waits for this turn (w3/m405). Every other start
+// failure ends the dispatch at once.
 //
 // It returns how long the dispatch waited, from the wait's start to the start
 // of its last create.
@@ -231,7 +234,7 @@ func (s *Service) createWaitingForRoom(ctx context.Context, record store.AgentSe
 	if spec.editor {
 		// A person waits on an editor's start, and no turn's dispatch record
 		// keeps a wait alive: it tries once (ADR054 D8).
-		sb, err = s.createSessionSandbox(ctx, record, spec, image, env, nil)
+		sb, err = s.createSessionSandbox(ctx, record, spec, image, env, false, nil)
 		return sb, 0, err
 	}
 	w := &sandboxWait{s: s, d: store.AgentDispatch{SessionID: record.ID, WorkspaceID: record.WorkspaceID, Turn: spec.turn}, saved: spec.saved}
@@ -251,6 +254,8 @@ func (s *Service) createWaitingForRoom(ctx context.Context, record store.AgentSe
 		}
 		s.endAttempt(ctx, w.d)
 	}
+	var repeats createRepeats
+	repeat := false
 	for {
 		attempt, cancel := context.WithCancel(ctx)
 		watched := make(chan struct{})
@@ -262,7 +267,7 @@ func (s *Service) createWaitingForRoom(ctx context.Context, record store.AgentSe
 		if since, waiting := w.waiting(); waiting {
 			waited = started.Sub(since)
 		}
-		sb, err = s.createSessionSandbox(attempt, record, spec, image, env, func() { w.mark(ctx) })
+		sb, err = s.createSessionSandbox(attempt, record, spec, image, env, repeat, func() { w.mark(ctx) })
 		cancel()
 		<-watched
 		if w.left() && ctx.Err() == nil {
@@ -270,12 +275,40 @@ func (s *Service) createWaitingForRoom(ctx context.Context, record store.AgentSe
 			s.endAttempt(ctx, w.d)
 			return sandbox.Sandbox{}, waited, errWaitEnded
 		}
+		if sandbox.IsTransientCreateFailure(err) && ctx.Err() == nil {
+			delay, again := repeats.next(time.Now())
+			if !again {
+				log.Printf("agent-session dispatch: the sandbox runtime did not serve the create after %d repeats (session=%s turn=%d)", repeats.n, record.ID, spec.turn)
+				return sb, waited, err
+			}
+			log.Printf("agent-session dispatch: the sandbox runtime did not serve the create, repeat %d of %d in %s (session=%s turn=%d): %v", repeats.n, len(createRepeatBackoff), delay, record.ID, spec.turn, err)
+			s.Metrics.createRepeated()
+			select {
+			case <-ctx.Done():
+				return sandbox.Sandbox{}, waited, ctx.Err()
+			case <-time.After(delay):
+			}
+			if !w.stillWaiting(ctx) {
+				// The session left during the pause: whatever the failed
+				// create made goes.
+				s.endAttempt(ctx, w.d)
+				return sandbox.Sandbox{}, waited, errWaitEnded
+			}
+			repeat = true
+			continue
+		}
 		if !sandbox.IsPoolFull(err) {
 			if err == nil {
 				outcome = waitOutcomeStarted
+				if repeats.n > 0 {
+					log.Printf("agent-session dispatch: sandbox %s started on repeat %d (session=%s turn=%d)", sb.ID, repeats.n, record.ID, spec.turn)
+				}
 			}
 			return sb, waited, err
 		}
+		// The next create follows endAttempt, which ends whatever this turn
+		// has, so it is not a repeat.
+		repeat = false
 		s.Metrics.observeProvision(provisionWaiting, time.Since(started))
 		if !w.mark(ctx) {
 			s.endAttempt(ctx, w.d)
@@ -297,6 +330,44 @@ func (s *Service) createWaitingForRoom(ctx context.Context, record store.AgentSe
 			return sandbox.Sandbox{}, waited, errWaitEnded
 		}
 	}
+}
+
+// createRepeatBackoff spaces the repeats of a create the sandbox runtime could
+// not serve (sandbox.IsTransientCreateFailure). Its lifecycle server is one
+// replica whose state cannot be shared (an SQLite store on a ReadWriteOnce
+// volume), and draining its node on 2026-11-12 left it refusing connections
+// for about two minutes, which failed a session's turn (w3/m405). The waits add
+// up to 157 s. A var so tests repeat fast.
+var createRepeatBackoff = []time.Duration{2 * time.Second, 5 * time.Second, 10 * time.Second, 20 * time.Second, 30 * time.Second, 30 * time.Second, 30 * time.Second, 30 * time.Second}
+
+// createRepeatBound is how long after its first such failure a dispatch still
+// starts a repeat: past that two-minute gap, and well inside the dispatch's
+// own ceiling (dispatchTimeout). A var so tests give up fast.
+var createRepeatBound = 3 * time.Minute
+
+// createRepeats counts one dispatch's repeats of creates the sandbox runtime
+// could not serve.
+type createRepeats struct {
+	n     int
+	first time.Time // the first such failure
+}
+
+// next is the wait before the next repeat, and false once the repeats are
+// spent: every wait of createRepeatBackoff taken, or a repeat that would start
+// past createRepeatBound after the first failure.
+func (r *createRepeats) next(now time.Time) (time.Duration, bool) {
+	if r.first.IsZero() {
+		r.first = now
+	}
+	if r.n >= len(createRepeatBackoff) {
+		return 0, false
+	}
+	delay := createRepeatBackoff[r.n]
+	if now.Add(delay).Sub(r.first) > createRepeatBound {
+		return 0, false
+	}
+	r.n++
+	return delay, true
 }
 
 // endAttempt ends any sandbox the dispatch's last create left for its turn.

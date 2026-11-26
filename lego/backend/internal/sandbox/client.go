@@ -78,6 +78,26 @@ var errRuntimeUnavailable = core.NewUnavailableError(CodeSandboxRuntimeUnavailab
 	"the sandbox runtime is not answering right now; retry in a few seconds",
 	map[string]any{"retryAfterSeconds": runtimeRetryAfterSeconds})
 
+// errCreateNotServed is a create the lifecycle server did not serve, beyond
+// the runtime-unavailable answer: any other 503, which the server sends only
+// for a request it did not take (its tenant lookup or Kubernetes client not
+// ready); its KUBERNETES::API_ERROR 500, its own Kubernetes API failing, as
+// while the cluster's control plane rolls; a 502 or 504 without the server's
+// own error code; or a connection that ended before the answer, as replacing
+// the server's pod ends it. After all but the first the sandbox may exist all
+// the same, so a caller sends the create again only as a repeat
+// (AgentSessionSandbox.Repeat, w3/m405).
+var errCreateNotServed = errors.New("the sandbox runtime did not serve the create")
+
+// IsTransientCreateFailure reports whether err is a create the sandbox runtime
+// could not serve right now: the runtime-unavailable answer or
+// errCreateNotServed. Every other failure, such as a capacity refusal or a
+// start that did not become ready, is an answer about the sandbox itself.
+func IsTransientCreateFailure(err error) bool {
+	var coded *core.CodedError
+	return errors.Is(err, errCreateNotServed) || (errors.As(err, &coded) && coded.Code == CodeSandboxRuntimeUnavailable)
+}
+
 // defaultReadRetryBackoff spaces the repeats of a read the lifecycle server
 // failed to answer. A read changes nothing, so repeating it is safe, and about
 // a second rides out an endpoint switch without holding the request for long.
@@ -285,8 +305,30 @@ func runtimeUnreachable(method string, err error) bool {
 	if errors.As(err, &op) && op.Op == "dial" {
 		return true
 	}
-	return method == http.MethodGet &&
-		(errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, syscall.ECONNRESET))
+	return method == http.MethodGet && connectionEnded(err)
+}
+
+// connectionEnded reports a request whose connection ended before its answer.
+func connectionEnded(err error) bool {
+	return errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, syscall.ECONNRESET)
+}
+
+// k8sAPIErrorCode is the OpenSandbox server's code for its own Kubernetes API
+// call failing.
+const k8sAPIErrorCode = "KUBERNETES::API_ERROR"
+
+// createNotServed reports a create status that says the server could not
+// serve it, or that a hop in front of it sent (errCreateNotServed).
+func createNotServed(code int, body []byte) bool {
+	switch code {
+	case http.StatusServiceUnavailable:
+		return true
+	case http.StatusInternalServerError:
+		return serverErrorCode(body) == k8sAPIErrorCode
+	case http.StatusBadGateway, http.StatusGatewayTimeout:
+		return serverErrorCode(body) == ""
+	}
+	return false
 }
 
 // runtimeNotAnswering reports a status that says the server could not serve
@@ -333,11 +375,17 @@ func (c *Client) Create(ctx context.Context, tenantKey, image string, entrypoint
 		Timeout:          timeout,
 	})
 	if err != nil {
+		if ctx.Err() == nil && connectionEnded(err) {
+			return osSandbox{}, fmt.Errorf("opensandbox create: %w: %w", errCreateNotServed, err)
+		}
 		return osSandbox{}, err
 	}
 	if code != http.StatusOK && code != http.StatusCreated && code != http.StatusAccepted {
 		if bytes.Contains(data, []byte(podReadyTimeoutCode)) {
 			return osSandbox{}, fmt.Errorf("opensandbox create: status %d: %w", code, errPodReadyTimeout)
+		}
+		if createNotServed(code, data) {
+			return osSandbox{}, fmt.Errorf("opensandbox create: status %d: %w: %s", code, errCreateNotServed, truncate(data))
 		}
 		return osSandbox{}, fmt.Errorf("opensandbox create: status %d: %s", code, truncate(data))
 	}

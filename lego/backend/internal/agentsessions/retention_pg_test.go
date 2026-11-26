@@ -945,6 +945,24 @@ func TestASandboxThatCannotStartFromTheDiskStartsFresh(t *testing.T) {
 			t.Fatalf("the next message booted from %+v, want the still-kept %s", e.lc.image, img.ID)
 		}
 	})
+	// A runtime that did not serve the creates is not the disk's fault
+	// (w3/m405): the creates from the disk are repeated, none starts fresh,
+	// and the disk is kept for the next message.
+	t.Run("a runtime that did not serve", func(t *testing.T) {
+		fastRepeats(t)
+		e := newRetainEnv(t)
+		img := e.stopped(t)
+		var images []string
+		e.lc.onCreate = func(spec sandbox.AgentSessionSandbox) { images = append(images, spec.Image.ID) }
+		e.lc.createErr = runtimeDown
+		e.send(t, "alice", "continue")
+		if len(images) != len(createRepeatBackoff)+1 || slices.ContainsFunc(images, func(id string) bool { return id != img.ID }) {
+			t.Fatalf("the creates booted from %v, want %d from the disk %s and none fresh", images, len(createRepeatBackoff)+1, img.ID)
+		}
+		if got := e.live(t); got.ID != img.ID || got.State != store.RetainedImageKept || e.rs.deletions(img.ID) != 0 {
+			t.Fatalf("image = %+v deleted %d times, want it kept", got, e.rs.deletions(img.ID))
+		}
+	})
 	t.Run("a capacity limit", func(t *testing.T) {
 		e := newRetainEnv(t)
 		img := e.stopped(t)

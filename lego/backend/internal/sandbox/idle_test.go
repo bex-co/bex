@@ -76,6 +76,9 @@ type fakeOpenSandbox struct {
 	createDelay  time.Duration
 	createStatus int
 	createBody   string
+	// createLost makes a create add its box and then end the connection
+	// before the answer, as replacing the server's pod does (w3/m405).
+	createLost bool
 	// resumeStatus, when set, is what a resume answers instead of accepting it (a
 	// failing runtime).
 	resumeStatus int
@@ -195,7 +198,17 @@ func (f *fakeOpenSandbox) create(w http.ResponseWriter, r *http.Request) {
 	id := fmt.Sprintf("os-new-%d", f.nextID)
 	f.boxes[id] = &fakeBox{state: "Running", metadata: maps.Clone(body.Metadata), created: time.Now(), image: body.Image.URI, env: maps.Clone(body.Env), entrypoint: slices.Clone(body.Entrypoint)}
 	f.calls = append(f.calls, "create "+id)
+	lost := f.createLost
 	f.mu.Unlock()
+	if lost {
+		conn, _, err := w.(http.Hijacker).Hijack()
+		if err != nil {
+			f.t.Errorf("hijack the create: %v", err)
+			return
+		}
+		_ = conn.Close()
+		return
+	}
 	w.WriteHeader(http.StatusCreated)
 	_, _ = fmt.Fprintf(w, `{"id":%q,"status":{"state":"Running"}}`, id)
 }

@@ -2699,6 +2699,14 @@ fi
 controller_args="$(yq -N \
   'select(.kind == "Deployment" and .metadata.name == "opensandbox-controller-manager") |
     .spec.template.spec.containers[0].args[]' - <<<"$opensandbox_controller_render")"
+# w3/m405 t004: a platform-node drain never leaves the controller with no
+# replica: two of them, one leader, and a budget that evicts one at a time.
+controller_ha="$(for kind in Deployment PodDisruptionBudget; do
+  yq -N "select(.kind == \"$kind\" and .metadata.name == \"opensandbox-controller-manager\") |
+    (.spec.replicas // .spec.maxUnavailable)" - <<<"$opensandbox_controller_render"
+done | paste -sd, -)"
+[ "$controller_ha" = "2,1" ] && grep -qFx -- '--leader-elect' <<<"$controller_args" \
+  || { echo "FAIL: production OpenSandbox controller is not 2 leader-elected replicas with a maxUnavailable 1 budget (replicas,maxUnavailable = '$controller_ha')" >&2; fail=1; }
 for required in \
   '--image-committer-image=sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/image-committer:v0.1.0@sha256:d72cce22ff1ea248e86620e945b7cf12615db74c8a8402fcc01dbfa4a09e7442' \
   '--snapshot-job-namespace=opensandbox-snapshot' \

@@ -1,0 +1,21 @@
+{{- /*
+bex addition to the vendored chart (w3/m405): a node drain evicts at most
+maxUnavailable controller replicas at a time, so a platform roll never leaves
+the BatchSandbox reconciler with none. Meaningful only with replicaCount > 1
+and leader election on; off by default, as upstream ships no budget.
+*/ -}}
+{{- if .Values.controller.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: opensandbox-controller-manager
+  namespace: {{ include "opensandbox.namespace" . }}
+  labels:
+    {{- include "opensandbox.labels" . | nindent 4 }}
+    app.kubernetes.io/component: controller-manager
+spec:
+  maxUnavailable: {{ .Values.controller.podDisruptionBudget.maxUnavailable }}
+  selector:
+    matchLabels:
+      {{- include "opensandbox.selectorLabels" . | nindent 6 }}
+{{- end }}

@@ -24,7 +24,13 @@ controller:
   
   # -- Number of controller replicas
   replicaCount: 1
-  
+
+  # -- PodDisruptionBudget for the controller (bex addition, w3/m405). Enable
+  # it only with replicaCount > 1 and leader election on.
+  podDisruptionBudget:
+    enabled: false
+    maxUnavailable: 1
+
   # -- Resource requests and limits for the controller
   resources:
     limits:
