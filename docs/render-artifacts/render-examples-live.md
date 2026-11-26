@@ -2,7 +2,7 @@
 
 Captured 2026-11-26 (UTC) for [w6/m644](../../.pm/w6/done/m644/README.md), which ran twenty templates, and [w6/m653](../../.pm/w6/done/m653/README.md), which ran the other 49. Validation alone (w5/m143 and the weekly `TestRenderExamplesCorpus` job from w33/001) says whether bex accepts a `render-examples` Blueprint. This page says whether it runs: every one of the 69 Blueprints that need no values was deployed unchanged on production, from its own repository, and checked the way its README or Render guide says to.
 
-- **Production pins:** `2bd6e1f415d3` for rows 1–20 (`043827a8e8`) and `9b91284a4a2e` for rows 21–69 and the `clickhouse` rerun (`c767c1bbd9`). Each is the newest `chore(deploy): pin platform images to …` on `main` during its run.
+- **Production pins:** `2bd6e1f415d3` for rows 1–20 (`043827a8e8`), `9b91284a4a2e` for rows 21–69 and the `clickhouse` rerun (`c767c1bbd9`), and `11695fb886cb` for the `pg_pinecone_render` rerun (`ec6211f2ca`). Each is the newest `chore(deploy): pin platform images to …` on `main` during its run.
 - **Where and how:** workspace `bex-canary`, as the QA user with a run-minted API key that was revoked afterwards. Each template ran through [`scripts/render-examples-live.sh`](../../scripts/render-examples-live.sh). The script creates the Blueprint from `https://github.com/render-examples/<repo>` as Render's Deploy to Render button does (`POST /v1/blueprints` with `source.repo`, then it approves the planned sync). It waits for every resource's first deploy, runs the checks below, prints one line, and deletes what it created. Rerun any one with `bash scripts/render-examples-live.sh <repo>` given `BEX_API_URL` and an API key for the workspace in `BEX_API_TOKEN`.
 - **Cleanup:** every Blueprint, resource, peer and project a run created was deleted, and its by-id `GET` answered `404`.
 
@@ -110,7 +110,7 @@ A private service's guide checks it from a peer, by connecting to it over the pr
 
 ### Rows 1–20 (w6/m644)
 
-Run between 04:22 and 06:03 UTC on pin `2bd6e1f415d3`. **12 of the 20 went live unchanged and passed their checks.** Four failed for a cause bex has to fix, each filed. Four failed for a cause that fails on Render too, with the evidence below.
+Run between 04:22 and 06:03 UTC on pin `2bd6e1f415d3`. **12 of the 20 went live unchanged and passed their checks.** Four failed for a cause bex has to fix, each filed. Four failed for a cause that fails on Render too, with the evidence below. One of the four bex failures, `pg_pinecone_render`, went live when it was [run again](#the-pg_pinecone_render-rerun-w6183) after its fix, so 13 of the 20 now run.
 
 Each template ran once to its outcome. A rerun replaced the first run where the failure was the run's own, not the template's. That happened in four cases:
 
@@ -133,7 +133,7 @@ The `umami`, `django`, `celery`, `minio` and `wordpress` failures were rerun wit
 | 8 | `ioredis` | live | — | — |
 | 9 | `webhook-playground` | live | — | the pre-deploy migration ran, and a triggered cron run ended `successful` |
 | 10 | `clickhouse` | live | — | internal address `clickhouse-<suffix>:8123` |
-| 11 | `pg_pinecone_render` | failed, bex | plan | [w6/183](../../.pm/w6/blocked/183.md): `spec.startCommand: Too long: may not be more than 4096 bytes` for a 4,717-byte `dockerCommand` |
+| 11 | `pg_pinecone_render` | live on rerun | — | [w6/183](../../.pm/w6/done/183.md): this run failed at the plan with `spec.startCommand: Too long: may not be more than 4096 bytes` for a 4,717-byte `dockerCommand`; the [rerun](#the-pg_pinecone_render-rerun-w6183) on pin `11695fb886cb`, after the fix, went live |
 | 12 | `n8n` | live | — | — |
 | 13 | `umami` | failed, bex | deploy | [w6/184](../../.pm/w6/184.md): the web service starts before its Postgres is available and exits (`Can't reach database server`); a manual deploy once it is available goes live and the README's first login works |
 | 14 | `bun-docker` | live | — | — |
@@ -148,7 +148,7 @@ The `umami`, `django`, `celery`, `minio` and `wordpress` failures were rerun wit
 
 ### Rows 21–69 and the `clickhouse` rerun (w6/m653)
 
-Run between 09:17 and 13:48 UTC on pin `9b91284a4a2e`. **34 of the 49 went live unchanged and passed their checks, so 46 of the 69 run on bex.** Fifteen failed. Five failed for a cause bex has to fix, each with its item, and ten for a cause that fails on Render too, with the evidence below.
+Run between 09:17 and 13:48 UTC on pin `9b91284a4a2e`. **34 of the 49 went live unchanged and passed their checks, so 46 of the 69 run on bex** (47 with the `pg_pinecone_render` rerun below). Fifteen failed. Five failed for a cause bex has to fix, each with its item, and ten for a cause that fails on Render too, with the evidence below.
 
 - **Pacing:** w6/185 was still open, so creates were paced at no more than 18 an hour (two or three runs at a time, at least 150 seconds apart), and the last seven at no more than 8 an hour. GitHub still refused some: three creates answered `400` "bex's GitHub app is not authorized to read this repository" for a public repository (`matomo` at 10:03, `render-tanstack-demo` at 12:09 and `retool` at 12:15). That is w6/185's misread secondary limit. Each was run again later.
 - **The peer:** `clickhouse` was run again with `peer clickhouse 8123 Ok.` and went live, and its peer was deleted with it. A second run added `peer clickhouse 9999`, a port nothing listens on, and failed at `check` with "the peer never read an answer from clickhouse-…:9999; its last line: peer clickhouse-…:9999 got no answer". The peer check passed for every private service whose template reached the check stage: MySQL (`mysql`, and `ghost`'s), MongoDB, Redis on port 10000 (`redis`, and `redash`'s), ParadeDB's Postgres and ClickHouse.
@@ -217,3 +217,7 @@ Run between 09:17 and 13:48 UTC on pin `9b91284a4a2e`. **34 of the 49 went live 
 - Creating a Blueprint from a public repository still reads GitHub anonymously ([w6/185](../../.pm/w6/185.md)). At no more than 18 creates an hour, no create answered `503`, but three answered `400` "not authorized" for a public repository.
 
 The deploy-detail lines above come from each failed release's `deploy_ended` `failureReason` or its first log line that reads like an error. The ids and `onbex.co` hostnames they name were hashed with `scripts/lib/public_log.py`.
+
+### The `pg_pinecone_render` rerun (w6/183)
+
+Run from 15:44 to 15:46 UTC on pin `11695fb886cb`, the first production pin carrying `1feaeeeaea`, which removed the App CRD's 4096-byte cap on commands. **`pg_pinecone_render` went live unchanged and passed its check.** Validate and the plan accepted its 4,717-byte `dockerCommand`, the private service came up with its 1 GB disk, and the peer read Postgres's answer to its SSLRequest on `pg-pinecone:5432`. With it, 47 of the 69 templates run on bex. The run deleted its Blueprint, the service and the peer, and a listing of `bex-canary` afterwards showed none of them and no disk.
