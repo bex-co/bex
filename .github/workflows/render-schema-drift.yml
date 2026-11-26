@@ -66,6 +66,26 @@ jobs:
       - name: Every Render changelog entry has a disposition
         run: scripts/render-changelog-drift.sh
 
+  # Render's dashboard bundle (w1/m645). A feature Render ships only in its
+  # dashboard, or keeps behind a per-workspace flag, moves neither the API pins
+  # above nor the changelog: every GraphQL operation and flag gate in the public
+  # bundle needs a row in docs/render-artifacts/dashboard-operations.md, and a
+  # flag gate that leaves the bundle names the item to reopen.
+  render-dashboard-ops:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
+      - name: Every Render dashboard operation and flag gate has a disposition
+        run: scripts/render-dashboard-ops.sh
+
   # render-oss/skills (w4/m630). `bex skills install` ships a pack derived
   # from it at packgen.UpstreamCommit, and nothing watched it: the pin fell
   # behind Render's Blueprint plan-and-approve rewrite of the deploy skill.

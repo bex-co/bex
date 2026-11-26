@@ -11,6 +11,8 @@
 # every feature on its changelog, so this job fails until each new entry has a
 # row: matched, partial or gap with the board item that owns it, a non-goal, or
 # n/a with the reason.
+# What Render ships without announcing it, and what it keeps behind a flag,
+# render-dashboard-ops.sh catches from the dashboard bundle itself (w1/m645).
 #
 # Two reads, because each sees what the other cannot. The Atom feed is the
 # stable, structured source, but it carries only the ten newest entries. The

@@ -353,6 +353,11 @@ jobs:
       # or page the script cannot read all fail; the committed table is well formed.
       - name: Render changelog disposition drift unit tests
         run: bash scripts/render-changelog-drift.test.sh
+      # w1/m645: a new or removed operation or flag gate, an entry chunk or flag
+      # hook the parser cannot find, and a malformed row all fail; the
+      # committed ledger is well formed.
+      - name: Render dashboard operations ledger unit tests
+        run: bash scripts/render-dashboard-ops.test.sh
       # w4/m630: an upstream commit to a skill bex ships fails; dropped skills,
       # the plugin manifest, hooks and CI pass; an unreadable or missing pin fails.
       - name: render-oss/skills drift unit tests
@@ -391,6 +396,7 @@ jobs:
           scripts/render-mcp-drift.sh scripts/render-mcp-drift.test.sh
           scripts/render-schema-drift.sh scripts/render-schema-drift.test.sh
           scripts/render-changelog-drift.sh scripts/render-changelog-drift.test.sh
+          scripts/render-dashboard-ops.sh scripts/render-dashboard-ops.test.sh
           scripts/render-skills-drift.sh scripts/render-skills-drift.test.sh
           scripts/render-examples-corpus.sh scripts/render-examples-corpus.test.sh
           scripts/render-examples-live.sh scripts/render-examples-live.test.sh
