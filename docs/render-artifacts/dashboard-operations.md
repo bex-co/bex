@@ -177,16 +177,16 @@ Grouped by product area, then sorted by name.
 | `build` | query | matched | ADR018 § Deployment sources & IaC: Build Sources and builds ([ADR097](../ADR097-build-sources.md)); ADR018 § Deploys: List / get deploy objects |
 | `buildPlans` | query | matched | ADR018 § Billing & invoicing: Included usage and approaching-limit emails (pipeline minutes); ADR018 § Identity, workspaces & account: pipeline spend limit (`pipelineSettings`, `setPipelineSpendLimit`) |
 | `buildPlansWithFreeMinutes` | query | matched | ADR018 § Billing & invoicing: Included usage and approaching-limit emails (pipeline minutes); ADR018 § Identity, workspaces & account: pipeline spend limit (`pipelineSettings`, `setPipelineSpendLimit`) |
-| `buildTraces` | query | gap | `w1/155` (a deploy's step timeline: clone, cache, build, upload, pre-deploy, deploy) |
+| `buildTraces` | query | flagged | `instance_overview`: a deploy's step timeline (clone, cache, build, upload, pre-deploy, deploy) runs only behind the flag, undocumented on render.com; reopen the parked `w1/155` when the gate goes |
 | `cancelDeploy` | mutation | matched | ADR018 § Deploys: Cancel deploy |
-| `cronJobDeployTraces` | query | gap | `w1/155` (a deploy's step timeline: clone, cache, build, upload, pre-deploy, deploy) |
+| `cronJobDeployTraces` | query | flagged | `instance_overview`: a deploy's step timeline (clone, cache, build, upload, pre-deploy, deploy) runs only behind the flag, undocumented on render.com; reopen the parked `w1/155` when the gate goes |
 | `deploy` | query | matched | ADR018 § Deploys: List / get deploy objects |
 | `deployCreated` | subscription | matched | ADR018 § Deploys: List / get deploy objects |
 | `deployCreatedMinimal` | subscription | matched | ADR018 § Deploys: List / get deploy objects |
 | `deploys` | query | matched | ADR018 § Deploys: List / get deploy objects |
 | `deployServer` | mutation | matched | ADR018 § Deploys: Trigger a deploy |
 | `deploysMinimal` | query | matched | ADR018 § Deploys: List / get deploy objects |
-| `deployTraces` | query | gap | `w1/155` (a deploy's step timeline: clone, cache, build, upload, pre-deploy, deploy) |
+| `deployTraces` | query | flagged | `instance_overview`: a deploy's step timeline (clone, cache, build, upload, pre-deploy, deploy) runs only behind the flag, undocumented on render.com; reopen the parked `w1/155` when the gate goes |
 | `deployUpdated` | subscription | matched | ADR018 § Deploys: List / get deploy objects |
 | `deployUpdatedMinimal` | subscription | matched | ADR018 § Deploys: List / get deploy objects |
 | `deployWithTrigger` | query | matched | ADR018 § Deploys: List / get deploy objects |
@@ -195,7 +195,7 @@ Grouped by product area, then sorted by name.
 | `minimalPreviewServers` | query | non-goal | DO_NOT_DO: PR preview environments |
 | `previewServerCreatedOrDeleted` | subscription | non-goal | DO_NOT_DO: PR preview environments |
 | `previewServers` | query | non-goal | DO_NOT_DO: PR preview environments |
-| `rollbackComparison` | query | partial | ADR018 § Deploys: Rollback (the Confirm Rollback page, w1/m646); a static site's comparison is `w1/156` |
+| `rollbackComparison` | query | partial | ADR018 § Deploys: Rollback (the Confirm Rollback page, w1/m646); a static site's comparison is `w1/m660` |
 | `rollbackToDeploy` | mutation | matched | ADR018 § Deploys: Rollback |
 | `serverCapableOfPreviews` | query | non-goal | DO_NOT_DO: PR preview environments |
 | `ServerHeaderDeploys` | query | matched | ADR018 § Deploys: List / get deploy objects |

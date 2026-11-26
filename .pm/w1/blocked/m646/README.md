@@ -57,7 +57,7 @@ On production pin `11695fb886cb`, as the QA user. The disposable web service `qa
 | Rollback control | link to `/<type>/<srv>/deploys/<dep>/rollback` | link to `/services/<srv>/deploys/<dep>/rollback` (a static site's under `/static`); Render's `/web/…/rollback` reaches it through the alias routes | matched |
 | Page | deploy header without Rollback, then "Confirm Rollback" in place of the log; a deploy it cannot roll back to redirects to the deploy page | same | matched |
 | Rows | Start, Pre-Deploy, Docker Command, Health Check Path, Instances (`-` live, `+` target, `none`), Environment Variables table, Environment Group, Secret Files, Plan | same, in Render's order and sentences | matched |
-| Static site | env var, group and file rows in static wording | no build env record: Render's "Unable to load configuration…" sentence | partial: [w1/156](../../156.md), recorded in ADR018 |
+| Static site | env var, group and file rows in static wording | no build env record: Render's "Unable to load configuration…" sentence | partial: [w1/m660](../../m660/README.md) (promoted from w1/156), recorded in ADR018 |
 | Cron job | its deploy page has no rollback route | bex's cron Rollback opens the same page | filed: [w1/157](../../157.md) |
 | States | spinner in a `min-h-[9.25rem]` frame; "No configuration changes since this deploy."; "Unable to load configuration…" for an error or either missing snapshot | same | matched |
 | Notices | static: redirects, rewrites and headers; Auto-Deploy warning when on | same | matched |
