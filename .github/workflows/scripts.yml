@@ -358,6 +358,18 @@ jobs:
       # committed ledger is well formed.
       - name: Render dashboard operations ledger unit tests
         run: bash scripts/render-dashboard-ops.test.sh
+      # w3/m637: Render's real version pages match bex's dated defaults; a moved
+      # current default, a new or back-dated row, a removed or eighth page and
+      # markup the parser does not read all fail by name. The comparison is the
+      # operator's TestRenderVersionDrift, so this step needs the operator's Go.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: lego/operator/go.mod
+          cache-dependency-path: |
+            lego/operator/go.sum
+            lego/types/go.sum
+      - name: Render version page drift unit tests
+        run: bash scripts/render-version-drift.test.sh
       # w4/m630: an upstream commit to a skill bex ships fails; dropped skills,
       # the plugin manifest, hooks and CI pass; an unreadable or missing pin fails.
       - name: render-oss/skills drift unit tests
@@ -398,6 +410,7 @@ jobs:
           scripts/render-schema-drift.sh scripts/render-schema-drift.test.sh
           scripts/render-changelog-drift.sh scripts/render-changelog-drift.test.sh
           scripts/render-dashboard-ops.sh scripts/render-dashboard-ops.test.sh
+          scripts/render-version-drift.sh scripts/render-version-drift.test.sh
           scripts/render-skills-drift.sh scripts/render-skills-drift.test.sh
           scripts/render-examples-corpus.sh scripts/render-examples-corpus.test.sh
           scripts/render-examples-live.sh scripts/render-examples-live.test.sh

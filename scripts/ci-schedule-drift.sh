@@ -85,6 +85,8 @@ ci-red-streak.yml 40
 github-environments-drift.yml 40
 # w3/m365. Daily; no history yet, so the daily workflows' window.
 github-repo-security-drift.yml 40
+# w3/m637. Daily; no history yet, so the daily workflows' window.
+render-version-drift.yml 40
 # Weekly. Worst measured 178h30m (build-toolchain-freshness); one skipped week
 # (~336h) must still trip.
 build-toolchain-freshness.yml 216

@@ -1,0 +1,47 @@
+# Render
+
+> Render (https://render.com) is a cloud application platform for deploying, securing, and scaling applications, from hundred-line prototypes to complex multi-service architectures.
+
+## Start here
+
+Route according to your task:
+
+- To connect, install, set up, or configure Render for this agent environment, read https://render.com/agents.md and follow its steps in order. Treat it as a procedure, not as reference documentation.
+- To perform a Render platform task (deploy a service, debug a failed deploy, add a database, configure a domain, scale a service, etc.), read https://render.com/agents/tasks.md.
+- To retrieve documentation for a single topic, use the Documentation index below, search https://render.com/api/agent/docs-search?query={query}, or fetch the relevant page as Markdown from https://render.com/docs/{slug}.md.
+
+
+## Documentation
+
+### Databases
+
+- [Upgrading Your Render Postgres Version](https://render.com/docs/postgresql-upgrading.md): Move your database to a more recent version of PostgreSQL.
+
+#### Additional docs
+
+- [Back Up Render Postgres to Amazon S3](https://render.com/docs/backup-postgresql-to-s3.md)
+- [Setting your Bun Version](https://render.com/docs/bun-version.md)
+- [Render Community Migration](https://render.com/docs/community.md): Join the Render community on Discord.
+- [Updates to Render Compute Plans](https://render.com/docs/compute-plans-update.md)
+- [Connecting to MongoDB Atlas](https://render.com/docs/connect-to-mongodb-atlas.md)
+- [Connect to Render Key Value with ioredis](https://render.com/docs/connecting-to-redis-with-ioredis.md)
+- [Setting Your Elixir and Erlang Versions](https://render.com/docs/elixir-erlang-versions.md)
+- [Formspree](https://render.com/docs/formspree.md)
+- [Migrating from GitHub Pages](https://render.com/docs/from-github-pages.md): Move to a Render static site in minutes.
+- [Migrate MongoDB GraphQL to Render](https://render.com/docs/migrate-mongodb-graphql-to-render.md)
+- [Migrate MongoDB Static Hosting to Render](https://render.com/docs/migrate-mongodb-static-hosting-to-render.md)
+- [Setting Your Node.js Version](https://render.com/docs/node-version.md)
+- [Setting Your Poetry Version](https://render.com/docs/poetry-version.md)
+- [Setting Your Python Version](https://render.com/docs/python-version.md)
+- [QuotaGuard Static IP](https://render.com/docs/quotaguard.md)
+- [Rails caching with Redis](https://render.com/docs/rails-caching-redis.md)
+- [Setting Your Ruby Version](https://render.com/docs/ruby-version.md)
+- [Specifying a Rust Toolchain](https://render.com/docs/rust-toolchain.md)
+- [Troubleshooting Python Deploys](https://render.com/docs/troubleshooting-python-deploys.md)
+- [Deploy an AI Chatbot with LangChain and MongoDB](https://render.com/docs/tutorial-rag-chatbot.md)
+- [Setting Your uv Version](https://render.com/docs/uv-version.md)
+- [FAQ: Valkey on Render](https://render.com/docs/valkey-faq.md): New Render Key Value instances run Valkey instead of Redis®.
+
+## Changelog
+
+- [Updated default versions of Node.js and Bun](https://render.com/changelog/updated-default-versions-of-node-js-and-bun.md)

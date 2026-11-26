@@ -1,0 +1,42 @@
+name: Render version drift
+
+# Render moves a runtime's default version for services created from a day on,
+# and back-dates rows, without a changelog entry: on 2026-09-09, 09-17, 10-12,
+# 11-03, 11-19 and 11-20, none of which render-changelog-drift.sh could see
+# (w3/m637). Every day this reads Render's seven per-language version pages and
+# fails, naming the page, the row and the bex table, when a default bex gives a
+# service it runs no longer matches the one Render gives a service created the
+# same day. Daily, not weekly: the 11-20 Bun move was caught on 11-21 only by a
+# 30-minute QA routine (w8/371).
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "29 5 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  render-version-drift:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
+      # The comparison is the operator's TestRenderVersionDrift, which reads
+      # bex's Go tables, on the operator's own go.mod (the script sets
+      # GOWORK=off).
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: lego/operator/go.mod
+          cache-dependency-path: |
+            lego/operator/go.sum
+            lego/types/go.sum
+      - name: Render's version pages match bex's dated defaults
+        run: scripts/render-version-drift.sh
