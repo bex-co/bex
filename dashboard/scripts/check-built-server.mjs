@@ -8,12 +8,16 @@
 
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { readdirSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { createServer } from "node:net";
 import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const OUTPUT = fileURLToPath(new URL("../.output/", import.meta.url));
+const SCHEDULE_WORDS = new URL(
+  "../src/features/services/lib/cron-schedule-words.ts",
+  import.meta.url,
+);
 // `ASSETS_DIR` in server/assets-paths.ts; a drift fails `builtFile`.
 const ASSETS = "_assets";
 const IMMUTABLE = "public, max-age=31536000, immutable";
@@ -126,5 +130,40 @@ test("the association documents keep their public lifetime", async () => {
     assert.equal(res.status, 200, path);
     assert.equal(res.headers.get("cache-control"), "public, max-age=300");
     assert.match(res.headers.get("content-type"), /^application\/json/);
+  }
+});
+
+// A cron job's header words its schedule with cronstrue on the server and in
+// the browser alike (w3/m643). Nitro's build treats every module as free of
+// side effects, so a locale a side-effect import alone registered was missing
+// from the server: it worded every language in English, and every cron job
+// page outside English hydrated into React #418.
+test("the server words a cron schedule in every dashboard language", async () => {
+  const lib = readdirSync(`${OUTPUT}server/_libs`).find((file) =>
+    /^cronstrue\b.*\.mjs$/.test(file),
+  );
+  assert.ok(lib, "the server build has no cronstrue chunk");
+  const cronstrue = Object.values(
+    await import(`${OUTPUT}server/_libs/${lib}`),
+  ).find((value) => value?.locales && typeof value.initialize === "function");
+  assert.ok(cronstrue, `${lib} exports no cronstrue`);
+  // Each language's cronstrue locale, as CRONSTRUE_LOCALE names it.
+  const table = readFileSync(SCHEDULE_WORDS, "utf8").match(
+    /CRONSTRUE_LOCALE[^{]*\{([^}]*)\}/,
+  );
+  assert.ok(table, "cron-schedule-words.ts has no CRONSTRUE_LOCALE table");
+  const locales = [...table[1].matchAll(/:\s*"([^"]+)"/g)].map((m) => m[1]);
+  assert.ok(locales.length > 1, "CRONSTRUE_LOCALE names no locale");
+  const english = cronstrue.toString("*/40 * * * *", { locale: "en" });
+  for (const locale of locales.filter((name) => name !== "en")) {
+    assert.ok(
+      cronstrue.locales[locale],
+      `the server's cronstrue lacks ${locale}`,
+    );
+    assert.notEqual(
+      cronstrue.toString("*/40 * * * *", { locale }),
+      english,
+      `the server words ${locale} in English`,
+    );
   }
 });

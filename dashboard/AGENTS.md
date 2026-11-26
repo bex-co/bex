@@ -128,6 +128,8 @@ The dashboard has exactly **one** left sidebar. A route module must never render
 
 `vite.config.ts` sets `ssr.noExternal: ["@ory/elements-react"]` — the package ships extensionless relative imports (e.g. `"./session-provider"`) that only resolve under bundler resolution, not Node's strict ESM loader. Without this, `yarn dev`/`yarn build` SSR-render any page importing `@ory/elements-react` with "Cannot find module" and silently falls back to full client rendering. Don't remove it.
 
+Nitro's server build treats every module as free of side effects (`treeshake.moduleSideEffects` keeps only its own polyfills), so it drops a side-effect-only import (`import "pkg/plugin.js"`) that the browser build keeps. Whatever such an import registers is missing from the server render, and the page hydrates into React #418: cronstrue's per-language `cronstrue/locales/*.js` worded every cron schedule in English on the server (w3/m643). Import a value the code uses instead (`cronstrue/i18n` carries its locales inside it); `yarn test:built-server` checks the server's copy of cronstrue.
+
 ## Bundle & initial-load hygiene (w9/m60)
 
 Route code-splitting (w5/m67) only reaches per-route page bodies; the always-mounted provider tree pins shared weight into the **client entry chunk** that every first load pays. w9/m60 cut it from **1,148 → 475 kB gzip** (initial JS: entry + eager vendor chunks). Keep these invariants:

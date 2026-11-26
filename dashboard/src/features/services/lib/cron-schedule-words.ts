@@ -5,17 +5,12 @@
 // so cronstrue and its locales load with the service header's chunk only, not
 // with the create form's and Settings' (which import cron.ts).
 
-import cronstrue from "cronstrue";
-// Each locale registers itself on cronstrue when imported. Only the languages
-// the dashboard speaks, imported statically, so the server and the browser
-// word a schedule alike on the first render.
-import "cronstrue/locales/zh_CN.js";
-import "cronstrue/locales/ko.js";
-import "cronstrue/locales/ja.js";
-import "cronstrue/locales/es.js";
-import "cronstrue/locales/pt_BR.js";
-import "cronstrue/locales/ru.js";
-import "cronstrue/locales/de.js";
+// cronstrue's build with every locale inside it, so the server and the browser
+// word a schedule alike. Not `cronstrue` plus a side-effect import per locale:
+// Nitro's server build drops side-effect-only imports, so the server worded
+// every language in English and the page hydrated into React #418
+// (`yarn test:built-server` guards it).
+import cronstrue from "cronstrue/i18n";
 import { dashboardLanguage } from "@/common/lib/format/language";
 import { LANGUAGE_TAGS, type SupportedLanguage } from "@/i18n/config";
 import { isValidCron } from "@/features/services/lib/cron";
