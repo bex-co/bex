@@ -1,6 +1,6 @@
 # w3 · m406 — The conversation stream ends with `[DONE]` only when the turn has settled
 
-**Worker:** worker3 **Goal:** the gateway's agent-session stream never ends with `[DONE]` while the session is still working. When a turn's sandbox has no address yet, the stream is held until it serves (or ends with a documented reconnect signal), so the CLI, the dashboard, the mobile app and any Vercel AI SDK client see the whole turn without their own workaround. **Status:** in progress (t001–t004 and t006–t008 done; t005 checks the change on production once it is deployed, then t009)
+**Worker:** worker3 **Goal:** the gateway's agent-session stream never ends with `[DONE]` while the session is still working. When a turn's sandbox has no address yet, the stream is held until it serves (or ends with a documented reconnect signal), so the CLI, the dashboard, the mobile app and any Vercel AI SDK client see the whole turn without their own workaround. **Status:** blocked (pin must carry `f40d9613db`: t005's production check, then t009; t001–t004 and t006–t008 done)
 
 ## Tasks (in order)
 
@@ -25,7 +25,7 @@
 ## Source + Goal linkage
 
 - **Source:** found in the w1/m340 live check, 2026-11-12. An early `[DONE]` arrived before the new turn's sandbox served and ended `--follow`. It was worked around in the client: `lego/cli/internal/agent/stream.go` `streamUntilSettled` reattaches after an early `[DONE]`. Gateway: `lego/backend/internal/sshgateway/agentattach/agentattach.go` `streamAgentAttach` ("A terminal/gone session (ipErr) replays and closes with `[DONE]`"). A working session whose next sandbox is still starting takes the same `ipErr` path. The dashboard (`dashboard/src/features/agent-sessions/components/session-conversation-impl.tsx`) treats `[DONE]` as the end of a terminal session's stream. Whether it stalls in this window is unverified; t001 checks it.
-- **Goal linkage:** the [ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md) D9 stream contract (terminal = replay + `[DONE]`), so `[DONE]` should mean settled; [ADR106](../../../docs/ADR106-cli-cloud-agents-automations.md) D3. The reference is Devin, whose session chat follows a new turn live; t006 verifies this.
+- **Goal linkage:** the [ADR047](../../../../docs/ADR047-cloud-coding-agent-sessions.md) D9 stream contract (terminal = replay + `[DONE]`), so `[DONE]` should mean settled; [ADR106](../../../../docs/ADR106-cli-cloud-agents-automations.md) D3. The reference is Devin, whose session chat follows a new turn live; t006 verifies this.
 - **Expected outcome:** one stream rule every client can rely on; no client-side reattach workaround needed.
 - **Why now:** v0.6.0 shipped the CLI's workaround to users. Every other client of the same endpoint (dashboard, mobile, AI SDK consumers per ADR047 D9) otherwise needs its own.
 - **Render parity included** with Devin as the reference: the change alters the stream API's behavior and the dashboard.
