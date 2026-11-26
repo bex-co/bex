@@ -47,7 +47,7 @@
 - **Prior use of the technique:** w3 has read the bundle many times, one feature at a time (w3/m641, w3/115–118, w3/122, w3/m528), as have w2/m87, w3/m531 and w22/m603. None of these read it as a complete inventory, and nothing notices when Render adds an operation.
 - **Goal linkage:** [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first). This is the dashboard counterpart of the changelog ledger (w4/m553, `scripts/render-changelog-drift.sh`), which by its own comment cannot see "a feature Render ships only in its dashboard" unless the changelog announces it.
 - **Expected outcome:**
-  - Render's dashboard-only behaviors become a closed list with owners. The first pass already found the three features filed beside this milestone: [m646](../../m646/README.md) (rollback comparison), [m647](../../m647/README.md) (2FA reminders) and [m648](../../m648/README.md) (avatars).
+  - Render's dashboard-only behaviors become a closed list with owners. The first pass already found the three features filed beside this milestone: [m646](../../m646/README.md) (rollback comparison), [m647](../m647/README.md) (2FA reminders) and [m648](../../m648/README.md) (avatars).
   - A Render experiment that goes GA, meaning its gate is removed, is on the board within a week.
 - **Why now:** the first brainstorm on this bundle nearly reversed a user decision because of a flagged experiment. The ledger separates GA from flagged before anyone files work on it.
 - **Render parity omitted:** a script, a CI job and docs; no REST, GraphQL, MCP or dashboard change.
