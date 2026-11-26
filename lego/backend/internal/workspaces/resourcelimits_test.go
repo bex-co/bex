@@ -18,8 +18,13 @@ package workspaces
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -211,5 +216,167 @@ func TestResourceLimits_HobbyDatastoreFullyConsumedByOneTerminating(t *testing.T
 	}
 	if limits.Postgres.FreeUsed != 1 || limits.Postgres.FreeLimit != 1 || limits.KeyValues.FreeUsed != 1 || limits.KeyValues.FreeLimit != 1 {
 		t.Errorf("hobby free slots = %+v / %+v, want 1 of 1 each", limits.Postgres, limits.KeyValues)
+	}
+}
+
+// --- ResourceLimits: pipeline minutes (w3/108) -------------------------------
+//
+// Render's dashboard disables Manual Build and Manual Deploy while a workspace's
+// pipeline minutes are spent. bex's read is the buildminutes sweeper's mark, the
+// one the operator refuses a build on, so the field must say true exactly when
+// that refusal would happen: a current-month mark on an App of this workspace
+// that is not being deleted, a build source's carrier included.
+
+func markedApp(name, tenantID, month, typ string) *appv1alpha1.App {
+	a := appObj(name, tenantID)
+	a.Spec.Type = typ
+	if month != "" {
+		a.Annotations = map[string]string{appv1alpha1.AnnotationBuildMinutesExhausted: month}
+	}
+	return a
+}
+
+func TestResourceLimits_PipelineMinutesExceededFollowsTheSweepersMark(t *testing.T) {
+	now := time.Date(2026, time.November, 25, 12, 0, 0, 0, time.UTC)
+	const thisMonth, lastMonth = "2026-11", "2026-10"
+	cases := []struct {
+		name string
+		seed func(t *testing.T, cl client.Client, ws, other string)
+		want bool
+	}{
+		{"no mark", func(t *testing.T, cl client.Client, ws, _ string) {
+			seedActive(t, cl, markedApp("web", ws, "", appv1alpha1.TypeWebService))
+		}, false},
+		{"a service marked this month", func(t *testing.T, cl client.Client, ws, _ string) {
+			seedActive(t, cl, markedApp("web", ws, "", appv1alpha1.TypeWebService))
+			seedActive(t, cl, markedApp("cron", ws, thisMonth, appv1alpha1.TypeCronJob))
+		}, true},
+		{"last month's mark, which a new month ignores", func(t *testing.T, cl client.Client, ws, _ string) {
+			seedActive(t, cl, markedApp("web", ws, lastMonth, appv1alpha1.TypeWebService))
+		}, false},
+		{"only a deleting App still marked", func(t *testing.T, cl client.Client, ws, _ string) {
+			seedActive(t, cl, markedApp("web", ws, "", appv1alpha1.TypeWebService))
+			seedTerminating(t, cl, markedApp("gone", ws, thisMonth, appv1alpha1.TypeWebService))
+		}, false},
+		{"only a build source's carrier marked", func(t *testing.T, cl client.Client, ws, _ string) {
+			seedActive(t, cl, markedApp("bs", ws, thisMonth, appv1alpha1.TypeBuildSource))
+		}, true},
+		{"another workspace's App marked", func(t *testing.T, cl client.Client, ws, other string) {
+			seedActive(t, cl, markedApp("web", ws, "", appv1alpha1.TypeWebService))
+			seedActive(t, cl, markedApp("theirs", other, thisMonth, appv1alpha1.TypeWebService))
+		}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			st := newFakeStore()
+			svc, cl := limitsSvc(t, st)
+			svc.Clock = func() time.Time { return now }
+			w, err := svc.Create(ctxAs("user-a"), "acme", "pro")
+			if err != nil {
+				t.Fatalf("create workspace: %v", err)
+			}
+			tc.seed(t, cl, w.ID, "tea-other")
+			limits, err := svc.ResourceLimits(ctxAs("user-a"), w.ID)
+			if err != nil {
+				t.Fatalf("ResourceLimits: %v", err)
+			}
+			if limits.PipelineMinutesExceeded != tc.want {
+				t.Errorf("PipelineMinutesExceeded = %v, want %v", limits.PipelineMinutesExceeded, tc.want)
+			}
+		})
+	}
+}
+
+// A build source's carrier decides the minutes state but is still not a
+// service: the services count is unchanged by reading its mark first.
+func TestResourceLimits_ACarrierMarkLeavesTheServiceCountAlone(t *testing.T) {
+	st := newFakeStore()
+	svc, cl := limitsSvc(t, st)
+	now := time.Date(2026, time.November, 25, 12, 0, 0, 0, time.UTC)
+	svc.Clock = func() time.Time { return now }
+	w, err := svc.Create(ctxAs("user-a"), "acme", "pro")
+	if err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	seedActive(t, cl, markedApp("web", w.ID, "2026-11", appv1alpha1.TypeWebService))
+	seedActive(t, cl, markedApp("bs", w.ID, "2026-11", appv1alpha1.TypeBuildSource))
+	limits, err := svc.ResourceLimits(ctxAs("user-a"), w.ID)
+	if err != nil {
+		t.Fatalf("ResourceLimits: %v", err)
+	}
+	if !limits.PipelineMinutesExceeded {
+		t.Error("PipelineMinutesExceeded = false, want true")
+	}
+	assertReconciles(t, "services", limits.Services, 1, 0, 1)
+}
+
+// The field reaches every surface under Render's dashboard name: REST GET
+// /v1/owners/{ownerId}/limits writes this JSON, GraphQL workspaceLimits and MCP
+// get_workspace_limits answer it.
+func TestResourceLimits_PipelineMinutesExceededOnEverySurface(t *testing.T) {
+	st := newFakeStore()
+	svc, cl := limitsSvc(t, st)
+	now := time.Date(2026, time.November, 25, 12, 0, 0, 0, time.UTC)
+	svc.Clock = func() time.Time { return now }
+	w, err := svc.Create(ctxAs("user-a"), "acme", "pro")
+	if err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	seedActive(t, cl, markedApp("web", w.ID, "2026-11", appv1alpha1.TypeWebService))
+
+	limits, err := svc.ResourceLimits(ctxAs("user-a"), w.ID)
+	if err != nil {
+		t.Fatalf("ResourceLimits: %v", err)
+	}
+	body, err := json.Marshal(limits)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !strings.Contains(string(body), `"pipelineMinutesExceeded":true`) {
+		t.Errorf("JSON = %s, want pipelineMinutesExceeded true", body)
+	}
+
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	res := graphql.Do(graphql.Params{
+		Schema:         schema,
+		RequestString:  `query($id: String!) { workspaceLimits(ownerId: $id) { pipelineMinutesExceeded services { used } } }`,
+		VariableValues: map[string]any{"id": w.ID},
+		Context:        ctxAs("user-a"),
+	})
+	if len(res.Errors) > 0 {
+		t.Fatalf("graphql errors: %v", res.Errors)
+	}
+	got := res.Data.(map[string]any)["workspaceLimits"].(map[string]any)
+	if got["pipelineMinutesExceeded"] != true {
+		t.Errorf("workspaceLimits.pipelineMinutesExceeded = %v, want true", got["pipelineMinutesExceeded"])
+	}
+
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	ctx := ctxAs("user-a")
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatal(err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = cs.Close() }()
+	call, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "get_workspace_limits", Arguments: map[string]any{}})
+	if err != nil || call.IsError {
+		t.Fatalf("get_workspace_limits: %+v %v", call, err)
+	}
+	structured, err := json.Marshal(call.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(structured), `"pipelineMinutesExceeded":true`) {
+		t.Errorf("get_workspace_limits = %s, want pipelineMinutesExceeded true", structured)
 	}
 }

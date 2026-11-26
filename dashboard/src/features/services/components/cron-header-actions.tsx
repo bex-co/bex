@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
+import { SLOT } from "@/common/lib/translation-slot";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useServerActions } from "@/features/capabilities/hooks/use-resource-actions";
@@ -12,10 +13,6 @@ import { useTriggerCronRun } from "@/features/services/hooks/use-trigger-cron-ru
 import { hasServed } from "@/features/services/lib/status";
 import type { ServiceView } from "@/features/services/types";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
-
-/** A slot a translated sentence carries, so a link or code can sit where
- *  each language puts it: translate with the slot as the value, then split. */
-export const SLOT = "\u0000";
 
 /**
  * A running cron job's one header action, Render's Trigger Run (w3/m555): a

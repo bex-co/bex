@@ -53,7 +53,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	// attempting a create. Authorizes can_view on the workspace.
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_workspace_limits",
-		Description: "Get the resource usage and limits for a workspace (services, Postgres, key-value). Used is the current count and gates creates (it includes any resource still finishing deletion, which keeps holding quota); terminating is how many of used are mid-deletion; limit 0 means unlimited.",
+		Description: "Get the resource usage and limits for a workspace (services, Postgres, key-value). Used is the current count and gates creates (it includes any resource still finishing deletion, which keeps holding quota); terminating is how many of used are mid-deletion; limit 0 means unlimited. pipelineMinutesExceeded is true while the workspace's builds are stopped for the month: it used its plan's included pipeline minutes and cannot buy more (no payment method, or its pipeline spend limit reached), so a new build or pre-deploy command is refused until then.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, ResourceLimitsView, error) {
 		limits, err := s.ResourceLimits(ctx, core.NamedWorkspace(ctx))
 		if err != nil {

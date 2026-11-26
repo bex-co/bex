@@ -1003,6 +1003,22 @@ const ruUsage: Record<string, TranslationEntry> = {
     description:
       "A charge that rounds below the smallest amount shown, e.g. <$0.01",
   },
+  "usage.pipelineMinutesExceeded": {
+    message:
+      "Вы израсходовали максимум {minutes}, заданный вашим лимитом расходов. {learnMore}.",
+    description:
+      "Why Manual Build and Manual Deploy are disabled while the workspace's pipeline minutes are spent; {minutes} is a link to Workspace Settings → Build Pipeline named by usage.pipelineMinutesLink, {learnMore} a link to the docs named by usage.pipelineMinutesLearnMore, which starts its own line (Render's text, w3/108)",
+  },
+  "usage.pipelineMinutesLink": {
+    message: "минут пайплайна",
+    description:
+      "Link text inside usage.pipelineMinutesExceeded, to Workspace Settings → Build Pipeline (Render's text, w3/108)",
+  },
+  "usage.pipelineMinutesLearnMore": {
+    message: "Подробнее",
+    description:
+      "Link text inside usage.pipelineMinutesExceeded, to the pipeline minutes docs (Render's text, w3/108)",
+  },
 };
 
 export default ruUsage;

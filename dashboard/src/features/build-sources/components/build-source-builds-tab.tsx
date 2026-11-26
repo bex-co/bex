@@ -27,7 +27,7 @@ import {
 import { isUnauthenticatedError } from "@/common/apollo/auth-error-link";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
-import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useTriggerBuildGate } from "@/features/build-sources/hooks/use-trigger-build-gate";
 import { CommitSha } from "@/features/deploys/components/commit-sha";
 import { repoCommitUrl } from "@/features/services/lib/repo";
 import { useBuildSourceDetailContext } from "@/features/build-sources/components/build-source-detail-context";
@@ -81,10 +81,7 @@ export function BuildStatusBadge({
 export function BuildSourceBuildsTab() {
   const { t } = useTranslations();
   const { buildSource, openTriggerBuild } = useBuildSourceDetailContext();
-  const capabilities = useCapabilities();
-  const { canCreate } = capabilities;
-  const createReasonKey = capabilities.reasonKey("can_create");
-  const createReason = createReasonKey ? t(createReasonKey) : undefined;
+  const triggerBuild = useTriggerBuildGate();
 
   const { builds, loading, loadingMore, hasMore, error, loadMore, refetch } =
     useBuildSourceBuilds(buildSource.id, true, 20, { poll: true });
@@ -123,11 +120,11 @@ export function BuildSourceBuildsTab() {
           )}
         </p>
         {isGit ? (
-          <PermissionTooltip reason={createReason}>
+          <PermissionTooltip reason={triggerBuild.reason}>
             <Button
               size="sm"
               className="mt-2"
-              disabled={!canCreate}
+              disabled={!triggerBuild.allowed}
               onClick={openTriggerBuild}
             >
               <Play className="size-4" aria-hidden="true" />

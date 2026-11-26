@@ -186,6 +186,9 @@ var resourceLimitsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"services":  gqlutil.Typed(resourceCapGQLType, func(r ResourceLimitsView) any { return r.Services }),
 		"postgres":  gqlutil.Typed(resourceCapGQLType, func(r ResourceLimitsView) any { return r.Postgres }),
 		"keyValues": gqlutil.Typed(resourceCapGQLType, func(r ResourceLimitsView) any { return r.KeyValues }),
+		// pipelineMinutesExceeded: the workspace's builds are stopped for the
+		// month, its pipeline minutes spent with no way to buy more (w3/108).
+		"pipelineMinutesExceeded": gqlutil.BoolField(func(r ResourceLimitsView) any { return r.PipelineMinutesExceeded }),
 	},
 })
 

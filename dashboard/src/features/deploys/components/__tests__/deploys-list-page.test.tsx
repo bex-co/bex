@@ -21,6 +21,7 @@ import { DeploysListSkeleton } from "@/common/components/route-skeletons";
 import { hydrateAcrossBoundary, serverRendered } from "@/test/hydration";
 import { mockAllowedResourceActions } from "@/test/mocks/resource-actions";
 import type { DeployRow, UseDeploysResult } from "../../hooks/use-deploys";
+import { usePipelineMinutesExceeded } from "@/features/usage/hooks/use-pipeline-minutes-exceeded";
 
 const state: UseDeploysResult = {
   deploys: [],
@@ -800,6 +801,39 @@ describe("DeploysListPage search and Manual Build", () => {
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
       "Your role can’t perform this action. Ask a workspace admin.",
     );
+    expect(triggerDeploy).not.toHaveBeenCalled();
+  });
+
+  // Render's `h_e` (w3/108): with the workspace's pipeline minutes spent the
+  // button is disabled with that notice, ahead of any other reason.
+  it("disables Manual Build with Render's notice while pipeline minutes are spent", async () => {
+    serverState.type = "cron_job";
+    deployActions = mockAllowedResourceActions("web", {
+      deploy: { outcome: "denied" },
+    }).useDeployActions();
+    vi.mocked(usePipelineMinutesExceeded).mockReturnValue(true);
+    state.deploys = [row()];
+    const user = userEvent.setup();
+    renderPage();
+
+    const button = await screen.findByRole("button", { name: "Manual Build" });
+    expect(button).toBeDisabled();
+    await user.hover(button.parentElement!);
+    const notice = await screen.findByRole("tooltip");
+    expect(notice).toHaveTextContent(
+      "You’ve used up the maximum number of pipeline minutes specified by your spend limit.Learn more.",
+    );
+    expect(notice).not.toHaveTextContent("Your role");
+    expect(
+      within(notice).getByRole("link", { name: "pipeline minutes" }),
+    ).toHaveAttribute("href", "/workspace/settings#build-pipeline");
+    expect(
+      within(notice).getByRole("link", { name: "Learn more" }),
+    ).toHaveAttribute(
+      "href",
+      "https://render.com/docs/build-pipeline#pipeline-minutes",
+    );
+    await user.click(button);
     expect(triggerDeploy).not.toHaveBeenCalled();
   });
 

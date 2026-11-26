@@ -25,12 +25,15 @@ import { serviceBaseForType } from "@/features/services/lib/service-base";
 import { isCron } from "@/features/services/lib/service-type";
 import type { ServiceView } from "@/features/services/types";
 import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { ConfirmGateStatus } from "@/features/capabilities/components/confirm-gate-status";
 import { useDeployActions } from "@/features/capabilities/hooks/use-resource-actions";
 import {
   useBoundActionConfirm,
   type ActionConfirmBinding,
 } from "@/features/capabilities/hooks/use-bound-action-confirm";
+import { PipelineMinutesReason } from "@/features/usage/components/pipeline-minutes-reason";
+import { usePipelineMinutesExceeded } from "@/features/usage/hooks/use-pipeline-minutes-exceeded";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
   gateAction,
@@ -59,6 +62,9 @@ export interface ManualDeployButtonProps {
  * Render's dashboard does, so the next push cannot replace the pin. Every item
  * follows the deploy decision: Render's role table gives a Contributor
  * "Trigger service deploys", a specific commit or build included (w9/m622).
+ *
+ * While the workspace's pipeline minutes are spent the whole menu is disabled,
+ * Restart included, with Render's notice on hover (its `sFe`, w3/108).
  */
 export function ManualDeployButton({
   service,
@@ -70,6 +76,7 @@ export function ManualDeployButton({
   const actionConfirm = useBoundActionConfirm({ resourceId: service.id });
   const { deploying, trigger, restart } = useTriggerDeploy();
   const navigate = useNavigate();
+  const minutesSpent = usePipelineMinutesExceeded();
   const [storedDialog, setDialog] = useState<{
     kind: "restart" | "commit" | "build";
     binding: ActionConfirmBinding;
@@ -193,12 +200,19 @@ export function ManualDeployButton({
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button size="sm" disabled={busy}>
-            {t("services.eventsManualDeploy")}
-            <ChevronDown className="size-3.5" />
-          </Button>
-        </DropdownMenuTrigger>
+        <PermissionTooltip
+          reason={minutesSpent ? <PipelineMinutesReason /> : null}
+        >
+          {/* Radix opens the menu on pointerdown and checks the trigger's
+              own disabled prop, not the button's, so it is set here and
+              reaches the button through the slot. */}
+          <DropdownMenuTrigger asChild disabled={busy || minutesSpent}>
+            <Button size="sm">
+              {t("services.eventsManualDeploy")}
+              <ChevronDown className="size-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+        </PermissionTooltip>
         <DropdownMenuContent align="end">
           <PermissionMenuItem
             disabled={busy}

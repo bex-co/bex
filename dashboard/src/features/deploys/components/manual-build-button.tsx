@@ -7,6 +7,8 @@ import { PermissionTooltip } from "@/features/capabilities/components/permission
 import { useDeployActions } from "@/features/capabilities/hooks/use-resource-actions";
 import { projectionReason } from "@/features/capabilities/lib/resource-actions";
 import { useTriggerDeploy } from "@/features/services/hooks/use-trigger-deploy";
+import { PipelineMinutesReason } from "@/features/usage/components/pipeline-minutes-reason";
+import { usePipelineMinutesExceeded } from "@/features/usage/hooks/use-pipeline-minutes-exceeded";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { MANUAL_BUILD_BUTTON_CLASS } from "./deploys-list-frame";
 
@@ -15,8 +17,9 @@ import { MANUAL_BUILD_BUTTON_CLASS } from "./deploys-list-frame";
  * (w3/m555): it builds the branch's latest commit at once, with no menu or
  * confirm, and opens the new build. A cron job's deploy is its build, so this
  * is the deploy trigger the header's Manual Deploy menu used to hold for a
- * cron job. Disabled, with the reason in a tooltip, while the server's
- * `deploy` decision refuses it.
+ * cron job. Disabled, with the reason in a tooltip, while the workspace's
+ * pipeline minutes are spent (Render's notice, ahead of any other reason, as
+ * Render's `h_e` puts it, w3/108) or the server's `deploy` decision refuses it.
  */
 export function ManualBuildButton({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
@@ -26,12 +29,11 @@ export function ManualBuildButton({ serviceId }: { serviceId: string }) {
   const navigate = useNavigate();
   const [building, setBuilding] = useState(false);
   const busy = building || deploying;
-  const reason = projectionReason(
-    deployActions,
-    currentWorkspaceId,
-    serviceId,
-    "deploy",
-    t,
+  const minutesSpent = usePipelineMinutesExceeded();
+  const reason = minutesSpent ? (
+    <PipelineMinutesReason />
+  ) : (
+    projectionReason(deployActions, currentWorkspaceId, serviceId, "deploy", t)
   );
 
   async function build() {

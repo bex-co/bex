@@ -6229,6 +6229,7 @@ export type ResourceEstimate = {
 export type ResourceLimits = {
   __typename: 'ResourceLimits';
   keyValues: Maybe<ResourceCap>;
+  pipelineMinutesExceeded: Maybe<Scalars['Boolean']['output']>;
   postgres: Maybe<ResourceCap>;
   services: Maybe<ResourceCap>;
 };

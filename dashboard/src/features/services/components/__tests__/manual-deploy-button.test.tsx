@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ManualDeployButton } from "@/features/services/components/manual-deploy-button";
 import type { ServiceView } from "@/features/services/types";
@@ -9,10 +9,26 @@ import {
   type ResourceActionInput,
 } from "@/features/capabilities/lib/resource-actions";
 import { mockCapabilities } from "@/test/mocks/capabilities";
+import { usePipelineMinutesExceeded } from "@/features/usage/hooks/use-pipeline-minutes-exceeded";
 
 const mockNavigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
+  Link: ({
+    to,
+    hash,
+    children,
+    className,
+  }: {
+    to: string;
+    hash?: string;
+    children: React.ReactNode;
+    className?: string;
+  }) => (
+    <a href={hash ? `${to}#${hash}` : to} className={className}>
+      {children}
+    </a>
+  ),
 }));
 
 const trigger = vi.fn();
@@ -711,6 +727,55 @@ describe("ManualDeployButton — Build-Source-linked service (w2/m612 t004)", ()
     rerender(<ManualDeployButton service={svc(linked)} pending={false} />);
     expect(
       screen.getByText(/This Build Source has no builds yet/),
+    ).toBeInTheDocument();
+  });
+});
+
+// Render's Manual Deploy (`sFe`, w3/108): while the workspace's pipeline minutes
+// are spent the whole menu is disabled, Restart included, and hovering it shows
+// "You’ve used up the maximum number of pipeline minutes specified by your
+// spend limit. Learn more." with both links.
+describe("ManualDeployButton — pipeline minutes spent (w3/108)", () => {
+  const repo = { repo: "https://github.com/bex-co/bex", autoDeploy: true };
+
+  it("disables the whole menu and explains why, with Render's links", async () => {
+    vi.mocked(usePipelineMinutesExceeded).mockReturnValue(true);
+    const user = userEvent.setup();
+    render(<ManualDeployButton service={svc(repo)} pending={false} />);
+    const button = screen.getByRole("button", { name: "Manual Deploy" });
+    expect(button).toBeDisabled();
+    await user.click(button);
+    expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
+
+    await user.hover(button.parentElement!);
+    const notice = await screen.findByRole("tooltip");
+    expect(notice).toHaveTextContent(
+      "You’ve used up the maximum number of pipeline minutes specified by your spend limit.Learn more.",
+    );
+    expect(
+      within(notice).getByRole("link", { name: "pipeline minutes" }),
+    ).toHaveAttribute("href", "/workspace/settings#build-pipeline");
+    expect(
+      within(notice).getByRole("link", { name: "Learn more" }),
+    ).toHaveAttribute(
+      "href",
+      "https://render.com/docs/build-pipeline#pipeline-minutes",
+    );
+    expect(trigger).not.toHaveBeenCalled();
+    expect(restart).not.toHaveBeenCalled();
+  });
+
+  it("opens the menu as before while minutes remain", async () => {
+    const user = userEvent.setup();
+    render(<ManualDeployButton service={svc(repo)} pending={false} />);
+    const button = screen.getByRole("button", { name: "Manual Deploy" });
+    expect(button).toBeEnabled();
+    await user.click(button);
+    expect(
+      screen.getByRole("menuitem", { name: "Deploy latest commit" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: "Restart service" }),
     ).toBeInTheDocument();
   });
 });

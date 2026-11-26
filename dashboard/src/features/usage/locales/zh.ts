@@ -967,6 +967,21 @@ const zhUsage: Record<string, TranslationEntry> = {
     description:
       "A charge that rounds below the smallest amount shown, e.g. <$0.01",
   },
+  "usage.pipelineMinutesExceeded": {
+    message: "你已用完消费上限所允许的最多{minutes}。{learnMore}。",
+    description:
+      "Why Manual Build and Manual Deploy are disabled while the workspace's pipeline minutes are spent; {minutes} is a link to Workspace Settings → Build Pipeline named by usage.pipelineMinutesLink, {learnMore} a link to the docs named by usage.pipelineMinutesLearnMore, which starts its own line (Render's text, w3/108)",
+  },
+  "usage.pipelineMinutesLink": {
+    message: "流水线分钟",
+    description:
+      "Link text inside usage.pipelineMinutesExceeded, to Workspace Settings → Build Pipeline (Render's text, w3/108)",
+  },
+  "usage.pipelineMinutesLearnMore": {
+    message: "了解更多",
+    description:
+      "Link text inside usage.pipelineMinutesExceeded, to the pipeline minutes docs (Render's text, w3/108)",
+  },
 };
 
 export default zhUsage;

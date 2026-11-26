@@ -608,6 +608,11 @@ let failDeployOnce = process.env.LOCAL_BEX_FAIL_DEPLOY_ONCE === "1";
 // the `all` payment gate, so the sign-up payment wall (/setup/payment) and its
 // root-level redirect can be reviewed locally (ADR075 D7 rev. 2026-08-29).
 const paymentWall = process.env.LOCAL_BEX_PAYMENT_WALL === "1";
+// LOCAL_BEX_PIPELINE_MINUTES_EXCEEDED=1: report the workspace's pipeline
+// minutes as spent, so Manual Build, Manual Deploy and a build source's Trigger
+// Build show Render's disabled notice (w3/108).
+const pipelineMinutesExceeded =
+  process.env.LOCAL_BEX_PIPELINE_MINUTES_EXCEEDED === "1";
 // Workspace-create billing fixtures (m90). `all` requires a payment method on
 // every plan, `paid` only on Pro/Scale/Enterprise, and `off` keeps the
 // Stripe-less self-host path. The local provider advances directly to
@@ -2359,6 +2364,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
       return {
         workspaceLimits: {
           __typename: "WorkspaceLimits",
+          pipelineMinutesExceeded,
           services: { __typename: "ResourceCap", used: 3, limit: 25 },
           postgres: { __typename: "ResourceCap", used: 1, limit: 2 },
           keyValues: { __typename: "ResourceCap", used: 2, limit: 2 },

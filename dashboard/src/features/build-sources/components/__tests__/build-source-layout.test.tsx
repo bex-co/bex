@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
   createMemoryHistory,
@@ -12,6 +13,7 @@ import { mockCapabilities } from "@/test/mocks/capabilities";
 import type { BuildSourceView } from "@/features/build-sources/types";
 import { BuildSourceLayout } from "../build-source-layout";
 import { BuildSourceDetailRouteSkeleton } from "../build-source-skeletons";
+import { usePipelineMinutesExceeded } from "@/features/usage/hooks/use-pipeline-minutes-exceeded";
 
 const sourceState = vi.hoisted(() => ({
   buildSource: null as BuildSourceView | null,
@@ -205,6 +207,28 @@ describe("BuildSourceLayout (w2/m614/t001)", () => {
     expect(
       await screen.findByRole("button", { name: "Trigger Build" }),
     ).toBeDisabled();
+  });
+
+  // Render's `pfe` (w3/108): a build source's Manual Build is disabled while
+  // the workspace's pipeline minutes are spent, with that notice ahead of the
+  // permission's.
+  it("disables Trigger Build with Render's notice while pipeline minutes are spent", async () => {
+    sourceState.buildSource = GIT_SOURCE;
+    capabilitiesState.canCreate = false;
+    vi.mocked(usePipelineMinutesExceeded).mockReturnValue(true);
+    const user = userEvent.setup();
+    renderLayout(GIT_SOURCE.id);
+
+    const button = await screen.findByRole("button", { name: "Trigger Build" });
+    expect(button).toBeDisabled();
+    await user.hover(button.parentElement!);
+    const notice = await screen.findByRole("tooltip");
+    expect(notice).toHaveTextContent(
+      "You’ve used up the maximum number of pipeline minutes specified by your spend limit.Learn more.",
+    );
+    expect(
+      within(notice).getByRole("link", { name: "pipeline minutes" }),
+    ).toHaveAttribute("href", "/workspace/settings#build-pipeline");
   });
 
   it("redirects unknown build source IDs back to /build-sources", async () => {

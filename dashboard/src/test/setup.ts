@@ -122,8 +122,24 @@ vi.mock("@/features/appearance/hooks/use-account-theme-sync", () => ({
   useAccountThemeSync: vi.fn(),
 }));
 
+// Whether the workspace's pipeline minutes are spent (w3/108) is read through
+// Apollo's useQuery from Manual Build, Manual Deploy and a build source's
+// Trigger Build, so every test that renders them would otherwise need an
+// ApolloProvider. Default to "minutes remain"; the gating tests override per
+// file with vi.mocked(usePipelineMinutesExceeded).mockReturnValue, which the
+// reset below undoes after each test, and the hook's own test unmocks it.
+vi.mock("@/features/usage/hooks/use-pipeline-minutes-exceeded", () => ({
+  usePipelineMinutesExceeded: vi.fn(() => false),
+}));
+afterEach(() => {
+  if (vi.isMockFunction(usePipelineMinutesExceeded)) {
+    vi.mocked(usePipelineMinutesExceeded).mockReset();
+  }
+});
+
 import i18n from "@/i18n/init";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { usePipelineMinutesExceeded } from "@/features/usage/hooks/use-pipeline-minutes-exceeded";
 import zhResources from "@/i18n/resources-zh";
 
 // w9/m60 t003 made non-default locales lazy-loaded in the app (an `import()`

@@ -167,8 +167,12 @@ query Usage($period: String, $ownerId: String) {
 # deletion; `terminating` is how many of `used` are mid-deletion — the count that
 # reconciles this figure with the (shorter) resource list, which drops those rows
 # but whose quota they still consume (w6/m129).
+# `pipelineMinutesExceeded` is true while the workspace's builds are stopped for
+# the month, its pipeline minutes spent with no way to buy more: Manual Build and
+# Manual Deploy are disabled then, as on Render (w3/108).
 query WorkspaceLimits($ownerId: String!) {
   workspaceLimits(ownerId: $ownerId) {
+    pipelineMinutesExceeded
     services {
       used
       terminating

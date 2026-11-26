@@ -16,6 +16,7 @@ import type {
 import { BuildSourceDetailContext } from "../build-source-detail-context";
 import { BuildSourceBuildsTab } from "../build-source-builds-tab";
 import { BuildDetailPage } from "../build-detail-page";
+import { usePipelineMinutesExceeded } from "@/features/usage/hooks/use-pipeline-minutes-exceeded";
 
 const buildsListState = vi.hoisted(() => ({
   builds: [] as BuildSourceBuildView[],
@@ -216,6 +217,37 @@ describe("BuildSourceBuildsTab & BuildDetailPage (w2/m614/t003-t004)", () => {
     await user.click(screen.getByRole("button", { name: "Load more builds" }));
     expect(buildsListState.loadMore).toHaveBeenCalledTimes(1);
   });
+
+  // w3/108: the empty state's Trigger Build follows the header's, disabled
+  // with Render's notice while the workspace's pipeline minutes are spent.
+  it.each([
+    [false, true],
+    [true, false],
+  ])(
+    "gates the empty state's Trigger Build on spent pipeline minutes (spent=%s)",
+    async (spent, enabled) => {
+      vi.mocked(usePipelineMinutesExceeded).mockReturnValue(spent);
+      const openTriggerBuild = vi.fn();
+      const user = userEvent.setup();
+      renderWithContext(<BuildSourceBuildsTab />, GIT_SOURCE, openTriggerBuild);
+
+      const button = await screen.findByRole("button", {
+        name: "Trigger Build",
+      });
+      await user.click(button);
+      if (enabled) {
+        expect(button).toBeEnabled();
+        expect(openTriggerBuild).toHaveBeenCalledOnce();
+        return;
+      }
+      expect(button).toBeDisabled();
+      expect(openTriggerBuild).not.toHaveBeenCalled();
+      await user.hover(button.parentElement!);
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "You’ve used up the maximum number of pipeline minutes specified by your spend limit.Learn more.",
+      );
+    },
+  );
 
   it("renders Build Detail with fan-out deploys, skippedServices, and build-scoped logs", async () => {
     singleBuildState.build = BUILD_ROW;

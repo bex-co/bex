@@ -2851,6 +2851,7 @@ type ResourceEstimate {
 
 type ResourceLimits {
   keyValues: ResourceCap
+  pipelineMinutesExceeded: Boolean
   postgres: ResourceCap
   services: ResourceCap
 }

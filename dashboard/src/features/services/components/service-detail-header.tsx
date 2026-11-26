@@ -42,10 +42,8 @@ import { useEnvironments } from "@/features/environments/hooks/use-environments"
 import { useProjects } from "@/features/projects/hooks/use-projects";
 import { AddSshKeyCta } from "@/features/ssh-keys/components/add-ssh-key-cta";
 import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key";
-import {
-  CronTriggerRunButton,
-  SLOT,
-} from "@/features/services/components/cron-header-actions";
+import { SLOT } from "@/common/lib/translation-slot";
+import { CronTriggerRunButton } from "@/features/services/components/cron-header-actions";
 import {
   SUSPENDED_NOTICE_CLASS,
   ServiceSuspendedNotice,

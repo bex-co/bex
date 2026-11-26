@@ -1947,6 +1947,12 @@ type ResourceLimitsView struct {
 	Services  ResourceCapView `json:"services"`
 	Postgres  ResourceCapView `json:"postgres"`
 	KeyValues ResourceCapView `json:"keyValues"`
+	// PipelineMinutesExceeded is true while the workspace's builds are stopped
+	// for the month: it spent its plan's pipeline minutes and can buy no more
+	// (no payment method, or its spend limit reached). Render's dashboard reads
+	// the same state as pipelineMinutesExceeded and disables Manual Build and
+	// Manual Deploy while it holds (w3/108).
+	PipelineMinutesExceeded bool `json:"pipelineMinutesExceeded"`
 }
 
 // ResourceLimits returns the workspace's current resource usage vs. its
@@ -1992,6 +1998,9 @@ func (s *Service) ResourceLimits(ctx context.Context, ownerID string) (ResourceL
 	if listErr := s.ListByTenant(ctx, &apps, tenantID); listErr != nil {
 		return ResourceLimitsView{}, fmt.Errorf("counting services: %w", listErr)
 	}
+	// Before the filter: a build source's carrier App is marked, and refused
+	// a build, like a service.
+	out.PipelineMinutesExceeded = pipelineMinutesExceeded(apps.Items, s.Now())
 	apps.Items = core.ServiceApps(apps.Items)
 	var dbs appv1alpha1.DatabaseList
 	if listErr := s.ListByTenant(ctx, &dbs, tenantID); listErr != nil {
@@ -2017,6 +2026,21 @@ func (s *Service) ResourceLimits(ctx context.Context, ownerID string) (ResourceL
 		}
 	}
 	return out, nil
+}
+
+// pipelineMinutesExceeded reports whether the buildminutes sweeper has stopped
+// the workspace's builds this month: one of its Apps carries the current
+// month's mark, the one the operator refuses a build or a pre-deploy run on
+// (docs/ADR030 §13). The sweeper marks and lifts every App of a workspace
+// together, except one being deleted, which it leaves as it was, so a deleting
+// App's mark says nothing about the workspace now.
+func pipelineMinutesExceeded(apps []appv1alpha1.App, now time.Time) bool {
+	for i := range apps {
+		if apps[i].DeletionTimestamp.IsZero() && appv1alpha1.BuildMinutesExhaustedIn(&apps[i], now) {
+			return true
+		}
+	}
+	return false
 }
 
 // deletable is satisfied by *App / *Database / *KeyValue: the pointer carries

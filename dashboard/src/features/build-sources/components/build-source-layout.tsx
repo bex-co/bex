@@ -16,7 +16,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { regionLabel } from "@/common/lib/region-label";
 import { cn } from "@/common/lib/utils/utils";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
-import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useTriggerBuildGate } from "@/features/build-sources/hooks/use-trigger-build-gate";
 import { useProjects } from "@/features/projects/hooks/use-projects";
 import { formatRepoLabel } from "@/features/services/lib/repo";
 import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
@@ -47,10 +47,7 @@ export function BuildSourceLayout({ buildSourceId }: BuildSourceLayoutProps) {
   const adopting = useAdoptResourceWorkspace(buildSourceId, loaded?.ownerId);
   const buildSource = adopting ? null : loaded;
 
-  const capabilities = useCapabilities();
-  const { canCreate } = capabilities;
-  const createReasonKey = capabilities.reasonKey("can_create");
-  const createReason = createReasonKey ? t(createReasonKey) : undefined;
+  const triggerBuild = useTriggerBuildGate();
   const { projects } = useProjects({ poll: false });
   const [triggerOpen, setTriggerOpen] = useState(false);
 
@@ -126,7 +123,7 @@ export function BuildSourceLayout({ buildSourceId }: BuildSourceLayoutProps) {
     buildSource,
     refetch,
     openTriggerBuild: () => {
-      if (isGit && canCreate) setTriggerOpen(true);
+      if (isGit && triggerBuild.allowed) setTriggerOpen(true);
     },
   };
 
@@ -210,10 +207,10 @@ export function BuildSourceLayout({ buildSourceId }: BuildSourceLayoutProps) {
               }
               actions={
                 isGit ? (
-                  <PermissionTooltip reason={createReason}>
+                  <PermissionTooltip reason={triggerBuild.reason}>
                     <Button
                       size="sm"
-                      disabled={!canCreate}
+                      disabled={!triggerBuild.allowed}
                       onClick={() => setTriggerOpen(true)}
                     >
                       <Play className="size-4" aria-hidden="true" />
