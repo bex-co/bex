@@ -319,10 +319,11 @@ func TestDockerHubResolver(t *testing.T) {
 	}
 }
 
-// w8/198, w9/138: a Ruby service created since a dated step with no version
-// signal builds on Render's default patch for that date, and the log names it;
-// an older or unknown-age service, and any explicit signal, keep the line's
-// reviewed patch. Whether a step is that reviewed patch (no swap) or behind it
+// w8/198, w9/138, w3/m636: a Ruby service created since a dated step with no
+// version signal builds on Render's default patch for that date, and the log
+// names it; an unknown-age service (or one older than Render's 2025-06-12 row,
+// which no bex service is), and any explicit signal, keep the line's reviewed
+// patch. Whether a step is that reviewed patch (no swap) or behind it
 // (its own official image) is read from the table, so refreshing the 3.4 line
 // needs no edit here.
 func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
@@ -360,20 +361,25 @@ func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
 		}
 	}
 
-	wantDefault("new service", run(rubyDefaultCutoff.Add(time.Hour), nil), "3.4.4")
+	// w3/m636: Render's 3.4.4 row runs from 2025-06-12, so every service bex
+	// created before 2026-11-03 gets it, not the line's pin.
+	wantDefault("service created at Render's 2025-06-12 row", run(renderDefaults20250612, nil), "3.4.4")
+	wantDefault("service created 2026-08-01", run(on2026(time.August, 1), nil), "3.4.4")
 	// w4/620: Render's default moved to 3.4.12 for services created since
 	// 2026-11-03; one created before keeps 3.4.4.
 	wantDefault("service created after 2026-11-03", run(toolchains.RenderDefaults20261103.Add(time.Hour), nil), "3.4.12")
+	wantDefault("service created 2026-11-05", run(on2026(time.November, 5), nil), "3.4.12")
 	wantDefault("service created just before 2026-11-03", run(toolchains.RenderDefaults20261103.Add(-time.Hour), nil), "3.4.4")
 	// w9/138: Render's default moved to 3.4.13 for services created since
 	// 2026-11-19; one created the hour before keeps 3.4.12.
 	wantDefault("service created after 2026-11-19", run(renderRubyDefault20261119.Add(time.Hour), nil), "3.4.13")
+	wantDefault("service created 2026-11-20", run(on2026(time.November, 20), nil), "3.4.13")
 	wantDefault("service created just before 2026-11-19", run(renderRubyDefault20261119.Add(-time.Hour), nil), "3.4.12")
 	for name, c := range map[string]NativeChoice{
-		"older service":                    run(rubyDefaultCutoff.Add(-time.Hour), nil),
-		"unknown age":                      run(time.Time{}, nil),
-		"explicit signal":                  run(rubyDefaultCutoff.Add(time.Hour), map[string]string{".ruby-version": "3.4\n"}),
-		"explicit signal after 2026-11-19": run(renderRubyDefault20261119.Add(time.Hour), map[string]string{".ruby-version": "3.4\n"}),
+		"created before Render's 2025-06-12 row": run(renderDefaults20250612.Add(-time.Hour), nil),
+		"unknown age":                            run(time.Time{}, nil),
+		"explicit signal":                        run(renderDefaults20250612.Add(time.Hour), map[string]string{".ruby-version": "3.4\n"}),
+		"explicit signal after 2026-11-19":       run(renderRubyDefault20261119.Add(time.Hour), map[string]string{".ruby-version": "3.4\n"}),
 	} {
 		if c.Line != "3.4" || c.Image != reviewed.image {
 			t.Errorf("%s must keep the reviewed 3.4 patch: %+v", name, c)
@@ -383,7 +389,7 @@ func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
 	// A step behind the reviewed patch whose tag is missing falls back to the
 	// reviewed patch and says so; 3.4.4 always is one.
 	missing := &fakeExact{digests: map[string]string{}}
-	steps := map[time.Time]string{rubyDefaultCutoff.Add(time.Hour): "3.4.4", toolchains.RenderDefaults20261103.Add(time.Hour): "3.4.12", renderRubyDefault20261119.Add(time.Hour): "3.4.13"}
+	steps := map[time.Time]string{renderDefaults20250612.Add(time.Hour): "3.4.4", toolchains.RenderDefaults20261103.Add(time.Hour): "3.4.12", renderRubyDefault20261119.Add(time.Hour): "3.4.13"}
 	for created, version := range steps {
 		if _, ok := rubyReviewedDefault(version); ok {
 			continue
@@ -401,42 +407,50 @@ func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
 // w6/m291: Render's default Node (24.22.1 since 2026-10-21) and Elixir (1.18.4
 // since 2025-06-12) are exact steps, so refreshing a line to a newer patch
 // leaves a new service's default where Render has it. An explicit line request,
-// an older or unknown-age service and a missing tag keep the reviewed patch.
+// an unknown-age service, one older than the runtime's first step and a
+// missing tag keep the reviewed patch.
+//
+// An Elixir service with no signal also gets Render's default Erlang/OTP
+// 28.0.2 (w8/333), so its exact image is that release's.
 func TestNodeAndElixirDefaultsAreRendersExactPatch(t *testing.T) {
 	for _, tc := range []struct {
 		runtime, line, exact, tag string
-		from                      time.Time
+		from, first               time.Time
 		explicit                  map[string]string
-		narration                 string // Render's line (w9/139)
+		published                 *fakeExact
+		image                     string   // the new service's
+		imageEnv                  []string // its image's environment
+		narration                 string   // Render's line (w9/139)
 	}{
-		{nativeNodeRuntime, "24", "24.22.1", "node:24.22.1-bookworm", renderNodeDefault20261021, map[string]string{"NODE_VERSION": "24"},
+		{nativeNodeRuntime, "24", "24.22.1", "node:24.22.1-bookworm", renderNodeDefault20261021, renderNodeDefault20260421, map[string]string{"NODE_VERSION": "24"},
+			&fakeExact{digests: map[string]string{"node:24.22.1-bookworm": exactDigest}}, "node:24.22.1-bookworm@" + exactDigest, nil,
 			"==> Using Node.js version 24.22.1 (default)" + nodeDocs},
-		{nativeElixirRuntime, "1.18", "1.18.4", "elixir:1.18.4", renderElixirDefault20250612, map[string]string{"ELIXIR_VERSION": "1.18"},
-			"==> Using Elixir version 1.18.4 (default)" + elixirDocs},
+		{nativeElixirRuntime, "1.18", "1.18.4", "elixir:1.18.4", renderDefaults20250612, renderDefaults20250612, map[string]string{"ELIXIR_VERSION": "1.18"},
+			defaultOTPPublished(), defaultOTPImage, defaultOTPEnv,
+			"==> Using Erlang version 28.0.2 (default)\n==> Using Elixir version 1.18.4 (default)" + elixirDocs},
 	} {
 		t.Run(tc.runtime, func(t *testing.T) {
 			reviewed, _ := nativeToolchains[tc.runtime].find(tc.line)
 			if reviewed.version == tc.exact {
 				t.Fatalf("the %s line's reviewed patch is Render's default %s again; this test no longer proves a pin bump leaves the default alone", tc.line, tc.exact)
 			}
-			fake := &fakeExact{digests: map[string]string{tc.tag: exactDigest}}
 			run := func(created time.Time, env map[string]string) NativeChoice {
 				t.Helper()
-				choices, dockerfile := resolveExactAt(t, fake, created, tc.runtime, env, nil)
-				if choices[0].Image == tc.tag+"@"+exactDigest {
-					assertExactNativePrimary(t, dockerfile, reviewed.image, choices[0].Image, nil)
+				choices, dockerfile := resolveExactAt(t, tc.published, created, tc.runtime, env, nil)
+				if choices[0].Image == tc.image {
+					assertExactNativePrimary(t, dockerfile, reviewed.image, choices[0].Image, tc.imageEnv)
 				}
 				return choices[0]
 			}
 
 			got := run(tc.from.Add(time.Hour), nil)
-			if got.Line != tc.exact || got.Image != tc.tag+"@"+exactDigest || shown(got.Narration()) != tc.narration {
+			if got.Line != tc.exact || got.Image != tc.image || shown(got.Narration()) != tc.narration {
 				t.Errorf("new service: %+v narration %q, want %q", got, shown(got.Narration()), tc.narration)
 			}
 			for name, c := range map[string]NativeChoice{
-				"unknown age":     run(time.Time{}, nil),
-				"explicit line":   run(tc.from.Add(time.Hour), tc.explicit),
-				"before the step": run(tc.from.Add(-time.Hour), nil),
+				"unknown age":           run(time.Time{}, nil),
+				"explicit line":         run(tc.from.Add(time.Hour), tc.explicit),
+				"before the first step": run(tc.first.Add(-time.Hour), nil),
 			} {
 				if c.Line != tc.line || c.Image != reviewed.image {
 					t.Errorf("%s must keep the reviewed %s: %+v", name, reviewed.version, c)
@@ -452,14 +466,18 @@ func TestNodeAndElixirDefaultsAreRendersExactPatch(t *testing.T) {
 	}
 }
 
-// w8/217: a Python service created since the cutoff with no version signal
-// builds on Render's default 3.14.8, not the 3.14 line's newest reviewed patch;
-// PYTHON_VERSION=3.14 keeps the reviewed patch, and an older or unknown-age
-// service keeps its 3.13 default.
+// w8/217, w3/m636: a Python service created since Render's 2026-02-11 row
+// with no version signal builds on Render's default for its date (3.14.3, then
+// 3.14.8 from 2026-10-12), not the 3.14 line's newest reviewed patch;
+// PYTHON_VERSION=3.14 keeps the reviewed patch, and an unknown-age service
+// (or one older than the row, which no bex service is) keeps its 3.13 default.
 func TestPythonDefaultIsRendersExactPatch(t *testing.T) {
-	exactEnv := []string{"PYTHON_VERSION=3.14.8"}
-	fake := &fakeExact{digests: map[string]string{"python:3.14.8-bookworm": exactDigest}, envByImage: map[string]fakeExactMetadata{
-		"python:3.14.8-bookworm@" + exactDigest: {exactEnv, []string{"# debian.sh --arch 'amd64' out/ 'bookworm' '@1749513600'"}}}}
+	exactEnv := map[string][]string{"3.14.3": {"PYTHON_VERSION=3.14.3"}, "3.14.8": {"PYTHON_VERSION=3.14.8"}}
+	fake := &fakeExact{digests: map[string]string{}, envByImage: map[string]fakeExactMetadata{}}
+	for version, env := range exactEnv {
+		fake.digests["python:"+version+"-bookworm"] = exactDigest
+		fake.envByImage["python:"+version+"-bookworm@"+exactDigest] = fakeExactMetadata{env, []string{"# debian.sh --arch 'amd64' out/ 'bookworm' '@1749513600'"}}
+	}
 	reviewed, _ := nativeToolchains[nativePythonRuntime].find("3.14")
 	run := func(created time.Time, env map[string]string) NativeChoice {
 		t.Helper()
@@ -470,18 +488,25 @@ func TestPythonDefaultIsRendersExactPatch(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if choices[0].Image == "python:3.14.8-bookworm@"+exactDigest {
+		if env, ok := exactEnv[choices[0].Line]; ok {
 			out, err := os.ReadFile(dockerfile)
 			must(t, err)
-			assertExactNativePrimary(t, string(out), reviewed.image, choices[0].Image, exactEnv)
+			assertExactNativePrimary(t, string(out), reviewed.image, choices[0].Image, env)
 		}
 		return choices[0]
 	}
-
-	got := run(toolchains.PythonCreationCutoff, nil)
-	if got.Line != "3.14.8" || !strings.Contains(got.Image, "python:3.14.8-bookworm@"+exactDigest) || shown(got.Narration()) != "==> Using Python version 3.14.8 (default)"+pythonDocs {
-		t.Errorf("new service: %+v narration %q", got, shown(got.Narration()))
+	wantExact := func(name string, c NativeChoice, version string) {
+		t.Helper()
+		if c.Line != version || c.Image != "python:"+version+"-bookworm@"+exactDigest || shown(c.Narration()) != "==> Using Python version "+version+" (default)"+pythonDocs {
+			t.Errorf("%s must build on %s: %+v narration %q", name, version, c, shown(c.Narration()))
+		}
 	}
+
+	wantExact("service created at Render's 2026-10-12 row", run(toolchains.RenderDefaults20261012, nil), "3.14.8")
+	wantExact("service created 2026-10-15", run(on2026(time.October, 15), nil), "3.14.8")
+	wantExact("service created just before 2026-10-12", run(toolchains.RenderDefaults20261012.Add(-time.Hour), nil), "3.14.3")
+	wantExact("service created 2026-05-01", run(on2026(time.May, 1), nil), "3.14.3")
+	wantExact("service created at Render's 2026-02-11 row", run(toolchains.RenderDefaults20260211, nil), "3.14.3")
 	// w4/620: Render's default moved to 3.14.10, the line's reviewed patch, for
 	// services created since 2026-11-03; one created before keeps 3.14.8.
 	if c := run(toolchains.RenderDefaults20261103.Add(time.Hour), nil); c.Line != "3.14" || c.Image != reviewed.image || reviewed.version != "3.14.10" {
@@ -494,14 +519,15 @@ func TestPythonDefaultIsRendersExactPatch(t *testing.T) {
 	if c := run(toolchains.RenderDefaults20261103.Add(-time.Hour), nil); c.Line != "3.14.8" {
 		t.Errorf("service created just before 2026-11-03 must keep 3.14.8: %+v", c)
 	}
-	if c := run(toolchains.PythonCreationCutoff.Add(time.Hour), map[string]string{"PYTHON_VERSION": "3.14"}); c.Line != "3.14" || c.Image != reviewed.image {
+	if c := run(toolchains.RenderDefaults20261012.Add(time.Hour), map[string]string{"PYTHON_VERSION": "3.14"}); c.Line != "3.14" || c.Image != reviewed.image {
 		t.Errorf("PYTHON_VERSION=3.14 must keep the reviewed %s: %+v", reviewed.version, c)
 	}
+	legacy, _ := nativeToolchains[nativePythonRuntime].find("3.13")
 	for name, c := range map[string]NativeChoice{
-		"older service": run(toolchains.PythonCreationCutoff.Add(-time.Hour), nil),
-		"unknown age":   run(time.Time{}, nil),
+		"created before Render's 2026-02-11 row": run(toolchains.RenderDefaults20260211.Add(-time.Hour), nil),
+		"unknown age":                            run(time.Time{}, nil),
 	} {
-		if c.Line != "3.13" || strings.Contains(c.Image, "python:3.14.8-bookworm@") {
+		if c.Line != "3.13" || c.Image != legacy.image {
 			t.Errorf("%s must keep the 3.13 default: %+v", name, c)
 		}
 	}
@@ -510,7 +536,7 @@ func TestPythonDefaultIsRendersExactPatch(t *testing.T) {
 	o := nativeOptions()
 	o.Runtime = "python"
 	bundle, dockerfile, src := writeResolveFixture(t, o, nil, nil)
-	choices, err := ResolveNativeBuildExact(context.Background(), missing, toolchains.PythonCreationCutoff.Add(time.Hour), "python", bundle, dockerfile, src)
+	choices, err := ResolveNativeBuildExact(context.Background(), missing, toolchains.RenderDefaults20261012.Add(time.Hour), "python", bundle, dockerfile, src)
 	if err != nil || choices[0].Line != "3.14" || !strings.Contains(shown(choices[0].Narration()), "No official image python:3.14.8-bookworm") {
 		t.Errorf("a missing tag must fall back to the reviewed patch and say so: %+v %v", choices[0], err)
 	}
@@ -652,7 +678,8 @@ func TestNodeCompanionCopiesAnOlderVariantRelease(t *testing.T) {
 
 // w8/370: a companion Node with no version signal takes the dated default a
 // Node service created at the same time gets, as Render's Python, Ruby and Go
-// builds name theirs. An older or unknown-age service keeps the reviewed patch.
+// builds name theirs. An unknown-age service (or one older than the table's
+// first step) keeps the reviewed patch.
 func TestNodeCompanionDefaultFollowsTheServiceCreationDate(t *testing.T) {
 	reviewed, _ := nativeToolchains[nativeNodeRuntime].find("24")
 	if reviewed.version == "24.22.1" {
@@ -681,7 +708,7 @@ func TestNodeCompanionDefaultFollowsTheServiceCreationDate(t *testing.T) {
 				if node.Image != image || shown(node.Narration()) != "==> Using Node.js version 24.22.1 (default)"+nodeDocs || !strings.Contains(dockerfile, "COPY --link --from="+image+" ") {
 					t.Errorf("new service: %+v narration %q\n%s", node, shown(node.Narration()), dockerfile)
 				}
-				for name, created := range map[string]time.Time{"unknown age": {}, "before the step": renderNodeDefault20261021.Add(-time.Hour)} {
+				for name, created := range map[string]time.Time{"unknown age": {}, "before the first step": renderNodeDefault20260421.Add(-time.Hour)} {
 					if node, _ := companion(t, runtime, created); node.Image != reviewed.image || shown(node.Narration()) != "==> Using Node.js version "+reviewed.version+" (default)"+nodeDocs {
 						t.Errorf("%s must keep the reviewed %s: %+v narration %q", name, reviewed.version, node, shown(node.Narration()))
 					}
@@ -822,6 +849,118 @@ func TestRubyDatedDefaultsSurviveALineRefreshToTheirNewestStep(t *testing.T) {
 	} {
 		if got := defaultExact(created, nativeRubyRuntime, NativeChoice{Line: "3.4"}); got != want {
 			t.Errorf("defaultExact(%s) after a 3.4.13 line refresh = %q, want %q", created, got, want)
+		}
+	}
+}
+
+// w3/m636: a Node service, and the companion Node of every other runtime,
+// created on any date since bex's first service (2026-06-05) builds on the
+// patch Render's node-version table gives that date: 24.14.1 from 2026-04-21,
+// 24.21.0 from 2026-09-17 and 24.22.1 from 2026-10-21, never the 24 line's pin.
+func TestNodeDefaultFollowsRendersDatedRows(t *testing.T) {
+	fake := &fakeExact{digests: map[string]string{
+		"node:24.14.1-bookworm": exactDigest, "node:24.21.0-bookworm": exactDigest, "node:24.22.1-bookworm": exactDigest}}
+	for _, tc := range []struct {
+		name    string
+		created time.Time
+		want    string
+	}{
+		{"created when bex's first service could be", on2026(time.June, 5), "24.14.1"},
+		{"created 2026-08-01", on2026(time.August, 1), "24.14.1"},
+		{"created just before 2026-09-17", renderNodeDefault20260917.Add(-time.Hour), "24.14.1"},
+		{"created at 2026-09-17", renderNodeDefault20260917, "24.21.0"},
+		{"created 2026-10-01", on2026(time.October, 1), "24.21.0"},
+		{"created just before 2026-10-21", renderNodeDefault20261021.Add(-time.Hour), "24.21.0"},
+		{"created at 2026-10-21", renderNodeDefault20261021, "24.22.1"},
+		{"created 2026-11-20", on2026(time.November, 20), "24.22.1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			image := "node:" + tc.want + "-bookworm@" + exactDigest
+			narration := "==> Using Node.js version " + tc.want + " (default)" + nodeDocs
+			choices, _ := resolveExactAt(t, fake, tc.created, nativeNodeRuntime, nil, nil)
+			if c := choices[0]; c.Line != tc.want || c.Image != image || shown(c.Narration()) != narration {
+				t.Errorf("node service: %+v narration %q, want %s", c, shown(c.Narration()), tc.want)
+			}
+			for runtime := range nativeJSCompanionRuntimes {
+				choices, _ := resolveExactAt(t, fake, tc.created, runtime, nil, nil)
+				i := slices.IndexFunc(choices[1:], func(c NativeChoice) bool { return c.Label == "Node" })
+				if i < 0 {
+					t.Fatalf("%s: no Node companion in %+v", runtime, choices)
+				}
+				if c := choices[1+i]; c.Image != image || shown(c.Narration()) != narration {
+					t.Errorf("%s companion: %+v narration %q, want %s", runtime, c, shown(c.Narration()), tc.want)
+				}
+			}
+		})
+	}
+}
+
+// w3/m636 (the w8/217 regression class): refreshing a line's reviewed patch
+// never moves a dated default. With each runtime's default line bumped past
+// all of its steps, a service created at or inside each step still asks for
+// exactly that step's patch, and only an unknown-age service follows the
+// bumped pin. Each step is on its runtime's default line, the line a service
+// with no signal resolves to, or defaultExact would drop it.
+func TestDatedDefaultsSurviveALinePinBump(t *testing.T) {
+	for runtime, steps := range exactDefaults {
+		t.Run(runtime, func(t *testing.T) {
+			line := nativeToolchains[runtime].defaultLine
+			bumped := line + ".999"
+			if !strings.Contains(line, ".") {
+				bumped += ".0"
+			}
+			withLineVersion(t, runtime, line, bumped)
+			assertAscending(t, runtime, steps)
+			for _, step := range steps {
+				if !strings.HasPrefix(step.Version, line+".") {
+					t.Errorf("step %s is not on the %s default line %s", step.Version, runtime, line)
+				}
+				for _, created := range []time.Time{step.From, step.From.Add(time.Hour)} {
+					if got := defaultExact(created, runtime, NativeChoice{Line: line}); got != step.Version {
+						t.Errorf("a service created %s after the %s line moved to %s gets %q, want exactly %s", created, line, bumped, got, step.Version)
+					}
+				}
+			}
+			if got := defaultExact(time.Time{}, runtime, NativeChoice{Line: line}); got != "" {
+				t.Errorf("an unknown-age service gets %q, want the bumped pin %s", got, bumped)
+			}
+		})
+	}
+}
+
+// w3/m636: Erlang/OTP's and uv's dated defaults have no line pin to follow,
+// but their tables keep the same shape: ascending, Erlang/OTP in the
+// four-part form that names one release, and uv an exact release.
+func TestErlangAndUVDatedDefaultsAreWellFormed(t *testing.T) {
+	assertAscending(t, "erlang", erlangDefaults)
+	for _, step := range erlangDefaults {
+		if strings.Count(step.Version, ".") != 3 {
+			t.Errorf("erlang step %s does not name exactly one release", step.Version)
+		}
+	}
+	assertAscending(t, "uv", uvDefaults)
+	for _, step := range uvDefaults {
+		if !uvRelease.MatchString(step.Version) {
+			t.Errorf("uv step %s is not an exact release", step.Version)
+		}
+	}
+	if newest := uvDefaults[len(uvDefaults)-1].Version; newest != defaultUVVersion {
+		t.Errorf("uv's newest dated default %s is not defaultUVVersion %s, which refusals suggest", newest, defaultUVVersion)
+	}
+}
+
+// on2026 is midnight UTC on a day of 2026, a service's creation time in tests.
+func on2026(month time.Month, day int) time.Time {
+	return time.Date(2026, month, day, 0, 0, 0, 0, time.UTC)
+}
+
+// assertAscending fails for a dated table whose steps are not in date order,
+// which DatedDefaultAt relies on.
+func assertAscending(t *testing.T, name string, steps []toolchains.DatedDefault) {
+	t.Helper()
+	for i := 1; i < len(steps); i++ {
+		if !steps[i-1].From.Before(steps[i].From) {
+			t.Errorf("%s step %s (%s) is not after step %s (%s)", name, steps[i].Version, steps[i].From, steps[i-1].Version, steps[i-1].From)
 		}
 	}
 }

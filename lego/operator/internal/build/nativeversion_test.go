@@ -1237,21 +1237,22 @@ func TestResolveNativeBuildAddsJSToolsToNonNodeRuntimes(t *testing.T) {
 	}
 }
 
-// w8/174: Render picks a Python service's default by its creation date, so a
-// service created after the cutoff defaults to 3.14, an older or unknown one
-// stays on 3.13, and any explicit signal still wins.
+// w8/174, w3/m636: Render picks a Python service's default by its creation
+// date, so any service created since Render's 2026-02-11 row (every service
+// bex has created) defaults to 3.14, an unknown one stays on 3.13, and any
+// explicit signal still wins.
 func TestPythonDefaultFollowsCreationDate(t *testing.T) {
-	after := toolchains.PythonCreationCutoff.Add(time.Hour)
-	before := toolchains.PythonCreationCutoff.Add(-time.Hour)
+	after := toolchains.RenderDefaults20260211.Add(time.Hour)
+	before := toolchains.RenderDefaults20260211.Add(-time.Hour)
 	for _, tc := range []struct {
 		name    string
 		created time.Time
 		env     map[string]string
 		line    string
 	}{
-		{"created after the cutoff", after, nil, "3.14"},
-		{"created exactly at the cutoff", toolchains.PythonCreationCutoff, nil, "3.14"},
-		{"created before the cutoff", before, nil, "3.13"},
+		{"created after Render's first 3.14 row", after, nil, "3.14"},
+		{"created exactly at it", toolchains.RenderDefaults20260211, nil, "3.14"},
+		{"created before it", before, nil, "3.13"},
 		{"unknown creation keeps the legacy default", time.Time{}, nil, "3.13"},
 		{"explicit signal wins on a new service", after, map[string]string{"PYTHON_VERSION": "3.12"}, "3.12"},
 	} {
@@ -1285,7 +1286,7 @@ func TestNativeResolverCarriesServiceCreationTime(t *testing.T) {
 // names one; a requested OTP the line's own image does not carry is installed
 // exactly; one it does carry keeps the line's image.
 func TestElixirOTPPairs(t *testing.T) {
-	created := renderElixirDefault20250612.Add(time.Hour)
+	created := renderDefaults20250612.Add(time.Hour)
 	for _, tc := range []struct {
 		env                         map[string]string
 		line, exact, erlang, source string

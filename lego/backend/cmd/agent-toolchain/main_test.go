@@ -87,6 +87,20 @@ func TestAgentToolchainPython(t *testing.T) {
 	}
 }
 
+// w3/m636: a session takes the dated default of the day it was created, as a
+// native build does, so one created in Render's 3.14.3 or 3.14.8 rows fetches
+// that patch and falls back to the baked 3.14 line, never the legacy 3.13.
+func TestAgentToolchainOlderSessionGetsItsDatedDefault(t *testing.T) {
+	for value, version := range map[string]string{"2026-08-01T00:00:00Z": "3.14.3", "2026-10-15T00:00:00Z": "3.14.8"} {
+		got, stderr, code := invoke(t, checkout(t, nil), map[string]string{sessionCreatedEnv: value})
+		want := selection{Line: "3.14", Version: version, Baked: "3.14.10", Image: "python:" + version + "-bookworm", Source: "default",
+			Narration: "==> Using Python " + version + " (default)", Fallback: "==> Using Python 3.14.10 (default)"}
+		if code != 0 || got != want {
+			t.Errorf("created %s: exit %d (%s): got %+v, want %+v", value, code, stderr, got, want)
+		}
+	}
+}
+
 // A session created before bex passed its creation time (or one whose value
 // is malformed) keeps the legacy line, as a native build of unknown age does.
 func TestAgentToolchainUnknownCreationKeepsTheLegacyLine(t *testing.T) {

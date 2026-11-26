@@ -178,11 +178,19 @@ func DatedDefaultAt(steps []DatedDefault, created time.Time) string {
 	return version
 }
 
-// RenderDefaults20261103 is when Render moved its default Python to 3.14.10
-// and Ruby to 3.4.12 for new services (w4/620): the 3.14 and 3.4 lines'
-// reviewed patches. bex follows Render's own date, so a service created since
-// then builds on what Render gives it.
-var RenderDefaults20261103 = time.Date(2026, time.November, 3, 0, 0, 0, 0, time.UTC)
+// The dates on which Render moved several runtimes' defaults at once
+// (render.com/docs/python-version, ruby-version and uv-version). bex follows
+// Render's own dates, so a service builds on what Render gives one created
+// the same day, however long ago that was (w4/620, w3/m636):
+//
+//   - RenderDefaults20260211: Python 3.14.3 and uv 0.10.2;
+//   - RenderDefaults20261012: Python 3.14.8 and uv 0.12.24;
+//   - RenderDefaults20261103: Python 3.14.10, Ruby 3.4.12 and uv 0.13.7.
+var (
+	RenderDefaults20260211 = time.Date(2026, time.February, 11, 0, 0, 0, 0, time.UTC)
+	RenderDefaults20261012 = time.Date(2026, time.October, 12, 0, 0, 0, 0, time.UTC)
+	RenderDefaults20261103 = time.Date(2026, time.November, 3, 0, 0, 0, 0, time.UTC)
+)
 
 // ImageVariant splits a line's official image (python:3.11-bookworm@sha256:…)
 // into its repository and the variant suffix after the line (-bookworm). An

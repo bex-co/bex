@@ -127,7 +127,7 @@ func TestExactErlangBuildsOnTheRequestedOTP(t *testing.T) {
 			fake.envByImage = map[string]fakeExactMetadata{"erlang:" + tc.erlang + "@" + exactDigest: {otpEnv, commonOTPSyntheticHistory("trixie")}}
 			// A real service has a creation date, which selects Render's
 			// default Elixir when only ERLANG_VERSION is set (w6/m291).
-			choices, dockerfile := resolveExactAt(t, fake, renderElixirDefault20250612.Add(time.Hour), "elixir", tc.env, nil)
+			choices, dockerfile := resolveExactAt(t, fake, renderDefaults20250612.Add(time.Hour), "elixir", tc.env, nil)
 			reviewed, err := ResolveNativeVersion(nativeElixirRuntime, tc.env, files(nil))
 			if err != nil {
 				t.Fatal(err)
@@ -214,46 +214,53 @@ func TestExactErlangUnavailableFailsByName(t *testing.T) {
 
 // w8/333: Render's default Elixir 1.18.4 runs on its default Erlang/OTP
 // 28.0.2, not on the newer 28.x the official elixir image was built with. A
-// service created since the cutoff with neither ELIXIR_VERSION nor
-// ERLANG_VERSION builds on erlang:28.0.2.0 with hexpm's Elixir 1.18.4 for that
-// release, and the log names both. An explicit version, an older or
-// unknown-age service, and a default no image provides keep what they had.
+// service created since Render's 2025-06-12 row (w3/m636: any service bex has
+// created) with neither ELIXIR_VERSION nor ERLANG_VERSION builds on
+// erlang:28.0.2.0 with hexpm's Elixir 1.18.4 for that release, and the log
+// names both. An explicit version, an unknown-age service, and a default no
+// image provides keep what they had.
+// Render's default Erlang/OTP 28.0.2 as the registry publishes it: its
+// official image, and hexpm's Elixir 1.18.4 builds for it among neighbours a
+// default must not pick.
+const (
+	defaultOTPImage  = "erlang:28.0.2.0@" + exactDigest
+	defaultOTPElixir = "1.18.4-erlang-28.0.2-debian-trixie-20260610"
+)
+
+var defaultOTPEnv = []string{"OTP_VERSION=28.0.2", "PATH=/usr/local/bin:/usr/bin"}
+
+func defaultOTPPublished() *fakeExact {
+	fake := &fakeExact{digests: map[string]string{
+		"erlang:28.0.2.0": exactDigest, "erlang:28.0.3.0": exactDigest, "elixir:1.18.4": exactDigest,
+		hexpmElixirRepo + ":" + defaultOTPElixir:                                otherDigest,
+		hexpmElixirRepo + ":1.18.4-erlang-28.0.2-debian-bookworm-20260518":      otherDigest,
+		hexpmElixirRepo + ":1.18.4-erlang-28.0.2-debian-bookworm-20260610-slim": otherDigest,
+		hexpmElixirRepo + ":1.18.4-erlang-28.0.3-debian-bookworm-20260824":      otherDigest,
+		hexpmElixirRepo + ":1.18.4-erlang-28.5.0.8-debian-trixie-20260824":      otherDigest,
+	}}
+	fake.envByImage = map[string]fakeExactMetadata{defaultOTPImage: {defaultOTPEnv, commonOTPSyntheticHistory("bookworm")}}
+	return fake
+}
+
 func TestDefaultElixirBuildsOnRendersDefaultOTP(t *testing.T) {
-	const (
-		erlangImage = "erlang:28.0.2.0@" + exactDigest
-		newest      = "1.18.4-erlang-28.0.2-debian-trixie-20260610"
-	)
-	otpEnv := []string{"OTP_VERSION=28.0.2", "PATH=/usr/local/bin:/usr/bin"}
-	published := func() *fakeExact {
-		fake := &fakeExact{digests: map[string]string{
-			"erlang:28.0.2.0": exactDigest, "erlang:28.0.3.0": exactDigest, "elixir:1.18.4": exactDigest,
-			hexpmElixirRepo + ":" + newest:                                          otherDigest,
-			hexpmElixirRepo + ":1.18.4-erlang-28.0.2-debian-bookworm-20260518":      otherDigest,
-			hexpmElixirRepo + ":1.18.4-erlang-28.0.2-debian-bookworm-20260610-slim": otherDigest,
-			hexpmElixirRepo + ":1.18.4-erlang-28.0.3-debian-bookworm-20260824":      otherDigest,
-			hexpmElixirRepo + ":1.18.4-erlang-28.5.0.8-debian-trixie-20260824":      otherDigest,
-		}}
-		fake.envByImage = map[string]fakeExactMetadata{erlangImage: {otpEnv, commonOTPSyntheticHistory("bookworm")}}
-		return fake
-	}
-	created := erlangDefaultCutoff.Add(time.Hour)
+	created := on2026(time.August, 1)
 	reviewed, err := ResolveNativeVersion(nativeElixirRuntime, nil, files(nil))
 	must(t, err)
 	other, _ := nativeToolchains[nativeElixirRuntime].find("1.19")
 
-	fake := published()
+	fake := defaultOTPPublished()
 	choices, dockerfile := resolveExactAt(t, fake, created, nativeElixirRuntime, nil, nil)
 	// Render names the default Erlang on a line of its own, before Elixir
 	// (w9/139).
 	if got, want := shown(choices[0].Narration()), "==> Using Erlang version 28.0.2 (default)\n==> Using Elixir version 1.18.4 (default)"+elixirDocs; got != want {
 		t.Errorf("narration %q, want %q", got, want)
 	}
-	if choices[0].Image != erlangImage || choices[0].Line != "1.18.4" {
+	if choices[0].Image != defaultOTPImage || choices[0].Line != "1.18.4" {
 		t.Errorf("default build is not on Erlang/OTP 28.0.2: %+v", choices[0])
 	}
-	assertExactNativePrimary(t, dockerfile, reviewed.Image, erlangImage, otpEnv)
+	assertExactNativePrimary(t, dockerfile, reviewed.Image, defaultOTPImage, defaultOTPEnv)
 	for _, want := range []string{
-		"COPY --link --from=" + hexpmElixirRepo + ":" + newest + "@" + otherDigest + " /usr/local/lib/elixir /usr/local/lib/elixir\n",
+		"COPY --link --from=" + hexpmElixirRepo + ":" + defaultOTPElixir + "@" + otherDigest + " /usr/local/lib/elixir /usr/local/lib/elixir\n",
 		"ENV LANG=C.UTF-8 ELIXIR_VERSION=v1.18.4\n",
 	} {
 		if !strings.Contains(dockerfile, want) {
@@ -269,14 +276,14 @@ func TestDefaultElixirBuildsOnRendersDefaultOTP(t *testing.T) {
 		env         map[string]string
 		image, line string
 	}{
-		"created before the cutoff": {erlangDefaultCutoff.Add(-time.Hour), nil, "elixir:1.18.4@" + exactDigest, "1.18.4"},
-		"unknown age":               {time.Time{}, nil, reviewed.Image, reviewed.Line},
-		"explicit default line":     {created, map[string]string{"ELIXIR_VERSION": "1.18"}, reviewed.Image, reviewed.Line},
-		"explicit other Elixir":     {created, map[string]string{"ELIXIR_VERSION": "1.19"}, other.image, "1.19"},
-		"ERLANG_VERSION major only": {created, map[string]string{"ERLANG_VERSION": "28"}, "elixir:1.18.4@" + exactDigest, "1.18.4"},
+		"created before Render's row": {renderDefaults20250612.Add(-time.Hour), nil, reviewed.Image, reviewed.Line},
+		"unknown age":                 {time.Time{}, nil, reviewed.Image, reviewed.Line},
+		"explicit default line":       {created, map[string]string{"ELIXIR_VERSION": "1.18"}, reviewed.Image, reviewed.Line},
+		"explicit other Elixir":       {created, map[string]string{"ELIXIR_VERSION": "1.19"}, other.image, "1.19"},
+		"ERLANG_VERSION major only":   {created, map[string]string{"ERLANG_VERSION": "28"}, "elixir:1.18.4@" + exactDigest, "1.18.4"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			choices, _ := resolveExactAt(t, published(), tc.created, nativeElixirRuntime, tc.env, nil)
+			choices, _ := resolveExactAt(t, defaultOTPPublished(), tc.created, nativeElixirRuntime, tc.env, nil)
 			// Only Render's docs line, which names Elixir and Erlang's page,
 			// may mention Erlang.
 			narration, docs := strings.CutSuffix(shown(choices[0].Narration()), elixirDocs)
@@ -286,7 +293,7 @@ func TestDefaultElixirBuildsOnRendersDefaultOTP(t *testing.T) {
 		})
 	}
 	t.Run("explicit ERLANG_VERSION", func(t *testing.T) {
-		fake := published()
+		fake := defaultOTPPublished()
 		fake.envByImage["erlang:28.0.3.0@"+exactDigest] = fakeExactMetadata{[]string{"OTP_VERSION=28.0.3"}, commonOTPSyntheticHistory("bookworm")}
 		choices, _ := resolveExactAt(t, fake, created, nativeElixirRuntime, map[string]string{"ERLANG_VERSION": "28.0"}, nil)
 		if got, want := shown(choices[0].Narration()), "==> Using Elixir 1.18.4 on Erlang/OTP 28.0.3 (from ERLANG_VERSION=28.0)"+elixirDocs; got != want {

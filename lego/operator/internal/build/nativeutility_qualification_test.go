@@ -534,7 +534,7 @@ func TestNativeUtilityWheelPreparationAcceptsActualResolvedPythonRecipes(t *test
 		env           map[string]string
 	}{
 		{"explicit313", "3.13", time.Time{}, map[string]string{"PYTHON_VERSION": "3.13"}},
-		{"default3148", "3.14.8", toolchains.PythonCreationCutoff.Add(time.Second), nil},
+		{"default3148", "3.14.8", toolchains.RenderDefaults20261012.Add(time.Second), nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fake := &fakeExact{digests: map[string]string{"python:3.14.8-bookworm": exactDigest}, env: []string{"PYTHON_VERSION=3.14.8", "PATH=/usr/local/bin:/usr/bin"}, envByImage: map[string]fakeExactMetadata{}}
@@ -593,7 +593,7 @@ func TestNativeUtilityExactDefaultSelectionKeepsLookupEvidence(t *testing.T) {
 			o := nativeOptions()
 			o.Runtime = nativePythonRuntime
 			bundle, path, source := writeResolveFixture(t, o, nil, nil)
-			choices, err := ResolveNativeBuildExact(t.Context(), fake, toolchains.PythonCreationCutoff.Add(time.Second), o.Runtime, bundle, path, source)
+			choices, err := ResolveNativeBuildExact(t.Context(), fake, toolchains.RenderDefaults20261012.Add(time.Second), o.Runtime, bundle, path, source)
 			must(t, err) // Existing exact-lookup fallback still resolves a build.
 			if !slices.Contains(fake.asked, "python:3.14.8-bookworm") || choices[0].Exact != "3.14.8" {
 				t.Fatalf("creation-date exact lookup changed: %+v; queries=%v", choices[0], fake.asked)

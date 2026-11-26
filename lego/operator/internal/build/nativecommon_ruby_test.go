@@ -51,7 +51,7 @@ func nativeRubyQualificationCases() []nativeRubyQualificationCase {
 	}
 	ruby, _ := nativeToolchains[nativeRubyRuntime].find("3.4")
 	return append(cases,
-		nativeRubyQualificationCase{name: "ruby344-creation-default", version: rubyDefaultVersion, created: rubyDefaultCutoff.Add(time.Second)},
+		nativeRubyQualificationCase{name: "ruby344-creation-default", version: "3.4.4", created: renderDefaults20250612.Add(time.Second)},
 		nativeRubyQualificationCase{name: "ruby3413-creation-default", version: "3.4.13", created: renderRubyDefault20261119.Add(time.Second)},
 		nativeRubyQualificationCase{name: "ruby320-locked-bullseye", version: nativeRubyBullseyeRelease, locked: true},
 		nativeRubyQualificationCase{name: "node-static-ruby34", line: ruby.line, version: ruby.version, static: true})

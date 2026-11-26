@@ -50,9 +50,18 @@ func TestResolvePython(t *testing.T) {
 		{name: ".python-version skips comments and blank lines", created: created, files: map[string]string{".python-version": "# pyenv\n\n  python-3.10.4  \n3.12\n"}, line: "3.10", version: "3.10.4", source: ".python-version", exact: "3.10.4"},
 		{name: "an empty .python-version is no signal", created: created, files: map[string]string{".python-version": "\n# none\n"}, line: "3.14", version: "3.14.10"},
 		{name: "no signal gets Render's dated default", created: created, line: "3.14", version: "3.14.10"},
+		// w3/m636: every row of Render's table from bex's first service on,
+		// at its boundary and inside it.
+		{name: "created exactly at 2026-11-03 gets 3.14.10", created: RenderDefaults20261103, line: "3.14", version: "3.14.10"},
+		{name: "created 2026-11-05 gets 3.14.10", created: day(2026, time.November, 5), line: "3.14", version: "3.14.10"},
 		{name: "a service from before Render's 2026-11-03 move keeps 3.14.8", created: RenderDefaults20261103.Add(-time.Hour), line: "3.14", version: "3.14.8", exact: "3.14.8"},
-		{name: "created exactly at the cutoff moves to 3.14", created: PythonCreationCutoff, line: "3.14", version: "3.14.8", exact: "3.14.8"},
-		{name: "created before the cutoff keeps the legacy line", created: PythonCreationCutoff.Add(-time.Hour), line: "3.13", version: "3.13.18"},
+		{name: "created 2026-10-15 gets 3.14.8", created: day(2026, time.October, 15), line: "3.14", version: "3.14.8", exact: "3.14.8"},
+		{name: "created exactly at 2026-10-12 gets 3.14.8", created: RenderDefaults20261012, line: "3.14", version: "3.14.8", exact: "3.14.8"},
+		{name: "created the hour before 2026-10-12 gets 3.14.3", created: RenderDefaults20261012.Add(-time.Hour), line: "3.14", version: "3.14.3", exact: "3.14.3"},
+		{name: "created 2026-05-01 gets 3.14.3", created: day(2026, time.May, 1), line: "3.14", version: "3.14.3", exact: "3.14.3"},
+		{name: "created when bex's first service could be gets 3.14.3", created: day(2026, time.June, 5), line: "3.14", version: "3.14.3", exact: "3.14.3"},
+		{name: "created exactly at 2026-02-11 gets 3.14.3", created: RenderDefaults20260211, line: "3.14", version: "3.14.3", exact: "3.14.3"},
+		{name: "created before the table's first row keeps the legacy line", created: RenderDefaults20260211.Add(-time.Hour), line: "3.13", version: "3.13.18"},
 		{name: "an unknown creation time keeps the legacy line", line: "3.13", version: "3.13.18"},
 		{name: "a signal wins over the dated default", created: created, files: map[string]string{".python-version": "3.12"}, line: "3.12", version: "3.12.16", source: ".python-version"},
 	} {
@@ -107,8 +116,9 @@ func TestPythonChoiceExactImage(t *testing.T) {
 }
 
 // Every line pins an image of its own line by digest, ascending, and the
-// legacy default and every dated default are lines of the table: the reviewed
-// table is the only input either caller reads.
+// legacy default and every dated default are lines of the table, the dated
+// ones in date order: the reviewed table is the only input either caller
+// reads.
 func TestPythonTableIsWellFormed(t *testing.T) {
 	previous := ""
 	for _, line := range Python.Lines {
@@ -127,10 +137,13 @@ func TestPythonTableIsWellFormed(t *testing.T) {
 	if _, ok := Python.Find(Python.DefaultLine); !ok {
 		t.Errorf("legacy default %s is not a line", Python.DefaultLine)
 	}
-	for _, step := range PythonDefaults {
+	for i, step := range PythonDefaults {
 		line, ok := RequestLine(step.Version)
 		if _, found := Python.Find(line); !ok || !found {
 			t.Errorf("dated default %s is on no line", step.Version)
+		}
+		if i > 0 && !PythonDefaults[i-1].From.Before(step.From) {
+			t.Errorf("dated default %s (%s) is not after %s (%s)", step.Version, step.From, PythonDefaults[i-1].Version, PythonDefaults[i-1].From)
 		}
 	}
 }
@@ -143,19 +156,36 @@ func lineLess(a, b string) bool {
 	return am < bm || (am == bm && an < bn)
 }
 
-// w4/620: a later bump of a line's reviewed patch must not move a dated
-// default: something created since 2026-11-03 still asks for exactly 3.14.10.
+// w4/620, w3/m636: a later bump of a line's reviewed patch must not move a
+// dated default: something created in any step still asks for exactly that
+// step's patch. Only something of unknown age follows the legacy line's pin.
 func TestDatedDefaultSurvivesALinePinBump(t *testing.T) {
 	saved := Python
 	t.Cleanup(func() { Python = saved })
 	Python.Lines = append([]Line(nil), saved.Lines...)
-	for i := range Python.Lines {
-		if Python.Lines[i].Line == "3.14" {
+	for i, bump := range Python.Lines {
+		switch bump.Line {
+		case "3.13":
+			Python.Lines[i].Version = "3.13.19"
+		case "3.14":
 			Python.Lines[i].Version = "3.14.11"
 		}
 	}
-	got, err := ResolvePython(RenderDefaults20261103.Add(time.Hour), nil, files(nil))
-	if err != nil || got.Exact != "3.14.10" || got.Version() != "3.14.10" {
-		t.Fatalf("default after a 3.14.11 line bump = %+v, %v; want exactly 3.14.10", got, err)
+	for created, want := range map[time.Time]string{
+		day(2026, time.May, 1):      "3.14.3",
+		day(2026, time.October, 15): "3.14.8",
+		day(2026, time.November, 5): "3.14.10",
+	} {
+		got, err := ResolvePython(created, nil, files(nil))
+		if err != nil || got.Exact != want || got.Version() != want {
+			t.Errorf("default for %s after the 3.13.19 and 3.14.11 line bumps = %+v, %v; want exactly %s", created.Format(time.DateOnly), got, err, want)
+		}
 	}
+	if got, _ := ResolvePython(time.Time{}, nil, files(nil)); got.Line != "3.13" || got.Exact != "" || got.Version() != "3.13.19" {
+		t.Errorf("an unknown-age default = %+v; want the bumped 3.13 line's 3.13.19", got)
+	}
+}
+
+func day(year int, month time.Month, d int) time.Time {
+	return time.Date(year, month, d, 0, 0, 0, 0, time.UTC)
 }

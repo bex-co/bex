@@ -285,28 +285,25 @@ func ResolveNativeVersion(runtime string, env map[string]string, readFile func(s
 	return ResolveNativeVersionAt(time.Time{}, runtime, env, readFile, packageJSON)
 }
 
-// rubyDefaultCutoff: Render's default Ruby for services created from 2025-06-12
-// to 2026-11-03 is exactly 3.4.4, not the newest 3.4 patch (w8/198). bex
-// applied it to services created after its own change, so a running service's
-// toolchain did not move under that operator upgrade (the
-// toolchains.PythonCreationCutoff pattern).
-var rubyDefaultCutoff = time.Date(2026, time.October, 23, 0, 0, 0, 0, time.UTC)
-
-// rubyDefaultVersion is the default from bex's own cutoff until Render's
-// 2026-11-03 move (toolchains.RenderDefaults20261103).
-const rubyDefaultVersion = "3.4.4"
-
-// renderRubyDefault20261119 is when Render moved its default Ruby to 3.4.13
-// for new services (render.com/docs/ruby-version, w9/138), past the 3.4 line's
-// reviewed 3.4.12: the resolve phase swaps in the official 3.4.13 image.
-var renderRubyDefault20261119 = time.Date(2026, time.November, 19, 0, 0, 0, 0, time.UTC)
-
-// renderNodeDefault20261021 and renderElixirDefault20250612 are when Render's
-// current Node (24.22.1, render.com/docs/node-version) and Elixir (1.18.4,
-// render.com/docs/elixir-erlang-versions) defaults took effect.
+// The dates on which Render's runtime defaults moved for services created
+// from then on, besides the ones it moved together with Python
+// (toolchains.RenderDefaults20261103 and its neighbours). Each starts a step of
+// exactDefaults, erlangDefaults or uvDefaults:
+//
+//   - renderDefaults20250612: Ruby 3.4.4, Elixir 1.18.4 and Erlang/OTP 28.0.2
+//     (render.com/docs/ruby-version, elixir-erlang-versions; w8/198, w8/333);
+//   - renderNodeDefault20260421, renderNodeDefault20260917 and
+//     renderNodeDefault20261021: Node 24.14.1, 24.21.0 and 24.22.1
+//     (render.com/docs/node-version);
+//   - renderUVDefault20260909: uv 0.12.10 (render.com/docs/uv-version);
+//   - renderRubyDefault20261119: Ruby 3.4.13 (w9/138).
 var (
-	renderNodeDefault20261021   = time.Date(2026, time.October, 21, 0, 0, 0, 0, time.UTC)
-	renderElixirDefault20250612 = time.Date(2025, time.June, 12, 0, 0, 0, 0, time.UTC)
+	renderDefaults20250612    = time.Date(2025, time.June, 12, 0, 0, 0, 0, time.UTC)
+	renderNodeDefault20260421 = time.Date(2026, time.April, 21, 0, 0, 0, 0, time.UTC)
+	renderUVDefault20260909   = time.Date(2026, time.September, 9, 0, 0, 0, 0, time.UTC)
+	renderNodeDefault20260917 = time.Date(2026, time.September, 17, 0, 0, 0, 0, time.UTC)
+	renderNodeDefault20261021 = time.Date(2026, time.October, 21, 0, 0, 0, 0, time.UTC)
+	renderRubyDefault20261119 = time.Date(2026, time.November, 19, 0, 0, 0, 0, time.UTC)
 )
 
 // ResolveNativeVersionAt is ResolveNativeVersion for a service created at
@@ -342,19 +339,13 @@ func ResolveNativeVersionAt(created time.Time, runtime string, env map[string]st
 	return choice, nil
 }
 
-// erlangDefaultCutoff: Render's default Erlang/OTP for services created since
-// 2025-06-12 is exactly 28.0.2, under its default Elixir 1.18.4
-// (render.com/docs/elixir-erlang-versions), not the OTP the official elixir
-// image was built on (w8/333). bex applies it to services created from this
-// change on, so a running service's OTP never moves under the operator upgrade
-// (the toolchains.PythonCreationCutoff pattern).
-var erlangDefaultCutoff = time.Date(2026, time.November, 16, 0, 0, 0, 0, time.UTC)
-
 // erlangDefaults are Render's default Erlang/OTP releases by creation date,
-// oldest first, as exactDefaults are for the runtimes. Each is written in the
-// four-part form that names exactly one release (otpTag), so a later
-// maintenance patch (28.0.2.1) never moves a default.
-var erlangDefaults = []toolchains.DatedDefault{{From: erlangDefaultCutoff, Version: "28.0.2.0"}}
+// oldest first, as exactDefaults are for the runtimes: exactly 28.0.2 under its
+// default Elixir 1.18.4 since 2025-06-12, not the OTP the official elixir
+// image was built on (w8/333, w3/m636). Each is written in the four-part form
+// that names exactly one release (otpTag), so neither a later maintenance
+// patch (28.0.2.1) nor an image refresh moves a default.
+var erlangDefaults = []toolchains.DatedDefault{{From: renderDefaults20250612, Version: "28.0.2.0"}}
 
 // defaultErlang is the exact Erlang/OTP an Elixir service with neither
 // ELIXIR_VERSION nor ERLANG_VERSION builds on: the resolve phase installs it as
@@ -369,16 +360,22 @@ func defaultErlang(created time.Time, choice NativeChoice) string {
 	return release
 }
 
-// exactDefaults are Render's default patches by creation date, oldest first
-// (w8/198, w8/217, w4/620, w6/m291, w9/138). The versions stay exact even
-// where a step equals the line's reviewed patch, so a later line-pin bump never
-// moves a default (the w8/217 regression class). Python's are
-// toolchains.PythonDefaults, which toolchains.ResolvePython applies.
+// exactDefaults are Render's default patches by creation date, oldest first,
+// from the row in force when bex's first service could be created (2026-06-05;
+// w8/198, w8/217, w4/620, w6/m291, w9/138, w3/m636). The versions stay exact
+// even where a step equals the line's reviewed patch, so a later line-pin bump
+// never moves a default (the w8/217 regression class): only a service of
+// unknown age follows the line's pin. Python's are toolchains.PythonDefaults,
+// which toolchains.ResolvePython applies.
 var exactDefaults = map[string][]toolchains.DatedDefault{
-	nativeNodeRuntime:   {{From: renderNodeDefault20261021, Version: "24.22.1"}},
-	nativeElixirRuntime: {{From: renderElixirDefault20250612, Version: "1.18.4"}},
+	nativeNodeRuntime: {
+		{From: renderNodeDefault20260421, Version: "24.14.1"},
+		{From: renderNodeDefault20260917, Version: "24.21.0"},
+		{From: renderNodeDefault20261021, Version: "24.22.1"},
+	},
+	nativeElixirRuntime: {{From: renderDefaults20250612, Version: "1.18.4"}},
 	nativeRubyRuntime: {
-		{From: rubyDefaultCutoff, Version: rubyDefaultVersion},
+		{From: renderDefaults20250612, Version: "3.4.4"},
 		{From: toolchains.RenderDefaults20261103, Version: "3.4.12"},
 		{From: renderRubyDefault20261119, Version: "3.4.13"},
 	},
@@ -582,24 +579,25 @@ func ResolveNativePoetry(env map[string]string) (NativeChoice, error) {
 
 // defaultUVVersion is Render's default uv for services created since
 // 2026-11-03 (render.com/docs/uv-version, w8/328); legacyUVVersion is its
-// default when w8/m81 shipped.
+// default when w8/m81 shipped, which a service of unknown age keeps.
 const (
 	defaultUVVersion = "0.13.7"
 	legacyUVVersion  = "0.12.10"
 )
 
-// uvDefaultCutoff: bex applies defaultUVVersion to services created after this
-// change, not from Render's 2026-11-03, so a running service's toolchain never
-// moves under an operator upgrade (the toolchains.PythonCreationCutoff pattern).
-var uvDefaultCutoff = time.Date(2026, time.November, 14, 0, 0, 0, 0, time.UTC)
+// uvDefaults are Render's default uv releases by creation date, oldest first,
+// from the row in force when bex's first service could be created (w3/m636).
+var uvDefaults = []toolchains.DatedDefault{
+	{From: toolchains.RenderDefaults20260211, Version: "0.10.2"},
+	{From: renderUVDefault20260909, Version: "0.12.10"},
+	{From: toolchains.RenderDefaults20261012, Version: "0.12.24"},
+	{From: toolchains.RenderDefaults20261103, Version: defaultUVVersion},
+}
 
 // uvDefault is the uv a service created at created gets without UV_VERSION. A
 // zero created (unknown) keeps the legacy default.
 func uvDefault(created time.Time) string {
-	if !created.IsZero() && !created.Before(uvDefaultCutoff) {
-		return defaultUVVersion
-	}
-	return legacyUVVersion
+	return cmp.Or(toolchains.DatedDefaultAt(uvDefaults, created), legacyUVVersion)
 }
 
 // uvRelease is an exact uv release, the form Render's UV_VERSION takes ("any

@@ -45,7 +45,7 @@ func TestCommonFoundationPreservesDefaultAndExactSelections(t *testing.T) {
 	}{
 		{name: "node-default", runtime: nativeNodeRuntime, line: "24", version: "24.22.1"},
 		{name: "python-explicit-line", runtime: nativePythonRuntime, line: "3.13", version: "3.13.18", env: map[string]string{"PYTHON_VERSION": "3.13"}},
-		{name: "python-creation-default", runtime: nativePythonRuntime, line: "3.14.8", version: "3.14.8", tag: "python:3.14.8-bookworm", created: toolchains.PythonCreationCutoff.Add(time.Second)},
+		{name: "python-creation-default", runtime: nativePythonRuntime, line: "3.14.8", version: "3.14.8", tag: "python:3.14.8-bookworm", created: toolchains.RenderDefaults20261012.Add(time.Second)},
 		{name: "node-exact", runtime: nativeNodeRuntime, line: "24.10.0", version: "24.10.0", tag: "node:24.10.0-bookworm", env: map[string]string{"NODE_VERSION": "24.10.0", "BUN_VERSION": "1.3"}},
 		{name: "python-exact", runtime: nativePythonRuntime, line: "3.13.1", version: "3.13.1", tag: "python:3.13.1-bookworm", env: map[string]string{"PYTHON_VERSION": "3.13.1"}},
 		{name: "existing-exact-fallback", runtime: nativeNodeRuntime, line: "24", version: "24.22.1", tag: "node:24.10.0-bookworm", env: map[string]string{"NODE_VERSION": "24.10.0"}, missing: true},
@@ -139,7 +139,7 @@ func TestCommonMetadataFailureNeverSubstitutesAnotherRuntime(t *testing.T) {
 	before, err := os.ReadFile(path)
 	must(t, err)
 	fake := &fakeExact{digests: map[string]string{"python:3.14.8-bookworm": exactDigest}, envErr: errors.New("metadata transport unavailable")}
-	_, err = ResolveNativeBuildExact(context.Background(), fake, toolchains.PythonCreationCutoff.Add(time.Second), o.Runtime, bundle, path, source)
+	_, err = ResolveNativeBuildExact(context.Background(), fake, toolchains.RenderDefaults20261012.Add(time.Second), o.Runtime, bundle, path, source)
 	if err == nil || !strings.Contains(err.Error(), "read selected native primary environment") {
 		t.Fatalf("metadata failure was hidden: %v", err)
 	}

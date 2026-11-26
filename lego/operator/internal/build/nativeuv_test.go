@@ -25,6 +25,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/bex-co/bex/lego/types/toolchains"
 )
 
 // uvProbeProject is a real uv project and its lockfile (uv 0.12, one pinned
@@ -66,10 +68,10 @@ wheels = [
 // service's root directory opts in, empty or not, and UV_VERSION then picks an
 // exact release; without the lockfile nothing changes and UV_VERSION is not
 // read, even when it would be refused. The default follows the service's
-// creation date as Render's does: defaultUVVersion since uvDefaultCutoff,
-// legacyUVVersion before it or when the age is unknown (w8/328).
+// creation date as Render's uv-version table does (w8/328, w3/m636), and an
+// unknown age keeps legacyUVVersion.
 func TestResolveNativeUV(t *testing.T) {
-	newService, oldService := uvDefaultCutoff.Add(time.Hour), uvDefaultCutoff.Add(-time.Hour)
+	newService := toolchains.RenderDefaults20261103.Add(time.Hour)
 	for _, tc := range []struct {
 		name, request    string
 		created          time.Time
@@ -82,10 +84,19 @@ func TestResolveNativeUV(t *testing.T) {
 		{name: "no lockfile ignores UV_VERSION", request: "0.11.3"},
 		{name: "no lockfile ignores an unusable UV_VERSION", request: "latest"},
 		{name: "lockfile default, unknown age", files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: legacyUVVersion, source: "uv.lock"},
-		{name: "lockfile default, created before the cutoff", created: oldService, files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: legacyUVVersion, source: "uv.lock"},
-		{name: "lockfile default, created at the cutoff", created: uvDefaultCutoff, files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: defaultUVVersion, source: "uv.lock"},
-		// The literal pins Render's captured default, so the constant cannot drift silently.
-		{name: "lockfile default, new service", created: newService, files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: "0.13.7", source: "uv.lock"},
+		// Each row of Render's table from bex's first service on, at its
+		// boundary and inside it. The literals pin Render's captured
+		// defaults, so the constants cannot drift silently.
+		{name: "lockfile default, created when bex's first service could be", created: on2026(time.June, 5), files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: "0.10.2", source: "uv.lock"},
+		{name: "lockfile default, created just before 2026-09-09", created: renderUVDefault20260909.Add(-time.Hour), files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: "0.10.2", source: "uv.lock"},
+		{name: "lockfile default, created at 2026-09-09", created: renderUVDefault20260909, files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: "0.12.10", source: "uv.lock"},
+		{name: "lockfile default, created 2026-09-20", created: on2026(time.September, 20), files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: "0.12.10", source: "uv.lock"},
+		{name: "lockfile default, created at 2026-10-12", created: toolchains.RenderDefaults20261012, files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: "0.12.24", source: "uv.lock"},
+		{name: "lockfile default, created 2026-10-20", created: on2026(time.October, 20), files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: "0.12.24", source: "uv.lock"},
+		{name: "lockfile default, created just before 2026-11-03", created: toolchains.RenderDefaults20261103.Add(-time.Hour), files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: "0.12.24", source: "uv.lock"},
+		{name: "lockfile default, created at 2026-11-03", created: toolchains.RenderDefaults20261103, files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: "0.13.7", source: "uv.lock"},
+		{name: "lockfile default, created 2026-11-05", created: on2026(time.November, 5), files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: "0.13.7", source: "uv.lock"},
+		{name: "lockfile default, new service", created: newService, files: map[string]string{"uv.lock": uvProbeLock}, found: true, version: defaultUVVersion, source: "uv.lock"},
 		{name: "empty lockfile", created: newService, files: map[string]string{"uv.lock": ""}, found: true, version: defaultUVVersion, source: "uv.lock"},
 		{name: "exact override on a new service", created: newService, files: map[string]string{"uv.lock": uvProbeLock}, request: "0.12.10", found: true, version: "0.12.10", source: "UV_VERSION=0.12.10"},
 		{name: "exact override", files: map[string]string{"uv.lock": uvProbeLock}, request: "0.12.10", found: true, version: "0.12.10", source: "UV_VERSION=0.12.10"},

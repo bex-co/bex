@@ -42,33 +42,18 @@ var Python = Toolchain{Label: "Python", DefaultLine: "3.13", Lines: []Line{
 	{Line: "3.15", Version: "3.15.2", Image: "python:3.15-bookworm@sha256:2bf848386eab766326ae3fc2f061788ae858d7945aefce74967d4a861ebdad12"},
 }}
 
-// PythonCreationCutoff is when Python's default line moved to 3.14 for new
-// services (w8/174). Render picks a service's default Python by its creation
-// date and gives every service created since 2026-02-11 a 3.14 release; bex
-// applies it to services created after this change, so a running service's
-// toolchain never moves under an operator upgrade (the WEB_CONCURRENCY cutoff
-// pattern, w5/m147).
-var PythonCreationCutoff = time.Date(2026, time.October, 23, 0, 0, 0, 0, time.UTC)
-
 // PythonDefaults are Render's default Python patches by creation date, oldest
-// first (w8/174, w4/620). They stay exact even where a step equals the line's
-// reviewed patch, so a later line-pin bump never moves a default (the w8/217
-// regression class).
+// first, from the row in force when bex's first service could be created
+// (2026-06-05; w8/174, w4/620, w3/m636). A step's line is the default line of
+// something created in it. They stay exact even where a step equals the
+// line's reviewed patch, so a later line-pin bump never moves a default (the
+// w8/217 regression class).
 var PythonDefaults = []DatedDefault{
-	// Render's 3.14.8 (since 2026-10-12) from when bex's default line moved
-	// to 3.14 (w8/174). The official python:3.14.8 image is no longer
-	// rebuilt, so it predates the line's Brotli fix (w8/222).
-	{PythonCreationCutoff, "3.14.8"},
+	// The official python:3.14.3 and python:3.14.8 images are no longer
+	// rebuilt, so they predate the line's Brotli fix (w8/222).
+	{RenderDefaults20260211, "3.14.3"},
+	{RenderDefaults20261012, "3.14.8"},
 	{RenderDefaults20261103, "3.14.10"},
-}
-
-// pythonDefaultLine is the line something created at created runs on without
-// a version signal. A zero created (unknown) keeps the legacy default.
-func pythonDefaultLine(created time.Time) string {
-	if !created.IsZero() && !created.Before(PythonCreationCutoff) {
-		return "3.14"
-	}
-	return Python.DefaultLine
 }
 
 // Choice is the Python line a request resolves to, and why.
@@ -114,9 +99,16 @@ func ResolvePython(created time.Time, env map[string]string, readFile func(strin
 			return pythonRequest(request, ".python-version", fmt.Sprintf("%s %q", ".python-version", request))
 		}
 	}
-	line, _ := Python.Find(pythonDefaultLine(created))
+	// A zero created (unknown age) has no dated default and keeps the legacy
+	// line's reviewed patch.
+	version := DatedDefaultAt(PythonDefaults, created)
+	name, dated := RequestLine(version)
+	if !dated {
+		name = Python.DefaultLine
+	}
+	line, _ := Python.Find(name) // every dated default is on a line (TestPythonTableIsWellFormed)
 	choice := pythonChoice(line, "")
-	if version := DatedDefaultAt(PythonDefaults, created); strings.HasPrefix(version, line.Line+".") && version != line.Version {
+	if dated && version != line.Version {
 		choice.Exact = version
 	}
 	return choice, nil
