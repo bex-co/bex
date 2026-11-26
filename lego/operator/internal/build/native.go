@@ -522,16 +522,13 @@ done < ` + nativeEnvSecretPath + "\n" + nativeOIDCExports(o) + nativeLockedBundl
 	installLines, installStep := nativeStaticInstall(o)
 	run := shellJSON(nativeEnvLoaderPrefix + installStep + nativePublishCheckStep(o) + o.BuildCommand)
 	hugo := nativeStaticTools(o)
-	sourceDir := nativeSourceDir(o)
 	base := fmt.Sprintf(`# syntax=docker/dockerfile:1.7
 FROM %s
-%sWORKDIR %s
-%sCOPY . .
-COPY <<'%s' %s
+%s%sCOPY <<'%s' %s
 %s%s
 %sARG RENDER_GIT_COMMIT
 %s%s %s
-%s`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+hugo+nativeBuildDefaults(o)+nativeXDGCacheDir, sourceDir, nativeSourceLink(sourceDir), nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
+%s`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+hugo+nativeBuildDefaults(o)+nativeXDGCacheDir, nativeSourceCopy(o), nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
 		installLines, nativeEnvRunMount, fileMounts+nativeOIDCMounts(o)+nativeXDGCacheMount+depsMount, run, depsSave)
 	if o.StaticSite {
 		// No PORT/CMD: the image only carries the built site for the publish
@@ -550,8 +547,8 @@ COPY <<'%s' %s
 // nativeSecretFileLinks is the step that puts each secret file in the service
 // root as well as /etc/secrets, where Render has it: "For non-Docker services,
 // the file is also available in your service's root directory" (w8/m154). The
-// service root is the image's WORKDIR: the build context is the service's
-// rootDir.
+// service root is the image's WORKDIR, the root directory, whether the image
+// holds the whole repository or the root directory alone (nativeSourceCopy).
 //
 // Each file is a link to its /etc/secrets path, made after the build command.
 // The image therefore carries names only, never a secret's bytes, and the
@@ -671,6 +668,66 @@ func nativeRootDir(rootDir string) string {
 	}
 	return NativeWorkdir + "/" + rel
 }
+
+// nativeRepoDir is where a native image keeps its whole repository: the
+// directory its root directory is under. Render's native runtimes read every
+// file of the repository, not only their root directory's ("Services on a
+// native runtime can access files outside their root directory",
+// render.com/docs/monorepo-support, read 2026-11-25; w4/m650), so a Go module
+// whose go.mod sits above cmd/api, or a pnpm workspace's apps/web, builds and
+// runs with the rest of the repository beside it. That is NativeWorkdir, or
+// Go's source directory with no root directory under it (nativeGoSourceDir).
+// whole is false when the root directory has no place under it, a root
+// directory nativeSourceDir could not use as is: that image keeps holding
+// the root directory alone, in a Dockerfile byte-identical to before.
+func nativeRepoDir(o Options) (dir string, whole bool) {
+	dir = NativeWorkdir
+	if !o.StaticSite && nativeRuntime(o) == "go" {
+		if goDir, ok := nativeGoSourceDir(o.Repo, ""); ok {
+			dir = goDir
+		}
+	}
+	rel := repoRelative(o.RootDir)
+	return dir, rel == "" || nativeSourceDir(o) == dir+"/"+rel
+}
+
+// nativeSourceCopy is the recipe's copy of the build context and the working
+// directory it leaves the image in. A build reading the whole repository
+// copies it into nativeRepoDir and then works in the root directory under it,
+// which therefore exists: the clone step refused a root directory that is no
+// directory of the checkout. Without a root directory, or without the whole
+// repository, both are one directory and the lines are those from before
+// w4/m650. The first `COPY . .` stays the line the dependency directories'
+// key is cut at (xdgBuildctl).
+func nativeSourceCopy(o Options) string {
+	dir := nativeSourceDir(o)
+	repo, whole := nativeRepoDir(o)
+	if !whole || repo == dir {
+		return "WORKDIR " + dir + "\n" + nativeSourceLink(dir) + "COPY . .\n"
+	}
+	return "WORKDIR " + repo + "\nCOPY . .\nWORKDIR " + dir + "\n" + nativeSourceLink(dir)
+}
+
+// nativeContextDir is the checkout directory a native build reads as its
+// context: the whole checkout, unless the root directory has no place in the
+// image's copy of it (nativeRepoDir), when it is the root directory alone, as
+// before w4/m650. A Docker context is a Dockerfile build's setting, never a
+// native build's.
+func nativeContextDir(o Options) string {
+	if _, whole := nativeRepoDir(o); whole {
+		return sourceMount
+	}
+	return boundedSourceDir(o.RootDir)
+}
+
+// nativeDockerignore is the ignore file of the generated Dockerfile, which
+// BuildKit reads instead of a .dockerignore in the context: a native build
+// on Render is no Docker build, so a .dockerignore of the repository's, kept
+// for its Docker services, takes nothing out of a native service's image, and
+// the root directory of one is never left out by a pattern written for
+// another. Only git's own directories stay out: the clone step removes the
+// checkout's, and a submodule's .git is a file naming it.
+const nativeDockerignore = ".git\n**/.git\n"
 
 // nativeSourceLink keeps NativeWorkdir resolving in an image whose source is
 // outside it, a Go service's: a link to it, so an absolute path and a disk
@@ -942,6 +999,7 @@ func nativeBuildPreparer(o Options) corev1.Container {
 	env, keys := indexedLiteralEnv(BuildLiterals(o.BuildEnv), nativeLiteralEnvPrefix)
 	env = append(env,
 		corev1.EnvVar{Name: "BEX_NATIVE_DOCKERFILE", Value: execution.KubernetesLiteral(nativeDockerfile(o))},
+		corev1.EnvVar{Name: "BEX_NATIVE_DOCKERIGNORE", Value: execution.KubernetesLiteral(nativeDockerignore)},
 		corev1.EnvVar{Name: "BEX_NATIVE_LITERAL_KEYS", Value: keys},
 		corev1.EnvVar{Name: "BEX_NATIVE_FILES", Value: execution.KubernetesLiteral(strings.Join(o.NativeFiles, "\n"))},
 	)
@@ -962,6 +1020,7 @@ func nativeBuildPreparer(o Options) corev1.Container {
 		Command: []string{"sh", "-eu", "-c"},
 		Args: []string{`umask 077
 printf '%s' "$BEX_NATIVE_DOCKERFILE" > /native/Dockerfile
+printf '%s' "$BEX_NATIVE_DOCKERIGNORE" > /native/Dockerfile.dockerignore
 : > /native/render-env
 if [ -d /runtime-env ]; then
   for path in /runtime-env/*; do

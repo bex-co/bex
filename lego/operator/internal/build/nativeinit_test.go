@@ -175,8 +175,15 @@ func loadNativeInitImage(t *testing.T, o Options, src, native, name string) stri
 	must(t, StageNativeInit(compileNativeInit(t), filepath.Join(native, "init", nativeInitFile)))
 	out := t.TempDir()
 	runJobBuildctl(t, o, src, native, out)
-	// The Job pushes the OCI archive with skopeo; here skopeo converts it for
-	// the local daemon instead.
+	return loadOCIArchive(t, out, name)
+}
+
+// loadOCIArchive loads the OCI archive a build wrote to out/image.tar into the
+// local daemon as name and returns its ID, removed when the test ends. The
+// Job pushes the archive with skopeo; here skopeo converts it for the local
+// daemon instead.
+func loadOCIArchive(t *testing.T, out, name string) string {
+	t.Helper()
 	if log, err := exec.Command("docker", "run", "--rm", "-v", out+":/out", defaultPushImage, "copy",
 		"oci-archive:/out/image.tar", "docker-archive:/out/docker.tar:"+name+":latest").CombinedOutput(); err != nil {
 		t.Fatalf("convert: %v\n%s", err, log)

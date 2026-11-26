@@ -86,5 +86,5 @@ Until w7/m428, bex required both tests to pass: some changed file under the Root
 ## Out of scope
 
 - Skip phrases and filters gate auto-deploys only. A manual deploy, a deploy hook or a settings change deploys whatever the files (M1), and a Blueprint sync is not filtered (B1); bex's Blueprint auto-sync keeps its own path gate.
-- Files outside the Root Directory are not made available to the build. Render: they "are not available to the service at build time or at runtime".
+- What the build reads. When this record was written, Render said files outside the Root Directory "are not available to the service at build time or at runtime". On 2026-11-25 its page says "Docker-based services can't access files in your repo outside their root directory" and native ones "_can_ access files outside their root directory, but changes to those files don't trigger an autodeploy". A native build reads the whole repository since w4/m650 ([ADR018](../ADR018/services-lifecycle.md), Runtime, build strategy + Root Directory row). The decisions above are unchanged.
 - Preview environments are a recorded non-goal.

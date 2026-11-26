@@ -120,9 +120,11 @@ func TestNativeDockerfileWorkdirIsTheRuntimesSourcePath(t *testing.T) {
 // w6/m558: every native runtime but Go runs from its root directory under
 // /opt/render/project/src, as on Render (a Node service with root directory
 // backend runs /opt/render/project/src/backend/server.js), and so does a
-// static site's build. /opt/render/project/src is its parent, never a link.
+// static site's build. /opt/render/project/src is its parent, never a link,
+// and holds the whole repository (w4/m650).
 func TestNativeRootDirectoryIsTheWorkdir(t *testing.T) {
 	const dir = "/opt/render/project/src/apps/api"
+	const goRepo = "/opt/render/project/go/src/github.com/example/app"
 	for runtime := range nativeToolchains {
 		service := nativeOptions()
 		service.Runtime, service.RootDir = runtime, "apps/api"
@@ -133,13 +135,16 @@ func TestNativeRootDirectoryIsTheWorkdir(t *testing.T) {
 		for kind, o := range map[string]Options{"service": service, "build source": carrier, "static site": static} {
 			df := nativeDockerfile(o)
 			if runtime == "go" && !o.StaticSite {
-				// m546's directory, which holds the root directory itself.
-				if !strings.Contains(df, "\nWORKDIR /opt/render/project/go/src/github.com/example/app/apps/api\nRUN ln -s ") {
+				// m546's directory, which holds the repository, with the root
+				// directory under it as the working directory and the link's
+				// target.
+				want := "\nWORKDIR " + goRepo + "\nCOPY . .\nWORKDIR " + goRepo + "/apps/api\nRUN ln -s " + goRepo + "/apps/api /opt/render/project/src\nCOPY <<"
+				if !strings.Contains(df, want) {
 					t.Errorf("go %s left Render's Go path:\n%s", kind, df)
 				}
 				continue
 			}
-			if !strings.Contains(df, "\nWORKDIR "+dir+"\nCOPY . .\n") || strings.Contains(df, "ln -s /opt") {
+			if !strings.Contains(df, "\nWORKDIR "+NativeWorkdir+"\nCOPY . .\nWORKDIR "+dir+"\nCOPY <<") || strings.Contains(df, "ln -s /opt") {
 				t.Errorf("%s %s does not work in its root directory:\n%s", runtime, kind, df)
 			}
 		}

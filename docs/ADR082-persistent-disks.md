@@ -115,6 +115,11 @@ Root directory (w6/m558, 2026-11-21). Render runs a service's commands from its 
 - A rollback to an image built before the change gets the second mount as well. That is harmless for a path outside the root directory, but a path that would hide the source then sits outside that old image's tree until the next build.
 - One volume mounted at two paths of one container was measured on production's runtime on 2026-11-21.
 
+Whole repository (w4/m650, 2026-11-25). A native image now holds the whole repository, with the root directory under it, as on Render ("Services on a native runtime _can_ access files outside their root directory", [render.com/docs/monorepo-support](https://render.com/docs/monorepo-support)). The image's working directory did not move, so every mount path above is unchanged: the operator maps a disk against `NativeSourceDir`, which is still the image's last `WORKDIR` (`TestNativeImageWorkdirIsNativeSourceDir`), and an existing service mounts its disk at the same paths on its next deploy.
+
+- A mount the operator adds for a disk made before w6/m558 still never covers the root directory: a path equal to it or to one of its parents is mounted only at its new place.
+- A path outside the root directory can now sit on a directory of the repository, such as a disk made before w6/m558 at `/opt/render/project/src/uploads` on a service whose repository has an `uploads/` beside its root directory. The disk then hides that directory at runtime, as any disk mounted over a directory of the repository does on Render. The service was built when the directory was not in its image, so nothing it ran before needed it. The build never sees the disk, as on Render.
+
 CRD validation (CEL, mirrored by bex-api 400s so REST/GraphQL/MCP agree):
 
 - `has(self.disk)` ⇒ `self.type in [web_service, private_service, background_worker]` ∧ `self.tier != 'free'` ∧ `self.replicas ≤ 1` ∧ autoscaling absent or disabled;

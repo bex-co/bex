@@ -640,7 +640,7 @@ type Options struct {
 	Repo           string // git URL fetched by the credential-isolated clone phase
 	Ref            string // branch or commit; defaults to the repo's default branch
 	ExpectedCommit string // optional full object id that the fetched checkout must match
-	RootDir        string // subdirectory of Repo to build from (App.spec.rootDir); empty = repo root
+	RootDir        string // subdirectory of Repo the build runs in (App.spec.rootDir); empty = repo root. A Dockerfile build reads only it, a native build the whole repo (w4/m650)
 	DockerfilePath string // Dockerfile path relative to RootDir; empty = Dockerfile
 	Name           string // image repo name (the service name)
 	AppUID         string // immutable App UID; prevents same-name recreation from reusing stale artifacts
@@ -1547,9 +1547,12 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	// The Dockerfile keeps resolving against RootDir even when DockerContext
 	// moves the build context — Docker's own context-vs-dockerfile split, and
 	// Render's dockerContext semantics (repo-root-relative, independent of
-	// rootDir).
+	// rootDir). A native build reads the whole repository (nativeContextDir).
 	dockerfileDir := boundedSourceDir(o.RootDir)
 	contextDir := dockerContextDir(o)
+	if o.Builder == BuilderNative {
+		contextDir = nativeContextDir(o)
+	}
 	args := []string{
 		"build",
 		"--frontend", "dockerfile.v0",

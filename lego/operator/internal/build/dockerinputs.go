@@ -175,8 +175,11 @@ fi
 `
 }
 
-// dockerContextDir is the directory BuildKit reads as the build context:
-// DockerContext when set, else RootDir, both repository-relative.
+// dockerContextDir is the directory a Dockerfile build reads as its context:
+// DockerContext when set, else RootDir, both repository-relative. Render's
+// Docker-based services "can't access files in your repo outside their root
+// directory" (render.com/docs/monorepo-support, read 2026-11-25); a native
+// build reads the whole repository instead (nativeContextDir).
 func dockerContextDir(o Options) string {
 	return boundedSourceDir(cmp.Or(o.DockerContext, o.RootDir))
 }
