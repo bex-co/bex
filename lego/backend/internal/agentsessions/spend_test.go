@@ -47,7 +47,10 @@ type fakeSpend struct {
 }
 
 func (f *fakeSpend) AgentSpendInputs(_ context.Context, ws string, _ time.Time) (store.AgentSpendInputs, error) {
-	return store.AgentSpendInputs{Plan: f.plan, Trust: f.trust, OverrideMicroUSD: f.rows[ws].SpendCapOverrideMicroUSD, MonthToDateMicroUSD: f.used, WindowSpendMicroUSD: f.used, CreditMicroUSD: f.credit, BalanceDue: f.balanceDue, Chargeable: f.chargeable, ModelKeySet: f.modelKeySet}, nil
+	// Like production's one-round-trip read (ae.model_key_set_at IS NOT
+	// NULL), the flag follows the row: a key the test wrote through
+	// UpdateEnvironment already counts.
+	return store.AgentSpendInputs{Plan: f.plan, Trust: f.trust, OverrideMicroUSD: f.rows[ws].SpendCapOverrideMicroUSD, MonthToDateMicroUSD: f.used, WindowSpendMicroUSD: f.used, CreditMicroUSD: f.credit, BalanceDue: f.balanceDue, Chargeable: f.chargeable, ModelKeySet: f.modelKeySet || f.rows[ws].ModelKeySet()}, nil
 }
 
 func spendEnvironmentService(plan string, trust store.BillingTrust) (*Service, *fakeSpend) {
@@ -127,6 +130,65 @@ func TestEnvironmentOmitsTheChargeThresholdWhereBexCannotCharge(t *testing.T) {
 		if got.AgentModelChargesAtThreshold == nil || *got.AgentModelChargesAtThreshold != (tc.want != nil) {
 			t.Errorf("%s: agentModelChargesAtThreshold = %v, want %t", tc.name, got.AgentModelChargesAtThreshold, tc.want != nil)
 		}
+	}
+}
+
+// A model-key change flips the mid-cycle charge verdict, so the mutation's
+// own view must carry the new one: the spend position is read before the key
+// write, and the settings copy must neither promise a charge the mint will
+// never make nor hide one it will. The mutation response agrees with a fresh
+// read in both directions.
+func TestUpdateEnvironmentKeyChangeReturnsTheNewChargeVerdict(t *testing.T) {
+	svc, spend := spendEnvironmentService(store.PlanPro, store.BillingTrust{})
+	svc.ModelKeys = &fakeModelKeys{}
+	spend.chargeable = true
+	// A chargeable T0 workspace promises the $10 mid-cycle charge.
+	before, err := svc.Environment(caller("admin"), "tea-a")
+	if err != nil || before.AgentModelChargesAtThreshold == nil || !*before.AgentModelChargesAtThreshold ||
+		before.NextChargeThresholdUSD == nil || *before.NextChargeThresholdUSD != 10 {
+		t.Fatalf("before = %+v err=%v, want the $10 charge promised", before, err)
+	}
+	// Setting the workspace's own key takes it off the platform route: the
+	// mutation response already carries the no-charge verdict.
+	set, err := svc.UpdateEnvironment(caller("admin"), "tea-a", EnvironmentInput{ModelAPIKey: ptr("sk-ant-own")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !set.ModelKeySet {
+		t.Fatalf("after set = %+v, want the row's own key", set)
+	}
+	if set.AgentModelChargesAtThreshold == nil || *set.AgentModelChargesAtThreshold || set.NextChargeThresholdUSD != nil {
+		t.Fatalf("mutation response after set = charges %v threshold %v, want false and nil",
+			set.AgentModelChargesAtThreshold, set.NextChargeThresholdUSD)
+	}
+	if read, err := svc.Environment(caller("admin"), "tea-a"); err != nil ||
+		read.AgentModelChargesAtThreshold == nil || *read.AgentModelChargesAtThreshold || read.NextChargeThresholdUSD != nil {
+		t.Fatalf("fresh read after set = %+v err=%v, want false and nil", read, err)
+	}
+	// Clearing the key restores the promise in the mutation response too:
+	// the next platform-model request past the threshold charges the card.
+	// Cleared over REST PATCH, so the wire response carries the verdict.
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/agent-environment?ownerId=tea-a",
+		strings.NewReader(`{"clearModelApiKey":true}`)).WithContext(caller("admin")))
+	var cleared Environment
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &cleared) != nil {
+		t.Fatalf("REST clear = %d %s", rec.Code, rec.Body.String())
+	}
+	if cleared.ModelKeySet {
+		t.Fatalf("after clear = %+v, want no own key", cleared)
+	}
+	if cleared.AgentModelChargesAtThreshold == nil || !*cleared.AgentModelChargesAtThreshold ||
+		cleared.NextChargeThresholdUSD == nil || *cleared.NextChargeThresholdUSD != 10 {
+		t.Fatalf("mutation response after clear = charges %v threshold %v, want true and $10",
+			cleared.AgentModelChargesAtThreshold, cleared.NextChargeThresholdUSD)
+	}
+	if read, err := svc.Environment(caller("admin"), "tea-a"); err != nil ||
+		read.AgentModelChargesAtThreshold == nil || !*read.AgentModelChargesAtThreshold ||
+		read.NextChargeThresholdUSD == nil || *read.NextChargeThresholdUSD != 10 {
+		t.Fatalf("fresh read after clear = %+v err=%v, want true and $10", read, err)
 	}
 }
 
