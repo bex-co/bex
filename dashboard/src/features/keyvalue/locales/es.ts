@@ -811,31 +811,21 @@ const esKeyValue: Record<string, TranslationEntry> = {
       "Introduce un nombre de hasta 100 caracteres, sin saltos de línea ni caracteres de control.",
     description: "Key Value rename validation message",
   },
-  "keyvalue.detailNavLabel": {
-    message: "Navegación de detalles de Key Value",
-    description: "aria-label for the detail-page tab nav",
-  },
-  "keyvalue.sectionNavigation": {
-    message: "Secciones de Key Value",
+  // --- Sidebar and page headings (w3/m649) ---
+  "keyvalue.navInfo": {
+    message: "Información",
     description:
-      "Accessible label for the key-value detail page section navigation",
+      "Key Value sidebar entry and page heading: the instance's Info page (general details, plan, connections, networking)",
   },
-  "keyvalue.dangerZoneTitle": {
-    message: "Zona de peligro",
-    description:
-      "Key-value detail section-nav label for the destructive actions",
-  },
-  "keyvalue.overviewTab": {
-    message: "Resumen",
-    description: "Detail-page Overview tab label",
-  },
-  "keyvalue.logsTab": {
+  "keyvalue.navLogs": {
     message: "Logs",
-    description: "Detail-page Logs tab label",
+    description:
+      "Key Value sidebar entry and page heading: the instance's Logs page",
   },
-  "keyvalue.metricsTab": {
+  "keyvalue.navMetrics": {
     message: "Métricas",
-    description: "Detail-page Metrics tab label",
+    description:
+      "Key Value sidebar entry and page heading: the instance's Metrics page",
   },
   "keyvalue.logsRangeLabel": {
     message: "Intervalo de tiempo",

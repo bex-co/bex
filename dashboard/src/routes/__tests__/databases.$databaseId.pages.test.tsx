@@ -8,7 +8,7 @@ import { Route as MetricsRoute } from "../databases.$databaseId.metrics";
 import { Route as PlanRoute } from "../databases.$databaseId.plan";
 import { Route as AppsRoute } from "../databases.$databaseId.apps";
 import { Route as RecoveryRoute } from "../databases.$databaseId.recovery";
-import { renderDatabasePages } from "@/test/database-pages";
+import { renderDatabasePages } from "@/test/datastore-pages";
 
 // w3/m641: a Postgres database's one long Overview, its section rail and its
 // Overview/Logs tab bar became Render's pages, each at its own URL under one

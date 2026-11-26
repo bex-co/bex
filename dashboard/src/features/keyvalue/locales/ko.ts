@@ -794,31 +794,21 @@ const koKeyValue: Record<string, TranslationEntry> = {
     message: "줄 바꿈이나 제어 문자 없이 100자 이하의 이름을 입력하세요.",
     description: "Key Value rename validation message",
   },
-  "keyvalue.detailNavLabel": {
-    message: "Key Value 세부 정보 탐색",
-    description: "aria-label for the detail-page tab nav",
-  },
-  "keyvalue.sectionNavigation": {
-    message: "Key Value 섹션",
+  // --- Sidebar and page headings (w3/m649) ---
+  "keyvalue.navInfo": {
+    message: "정보",
     description:
-      "Accessible label for the key-value detail page section navigation",
+      "Key Value sidebar entry and page heading: the instance's Info page (general details, plan, connections, networking)",
   },
-  "keyvalue.dangerZoneTitle": {
-    message: "위험 영역",
-    description:
-      "Key-value detail section-nav label for the destructive actions",
-  },
-  "keyvalue.overviewTab": {
-    message: "개요",
-    description: "Detail-page Overview tab label",
-  },
-  "keyvalue.logsTab": {
+  "keyvalue.navLogs": {
     message: "로그",
-    description: "Detail-page Logs tab label",
+    description:
+      "Key Value sidebar entry and page heading: the instance's Logs page",
   },
-  "keyvalue.metricsTab": {
+  "keyvalue.navMetrics": {
     message: "메트릭",
-    description: "Detail-page Metrics tab label",
+    description:
+      "Key Value sidebar entry and page heading: the instance's Metrics page",
   },
   "keyvalue.logsRangeLabel": {
     message: "시간 범위",

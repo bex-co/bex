@@ -10,15 +10,19 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { Route as DatabaseMetricsRoute } from "../databases.$databaseId.metrics";
-import { Route as KeyValueRoute } from "../keyvalue.$keyValueId";
+import { Route as KeyValueMetricsRoute } from "../keyvalue.$keyValueId.metrics";
 import { Route as DiskRoute } from "../services.$serviceId.disk";
 import type { RangeSelection } from "@/features/metrics/lib/range";
-import { renderDatabasePages } from "@/test/database-pages";
+import {
+  renderDatabasePages,
+  renderKeyValuePages,
+} from "@/test/datastore-pages";
 
-// w4/703: the datastore Metrics range (Key Value tab, Postgres overview,
-// service Disk tab) lived in the panel's own state, so a reload or a copied
-// link dropped it while service Metrics and the datastore Logs tab kept theirs
-// in the URL (w6/065). Each production mount runs through its real route
+// w4/703: the datastore Metrics range (then the Key Value tab, the Postgres
+// overview and the service Disk tab; a datastore's Metrics is its own page
+// since w3/m641 and w3/m649) lived in the panel's own state, so a reload or a
+// copied link dropped it while service Metrics and the datastore Logs tab kept
+// theirs in the URL (w6/065). Each production mount runs through its real route
 // component and validator; the panel is a stub that shows the range it was
 // handed and offers the picks, since its own suite covers the picker.
 
@@ -228,12 +232,13 @@ vi.mock("@/features/environments/hooks/use-environments", () => ({
 
 const MOUNTS = [
   {
-    name: "Key Value Metrics tab",
-    route: KeyValueRoute,
-    path: "/keyvalue/$keyValueId",
-    base: "/keyvalue/red-cache?tab=metrics",
+    // A Key Value instance's Metrics is its own page (w3/m649).
+    name: "Key Value Metrics page",
+    route: KeyValueMetricsRoute,
+    path: "/keyvalue/$keyValueId/metrics",
+    base: "/keyvalue/red-cache/metrics?",
     kind: "keyvalue",
-    keeps: { tab: "metrics" },
+    keeps: {},
   },
   {
     // A Postgres database's Metrics is its own page (w3/m641).
@@ -259,6 +264,9 @@ type Mount = (typeof MOUNTS)[number];
 async function renderAt(mount: Mount, href: string) {
   if (mount.kind === "database") {
     return renderDatabasePages({ "/metrics": DatabaseMetricsRoute }, href);
+  }
+  if (mount.kind === "keyvalue") {
+    return renderKeyValuePages({ "/metrics": KeyValueMetricsRoute }, href);
   }
   const root = createRootRoute();
   const page = createRoute({

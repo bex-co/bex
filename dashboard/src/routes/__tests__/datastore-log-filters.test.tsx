@@ -4,20 +4,15 @@ import {
   act,
   cleanup,
   fireEvent,
-  render,
   screen,
   waitFor,
 } from "@testing-library/react";
-import {
-  RouterProvider,
-  createMemoryHistory,
-  createRootRoute,
-  createRoute,
-  createRouter,
-} from "@tanstack/react-router";
 import { Route as DatabaseLogsRoute } from "../databases.$databaseId.logs";
-import { Route as KeyValueRoute } from "../keyvalue.$keyValueId";
-import { renderDatabasePages } from "@/test/database-pages";
+import { Route as KeyValueLogsRoute } from "../keyvalue.$keyValueId.logs";
+import {
+  renderDatabasePages,
+  renderKeyValuePages,
+} from "@/test/datastore-pages";
 import { setupVirtualGeometry } from "@/test/virtual-geometry";
 
 // w4/228: the datastore Logs tab's text and instance filters lived in local
@@ -120,25 +115,18 @@ vi.mock("@/features/environments/hooks/use-environments", () => ({
 
 setupVirtualGeometry();
 
-// A Postgres database's Logs is its own page (w3/m641); a Key Value's is its
-// ?tab=logs, which every write keeps.
+// Each datastore's Logs is its own page (w3/m641, w3/m649).
 const MOUNTS = [
   {
     name: "Postgres",
-    route: DatabaseLogsRoute,
-    path: "/databases/$databaseId/logs",
     logs: "/databases/dpg-main/logs?",
-    keeps: {},
     resource: "dpg-main",
     instance: "dpg-main-0",
     instanceLabel: "Database instance",
   },
   {
     name: "Key Value",
-    route: KeyValueRoute,
-    path: "/keyvalue/$keyValueId",
-    logs: "/keyvalue/red-cache?tab=logs&",
-    keeps: { tab: "logs" },
+    logs: "/keyvalue/red-cache/logs?",
     resource: "red-cache",
     instance: "red-cache-931irt8468joti9ne4fj",
     instanceLabel: "Instance",
@@ -147,27 +135,10 @@ const MOUNTS = [
 
 type Mount = (typeof MOUNTS)[number];
 
-async function renderAt(mount: Mount, href: string) {
-  if (mount.name === "Postgres") {
-    return renderDatabasePages({ "/logs": DatabaseLogsRoute }, href);
-  }
-  const root = createRootRoute();
-  const page = createRoute({
-    getParentRoute: () => root,
-    path: mount.path,
-    validateSearch: mount.route.options.validateSearch,
-    component: mount.route.options.component,
-  });
-  const router = createRouter({
-    routeTree: root.addChildren([page]),
-    history: createMemoryHistory({ initialEntries: [href] }),
-    context: { client: {} as never, session: null },
-  });
-  // Resolve the initial match before mounting: otherwise the first test in a
-  // cold worker can spend findByRole's whole timeout on an empty router outlet.
-  await router.load();
-  render(<RouterProvider router={router} />);
-  return router;
+function renderAt(mount: Mount, href: string) {
+  return mount.name === "Postgres"
+    ? renderDatabasePages({ "/logs": DatabaseLogsRoute }, href)
+    : renderKeyValuePages({ "/logs": KeyValueLogsRoute }, href);
 }
 
 const searchBox = () => screen.findByRole("textbox");
@@ -196,7 +167,6 @@ describe.each(MOUNTS)("$name Logs filter URL state (w4/228)", (mount) => {
     });
     expect(queries.every((q) => q.text === "Ready to accept")).toBe(true);
     expect(router.state.location.search).toMatchObject({
-      ...mount.keeps,
       range: "7d",
       text: "Ready to accept",
       instance: mount.instance,
@@ -219,7 +189,6 @@ describe.each(MOUNTS)("$name Logs filter URL state (w4/228)", (mount) => {
     await user.click(screen.getByRole("option", { name: mount.instance }));
     await waitFor(() =>
       expect(router.state.location.search).toMatchObject({
-        ...mount.keeps,
         range: "7d",
         text: "checkpoint",
         instance: mount.instance,
@@ -257,7 +226,6 @@ describe.each(MOUNTS)("$name Logs filter URL state (w4/228)", (mount) => {
     });
     expect(router.state.location.searchStr).not.toMatch(/text|instance/);
     expect(router.state.location.search).toMatchObject({
-      ...mount.keeps,
       range: "custom",
       rangeStart: "2026-10-03T07:00:00.000Z",
       rangeEnd: "2026-10-03T08:00:00.000Z",

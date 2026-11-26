@@ -30,10 +30,15 @@ const ServiceSidebar = lazy(() =>
 const DatabaseSidebar = lazy(() =>
   import("./database-sidebar").then((m) => ({ default: m.DatabaseSidebar })),
 );
+const KeyValueSidebar = lazy(() =>
+  import("./key-value-sidebar").then((m) => ({ default: m.KeyValueSidebar })),
+);
 
 export function DashboardSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { projectId, serviceId, databaseId } = useParams({ strict: false });
+  const { projectId, serviceId, databaseId, keyValueId } = useParams({
+    strict: false,
+  });
   const agentsEnabled = useAgentsFeatureEnabled();
   const isItemActive = useCallback(
     (to: string) => isNavItemActive(pathname, to),
@@ -61,6 +66,13 @@ export function DashboardSidebar() {
       </Suspense>
     );
   }
+  if (keyValueId) {
+    return (
+      <Suspense fallback={<SidebarShell />}>
+        <KeyValueSidebar keyValueId={keyValueId} />
+      </Suspense>
+    );
+  }
 
   return (
     <Sidebar collapsible="icon">
@@ -73,11 +85,10 @@ export function DashboardSidebar() {
           isItemActive={isItemActive}
         />
         {/* The contextual list slot (w5/m64). Unlike ProjectSidebar,
-            ServiceSidebar and DatabaseSidebar above — which REPLACE the rail
-            for a deep hierarchy and offer a back link — an agents-context
-            section AUGMENTS the nav,
-            Devin's own shape: global nav on top, the section's working set
-            beneath. Section-scoped on purpose: sessions never follow you onto
+            ServiceSidebar, DatabaseSidebar and KeyValueSidebar above — which
+            REPLACE the rail for a deep hierarchy and offer a back link — an
+            agents-context section AUGMENTS the nav, Devin's own shape: global
+            nav on top, the section's working set beneath. Section-scoped on purpose: sessions never follow you onto
             Projects/Services/Settings. See ADR047 D9. */}
         {agentsEnabled && isNavItemActive(pathname, "/agents") ? (
           <Suspense fallback={null}>

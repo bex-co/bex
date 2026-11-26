@@ -106,6 +106,41 @@ export function routeResourceTitle<T>(
     : stateTitle(result);
 }
 
+interface ResourcePageHeadMatch extends DashboardHeadMatch {
+  routeId: string;
+  loaderData?: unknown;
+}
+
+/**
+ * Document title for one page of a resource whose layout route
+ * (`layoutRouteId`) loads the resource for the title: the page's own name
+ * first, then the resource and its type, e.g. "Recovery ・ orders ・
+ * Database ・ bex Dashboard" (w3/m641, w3/m649). That is Render's own title,
+ * "orders ・ Database", led by the page's name, the shape a service tab's
+ * title has (w4/m249). `labelKey` is the page's sidebar label, so the title,
+ * the heading and the open sidebar entry cannot drift apart.
+ */
+export function resourcePageHead(
+  layoutRouteId: string,
+  typeKey: string,
+  labelKey: string,
+) {
+  return ({ matches }: { matches: readonly ResourcePageHeadMatch[] }) => {
+    const layout = matches.find((match) => match.routeId === layoutRouteId);
+    return titleHead(
+      routeResourceTitle(
+        layout?.loaderData as RouteResource<{ name: string }> | undefined,
+        (resource) => [
+          translatedText(labelKey),
+          resource.name,
+          translatedText(typeKey),
+        ],
+      ),
+      matches,
+    );
+  };
+}
+
 /**
  * Resolve a route resource without throwing away the distinction between a
  * missing row and a failed authenticated query. The serializable result is

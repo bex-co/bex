@@ -7,7 +7,9 @@ import { Route as DatabaseIndexRoute } from "../databases.$databaseId.index";
 import { Route as DatabaseLogsRoute } from "../databases.$databaseId.logs";
 import { Route as DatabaseMetricsRoute } from "../databases.$databaseId.metrics";
 import { Route as IndexRoute } from "../index";
-import { Route as KeyValueRoute } from "../keyvalue.$keyValueId";
+import { Route as KeyValueIndexRoute } from "../keyvalue.$keyValueId.index";
+import { Route as KeyValueLogsRoute } from "../keyvalue.$keyValueId.logs";
+import { Route as KeyValueMetricsRoute } from "../keyvalue.$keyValueId.metrics";
 import { Route as ServiceDeployRoute } from "../services.$serviceId.deploys.$deployId";
 import { Route as ServiceLogsRoute } from "../services.$serviceId.logs";
 import { Route as ServiceMetricsRoute } from "../services.$serviceId.metrics";
@@ -109,11 +111,32 @@ describe.each([
       addKey: undefined,
     },
   ],
+  // A Key Value instance's bare URL owns only the old ?tab=logs and
+  // ?tab=metrics, which it sends to their pages (w3/m649); the Logs and
+  // Metrics pages own their keys.
   [
-    "/keyvalue/$keyValueId",
-    KeyValueRoute,
+    "/keyvalue/$keyValueId/",
+    KeyValueIndexRoute,
     { tab: "bogus", range: "12y", text: "", instance: true },
-    { tab: undefined, ...NO_DATASTORE_LOG_FILTERS },
+    { tab: undefined },
+  ],
+  [
+    "/keyvalue/$keyValueId/",
+    KeyValueIndexRoute,
+    { tab: "metrics", range: "24h" },
+    { tab: "metrics" },
+  ],
+  [
+    "/keyvalue/$keyValueId/logs",
+    KeyValueLogsRoute,
+    { tab: "logs", range: "12y", text: "", instance: true },
+    NO_DATASTORE_LOG_FILTERS,
+  ],
+  [
+    "/keyvalue/$keyValueId/metrics",
+    KeyValueMetricsRoute,
+    { range: "4h", rangeStart: "x", text: "boom" },
+    { ...NO_RANGE, range: "4h" },
   ],
   // A Postgres database's bare URL owns only the old ?tab=logs, which it
   // sends to the Logs page (w3/m641); the Logs and Metrics pages own their
@@ -214,10 +237,10 @@ describe.each([
     { ...NO_DATASTORE_LOG_FILTERS, contextLine: "id:abc" },
   ],
   [
-    "/keyvalue/$keyValueId",
-    KeyValueRoute,
-    { tab: "logs", contextLine: true },
-    { tab: "logs", ...NO_DATASTORE_LOG_FILTERS },
+    "/keyvalue/$keyValueId/logs",
+    KeyValueLogsRoute,
+    { contextLine: true },
+    NO_DATASTORE_LOG_FILTERS,
   ],
   [
     "/project/$projectId/observability/logs/application",

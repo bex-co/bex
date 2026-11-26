@@ -1,10 +1,7 @@
 import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, within } from "@testing-library/react";
-import {
-  DatabaseInfoSkeleton,
-  KeyValueOverviewSkeleton,
-} from "../route-skeletons";
+import { DatabaseInfoSkeleton, KeyValueInfoSkeleton } from "../route-skeletons";
 import { DatabaseMetadataCard } from "@/features/databases/components/database-metadata-card";
 import { ConnectionInfoPanel as DatabaseConnectionInfoPanel } from "@/features/databases/components/connection-info-panel";
 import { KeyValueMetadataCard } from "@/features/keyvalue/components/key-value-metadata-card";
@@ -137,7 +134,7 @@ describe("datastore Details and Connections previews (w4/298)", () => {
     ],
     [
       "Key Value",
-      KeyValueOverviewSkeleton,
+      KeyValueInfoSkeleton,
       <KeyValueMetadataCard
         key="details"
         keyValue={keyValue}
@@ -261,7 +258,7 @@ describe("Key Value policy previews (w4/299)", () => {
     ],
   ] as const) {
     it(`${name} route preview has the ready help and select field`, () => {
-      const pending = card(<KeyValueOverviewSkeleton />, region);
+      const pending = card(<KeyValueInfoSkeleton />, region);
       const readyCard = card(ready());
       expect(pending.hasAttribute("inert")).toBe(true);
       expect(shape(part(pending, "card-header"))).toBe(
@@ -286,7 +283,7 @@ describe("Key Value policy previews (w4/299)", () => {
     });
 
     it(`${name} section keeps the field anatomy while its own query loads`, () => {
-      const pending = card(<KeyValueOverviewSkeleton />, region);
+      const pending = card(<KeyValueInfoSkeleton />, region);
       unresolve();
       const loadingCard = card(ready());
       expect(shape(part(loadingCard, "card-content").firstElementChild!)).toBe(
@@ -305,7 +302,7 @@ describe("Key Value Networking preview (w4/303)", () => {
   });
 
   it("keeps the preview while the panel's own allowlist read is pending", () => {
-    const pending = card(<KeyValueOverviewSkeleton />, "networking");
+    const pending = card(<KeyValueInfoSkeleton />, "networking");
     Object.assign(networkingState, { isPublic: undefined, loading: true });
     const loadingCard = card(<KeyValueNetworkingPanel id={keyValue.id} />);
     expect(loadingCard.hasAttribute("inert")).toBe(true);
@@ -314,7 +311,7 @@ describe("Key Value Networking preview (w4/303)", () => {
   });
 
   it("previews the ready allowlist form, not one loading block", () => {
-    const pending = card(<KeyValueOverviewSkeleton />, "networking");
+    const pending = card(<KeyValueInfoSkeleton />, "networking");
     const readyCard = card(<KeyValueNetworkingPanel id={keyValue.id} />);
     expect(pending.hasAttribute("inert")).toBe(true);
     expect(shape(part(pending, "card-header"))).toBe(

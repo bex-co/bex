@@ -7,12 +7,13 @@ import {
   createRootRoute,
   createRoute,
   createMemoryHistory,
+  type RouteComponent,
 } from "@tanstack/react-router";
-import { KeyValueDetailPage, Route } from "../keyvalue.$keyValueId";
-import {
-  CLEARED_RANGE_SEARCH,
-  type RangeSearch,
-} from "@/features/metrics/lib/range";
+import { Route as LayoutRoute } from "../keyvalue.$keyValueId";
+import { Route as IndexRoute } from "../keyvalue.$keyValueId.index";
+import { Route as InfoRoute } from "../keyvalue.$keyValueId.info";
+import { Route as LogsRoute } from "../keyvalue.$keyValueId.logs";
+import { Route as MetricsRoute } from "../keyvalue.$keyValueId.metrics";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
 const keyValueState: {
@@ -206,6 +207,8 @@ function kv(overrides: Partial<KeyValueView> = {}): KeyValueView {
   };
 }
 
+// The real layout and its pages (w3/m649), with a home route for the dead-id
+// redirect; the loader and the auth guard stay out, the data hooks are mocked.
 function renderPage(initialPath = "/keyvalue/sessions-cache") {
   const rootRoute = createRootRoute();
   const homeRoute = createRoute({
@@ -213,13 +216,30 @@ function renderPage(initialPath = "/keyvalue/sessions-cache") {
     path: "/",
     component: () => <div>services home</div>,
   });
-  const detailRoute = createRoute({
+  const layout = createRoute({
     getParentRoute: () => rootRoute,
     path: "/keyvalue/$keyValueId",
-    component: KeyValueDetailPage,
+    component: LayoutRoute.options.component as RouteComponent,
   });
+  const pages = Object.entries({
+    "/": IndexRoute,
+    "/info": InfoRoute,
+    "/logs": LogsRoute,
+    "/metrics": MetricsRoute,
+  }).map(([path, page]) =>
+    createRoute({
+      getParentRoute: () => layout,
+      path,
+      component: page.options.component as RouteComponent,
+      validateSearch: page.options.validateSearch as never,
+    }),
+  );
   const router = createRouter({
-    routeTree: rootRoute.addChildren([homeRoute, detailRoute]),
+    // The file Routes' options are typed for the generated tree, not this one.
+    routeTree: rootRoute.addChildren([
+      homeRoute,
+      layout.addChildren(pages as never) as never,
+    ]),
     history: createMemoryHistory({
       initialEntries: [initialPath],
     }),
@@ -240,53 +260,7 @@ beforeEach(() => {
   metricsRetentionCalls.length = 0;
 });
 
-describe("key value detail tab search contract", () => {
-  const validate = Route.options.validateSearch as (
-    search: Record<string, unknown>,
-  ) => { tab?: "logs" | "metrics" } & RangeSearch;
-
-  it("keeps the linkable tabs and round-trips the log range (w6/065)", () => {
-    expect(validate({ tab: "metrics" })).toEqual({ tab: "metrics" });
-    expect(validate({ tab: "bogus" })).toStrictEqual({
-      tab: undefined,
-      ...CLEARED_RANGE_SEARCH,
-      text: undefined,
-      instance: undefined,
-      level: undefined,
-      contextLine: undefined,
-    });
-    // A picked preset survives a reload alongside the tab key…
-    expect(validate({ tab: "logs", range: "24h" })).toEqual({
-      tab: "logs",
-      range: "24h",
-    });
-    // …a custom window keeps its bounds…
-    expect(
-      validate({
-        tab: "logs",
-        range: "custom",
-        rangeStart: "2026-07-01T00:00:00.000Z",
-        rangeEnd: "2026-07-01T06:00:00.000Z",
-      }),
-    ).toEqual({
-      tab: "logs",
-      range: "custom",
-      rangeStart: "2026-07-01T00:00:00.000Z",
-      rangeEnd: "2026-07-01T06:00:00.000Z",
-    });
-    // …and malformed ranges come back undefined (default behavior preserved).
-    expect(validate({ tab: "logs", range: "6h" })).toStrictEqual({
-      tab: "logs",
-      ...CLEARED_RANGE_SEARCH,
-      text: undefined,
-      instance: undefined,
-      level: undefined,
-      contextLine: undefined,
-    });
-  });
-});
-
-describe("KeyValueDetailPage", () => {
+describe("a Key Value instance's Info page", () => {
   it("renders an available store's metadata and Render's bottom danger actions", async () => {
     keyValueState.keyValue = kv({ status: "available", suspended: false });
     renderPage();
@@ -435,12 +409,12 @@ describe("KeyValueDetailPage", () => {
     expect(screen.queryByText("Region")).not.toBeInTheDocument();
   });
 
-  it("renders the metrics panel on its own tab, feeding it the typed id (w5/m71)", async () => {
+  it("renders the metrics panel on its own page, feeding it the typed id (w5/m71)", async () => {
     // bex-api resolves datastoreMetrics.query.resource as the KeyValue CR
     // name, and CR names are the typed ids — a display name 404s into charts
     // that silently render "No data in range".
     keyValueState.keyValue = kv({ id: "red-sessions", name: "sessions-cache" });
-    renderPage("/keyvalue/sessions-cache?tab=metrics");
+    renderPage("/keyvalue/sessions-cache/metrics");
 
     await screen.findByRole("heading", { name: "sessions-cache" });
     expect(datastoreMetricsCalls.length).toBeGreaterThan(0);
@@ -453,7 +427,7 @@ describe("KeyValueDetailPage", () => {
     expect(screen.getByText("Limit 250")).toBeInTheDocument();
   });
 
-  it("does not render the metrics panel on the Overview tab", async () => {
+  it("does not render the metrics panel on Info", async () => {
     keyValueState.keyValue = kv({ id: "red-sessions", name: "sessions-cache" });
     renderPage();
 

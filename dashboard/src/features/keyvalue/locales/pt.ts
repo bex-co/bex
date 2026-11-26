@@ -807,31 +807,21 @@ const ptKeyValue: Record<string, TranslationEntry> = {
       "Informe um nome de até 100 caracteres, sem quebras de linha ou caracteres de controle.",
     description: "Key Value rename validation message",
   },
-  "keyvalue.detailNavLabel": {
-    message: "Navegação de detalhes do Key Value",
-    description: "aria-label for the detail-page tab nav",
-  },
-  "keyvalue.sectionNavigation": {
-    message: "Seções do Key Value",
+  // --- Sidebar and page headings (w3/m649) ---
+  "keyvalue.navInfo": {
+    message: "Informações",
     description:
-      "Accessible label for the key-value detail page section navigation",
+      "Key Value sidebar entry and page heading: the instance's Info page (general details, plan, connections, networking)",
   },
-  "keyvalue.dangerZoneTitle": {
-    message: "Zona de perigo",
-    description:
-      "Key-value detail section-nav label for the destructive actions",
-  },
-  "keyvalue.overviewTab": {
-    message: "Visão geral",
-    description: "Detail-page Overview tab label",
-  },
-  "keyvalue.logsTab": {
+  "keyvalue.navLogs": {
     message: "Logs",
-    description: "Detail-page Logs tab label",
+    description:
+      "Key Value sidebar entry and page heading: the instance's Logs page",
   },
-  "keyvalue.metricsTab": {
+  "keyvalue.navMetrics": {
     message: "Métricas",
-    description: "Detail-page Metrics tab label",
+    description:
+      "Key Value sidebar entry and page heading: the instance's Metrics page",
   },
   "keyvalue.logsRangeLabel": {
     message: "Intervalo de tempo",

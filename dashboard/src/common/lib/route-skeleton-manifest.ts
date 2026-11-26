@@ -431,7 +431,54 @@ export const ROUTE_SKELETON_MANIFEST = {
     kind: "render",
     owner: "routes/keyvalue.$keyValueId.tsx",
     shape: "keyvalue-detail",
-    regions: ["resource-header", "tabs", "active-tab"],
+    regions: ["resource-header", "active-page"],
+  },
+  // A Key Value instance's pages (w3/m649): the bare URL and `/info` are Info.
+  "/keyvalue/$keyValueId/": {
+    kind: "render",
+    owner: "routes/keyvalue.$keyValueId.index.tsx",
+    shape: "keyvalue-info",
+    regions: [
+      "metadata",
+      "maxmemory-policy",
+      "persistence-mode",
+      "plan",
+      "connection",
+      "networking",
+      "danger-zone",
+    ],
+  },
+  "/keyvalue/$keyValueId/info": {
+    kind: "render",
+    owner: "routes/keyvalue.$keyValueId.info.tsx",
+    shape: "keyvalue-info",
+    regions: [
+      "metadata",
+      "maxmemory-policy",
+      "persistence-mode",
+      "plan",
+      "connection",
+      "networking",
+      "danger-zone",
+    ],
+  },
+  "/keyvalue/$keyValueId/logs": {
+    kind: "render",
+    owner: "routes/keyvalue.$keyValueId.logs.tsx",
+    shape: "datastore-logs",
+    regions: ["log-filters", "log-lines"],
+  },
+  "/keyvalue/$keyValueId/metrics": {
+    kind: "render",
+    owner: "routes/keyvalue.$keyValueId.metrics.tsx",
+    shape: "keyvalue-metrics",
+    regions: ["datastore-metrics"],
+  },
+  // Render's sub-paths with no page of their own land where their control is.
+  "/keyvalue/$keyValueId/$": {
+    kind: "redirect",
+    owner: "routes/keyvalue.$keyValueId.$.tsx",
+    destination: "the page holding the sub-path's control, else Info",
   },
   "/keyvalue/new": {
     kind: "redirect",

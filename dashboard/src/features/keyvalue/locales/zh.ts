@@ -796,32 +796,21 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "请输入最多 100 个字符的名称，不能包含换行或控制字符。",
     description: "Key Value rename validation message",
   },
-  // --- Tab navigation ---
-  "keyvalue.detailNavLabel": {
-    message: "Key Value 详情导航",
-    description: "aria-label for the detail-page tab nav",
-  },
-  "keyvalue.sectionNavigation": {
-    message: "Key Value 区块",
+  // --- Sidebar and page headings (w3/m649) ---
+  "keyvalue.navInfo": {
+    message: "信息",
     description:
-      "Accessible label for the key-value detail page section navigation",
+      "Key Value sidebar entry and page heading: the instance's Info page (general details, plan, connections, networking)",
   },
-  "keyvalue.dangerZoneTitle": {
-    message: "危险区域",
-    description:
-      "Key-value detail section-nav label for the destructive actions",
-  },
-  "keyvalue.overviewTab": {
-    message: "概览",
-    description: "Detail-page Overview tab label",
-  },
-  "keyvalue.logsTab": {
+  "keyvalue.navLogs": {
     message: "日志",
-    description: "Detail-page Logs tab label",
+    description:
+      "Key Value sidebar entry and page heading: the instance's Logs page",
   },
-  "keyvalue.metricsTab": {
+  "keyvalue.navMetrics": {
     message: "指标",
-    description: "Detail-page Metrics tab label",
+    description:
+      "Key Value sidebar entry and page heading: the instance's Metrics page",
   },
   // --- Logs viewer ---
   "keyvalue.logsRangeLabel": {

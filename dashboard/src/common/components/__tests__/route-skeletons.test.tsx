@@ -25,7 +25,7 @@ import {
   EnvGroupDetailContentSkeleton,
   EnvGroupsListPageSkeleton,
   KeyValueCreatePageSkeleton,
-  KeyValueOverviewSkeleton,
+  KeyValueInfoSkeleton,
   NotificationsPageSkeleton,
   ProjectOverviewPageSkeleton,
   ServiceEnvironmentSkeleton,
@@ -231,6 +231,20 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
       "database-recovery",
       ["recovery"],
     ],
+    // A Key Value instance's Info page (w3/m649), as the manifest lists it.
+    [
+      <KeyValueInfoSkeleton key="keyvalue-info" />,
+      "keyvalue-info",
+      [
+        "metadata",
+        "maxmemory-policy",
+        "persistence-mode",
+        "plan",
+        "connection",
+        "networking",
+        "danger-zone",
+      ],
+    ],
   ])("renders the %s contract", (component, shape, expectedRegions) => {
     const { container, unmount } = render(component);
     const frame = container.querySelector<HTMLElement>(
@@ -321,10 +335,7 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     unmount();
   });
 
-  it.each([
-    [<KeyValueOverviewSkeleton key="keyvalue" />, 7],
-    [<ServiceSettingsSkeleton key="service" />, 13],
-  ])(
+  it.each([[<ServiceSettingsSkeleton key="service" />, 13]])(
     "keeps long-page section navigation at narrow and wide breakpoints",
     (component, count) => {
       const { container, unmount } = render(component);

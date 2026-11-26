@@ -33,6 +33,80 @@ Render's KV detail is a single "Info" page (plus separate Logs/Metrics tabs, out
 - **Log Stream**: third-party log-stream forwarding config — unrelated to this milestone, omit.
 - **Danger zone** (bottom, unlabeled buttons resolved via DOM `data-test-id`): **"Delete Key Value Instance"** (destructive, red) and **"Suspend Key Value Instance"** (critical ghost). Delete opens a **type-to-confirm** dialog: "Type `sudo delete key value <name>` below to confirm," a single text input, and a Delete button that's disabled until the typed string matches exactly. Suspend uses the parallel `sudo suspend key value <name>` confirmation; Resume replaces it while suspended and runs immediately. The live bundle was reverified on 2026-07-17, and bex now mirrors these exact phrases and the shared bottom-row placement. Here `sudo` is confirmation copy, not a local privilege boundary.
 
+## Pages: sidebar, routes and Info (w3/m649, 2026-11-25)
+
+Read 2026-11-25 for w3/m649 from Render's public dashboard bundle, without sign-in. Not walked signed in: the bundle is the evidence, as it was for the Postgres pages ([postgres-dashboard.md](postgres-dashboard.md)).
+
+**Evidence.** `https://dashboard.render.com/` loads `assets/index-D5V4ZgbE.js` (sha256 `8d15889ace2d…`), which holds the Key Value layout, its route table, its Info, Logs and Metrics pages and the `/plan` page. The note that filed this read `index-BPMVVQol.js` (`4eb3557f6970…`) the same day. The hashes change with every Render deploy, so find the layout by its frozen title map, `Object.freeze({"":"Info","/info":"Info","/logs":"Logs","/metrics":"Metrics","/plan":null})`, as [metrics-page.md § Status-code label](metrics-page.md#status-code-label-w3080-2026-11-20) describes the method.
+
+### Sidebar
+
+The layout hands the shared resource shell `project: "datastores"` and this sidebar:
+
+| Group | Entries, in order | Gate |
+| --- | --- | --- |
+| top level | **Info** (`/r/<id>/info`, `hrefPattern` the bare `/r/<id>`, so also active there) | — |
+| Monitor | **Logs**, **Metrics** | Logs with `viewRedisLogs`, Metrics with `viewRedisMetrics`; the group has no entries without both |
+
+- Before the instance loads, the sidebar draws Info alone (`initialSideNav: [{ items: [info] }]`).
+- The back link reads **Dashboard** (`/`), or **Environment** when the instance sits in a project environment.
+
+### Routes
+
+`/r/:id` renders the layout, with these children:
+
+| Path | Page |
+| --- | --- |
+| `*`, `info` | Info (the bare URL shows Info with the URL unchanged, and so does any unknown sub-path) |
+| `metrics`, `metrics/:period` | Metrics (without `viewRedisMetrics`, a no-permission page) |
+| `logs` | Logs: the shared log explorer with `searchInUrl` and the full-screen layout |
+| `plan` | a full-page plan chooser with no title; its Cancel and its Change plan both return to the bare URL |
+
+The layout's document title is `<name> ・ Key Value` on every page. Its header carries View docs and Connect, and its Upgrade instance link is `/r/<id>/info#compute`. It passes `hideResourceHeader` from the same hook as the Postgres layout. Its banners are the suspension notice and scheduled maintenance.
+
+### Info
+
+In order: the title "Info", then
+
+1. **General**: Name (editable), Created (Creating since, while creating), Status, **Maxmemory Policy** (editable), **Persistence Mode** (editable; a free instance reads Off), Region, Runtime.
+2. **Compute** (`#compute`): the plan cards with Edit, then "Review your compute selection" and Upgrade compute.
+3. **Connections**: Internal Key Value URL (with Enable Internal Authentication), External Key Value URL and the Valkey CLI Command; without an IP allow list both read "External traffic not allowed. Add IP addresses in the Networking section.", linking `#networking`.
+4. **Networking**: the IP allow list.
+5. A log stream override (log streams are a [`DO_NOT_DO.md`](../../.pm/DO_NOT_DO.md) non-goal).
+6. The delete card: Delete Key Value Instance, with Suspend beside it.
+
+**Logs** is the shared log viewer. **Metrics** is the metric groups, with an upgrade link to `/plan` where a free instance's disk chart has no data.
+
+### Page map (bex, w3/m649)
+
+Every card of bex's former single Key Value page goes to Info, in the order of its Render counterpart. Render's General holds the Maxmemory Policy and Persistence Mode fields; bex keeps them as their own cards, with their confirmations, right after Details.
+
+| bex card (old anchor) | Page, place | Render counterpart |
+| --- | --- | --- |
+| Details (`#metadata`) | Info, 1st | General |
+| Maxmemory policy (`#maxmemory-policy`) | Info, 2nd | General's Maxmemory Policy |
+| Persistence mode (`#persistence-mode`) | Info, 3rd | General's Persistence Mode |
+| Plan (`#plan`) | Info, 4th | Compute (`#compute`) |
+| Connections (`#connection`) | Info, 5th | Connections |
+| Networking (`#networking`) | Info, 6th | Networking |
+| Danger zone (`#danger-zone`): delete, suspend | Info, 7th | the delete card |
+| the Logs tab (`?tab=logs`) | Logs | Logs |
+| the Metrics tab (`?tab=metrics`) | Metrics | Metrics |
+
+### What bex does (w3/m649)
+
+- A Key Value instance's pages swap the workspace nav for this sidebar: the back link (Dashboard), the name, Info / Monitor: Logs, Metrics. A Viewer or a Billing member (denied `can_view_logs`) gets no Logs, a Billing member (denied `can_view_activity`) no Metrics, and an emptied group goes. Unlike Render's, the loading sidebar draws all three entries, so nothing shifts once the instance resolves.
+- `/keyvalue/<id>` and `/keyvalue/<id>/info` show Info; `/logs` and `/metrics` show their pages, each with its sidebar label as its heading and a document title led by it ("Logs ・ sessions-cache ・ Key Value ・ bex Dashboard"). Render's `/r/<id>/<page>` reaches them through the `/r/` alias, query and hash kept, and bex-api's `dashboardUrl` (`/r/<id>`) opens Info.
+- `/plan` lands on Info's plan card (`/keyvalue/<id>#plan`), `#compute` scrolls to that card, `/metrics/<period>` lands on `/metrics`, and any other sub-path on Info.
+- The old single page's links land on their page: `?tab=logs` on `/logs` and `?tab=metrics` on `/metrics`, with their range and filter keys; each section anchor stays on Info, its card scrolled into view.
+
+### Still apart
+
+- Render's `/plan` is a full-page plan chooser; bex's plan picker is the plan card on Info, where `/plan` lands ([w3/127](../../.pm/w3/127.md)).
+- Render's Logs and Metrics pages hide the resource header; bex keeps it, as on a Postgres database's pages ([w3/128](../../.pm/w3/128.md), after [w3/117](../../.pm/w3/117.md) for Postgres).
+- Render folds Maxmemory Policy and Persistence Mode into General; bex keeps them as cards of their own beside it.
+- Render's document title has no page name; bex's names the page first, as its service tabs do.
+
 ## Where Render shows the connection limit (w6/m459 t001, 2026-11-17)
 
 Read from Render's docs and their screenshots on 2026-11-17; no live Render session was available (the repository holds no Render dashboard login), so the 2026-07-09 capture above was not re-walked.
@@ -45,7 +119,7 @@ Read from Render's docs and their screenshots on 2026-11-17; no live Render sess
 | Metrics page, Active Connections chart | Yes: "Limit 250" beside the title | render.com/docs/key-value § Metrics, screenshot `kv-active-connections.png` ("Key Value active connections metric") |
 | REST, MCP, Blueprint | No plan catalog at all | render.com/docs/compute-plans lists the limits; the API has no catalog endpoint |
 
-bex shows it in the same four dashboard places since w6/m459, read from GraphQL `keyValueInstanceTypes.connectionLimit` (lego/types/tiers, Render's figures since w6/m456): each plan card's own line, the Details card's Connection limit row beside Instance type (bex's Info page carries the instance facts in its Details card), the plan picker's cards, and "Limit N" beside the Metrics tab's Active Connections chart. Postgres is in [postgres-connection-limit.md](postgres-connection-limit.md).
+bex shows it in the same four dashboard places since w6/m459, read from GraphQL `keyValueInstanceTypes.connectionLimit` (lego/types/tiers, Render's figures since w6/m456): each plan card's own line, the Details card's Connection limit row beside Instance type (bex's Info page carries the instance facts in its Details card), the plan picker's cards, and "Limit N" beside the Metrics page's Active Connections chart (a tab until w3/m649). Postgres is in [postgres-connection-limit.md](postgres-connection-limit.md).
 
 ## No live "list" page — unified Services table
 

@@ -66,34 +66,8 @@ vi.mock("@/features/keyvalue/hooks/use-key-value", () => ({
     refetch: vi.fn(),
   }),
 }));
-vi.mock("@/features/keyvalue/components/key-value-metadata-card", () => ({
-  KeyValueMetadataCard: stub,
-}));
 vi.mock("@/features/keyvalue/components/key-value-status-badge", () => ({
   KeyValueStatusBadge: stub,
-}));
-vi.mock("@/features/keyvalue/components/key-value-danger-actions", () => ({
-  KeyValueDangerActions: stub,
-}));
-vi.mock("@/features/keyvalue/components/connection-info-panel", () => ({
-  ConnectionInfoPanel: stub,
-}));
-vi.mock("@/features/keyvalue/components/key-value-networking-panel", () => ({
-  KeyValueNetworkingPanel: stub,
-}));
-vi.mock("@/features/keyvalue/components/key-value-plan-section", () => ({
-  KeyValuePlanSection: stub,
-}));
-vi.mock(
-  "@/features/keyvalue/components/key-value-maxmemory-policy-section",
-  () => ({ KeyValueMaxmemoryPolicySection: stub }),
-);
-vi.mock(
-  "@/features/keyvalue/components/key-value-persistence-mode-section",
-  () => ({ KeyValuePersistenceModeSection: stub }),
-);
-vi.mock("@/features/keyvalue/components/key-value-detail-navigation", () => ({
-  KeyValueDetailNavigation: stub,
 }));
 
 // --- Postgres ---
@@ -289,7 +263,7 @@ vi.mock("@/features/webhooks/components/webhook-detail-header", () => ({
   ),
 }));
 
-import { KeyValueDetailPage } from "../keyvalue.$keyValueId";
+import { Route as KeyValueRoute } from "../keyvalue.$keyValueId";
 import { Route as DatabaseRoute } from "../databases.$databaseId";
 import { EnvGroupDetailPage } from "../env-groups_.$groupId";
 import { BlueprintDetailPage } from "../blueprints.$blueprintId";
@@ -310,11 +284,13 @@ interface PageCase {
 
 const PAGES: PageCase[] = [
   {
+    // A layout since w3/m649: its page must not mount while adopting.
     name: "Key Value",
     path: "/keyvalue/$keyValueId",
     url: "/keyvalue/red-1",
-    component: KeyValueDetailPage,
-    ready: "kv-name",
+    component: KeyValueRoute.options.component as RouteComponent,
+    ready: "child page",
+    child: true,
   },
   {
     // A layout since w3/m641: its page must not mount while adopting.

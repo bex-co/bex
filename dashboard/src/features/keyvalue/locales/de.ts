@@ -821,31 +821,21 @@ const deKeyValue: Record<string, TranslationEntry> = {
       "Gib einen Namen mit höchstens 100 Zeichen ein, ohne Zeilenumbrüche oder Steuerzeichen.",
     description: "Key Value rename validation message",
   },
-  "keyvalue.detailNavLabel": {
-    message: "Navigation der Key-Value-Details",
-    description: "aria-label for the detail-page tab nav",
-  },
-  "keyvalue.sectionNavigation": {
-    message: "Key-Value-Bereiche",
+  // --- Sidebar and page headings (w3/m649) ---
+  "keyvalue.navInfo": {
+    message: "Info",
     description:
-      "Accessible label for the key-value detail page section navigation",
+      "Key Value sidebar entry and page heading: the instance's Info page (general details, plan, connections, networking)",
   },
-  "keyvalue.dangerZoneTitle": {
-    message: "Gefahrenzone",
-    description:
-      "Key-value detail section-nav label for the destructive actions",
-  },
-  "keyvalue.overviewTab": {
-    message: "Übersicht",
-    description: "Detail-page Overview tab label",
-  },
-  "keyvalue.logsTab": {
+  "keyvalue.navLogs": {
     message: "Logs",
-    description: "Detail-page Logs tab label",
+    description:
+      "Key Value sidebar entry and page heading: the instance's Logs page",
   },
-  "keyvalue.metricsTab": {
+  "keyvalue.navMetrics": {
     message: "Metriken",
-    description: "Detail-page Metrics tab label",
+    description:
+      "Key Value sidebar entry and page heading: the instance's Metrics page",
   },
   "keyvalue.logsRangeLabel": {
     message: "Zeitraum",

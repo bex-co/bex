@@ -4,6 +4,7 @@ import {
   databasePageRoute,
   type DatabasePagePath,
 } from "@/features/databases/components/database-nav";
+import { splatParts } from "@/common/lib/render-alias";
 
 /**
  * The old single page's section anchors whose cards left Info when it split
@@ -47,7 +48,7 @@ export interface DatabaseSubpathLanding {
 export function databaseSubpathLanding(
   splat: string | undefined,
 ): DatabaseSubpathLanding {
-  const [first] = (splat ?? "").split("/").filter(Boolean);
+  const [first] = splatParts(splat);
   switch (first) {
     case "upgrade":
       return { page: "/plan" };

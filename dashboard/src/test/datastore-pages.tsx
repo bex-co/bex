@@ -7,7 +7,8 @@ import {
   createRouter,
   type RouteComponent,
 } from "@tanstack/react-router";
-import { Route as LayoutRoute } from "@/routes/databases.$databaseId";
+import { Route as DatabaseLayoutRoute } from "@/routes/databases.$databaseId";
+import { Route as KeyValueLayoutRoute } from "@/routes/keyvalue.$keyValueId";
 
 interface PageRoute {
   options: {
@@ -18,22 +19,24 @@ interface PageRoute {
 }
 
 /**
- * Mounts a Postgres database's layout route with some of its page routes
- * under it, from their file Routes' own options (w3/m641), at `href`. The
+ * Mounts a datastore's layout route with some of its page routes under it,
+ * from their file Routes' own options (w3/m641, w3/m649), at `href`. The
  * pages are keyed by their path under the layout (`"/"`, `"/logs"`, …), so
  * each reconstructed route keeps its file Route's id and its
  * `Route.useSearch()` reads the right match. The layout's loader and its
  * parent's auth guard stay out; the tests stub the data hooks instead.
  */
-export async function renderDatabasePages(
+async function renderDatastorePages(
+  layoutPath: string,
+  layoutRoute: PageRoute,
   pages: Record<string, PageRoute>,
   href: string,
 ) {
   const root = createRootRoute();
   const layout = createRoute({
     getParentRoute: () => root,
-    path: "/databases/$databaseId",
-    component: LayoutRoute.options.component as RouteComponent,
+    path: layoutPath,
+    component: layoutRoute.options.component as RouteComponent,
   });
   const children = Object.entries(pages).map(([path, page]) =>
     createRoute({
@@ -55,4 +58,30 @@ export async function renderDatabasePages(
   await router.load();
   render(<RouterProvider router={router} />);
   return router;
+}
+
+/** A Postgres database's layout and `pages` (w3/m641). */
+export function renderDatabasePages(
+  pages: Record<string, PageRoute>,
+  href: string,
+) {
+  return renderDatastorePages(
+    "/databases/$databaseId",
+    DatabaseLayoutRoute,
+    pages,
+    href,
+  );
+}
+
+/** A Key Value instance's layout and `pages` (w3/m649). */
+export function renderKeyValuePages(
+  pages: Record<string, PageRoute>,
+  href: string,
+) {
+  return renderDatastorePages(
+    "/keyvalue/$keyValueId",
+    KeyValueLayoutRoute,
+    pages,
+    href,
+  );
 }

@@ -3882,40 +3882,40 @@ function DatastoreMetricsCardSkeleton({
   );
 }
 
-export function KeyValueOverviewSkeleton() {
+/**
+ * A Key Value instance's Info page before the instance resolves (w3/m649):
+ * its cards in Render's order (Details, Maxmemory policy and Persistence
+ * mode, which Render folds into General, then the plan, Connections,
+ * Networking and the danger zone's actions), each at the ready card's bounds.
+ */
+export function KeyValueInfoSkeleton() {
   return (
-    <PendingFrame
-      route="keyvalue-overview"
-      className={cn("mx-auto max-w-5xl", SECTIONED_GRID_CLASS)}
-    >
-      <ResponsiveSectionNavigationSkeleton count={7} />
-      <div className={SECTIONED_BODY_CLASS}>
-        <Region name="metadata">
-          <DatastoreMetadataPreview kind="keyvalue" />
-        </Region>
-        <Region name="connection">
-          <DatastoreConnectionsPreview kind="keyvalue" />
-        </Region>
-        <Region name="networking">
-          <KeyValueNetworkingPreview />
-        </Region>
-        <Region name="plan">
-          <DatastorePlanPreview kind="keyvalue" />
-        </Region>
-        <Region name="maxmemory-policy">
-          <KeyValuePolicyPreview policy="maxmemory" />
-        </Region>
-        <Region name="persistence-mode">
-          <KeyValuePolicyPreview policy="persistence" />
-        </Region>
-        <Region
-          name="danger-zone"
-          className="flex min-h-[5.25rem] flex-wrap gap-2 sm:min-h-9"
-        >
-          <Skeleton className="h-9 w-32" />
-          <Skeleton className="h-9 w-36" />
-        </Region>
-      </div>
+    <PendingFrame route="keyvalue-info" className="space-y-6">
+      <Region name="metadata">
+        <DatastoreMetadataPreview kind="keyvalue" />
+      </Region>
+      <Region name="maxmemory-policy">
+        <KeyValuePolicyPreview policy="maxmemory" />
+      </Region>
+      <Region name="persistence-mode">
+        <KeyValuePolicyPreview policy="persistence" />
+      </Region>
+      <Region name="plan">
+        <DatastorePlanPreview kind="keyvalue" />
+      </Region>
+      <Region name="connection">
+        <DatastoreConnectionsPreview kind="keyvalue" />
+      </Region>
+      <Region name="networking">
+        <KeyValueNetworkingPreview />
+      </Region>
+      <Region
+        name="danger-zone"
+        className="flex min-h-[5.25rem] flex-wrap gap-2 sm:min-h-9"
+      >
+        <Skeleton className="h-9 w-32" />
+        <Skeleton className="h-9 w-36" />
+      </Region>
     </PendingFrame>
   );
 }

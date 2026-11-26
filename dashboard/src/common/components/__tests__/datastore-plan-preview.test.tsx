@@ -5,10 +5,7 @@ import {
   KEY_VALUE_PLAN_SLOTS,
   POSTGRES_PLAN_SLOTS,
 } from "../datastore-plan-preview";
-import {
-  DatabasePlanSkeleton,
-  KeyValueOverviewSkeleton,
-} from "../route-skeletons";
+import { DatabasePlanSkeleton, KeyValueInfoSkeleton } from "../route-skeletons";
 import {
   COMPUTE_PLAN_LIST_CLASS,
   COMPUTE_PLAN_ROW_CLASS,
@@ -62,7 +59,7 @@ describe("datastore plan preview", () => {
     ],
     [
       "Key Value",
-      KeyValueOverviewSkeleton,
+      KeyValueInfoSkeleton,
       "Compute plan",
       ["Cancel", "Save"],
       9,

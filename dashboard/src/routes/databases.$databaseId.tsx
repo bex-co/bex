@@ -1,5 +1,4 @@
 import { PageScroll } from "@/common/components/page-frame";
-import { useEffect, useRef } from "react";
 import {
   Outlet,
   createFileRoute,
@@ -18,6 +17,7 @@ import {
 } from "@/common/components/route-skeletons";
 import { ResourceLoadError } from "@/common/components/resource-load-error";
 import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
+import { useScrollToHashedCard } from "@/common/hooks/use-scroll-to-hashed-card";
 import {
   resourceLoadErrorVariant,
   resourceNotFound,
@@ -203,26 +203,6 @@ function DatabaseDetailLayout({
       </div>
     </DashboardLayout>
   );
-}
-
-/**
- * Scroll the card the URL's hash names into view once the page renders. The
- * router scrolls to a hash as it navigates, but not on a full load, and a
- * page's cards wait for the database read: Render's
- * `/high-availability-upgrade` landing on `plan#high-availability`, or an old
- * Overview anchor (w3/m641), would otherwise open at the top of the page.
- */
-function useScrollToHashedCard(pathname: string, ready: boolean) {
-  const hash = useRouterState({ select: (s) => s.location.hash });
-  const scrolledFor = useRef<string | null>(null);
-  useEffect(() => {
-    const key = `${pathname}#${hash}`;
-    if (!ready || !hash || scrolledFor.current === key) return;
-    const card = document.getElementById(hash);
-    if (!card) return;
-    scrolledFor.current = key;
-    card.scrollIntoView();
-  }, [pathname, hash, ready]);
 }
 
 /**

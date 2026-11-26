@@ -4,6 +4,10 @@ import type {
 } from "@/common/components/dashboard-layout/sidebar-nav-groups";
 import { filterNavGroups } from "@/common/components/dashboard-layout/dashboard-nav";
 import {
+  resourcePageNav,
+  resourcePageNavItem,
+} from "@/common/components/dashboard-layout/resource-page-nav";
+import {
   AppWindow,
   ChartNoAxesCombined,
   History,
@@ -31,18 +35,18 @@ export function databasePageRoute<P extends DatabasePagePath>(page: P) {
   return `/databases/$databaseId${page}` as const;
 }
 
-interface DatabaseNavItem extends SidebarNavItem {
-  /** Other paths under the database on which this entry is the open page. */
-  alsoActiveOn: readonly string[];
-}
-
 function navItem(
   page: DatabasePagePath,
   labelKey: SidebarNavItem["labelKey"],
   icon: SidebarNavItem["icon"],
   alsoActiveOn: readonly string[] = [],
-): DatabaseNavItem {
-  return { labelKey, to: databasePageRoute(page), icon, alsoActiveOn };
+) {
+  return resourcePageNavItem(
+    databasePageRoute(page),
+    labelKey,
+    icon,
+    alsoActiveOn,
+  );
 }
 
 // Info is also the bare URL's page, as on Render (`hrefPatterns: [/d/<id>]`).
@@ -87,27 +91,7 @@ export function databaseNavGroups({
   );
 }
 
-/** The path under `/databases/<id>` that `pathname` names: `""` for the bare URL. */
-function pagePath(pathname: string, databaseId: string): string | null {
-  const base = `/databases/${databaseId}`;
-  const path = pathname.replace(/\/+$/, "");
-  if (path === base) return "";
-  return path.startsWith(`${base}/`) ? path.slice(base.length) : null;
-}
-
-function itemFor(path: string): DatabaseNavItem | undefined {
-  for (const group of GROUPS) {
-    for (const item of group.items as DatabaseNavItem[]) {
-      if (
-        item.to === `/databases/$databaseId${path}` ||
-        item.alsoActiveOn.includes(path)
-      ) {
-        return item;
-      }
-    }
-  }
-  return undefined;
-}
+const NAV = resourcePageNav("/databases/$databaseId", GROUPS);
 
 /** Whether the sidebar entry `to` is the page `pathname` is on. */
 export function isDatabaseNavItemActive(
@@ -115,20 +99,16 @@ export function isDatabaseNavItemActive(
   databaseId: string,
   to: string,
 ): boolean {
-  const path = pagePath(pathname, databaseId);
-  return path !== null && itemFor(path)?.to === to;
+  return NAV.isActive(pathname, databaseId, to);
 }
 
 /**
- * The open page's sidebar label, which is also its heading, so the loading
- * frame and the loaded page carry the same words (on a phone the sidebar is in
- * a drawer, and nothing else on the page would say which page is open). Null
- * off the database's pages.
+ * The open page's sidebar label, which is also its heading. Null off the
+ * database's pages.
  */
 export function databasePageLabelKey(
   pathname: string,
   databaseId: string,
 ): SidebarNavItem["labelKey"] | null {
-  const path = pagePath(pathname, databaseId);
-  return path === null ? null : (itemFor(path)?.labelKey ?? null);
+  return NAV.labelKey(pathname, databaseId);
 }
