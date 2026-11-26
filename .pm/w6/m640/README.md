@@ -1,6 +1,6 @@
 # w6 · m640 — Background workers, cron jobs and pre-deploy jobs receive no private network traffic, as on Render
 
-**Worker:** worker6 **Goal:** the pods of background workers, cron runs, pre-deploy and one-off jobs refuse connections from the workspace's other services, as Render's private network does, while they still send private traffic and platform access (SSH, metrics, logs) keeps working. **Status:** blocked (t001–t004, t007 and t009 done; t010 waits for a production pin carrying t009's `201a068b86`)
+**Worker:** worker6 **Goal:** the pods of background workers, cron runs, pre-deploy and one-off jobs refuse connections from the workspace's other services, as Render's private network does, while they still send private traffic and platform access (SSH, metrics, logs) keeps working. **Status:** todo (t001–t007, t009 and t010 done; t008 waits for the production check after `deny-free-plan-private-ingress` retires)
 
 ## Tasks (in order)
 
@@ -11,9 +11,9 @@
 | t003 | [A Cilium policy refuses tenant traffic to those pods; ADR022 and ADR041 say so](done/t003.md) — **DONE** | 45m | t002 |
 | t004 | [Production check in bex-canary: a sibling cannot reach a worker or a cron run, and they still send](done/t004.md) — **DONE** | 45m | t003 |
 | t009 | [A cron run carries the workspace label, and a restored template its plan's network labels](done/t009.md) — **DONE** | 45m | t004 |
-| t010 | [Production check: a cron run cannot reach a worker or a free web service, and no free-plan pod lacks the send-only label](t010.md) | 30m | t009 |
-| t005 | [Render parity](t005.md) | 30m | t004, t010 |
-| t006 | [Simplify](t006.md) | 20m | t005 |
+| t010 | [Production check: a cron run cannot reach a worker or a free web service, and no free-plan pod lacks the send-only label](done/t010.md) — **DONE** | 30m | t009 |
+| t005 | [Render parity](done/t005.md) — **DONE** | 30m | t004, t010 |
+| t006 | [Simplify](done/t006.md) — **DONE** | 20m | t005 |
 | t007 | [Test coverage](done/t007.md) — **DONE** | 45m | t005 |
 | t008 | [Closeout](t008.md) | 10m | t006, t007 |
 
@@ -31,6 +31,12 @@
 - **Source:** verified evidence. The newest pin on `origin/main`, `043827a8e8` (`chore(deploy): pin platform images to 2bd6e1f415d3`), carries `8a53318532`: `git merge-base --is-ancestor 8a53318532 2bd6e1f415d3` holds.
 - **Next:** t004's production check in `bex-canary` (disposable fixtures), then t005, t006 and t008 as their tasks say. No user gate remains.
 
+## Unblock — 2026-11-26 (`/loopx w6`, second gate)
+
+- **Affected:** t010, then t005, t006 and t008.
+- **Source:** verified evidence. The newest pin on `origin/main`, `c767c1bbd9` (`chore(deploy): pin platform images to 9b91284a4a2e`), carries t009's `201a068b86`: `git merge-base --is-ancestor 201a068b86 9b91284a4a2e` holds.
+- **Next:** t010's production check in `bex-canary` (disposable fixtures), then t005, t006 and t008 as their tasks say. No user gate remains.
+
 ## Production check (t004, 2026-11-26)
 
 On pin `2bd6e1f415d3` (operator `bex-operator@sha256:f317e63a…`, the digest the pin names), in `bex-canary` with the QA user's session, a run-minted API key and a run-registered SSH key, all three removed afterwards. `deny-send-only-private-ingress` was `Valid=True` beside `deny-free-plan-private-ingress`. Fixtures, all disposable, `busybox:1.37` image services: Starter web `w6-m640-web` (`srv-dc3o8u4uikjc73dfgsq0`, httpd on 10000), Starter background worker `w6-m640-worker` (`srv-dc3o8v4uikjc73dfgss0`, httpd on 8080, a pre-deploy command that serves 8080 for 150 s, and a loop that sends every 30 s), Starter cron job `w6-m640-cron` (`srv-dc3o8v83teic73bl0ri0`, two manual runs that serve 8080 and send for 6 minutes), and a free Postgres `w6-m640-pg` (`dpg-dc3oaog3teic73bl0sq0`). The free web control was `hello-go`, bex's own fixture.
@@ -44,12 +50,22 @@ On pin `2bd6e1f415d3` (operator `bex-operator@sha256:f317e63a…`, the digest th
 - **Found: a restored template keeps a record's missing label.** `qa-20261123-w8-412-node` (disposable, a leftover free web service of another run) had a deploy canceled over its served release, so the operator restores that release's recorded template, verbatim, on every pass. Its record predates the send-only label: woken through its public URL at 01:14Z, it ran a pod with `app.bex.co/free-plan: "true"` and no `send-only`. The free-plan deny still refuses it, so `deny-free-plan-private-ingress` cannot retire yet (t006). t009 fixes the restore.
 - **Cleanup.** `DELETE` answered 204 for the three services and the Postgres, each `GET` then 404, and no object of theirs remained in the namespace by 01:25Z. The SSH key was deleted, the API key revoked and the QA session logged out.
 
+## Production check (t010, 2026-11-26)
+
+On pin `9b91284a4a2e` (`c767c1bbd9`; operator `bex-operator@sha256:3838967a…`, the digest the pin names, running since 07:04Z), in `bex-canary` with the QA user's session and a run-minted API key, both removed afterwards. `deny-send-only-private-ingress` and `deny-free-plan-private-ingress` were both `Valid=True`. Fixtures, all disposable, `busybox:1.37` image services: Starter web `w6-m640-web` (`srv-dc3u1kesfruc73ft1ql0`, internal host `w6-m640-web-ljrf`, httpd on 10000), Starter background worker `w6-m640-worker` (`srv-dc3u1khm1rus738gvibg`, httpd on 8080, `w6-m640-worker-13dh-discovery`) and Starter cron job `w6-m640-cron` (`srv-dc3u21msfruc73ft1qn0`, one manual run at 07:37Z that served 8080 and probed three times a minute and a half apart). The free control was `hello-go`, bex's own fixture.
+
+- **Labels.** The CronJob's template and the run's pod carried `app.bex.co/workspace: tea-daif693dqjvc73e7as3g` and `app.bex.co/private-network: send-only` (t004's run carried `send-only` but no workspace label, so the denies did not count it as a tenant source). The worker's pod carried both; the paid web pod carried no `send-only`.
+- **Refused, from the cron run's own command, in each of the three rounds.** `nc -z -w 5` and `wget -T 5` timed out after 5 s to the worker's pod IP on 8080, to `w6-m640-worker-13dh-discovery:8080` (the name resolved: `wget` timed out on the download, not the address), and to `hello-go` by pod IP and by `hello-go:10000`. Both targets served meanwhile: the worker answered `worker-8080` on its own loopback, and `hello-go.onbex.co` answered 200.
+- **It still sends.** In each round the run reached `w6-m640-web-ljrf:10000` at once (`nc` open, `wget` returned `web-10000`): a paid web service still receives (w9/m57).
+- **No free-plan pod or template lacks the send-only label.** Across production at 07:30Z, 4 of 4 running `app.bex.co/free-plan: "true"` pods (`hello-go`, a disposable QA web service, and two in a customer workspace), 6 of 6 Deployment templates and 0 CronJob templates with the free-plan label all carried `send-only`. `qa-20261123-w8-412-node` (disposable, the restored-template case t004 found) was still there, hibernated: its restored template now carried `send-only`, and woken through its public URL at 07:31Z (200 after 42 s) it ran a pod with `app.bex.co/free-plan: "true"` and `send-only`. The only pod in a `tea-*` namespace without `app.bex.co/workspace` was an ACME HTTP-01 solver in bex's own workspace (cert-manager's, not a tenant workload).
+- **Cleanup.** The run was cancelled (204), `DELETE` answered 204 for the three services and each `GET` then 404, and no object of theirs remained in the namespace by 07:43:55Z. The API key was revoked and the QA session logged out.
+
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm one aspect of render parity to w6` 2026-11-25 (service networking: the private network and WebSockets, at `fe4d53addd`), item 2, filed by `/pmx them to w6`. `allow-same-namespace` (`sameNamespaceNetworkPolicy`, `lego/backend/internal/store/namespaces.go`) lets every pod of an environment reach every other on any port, and only free-plan pods are refused (`deny-free-plan-private-ingress`, w8/m130). A worker also has a reachable headless `<slug>-discovery` Service (`renderenv.HasDiscoveryService`, w5/m148, `3cc1d7bd70`). bex's own code states the rule: `ReceivesPrivateTraffic` in `lego/types/v1alpha1/app_types.go`, and `build_datastore_reach.go`'s "Workers, cron jobs, static sites and free web services receive none, as on Render". But only build reach and Blueprint checks use it, not the network.
 - **Render:** background workers, cron jobs and workflows "can _send_ private network requests, but they can't _receive_ them" (render.com/docs/private-network, read 2026-11-25); background workers "don't receive any incoming network traffic" (render.com/docs/background-workers).
 - **Recommendation, not a user decision:** keep a worker's `RENDER_DISCOVERY_SERVICE` and `<slug>-discovery` name. render.com/docs/environment-variables describes the variable as the way to discover all running instances of a scaled service, and the private-network page names only web and private services as receivers. Under ADR008 Render parity first the network follows the private-network page; whether Render sets the variable on a worker at all is unverified and stays open in ADR018.
-- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)); tenant isolation ([ADR022](../../../../docs/ADR022-tenant-isolation.md)).
+- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)); tenant isolation ([ADR022](../../../docs/ADR022-tenant-isolation.md)).
 - **Expected outcome:** a worker's debug, metrics or admin port is no longer open to the rest of its workspace, and bex's network does what its code and ADRs say.
 - **Why now:** the rule is written in bex's code but not enforced in the network, and ADR018 has no row for it.
 - **Render parity:** included: tenant-visible network behavior.

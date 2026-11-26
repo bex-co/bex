@@ -39,7 +39,10 @@ import (
 // send private network requests, but they can't receive them"
 // (render.com/docs/private-network). Every pod that must not receive carries
 // the label the platform's deny-send-only-private-ingress policy selects; a
-// paid web or private service's pods carry none.
+// paid web or private service's pods carry none. A free web service's refusal
+// rests on these tests too (w8/m130): the free-plan ingress deny retired in
+// favor of this one (w6/m640 t006), so a free-plan pod without the send-only
+// label would receive private traffic.
 
 func sendOnly(labels map[string]string) bool {
 	return labels[execution.LabelPrivateNetwork] == execution.PrivateNetworkSendOnly
@@ -118,8 +121,8 @@ func TestPrivateNetworkLabelOnCronAndPreDeployPods(t *testing.T) {
 }
 
 // A cron run is a tenant source like a service's pod: it carries its
-// workspace label, by which the send-only and free-plan ingress denies know a
-// tenant source, so it cannot reach a background worker or a free web service.
+// workspace label, by which the send-only ingress deny knows a tenant source,
+// so it cannot reach a background worker or a free web service.
 // Without it, a manual run on production opened a worker's port by its pod IP
 // and its <slug>-discovery name, and a free web service's internal address
 // (w6/m640 t004, 2026-11-26). Manual runs take the CronJob's template.

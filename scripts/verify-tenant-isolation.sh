@@ -358,8 +358,9 @@ log "creating test Apps in their own workspace namespaces..."
 
 # App A — workspace A: the same-workspace ALLOW target, so a paid private
 # service. An App with no tier is Free, and the operator labels Free pods
-# app.bex.co/free-plan, which deny-free-plan-private-ingress blocks from
-# every workspace pod (w8/m130) — that made this probe red from 2026-10-27.
+# app.bex.co/free-plan and app.bex.co/private-network=send-only, which
+# deny-send-only-private-ingress blocks from every workspace pod (w8/m130,
+# w6/m640) — that made this probe red from 2026-10-27.
 kubectl apply -n "$WS_A" -f - <<EOF
 apiVersion: app.bex.co/v1alpha1
 kind: App

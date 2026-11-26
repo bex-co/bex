@@ -131,4 +131,5 @@ bex has no Render account (w10/blocked/002), so these — cells rest on the page
 - `RENDER_INSTANCE_ID` at build: the page says its variables are available at build and runtime unless noted, and it notes nothing for this one. A bex build has no instance and leaves it unset.
 - `PORT` at build, and on workers and cron jobs: the page documents `PORT` as a web service's port. bex sets it on every running service and on no build.
 - `RENDER_DISCOVERY_SERVICE` on a cron job or static site, and `RENDER_CPU_COUNT` in a static build.
+- `RENDER_DISCOVERY_SERVICE` and a resolvable `<name>-discovery` hostname on a background worker. The environment-variables page lists the variable for a scaled service without naming types, while the private-network page gives a discovery hostname to web and private services only. bex sets both on a worker, and its connections are refused (w6/m640, [ADR018](../ADR018/services-lifecycle.md)'s private-network row).
 - Whether "empty" means set to an empty string or unset.

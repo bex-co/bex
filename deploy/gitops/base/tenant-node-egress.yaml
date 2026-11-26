@@ -145,45 +145,20 @@ spec:
             - port: "587"
               protocol: TCP
 ---
-# Free-plan private-network ingress deny (w8/m130; ADR022 §Free-plan private
-# ingress, ADR041). Render's Free plan does not support "Receiving private
-# network traffic" (render.com/docs/free): a free web service is reachable only
-# through its public onbex.co URL and custom domains. The operator labels every
-# pod of a free-plan App app.bex.co/free-plan=true and drops the label when the
-# App moves to a paid plan (w8/m127), so the deny follows plan changes with no
-# manual restart. The deny names every workspace-labeled pod in any namespace:
-# Traefik, the activator, kubelet probes (`host`) and platform scrapers carry no
-# app.bex.co/workspace label and stay allowed, so the public route, the
-# free-tier wake and health checks are untouched. Deny precedence beats the
-# per-namespace same-workspace allow. enableDefaultDeny.ingress is false: this
-# policy only subtracts tenant sources and must never narrow anything else.
-apiVersion: cilium.io/v2
-kind: CiliumClusterwideNetworkPolicy
-metadata:
-  name: deny-free-plan-private-ingress
-spec:
-  endpointSelector:
-    matchLabels:
-      app.bex.co/free-plan: "true"
-  enableDefaultDeny:
-    ingress: false
-  ingressDeny:
-    - fromEndpoints:
-        - matchExpressions:
-            - key: app.bex.co/workspace
-              operator: Exists
----
 # Send-only private-network ingress deny (w6/m640; ADR022 §Send-only pods,
 # ADR041 D5). On Render, background workers, cron jobs and free instances "can
 # send private network requests, but they can't receive them"
-# (render.com/docs/private-network). The operator labels
+# (render.com/docs/private-network), and the Free plan does not support
+# "Receiving private network traffic" (render.com/docs/free). The operator labels
 # app.bex.co/private-network=send-only every pod of an App that receives no
 # private traffic (AppSpec.ReceivesPrivateTraffic: a background worker, a cron
 # run, a free web or private service) and every pre-deploy Job pod, and drops
-# the label when a free service moves to a paid plan. The deny names every
-# workspace-labeled pod in any namespace, so a sibling service, a build or a
-# cron run cannot open a connection to such a pod on any port, by its pod IP
-# or its <slug>-discovery name. Platform sources carry no app.bex.co/workspace
+# the label when a free service moves to a paid plan. Every free-plan pod
+# carries it, so this deny also refuses private traffic to free web services
+# (w8/m130), in place of the free-plan ingress deny it retired (w6/m640 t006).
+# The deny names every workspace-labeled pod in any namespace, so a sibling
+# service, a build or a cron run cannot open a connection to such a pod on any
+# port, by its pod IP or its <slug>-discovery name. Platform sources carry no app.bex.co/workspace
 # label and stay allowed: kubelet probes (`host`), Traefik, the activator, the
 # operator's port reads, Prometheus. SSH, logs and metrics do not reach the pod
 # over the pod network at all (pods/exec, node log files, the kubelet). Replies

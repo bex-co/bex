@@ -1198,7 +1198,7 @@ func (s AppSpec) HTTPHealthCheckPath() string {
 // they can't receive them" (render.com/docs/private-network). The operator
 // labels the pods of every App this reports false for send-only, and the
 // platform's deny-send-only-private-ingress policy drops tenant traffic to them
-// (w6/m640; free-plan pods also by deny-free-plan-private-ingress, w8/m130).
+// (w6/m640), free-plan pods included (w8/m130).
 // An empty tier is the free tier.
 func (s AppSpec) ReceivesPrivateTraffic() bool {
 	return s.InternallyAddressable() && s.Tier != "" && s.Tier != "free"

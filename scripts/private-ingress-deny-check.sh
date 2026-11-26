@@ -10,7 +10,9 @@
 # private services, which receive it on Render (w9/m57). A wider source
 # (an entity, a CIDR, an empty endpoint selector) would refuse the platform's
 # own probes, edge and port reads. A narrower one (a namespace or extra match)
-# would let a sibling through.
+# would let a sibling through. A free web service's refusal rests on it too
+# (w8/m130): every free-plan pod carries the send-only label, and the
+# free-plan ingress deny that once refused it retired (w6/m640 t006).
 #
 # Usage: bash scripts/private-ingress-deny-check.sh [manifest]
 # (default deploy/gitops/base/tenant-node-egress.yaml). Run by

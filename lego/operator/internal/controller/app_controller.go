@@ -5544,7 +5544,7 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling CronJob for "+image)
 	}
 	labels := map[string]string{labelApp: app.Name, labelAppID: appIDOrName(app)}
-	// The private-network denies know a tenant source by its workspace label,
+	// The send-only ingress deny knows a tenant source by its workspace label,
 	// as for Deployment pods (appPodLabels): without it a cron run could reach
 	// a background worker or a free web service, which on Render receive no
 	// private traffic (w6/m640).
