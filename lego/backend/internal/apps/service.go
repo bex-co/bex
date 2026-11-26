@@ -6301,18 +6301,21 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 	} else if err := s.requireBandwidthAvailable(ctx, a); err != nil {
 		return AppView{}, err
 	}
-	// Already there: a suspend of a suspended service and a resume of a
-	// running one change nothing, so they write nothing, open no deploy and
-	// record nothing — the projection disables both (PrecondSuspended /
-	// PrecondNotSuspended), and the sibling Postgres and KeyValue verbs
-	// answer the current state the same way. In particular a resume must not
-	// open a service_resumed deploy for a service that never stopped.
-	if a.Spec.Suspended == suspended {
-		return s.view(a), nil
-	}
 	verb := core.AuditVerbResume
 	if suspended {
 		verb = core.AuditVerbSuspend
+	}
+	// Already there: a suspend of a suspended service and a resume of a
+	// running one change nothing, so they write nothing, open no deploy and
+	// log no suspension event — the projection disables both
+	// (PrecondSuspended / PrecondNotSuspended), and the sibling Postgres and
+	// KeyValue verbs answer the current state the same way. In particular a
+	// resume must not open a service_resumed deploy for a service that never
+	// stopped. The verb still records its audit row: the caller acted, and an
+	// unchanged re-save records like every other intent verb (core audit).
+	if a.Spec.Suspended == suspended {
+		s.RecordAppConfigChanged(ctx, a, verb)
+		return s.view(a), nil
 	}
 	writeRow := func(ctx context.Context, id string) error { return s.Store.SetAppSuspended(ctx, id, suspended) }
 	mutate := func(a *appv1alpha1.App) {
