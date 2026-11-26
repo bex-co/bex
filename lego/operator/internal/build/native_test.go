@@ -1023,13 +1023,20 @@ func TestNativePnpmPinKeysTheCache(t *testing.T) {
 // base (no node on PATH), the authored build runs bun and records the
 // requested version from the env bundle, and the started image runs bun again:
 // Bun 1.3.4 itself, the exact release Render installs (w8/315), and 1.1.38,
-// which no reviewed line carries (w8/372). Opt-in: needs Docker and pulls the
-// pinned toolchain and Bun images.
+// which no reviewed line carries (w8/372). Each reviewed line's patch builds
+// on that line's pinned image with no swap, so a line whose version field
+// disagrees with its image fails here (w3/m635). Opt-in: needs Docker and
+// pulls the pinned toolchain and Bun images.
 func TestNativeImageRunsAnOptedInBun(t *testing.T) {
 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
 		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
 	}
-	for _, c := range []struct{ runtime, bun string }{{"node", "1.3.4"}, {"python", "1.3.4"}, {"node", "1.1.38"}} {
+	type bunCase struct{ runtime, bun string }
+	cases := append(make([]bunCase, 0, 3+len(nativeBun.lines)), bunCase{"node", "1.3.4"}, bunCase{"python", "1.3.4"}, bunCase{"node", "1.1.38"})
+	for _, l := range nativeBun.lines {
+		cases = append(cases, bunCase{"node", l.version})
+	}
+	for _, c := range cases {
 		runtime := c.runtime
 		t.Run(runtime+"/"+c.bun, func(t *testing.T) {
 			o := nativeOptions()

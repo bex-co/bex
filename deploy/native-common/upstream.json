@@ -1,9 +1,9 @@
 {
-  "ref": "buildpack-deps:bookworm@sha256:f53cd4c58cdb96a467b98696cd510a949ef4ccd7d23e07b75107de754773007a",
-  "resolved_at": "2026-11-16T11:10:46+00:00",
+  "ref": "buildpack-deps:bookworm@sha256:c82cc01646f8d244ddc4f095488f261cef7634d445dc5829fc67215bbec98ab8",
+  "resolved_at": "2026-11-26T12:50:00+00:00",
   "platforms": {
-    "amd64": "sha256:cba7fa3c133e3110d747518182a10a8f969691e6788abea5f454ce7f83de1542",
-    "arm64": "sha256:f719cedddb6ca673716cb4564b9298bbaa7fea8b4ae8a78e4ead2b2299ed6c62"
+    "amd64": "sha256:b765161432055d7be460cd148fd0b04e2ccafde49235e0e81bf95abc08295f1b",
+    "arm64": "sha256:5b4a005180735ad29d155fd33e3472dab0dde183d612bde8ec5ebad4b294a618"
   },
   "scope": "Anonymous upstream manifest metadata only. This is a factory input, not a published common-image catalog pin or runtime/ABI acceptance."
 }

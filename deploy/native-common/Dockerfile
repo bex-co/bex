@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1.7
 # One Bookworm system/tool layer. Selected primary runtimes are installed above
 # this image by the native resolver; this factory installs no primary runtime.
-ARG BASE_IMAGE=buildpack-deps:bookworm@sha256:f53cd4c58cdb96a467b98696cd510a949ef4ccd7d23e07b75107de754773007a
+ARG BASE_IMAGE=buildpack-deps:bookworm@sha256:c82cc01646f8d244ddc4f095488f261cef7634d445dc5829fc67215bbec98ab8
 
-FROM node:24-bookworm@sha256:9d266751ca3d7fdbe651c878ffd5ad0a42fed49a18c283509267c97f025b7496 AS node-tools
+FROM node:24-bookworm@sha256:49f7adaf9f1574bc45c20ea317139b39a59d7e758d0e93745e112fd85cb42623 AS node-tools
 WORKDIR /opt/bex/native-node-tools
 COPY native-base/package.json native-base/package-lock.json ./
 RUN npm ci --ignore-scripts --no-audit --no-fund \

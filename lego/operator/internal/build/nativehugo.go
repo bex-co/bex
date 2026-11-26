@@ -33,7 +33,7 @@ package build
 // registry their toolchain bases already come from.
 const (
 	nativeHugoVersion = "0.111.3"
-	nativeHugoImage   = "ghcr.io/bex-co/bex-hugo:" + nativeHugoVersion + "@sha256:61d72075abce6f36b4d4c24203dca249f352f59afd3848d44e119d8d0880e5d8"
+	nativeHugoImage   = "ghcr.io/bex-co/bex-hugo:" + nativeHugoVersion + "@sha256:86115df682de381ab8d892e0c2833d1c581d6ce88023fd0d94918c0c294f7385"
 )
 
 // nativeStaticTools returns, for a native static build, the lines that put

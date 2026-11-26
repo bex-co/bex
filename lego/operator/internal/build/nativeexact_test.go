@@ -322,9 +322,11 @@ func TestDockerHubResolver(t *testing.T) {
 // w8/198, w9/138: a Ruby service created since a dated step with no version
 // signal builds on Render's default patch for that date, and the log names it;
 // an older or unknown-age service, and any explicit signal, keep the line's
-// reviewed patch.
+// reviewed patch. Whether a step is that reviewed patch (no swap) or behind it
+// (its own official image) is read from the table, so refreshing the 3.4 line
+// needs no edit here.
 func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
-	exactEnv := map[string][]string{"3.4.4": {"RUBY_VERSION=3.4.4"}, "3.4.13": {"RUBY_VERSION=3.4.13"}}
+	exactEnv := map[string][]string{"3.4.4": {"RUBY_VERSION=3.4.4"}, "3.4.12": {"RUBY_VERSION=3.4.12"}, "3.4.13": {"RUBY_VERSION=3.4.13"}}
 	fake := &fakeExact{digests: map[string]string{}, envByImage: map[string]fakeExactMetadata{}}
 	for version, env := range exactEnv {
 		fake.digests["ruby:"+version+"-bookworm"] = exactDigest
@@ -347,28 +349,26 @@ func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
 		}
 		return choices[0]
 	}
+	wantDefault := func(name string, c NativeChoice, version string) {
+		t.Helper()
+		line, image := version, "ruby:"+version+"-bookworm@"+exactDigest
+		if _, ok := rubyReviewedDefault(version); ok {
+			line, image = reviewed.line, reviewed.image
+		}
+		if c.Line != line || c.Image != image || shown(c.Narration()) != "==> Using Ruby version "+version+" (default)"+rubyDocs {
+			t.Errorf("%s must build on %s (reviewed %s): %+v narration %q", name, version, reviewed.version, c, shown(c.Narration()))
+		}
+	}
 
-	got := run(rubyDefaultCutoff.Add(time.Hour), nil)
-	if got.Line != "3.4.4" || !strings.Contains(got.Image, "ruby:3.4.4-bookworm@"+exactDigest) || shown(got.Narration()) != "==> Using Ruby version 3.4.4 (default)"+rubyDocs {
-		t.Errorf("new service: %+v narration %q", got, shown(got.Narration()))
-	}
-	// w4/620: Render's default moved to 3.4.12, the line's reviewed patch, for
-	// services created since 2026-11-03; one created before keeps 3.4.4.
-	if c := run(toolchains.RenderDefaults20261103.Add(time.Hour), nil); c.Line != "3.4" || c.Image != reviewed.image || reviewed.version != "3.4.12" {
-		t.Errorf("service created after 2026-11-03 must build on the reviewed 3.4.12: %+v (reviewed %s)", c, reviewed.version)
-	}
-	if c := run(toolchains.RenderDefaults20261103.Add(-time.Hour), nil); c.Line != "3.4.4" {
-		t.Errorf("service created just before 2026-11-03 must keep 3.4.4: %+v", c)
-	}
+	wantDefault("new service", run(rubyDefaultCutoff.Add(time.Hour), nil), "3.4.4")
+	// w4/620: Render's default moved to 3.4.12 for services created since
+	// 2026-11-03; one created before keeps 3.4.4.
+	wantDefault("service created after 2026-11-03", run(toolchains.RenderDefaults20261103.Add(time.Hour), nil), "3.4.12")
+	wantDefault("service created just before 2026-11-03", run(toolchains.RenderDefaults20261103.Add(-time.Hour), nil), "3.4.4")
 	// w9/138: Render's default moved to 3.4.13 for services created since
-	// 2026-11-19, past the line's reviewed 3.4.12, so the official 3.4.13 image
-	// stands in; one created the hour before keeps the reviewed 3.4.12.
-	if c := run(renderRubyDefault20261119.Add(time.Hour), nil); c.Line != "3.4.13" || c.Image != "ruby:3.4.13-bookworm@"+exactDigest || shown(c.Narration()) != "==> Using Ruby version 3.4.13 (default)"+rubyDocs {
-		t.Errorf("service created after 2026-11-19 must build on 3.4.13: %+v narration %q", c, shown(c.Narration()))
-	}
-	if c := run(renderRubyDefault20261119.Add(-time.Hour), nil); c.Line != "3.4" || c.Image != reviewed.image || shown(c.Narration()) != "==> Using Ruby version 3.4.12 (default)"+rubyDocs {
-		t.Errorf("service created just before 2026-11-19 must keep the reviewed 3.4.12: %+v narration %q", c, shown(c.Narration()))
-	}
+	// 2026-11-19; one created the hour before keeps 3.4.12.
+	wantDefault("service created after 2026-11-19", run(renderRubyDefault20261119.Add(time.Hour), nil), "3.4.13")
+	wantDefault("service created just before 2026-11-19", run(renderRubyDefault20261119.Add(-time.Hour), nil), "3.4.12")
 	for name, c := range map[string]NativeChoice{
 		"older service":                    run(rubyDefaultCutoff.Add(-time.Hour), nil),
 		"unknown age":                      run(time.Time{}, nil),
@@ -380,8 +380,14 @@ func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
 		}
 	}
 
+	// A step behind the reviewed patch whose tag is missing falls back to the
+	// reviewed patch and says so; 3.4.4 always is one.
 	missing := &fakeExact{digests: map[string]string{}}
-	for created, version := range map[time.Time]string{rubyDefaultCutoff.Add(time.Hour): "3.4.4", renderRubyDefault20261119.Add(time.Hour): "3.4.13"} {
+	steps := map[time.Time]string{rubyDefaultCutoff.Add(time.Hour): "3.4.4", toolchains.RenderDefaults20261103.Add(time.Hour): "3.4.12", renderRubyDefault20261119.Add(time.Hour): "3.4.13"}
+	for created, version := range steps {
+		if _, ok := rubyReviewedDefault(version); ok {
+			continue
+		}
 		o := nativeOptions()
 		o.Runtime = "ruby"
 		bundle, dockerfile, src := writeResolveFixture(t, o, nil, nil)
@@ -803,9 +809,10 @@ func TestRubyReleaseOlderThanBookwormComesFromBullseye(t *testing.T) {
 	}
 }
 
-// w9/138: refreshing the 3.4 line to 3.4.13 leaves a Ruby service created
-// from 2026-11-03 until 2026-11-19 on exactly 3.4.12, as Render's table does,
-// and one created since 2026-11-19 on the line's patch with no swap.
+// w9/138, w3/m635: with the 3.4 line on 3.4.13 (refreshed 2026-11-26), a Ruby
+// service created from 2026-11-03 until 2026-11-19 stays on exactly 3.4.12, as
+// Render's table does, and one created since 2026-11-19 builds on the line's
+// patch with no swap.
 func TestRubyDatedDefaultsSurviveALineRefreshToTheirNewestStep(t *testing.T) {
 	withLineVersion(t, nativeRubyRuntime, "3.4", "3.4.13")
 	for created, want := range map[time.Time]string{

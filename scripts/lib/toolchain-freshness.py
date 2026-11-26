@@ -258,7 +258,10 @@ class NotFound(RuntimeError):
 
 
 def http_digest(url: str, headers: dict[str, str]) -> str:
-    req = urllib.request.Request(url, headers=headers, method="GET")
+    # HEAD answers the same Docker-Content-Digest without the manifest, and
+    # Docker Hub does not count it against the anonymous pull limit, which
+    # line_version_mismatches' reads spend instead.
+    req = urllib.request.Request(url, headers=headers, method="HEAD")
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             digest = resp.headers.get("Docker-Content-Digest", "")
@@ -334,6 +337,103 @@ def registry_headers(registry: str, repo: str) -> dict[str, str]:
             raise RuntimeError(f"no anonymous token for {registry}")
         headers["Authorization"] = f"Bearer {token}"
     return headers
+
+
+def platform_configs(upstream: str, digest: str, platforms: tuple[str, ...]) -> dict[str, dict]:
+    """The image config of each of platforms ("linux/amd64") under one index digest."""
+    registry, repo, _ = parse_upstream(upstream)
+    base = f"https://{REGISTRY_API.get(registry, registry)}/v2/{repo}"
+    headers = registry_headers(registry, repo)
+    configs: dict[str, dict] = {}
+    for entry in http_json(f"{base}/manifests/{digest}", headers).get("manifests") or []:
+        platform = entry.get("platform") or {}
+        key = f"{platform.get('os')}/{platform.get('architecture')}"
+        if key not in platforms or key in configs:
+            continue
+        config = http_json(f"{base}/manifests/{entry['digest']}", headers)["config"]["digest"]
+        configs[key] = http_json(f"{base}/blobs/{config}", headers).get("config") or {}
+    return configs
+
+
+def config_env(config: dict, name: str) -> str | None:
+    return next((env.split("=", 1)[1] for env in config.get("Env") or [] if env.startswith(name + "=")), None)
+
+
+# A reviewed native line names the patch its image carries (`version:` in
+# native.go, `Version:` in lego/types/toolchains/python.go). Version selection
+# matches requests against it and the build log names it, so it must move with
+# the digest. resolve reads the patch from each pinned image's linux/amd64
+# config, where the upstream records it, and reports a line whose field says
+# otherwise (w3/m635).
+LINE_VERSION_SITES = ("lego/operator/internal/build/native.go", "lego/types/toolchains/python.go")
+LINE_VERSION_RE = re.compile(
+    r'\{[Ll]ine: "[^"]+", [Vv]ersion: "(?P<version>[^"]+)",(?: otp: "[^"]+",)? '
+    r'[Ii]mage: "[^"@]+@(?P<digest>sha256:[a-f0-9]{64})"'
+)
+# Where each upstream repository's image config records its patch: an Env
+# variable or a label. Elixir writes its own as v1.18.6.
+IMAGE_VERSION_KEYS = {
+    "library/elixir": ("Env", "ELIXIR_VERSION"),
+    "library/node": ("Env", "NODE_VERSION"),
+    "library/python": ("Env", "PYTHON_VERSION"),
+    "library/ruby": ("Env", "RUBY_VERSION"),
+    "library/rust": ("Env", "RUST_VERSION"),
+    "oven/bun": ("Labels", "org.opencontainers.image.version"),
+}
+
+
+def pinned_line_versions() -> dict[str, str]:
+    """digest → the version field of every reviewed line that names one."""
+    root = repo_root()
+    versions: dict[str, str] = {}
+    for rel in LINE_VERSION_SITES:
+        target = root / rel
+        if target.is_file():
+            for match in LINE_VERSION_RE.finditer(target.read_text(encoding="utf-8")):
+                versions[match.group("digest")] = match.group("version")
+    return versions
+
+
+def image_version(upstream: str, digest: str) -> str | None:
+    """The patch an image's linux/amd64 config records, or None if unrecorded.
+
+    FRESHNESS_IMAGE_VERSIONS (tests) maps a digest to that patch; with the
+    FRESHNESS_DIGESTS fixture alone nothing is read from a registry.
+    """
+    repo = parse_upstream(upstream)[1]
+    if repo not in IMAGE_VERSION_KEYS:
+        return None
+    fixture = os.environ.get("FRESHNESS_IMAGE_VERSIONS")
+    if fixture or os.environ.get("FRESHNESS_DIGESTS"):
+        try:
+            value = (json.loads(Path(fixture).read_text(encoding="utf-8")) if fixture else {}).get(digest)
+        except (OSError, json.JSONDecodeError, AttributeError) as err:
+            fail(f"FRESHNESS_IMAGE_VERSIONS is not a readable JSON object: {err}")
+    else:
+        config = platform_configs(upstream, digest, ("linux/amd64",)).get("linux/amd64", {})
+        section, name = IMAGE_VERSION_KEYS[repo]
+        value = config_env(config, name) if section == "Env" else (config.get("Labels") or {}).get(name)
+    return value.removeprefix("v") if isinstance(value, str) else None
+
+
+def line_version_mismatches(images: list[dict]) -> dict[str, dict[str, str]]:
+    """Inventory id → {field, image} for each line whose version field is not its image's patch."""
+    fields = pinned_line_versions()
+    mismatches = {}
+    for image in images:
+        digest = digest_of(image["committed"])
+        if digest not in fields:
+            continue
+        # Advisory, like LINE_SOURCES: an unreadable config must not fail the
+        # digest check this resolve exists for.
+        try:
+            carried = image_version(image["upstream"], digest)
+        except (RuntimeError, KeyError, TypeError, AttributeError) as err:
+            print(f"warning: {image['id']}: image version unavailable: {err}", file=sys.stderr)
+            continue
+        if carried and carried != fields[digest]:
+            mismatches[image["id"]] = {"field": fields[digest], "image": carried}
+    return mismatches
 
 
 # LINE_SOURCES are the native toolchains whose pinned LINE (not just digest)
@@ -447,6 +547,7 @@ def missing_release_lines(images: list[dict]) -> dict[str, str]:
 def resolve(path: Path) -> dict:
     inventory = validate(path)
     missing = missing_release_lines(inventory["images"])
+    versions = line_version_mismatches(inventory["images"])
     images = []
     for image in sorted(inventory["images"], key=lambda item: item["id"]):
         try:
@@ -478,6 +579,9 @@ def resolve(path: Path) -> dict:
         if image["id"] in missing:
             entry["changed"] = True
             entry["missing_line"] = missing[image["id"]]
+        if image["id"] in versions:
+            entry["changed"] = True
+            entry["version_mismatch"] = versions[image["id"]]
         images.append(entry)
     return {"images": images, "schema": SCHEMA}
 
@@ -537,20 +641,8 @@ def image_go_versions(upstream: str, digest: str) -> dict[str, str]:
         except (OSError, json.JSONDecodeError, AttributeError) as err:
             fail(f"FRESHNESS_GO_VERSIONS is not a readable JSON object: {err}")
         return {platform: value for platform in GO_PLATFORMS} if isinstance(value, str) else dict(value)
-    registry, repo, _ = parse_upstream(upstream)
-    base = f"https://{REGISTRY_API.get(registry, registry)}/v2/{repo}"
-    headers = registry_headers(registry, repo)
-    versions: dict[str, str] = {}
-    for entry in http_json(f"{base}/manifests/{digest}", headers).get("manifests") or []:
-        platform = entry.get("platform") or {}
-        key = f"{platform.get('os')}/{platform.get('architecture')}"
-        if key not in GO_PLATFORMS or key in versions:
-            continue
-        config = http_json(f"{base}/manifests/{entry['digest']}", headers)["config"]["digest"]
-        for env in (http_json(f"{base}/blobs/{config}", headers).get("config") or {}).get("Env") or []:
-            if env.startswith("GOLANG_VERSION="):
-                versions[key] = env.split("=", 1)[1]
-    return versions
+    configs = platform_configs(upstream, digest, GO_PLATFORMS)
+    return {key: version for key, config in configs.items() if (version := config_env(config, "GOLANG_VERSION"))}
 
 
 def inventory_entry(inventory: dict, ident: str) -> dict:
@@ -687,6 +779,13 @@ def issue_body(report: dict) -> str:
                 f"- **released line missing: `{image['missing_line']}`**: add it as a new reviewed"
                 " line beside this one (Render builds any released version); a service asking"
                 " for it fails at version selection until then"
+            )
+        if image.get("version_mismatch"):
+            mismatch = image["version_mismatch"]
+            section.append(
+                f"- **version field `{mismatch['field']}`, but the committed image carries"
+                f" `{mismatch['image']}`**: the build log and version selection name the field,"
+                " so move it with the digest"
             )
         section.extend(["- files:", files, ""])
         lines.extend(section)

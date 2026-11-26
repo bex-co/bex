@@ -186,10 +186,10 @@ var nativeToolchains = map[string]nativeToolchain{
 	// Render's minimum 1.12.0 on, installs from hexpm's build on a compatible
 	// Erlang/OTP (elixirOTP, w8/373).
 	nativeElixirRuntime: {label: "Elixir", defaultLine: "1.18", anyRelease: nativeElixirAnyRelease, lines: []nativeLine{
-		{line: "1.17", version: "1.17.3", otp: "27", image: "elixir:1.17@sha256:08879d1eff5207a26ecab32ac7a7c5df610fce532b791eccbae7288a4e4b27b3", debian: "bookworm"},
-		{line: "1.18", version: "1.18.6", otp: "28", image: "elixir:1.18@sha256:16382709b3765b946748714575d8748ea7dcb7cb9a4849730bcdc56533503691", debian: "trixie"},
-		{line: "1.19", version: "1.19.7", otp: "28", image: "elixir:1.19@sha256:7e27df3e4a684163e4a18e618eede53badb70e97e0c92a1845ab22e2e1d96da2", debian: "trixie"},
-		{line: "1.20", version: "1.20.5", otp: "29", image: "elixir:1.20@sha256:1b850191faeaae55678b782cd8b34d391f793672f3175b1956d024f794ca321b", debian: "trixie"},
+		{line: "1.17", version: "1.17.3", otp: "27", image: "elixir:1.17@sha256:0dcd5012ce7449eef13e92ae5dcd67094bedd71857b825d9a6076e9f51633b81", debian: "bookworm"},
+		{line: "1.18", version: "1.18.6", otp: "28", image: "elixir:1.18@sha256:6aff289bc053eadc3dfd50e44d3fb4030af9100af748c09e9461dd2a177cb5aa", debian: "trixie"},
+		{line: "1.19", version: "1.19.7", otp: "28", image: "elixir:1.19@sha256:c30251c267e35a7252873a0573d99e401b214c34315c782a833d1c4c7c9f7dec", debian: "trixie"},
+		{line: "1.20", version: "1.20.5", otp: "29", image: "elixir:1.20@sha256:028a755eef5692f4f64b06c68104b7a326e0f610646e9d8faa8d3a651f1060f3", debian: "trixie"},
 	}},
 	// Render offers no Go version selection for native services; neither does
 	// bex. Render builds with Go's latest stable release, so this line tracks
@@ -199,7 +199,7 @@ var nativeToolchains = map[string]nativeToolchain{
 	// Render does within a day (w4/719). It rewrites this entry, so keep its
 	// shape: one line, the default, tagged golang:<line>-bookworm.
 	"go": {label: "Go", defaultLine: "1.27", lines: []nativeLine{
-		{line: "1.27", image: "golang:1.27-bookworm@sha256:4fa7c968ba93f1635670522dbb01a2c78150443e1385746924566079f36570ea"},
+		{line: "1.27", image: "golang:1.27-bookworm@sha256:ce59b41415e2524ae99926fe1f37ce48ba8c194dcbd2a56a65436cdcefa2bd34"},
 	}},
 	// Any other Node release installs from its own official image, as Render
 	// installs whatever node-version-alias resolves (w8/398, w8/401).
@@ -208,9 +208,9 @@ var nativeToolchains = map[string]nativeToolchain{
 		{line: "16", version: "16.20.2", image: "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6"},
 		{line: "18", version: "18.20.8", image: "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783"},
 		{line: "20", version: "20.20.2", image: "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5"},
-		{line: "22", version: "22.23.5", image: "node:22-bookworm@sha256:e13726ca604184d7a91fcacab1fc09eefd642dc28e79ac34e85540dd93b78cfb"},
-		{line: "24", version: "24.22.3", image: "node:24-bookworm@sha256:9d266751ca3d7fdbe651c878ffd5ad0a42fed49a18c283509267c97f025b7496"},
-		{line: "26", version: "26.13.1", image: "node:26-bookworm@sha256:b7087bc4d973034b30854b378ba107f9fab622b47514cb7e2592e41b8bab8d49"},
+		{line: "22", version: "22.23.5", image: "node:22-bookworm@sha256:7c400d78797d8cbe3f6bb21d2227b86af4cd24b0014cc9f62ff989cc16de988e"},
+		{line: "24", version: "24.22.3", image: "node:24-bookworm@sha256:49f7adaf9f1574bc45c20ea317139b39a59d7e758d0e93745e112fd85cb42623"},
+		{line: "26", version: "26.13.1", image: "node:26-bookworm@sha256:893ea48106e988a5f91e69629d6472600daa9d0494adf7db87eb0b886ce82255"},
 	}},
 	// Python's table is shared with agent sessions (w4/m544): lego/types/toolchains.
 	nativePythonRuntime: nativeToolchainOf(toolchains.Python),
@@ -218,16 +218,16 @@ var nativeToolchains = map[string]nativeToolchain{
 		{line: "3.0", version: "3.0.7", image: "ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72"},
 		{line: "3.1", version: "3.1.7", image: "ruby:3.1-bookworm@sha256:91627f55e8969006aab67d15c92fb930500ff73948803da1330b8a853fecebb5"},
 		{line: "3.2", version: "3.2.11", image: "ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473ee3f734041a74c7f56"},
-		{line: "3.3", version: "3.3.13", image: "ruby:3.3-bookworm@sha256:ae098d019fd2995e6cb82e16a87529348ba26a7c83ad6189937decc2846b0730"},
-		{line: "3.4", version: "3.4.12", image: "ruby:3.4-bookworm@sha256:d7c312a48736dd291d7ce043c847f04dfde9bdf7334491ca6a545a4a184395be"},
-		{line: "4.0", version: "4.0.9", image: "ruby:4.0-bookworm@sha256:862aacfe5415f2dcb399677d9139963ef4cd989140096cf723a91256ae8a9de3"},
+		{line: "3.3", version: "3.3.14", image: "ruby:3.3-bookworm@sha256:e2bd2e75c5543d79ce392526f3b53ebae08d7004449771fac54d4303ab1ec22d"},
+		{line: "3.4", version: "3.4.13", image: "ruby:3.4-bookworm@sha256:9d047dfbfd4d94305e66bcb5317d58af0ac6b8b77f892d497c728e45c0e0afba"},
+		{line: "4.0", version: "4.0.10", image: "ruby:4.0-bookworm@sha256:a74fe73b00b18a1d329486025f4753d4f4b051fa763b8e08a3d0da9d81f26080"},
 	}},
 	// Rust stays one stable image: rustup inside it applies Render's own
 	// RUSTUP_TOOLCHAIN / rust-toolchain signals itself. version is the image's
 	// RUST_VERSION, which the default's log line names (w8/327); refresh it
 	// with the digest.
 	nativeRustRuntime: {label: "Rust", defaultLine: "1", lines: []nativeLine{
-		{line: "1", version: "1.100.0", image: "rust:1-bookworm@sha256:ade39a710ef85f3506cffcfec3e8a24ba090badef1dff2fb798f71d878833fea"},
+		{line: "1", version: "1.100.0", image: "rust:1-bookworm@sha256:75d26c23c24cc6ea1cdabf0714a6bff8fd7bf3248716043fd7ae86dac7f41b94"},
 	}},
 }
 
@@ -240,7 +240,7 @@ var nativeToolchains = map[string]nativeToolchain{
 var nativeBun = nativeToolchain{label: "Bun", defaultLine: "1.4", floating: nativeBunCanary, anyRelease: "any other Bun release installs when named exactly (such as 1.1.38)", lines: []nativeLine{
 	{line: "1.2", version: "1.2.23", image: "oven/bun:1.2@sha256:6ebf306367da43ad75c4d5119563e24de9b66372929ad4fa31546be053a16f74"},
 	{line: "1.3", version: "1.3.14", image: "oven/bun:1.3@sha256:e10577f0db68676a7024391c6e5cb4b879ebd17188ab750cf10024a6d700e5c4"},
-	{line: "1.4", version: "1.4.4", image: "oven/bun:1.4@sha256:1d22548f177f4ff38e0c15baa3c2c46c6c2060ba2d1bc573bb4720b407548f1d"},
+	{line: "1.4", version: "1.4.5", image: "oven/bun:1.4@sha256:3aa040e5445efa09d75bb428a64ba50db13e2b3ac9b6b0c7f145615f62b2ee18"},
 }}
 
 // nativeToolchainOf is a shared table's lines (lego/types/toolchains) as the

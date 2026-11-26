@@ -57,6 +57,14 @@ func nativeRubyQualificationCases() []nativeRubyQualificationCase {
 		nativeRubyQualificationCase{name: "node-static-ruby34", line: ruby.line, version: ruby.version, static: true})
 }
 
+// rubyReviewedDefault is the 3.4 line, and whether a creation default of
+// version is its reviewed patch: the resolve phase swaps in only a default
+// behind it, so a line refresh moves which steps build on the line's image.
+func rubyReviewedDefault(version string) (nativeLine, bool) {
+	line, _ := nativeToolchains[nativeRubyRuntime].find("3.4")
+	return line, line.version == version
+}
+
 func nativeRubyQualificationFixture(t *testing.T, tc nativeRubyQualificationCase) (Options, map[string]string) {
 	t.Helper()
 	files := map[string]string{}
@@ -257,6 +265,10 @@ func TestCommonRubyQualificationCanonicalRecipes(t *testing.T) {
 				fake.digests["ruby:"+tc.version+"-bullseye"] = exactDigest
 				fake.envByImage[primary] = fakeExactMetadata{env: []string{"RUBY_VERSION=" + tc.version, "PATH=/usr/local/bin:/usr/bin"}, history: commonOTPSyntheticHistory("bullseye")}
 			default:
+				if line, reviewed := rubyReviewedDefault(tc.version); reviewed {
+					primary = line.image
+					break
+				}
 				primary = "ruby:" + tc.version + "-bookworm@" + exactDigest
 				fake.digests["ruby:"+tc.version+"-bookworm"] = exactDigest
 				fake.envByImage[primary] = fakeExactMetadata{env: []string{"RUBY_VERSION=" + tc.version, "PATH=/usr/local/bin:/usr/bin"}, history: commonOTPSyntheticHistory("bookworm")}
@@ -302,8 +314,14 @@ func assertRubyQualificationRecipe(t *testing.T, tc nativeRubyQualificationCase,
 	if choices[0].Image != ruby || choices[1].Image != node.image || !strings.Contains(recipe, o.StartCommand) || !strings.Contains(recipe, "ENV BUNDLE_DEPLOYMENT=true BUNDLE_PATH="+nativeRubyGems) {
 		t.Fatalf("primary Ruby defaults, Node companion or runtime command lost: %+v\n%s", choices, recipe)
 	}
-	if tc.line == "" && !tc.locked && (choices[0].Line != tc.version || shown(choices[0].Narration()) != "==> Using Ruby version "+tc.version+" (default)"+rubyDocs) {
-		t.Fatalf("creation default was replaced by a reviewed-line patch: %+v", choices)
+	if tc.line == "" && !tc.locked {
+		line := tc.version
+		if reviewed, ok := rubyReviewedDefault(tc.version); ok {
+			line = reviewed.line
+		}
+		if choices[0].Line != line || shown(choices[0].Narration()) != "==> Using Ruby version "+tc.version+" (default)"+rubyDocs {
+			t.Fatalf("creation default was replaced by another patch: %+v", choices)
+		}
 	}
 	if tc.locked && (choices[0].Line != tc.version || !strings.HasPrefix(shown(choices[0].Narration()), "==> Using Ruby version "+tc.version+" via /opt/render/project/src/Gemfile.lock"+rubyDocs+"\n") ||
 		!strings.Contains(recipe, `[ "$primary_os" = bullseye ] && [ "$VERSION_CODENAME" = bookworm ]`)) {

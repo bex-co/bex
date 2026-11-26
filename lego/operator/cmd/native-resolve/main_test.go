@@ -80,7 +80,7 @@ func TestRunNarratesOrRefusesAsTenantError(t *testing.T) {
 	bundle := filepath.Join(dir, "render-env")
 	// The real python default base, as the preparer writes it.
 	base := "# syntax=docker/dockerfile:1.7\n" +
-		"FROM python:3.13-bookworm@sha256:cc55e4ded9c95f6ce2133b3d096db43f214d280c2a8af65d83e246c8fa7d168c\n" +
+		"FROM python:3.13-bookworm@sha256:ee1a30c36c5cf43df939eb664489fb167e1bbe07cd884ea694054f6aff4dd9d9\n" +
 		"RUN true\n"
 	write := func(env string) {
 		if err := os.WriteFile(dockerfile, []byte(base), 0o600); err != nil {
@@ -129,7 +129,7 @@ func TestRunNarratesAnOptedInBun(t *testing.T) {
 	dir := t.TempDir()
 	dockerfile, bundle := filepath.Join(dir, "Dockerfile"), filepath.Join(dir, "render-env")
 	base := "# syntax=docker/dockerfile:1.7\n" +
-		"FROM node:24-bookworm@sha256:9d266751ca3d7fdbe651c878ffd5ad0a42fed49a18c283509267c97f025b7496\n" +
+		"FROM node:24-bookworm@sha256:49f7adaf9f1574bc45c20ea317139b39a59d7e758d0e93745e112fd85cb42623\n" +
 		"RUN true\n"
 	if err := os.WriteFile(dockerfile, []byte(base), 0o600); err != nil {
 		t.Fatal(err)
@@ -157,7 +157,7 @@ func TestRunNamesAVersionFileUnderTheProjectDir(t *testing.T) {
 	dir := t.TempDir()
 	dockerfile, bundle := filepath.Join(dir, "Dockerfile"), filepath.Join(dir, "render-env")
 	base := "# syntax=docker/dockerfile:1.7\n" +
-		"FROM node:24-bookworm@sha256:9d266751ca3d7fdbe651c878ffd5ad0a42fed49a18c283509267c97f025b7496\n" +
+		"FROM node:24-bookworm@sha256:49f7adaf9f1574bc45c20ea317139b39a59d7e758d0e93745e112fd85cb42623\n" +
 		"RUN true\n"
 	for name, content := range map[string]string{"Dockerfile": base, "render-env": "", ".nvmrc": "22\n"} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600); err != nil {
@@ -184,7 +184,7 @@ func TestRunEchoesANodeRangeBeforeItsVersion(t *testing.T) {
 	dir := t.TempDir()
 	dockerfile, bundle := filepath.Join(dir, "Dockerfile"), filepath.Join(dir, "render-env")
 	base := "# syntax=docker/dockerfile:1.7\n" +
-		"FROM node:24-bookworm@sha256:9d266751ca3d7fdbe651c878ffd5ad0a42fed49a18c283509267c97f025b7496\n" +
+		"FROM node:24-bookworm@sha256:49f7adaf9f1574bc45c20ea317139b39a59d7e758d0e93745e112fd85cb42623\n" +
 		"RUN true\n"
 	const pkg = `{"engines":{"node":">=22.12.0 <23"}}`
 	for name, content := range map[string]string{"Dockerfile": base, "render-env": "", "package.json": pkg} {

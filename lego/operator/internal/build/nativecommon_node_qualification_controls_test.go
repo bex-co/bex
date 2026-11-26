@@ -399,7 +399,7 @@ func TestCommonNodeDonorMatchesDatedPrimaryRecipe(t *testing.T) {
 	must(t, err)
 	executed, overlay, err := commonNodeQualificationRecipe(string(canonical), node)
 	must(t, err)
-	const admitted = "c9290a94b9e7b5752112f510a6f400b244018b8fae9c1e8413a54d7d342701ac"
+	const admitted = "3a6da825db2d7b834adcbd42a115309396aa7125bc5f183a3ac7a10d4020df85"
 	if overlay || executed != string(canonical) || fmt.Sprintf("%x", sha256.Sum256(canonical)) != admitted {
 		t.Fatalf("donor branch changed the admitted primary canonical recipe (sha256 %x) or acquired an overlay (%v)", sha256.Sum256(canonical), overlay)
 	}

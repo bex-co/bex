@@ -5,9 +5,9 @@
       "id": "cnb-builder",
       "kind": "builder",
       "upstream": "docker.io/paketobuildpacks/builder-jammy-base:latest",
-      "committed": "paketobuildpacks/builder-jammy-base@sha256:5cd813b834965d9b9daf4d94b35d22bd76f743961dd5cfa7f141804bc4cef815",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): builder-jammy-base latest, linux/amd64 manifest as before, stack io.buildpacks.stacks.jammy unchanged, lifecycle 0.21.29 and 79 buildpacks (nodejs 10.16.0 / node-engine 8.12.1, python 2.69.0 / cpython 1.19.0, go 4.23.4 / go-dist 2.11.3)",
+      "committed": "paketobuildpacks/builder-jammy-base@sha256:4ba599c03e4b0e32306960039a33a45c0c26f8e8368097d190f4f62a4a6b3483",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): builder-jammy-base latest, linux/amd64 manifest as before, stack io.buildpacks.stacks.jammy unchanged, lifecycle 0.21.30 (was 0.21.29) and 135 buildpack entries as before; built on the stack released 2026-11-26T00:51:36Z; Paketo had published no builder for the 12:43:57Z stack at review, and kpack's ClusterStack takes the newer stack images",
       "files": [
         "lego/operator/cmd/manager/main.go",
         "lego/operator/config/manager/manager.yaml",
@@ -18,9 +18,9 @@
       "id": "cnb-stack-build",
       "kind": "stack",
       "upstream": "docker.io/paketobuildpacks/build-jammy-base:latest",
-      "committed": "paketobuildpacks/build-jammy-base@sha256:5fce29993757b60a84f6b05fce0e24804c2b51f9ff8ab5c1dbe86697bec05a9c",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): Paketo build-jammy-base latest, linux/amd64+arm64 index created 2026-11-16, stack io.buildpacks.stacks.jammy unchanged; paired with the cnb-stack-run base of the same day",
+      "committed": "paketobuildpacks/build-jammy-base@sha256:763449c86cdd10ead656e2371fa800be57fb3b07bde2566c1eff89a50ea46d46",
+      "resolved_at": "2026-11-26T13:37:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): Paketo build-jammy-base latest, linux/amd64+arm64 index, stack released 2026-11-26T12:43:57Z (the day's second release), stack io.buildpacks.stacks.jammy unchanged; paired with the cnb-stack-run base of the same release",
       "files": [
         "deploy/gitops/charts/kpack/platform.yaml"
       ]
@@ -29,9 +29,9 @@
       "id": "cnb-stack-run",
       "kind": "stack",
       "upstream": "docker.io/paketobuildpacks/run-jammy-base:latest",
-      "committed": "paketobuildpacks/run-jammy-base@sha256:6031575989ab077c94b58a44886353e74224cf61c6f0f571cd3c4037efe2b2ac",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): Paketo run-jammy-base latest, linux/amd64+arm64 index created 2026-11-16, stack io.buildpacks.stacks.jammy and CNB user 1002:1000 unchanged; the bex run image is rebuilt from it by cnb-run-image.yml (libatomic1 ldconfig gate, Node 26 start on both architectures, signed) before cnb-run-image moves",
+      "committed": "paketobuildpacks/run-jammy-base@sha256:031b3fa694e75ebded974f391989dd45e9dd512424eb795df99e45ea859c3284",
+      "resolved_at": "2026-11-26T13:37:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): Paketo run-jammy-base latest, linux/amd64+arm64 index, stack released 2026-11-26T12:43:57Z (the day's second release), stack io.buildpacks.stacks.jammy and CNB user 1002:1000 unchanged; the bex run image is rebuilt from it by cnb-run-image.yml (libatomic1 ldconfig gate, Node 26 start on both architectures, signed) before cnb-run-image moves",
       "files": [
         "deploy/cnb-run/Dockerfile"
       ]
@@ -42,7 +42,7 @@
       "upstream": "ghcr.io/bex-co/bex-cnb-run:latest",
       "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:77061d60c38fbf20f8b78fc9c8bdd580bc264d6612bbeed6852e3f51e932d8e5",
       "resolved_at": "2026-11-16T11:32:54Z",
-      "source": "ghcr.io multi-arch index (linux/amd64 + linux/arm64), cnb-run-image.yml run 43855831573 from e097d59c0 on run-jammy-base sha256:6031575989ab\u2026 (w6/m291, 2026-11-16): both platforms passed the libatomic1 ldconfig gate and Node 26 startup check before the signature and the latest tag; revision label e097d59c0, stack io.buildpacks.stacks.jammy and CNB user 1002:1000 verified on both platforms",
+      "source": "ghcr.io multi-arch index (linux/amd64 + linux/arm64), cnb-run-image.yml run 43855831573 from e097d59c0 on run-jammy-base sha256:6031575989ab… (w6/m291, 2026-11-16): both platforms passed the libatomic1 ldconfig gate and Node 26 startup check before the signature and the latest tag; revision label e097d59c0, stack io.buildpacks.stacks.jammy and CNB user 1002:1000 verified on both platforms",
       "files": [
         "deploy/gitops/charts/kpack/platform.yaml"
       ]
@@ -97,7 +97,7 @@
       "upstream": "docker.io/alpine/git:v2.52.0",
       "committed": "alpine/git:v2.52.0@sha256:4a0e72d49596a1f5d3701aeedafdadc5c0da4062be4657c7bdc4017387f591cc",
       "resolved_at": "2026-10-16T00:00:00Z",
-      "source": "Docker Hub alpine/git:v2.52.0 multi-arch index (git 2.52.0, past CVE-2025-48384, which submodule init exposes \u2014 w8/m89)",
+      "source": "Docker Hub alpine/git:v2.52.0 multi-arch index (git 2.52.0, past CVE-2025-48384, which submodule init exposes — w8/m89)",
       "files": [
         "lego/operator/internal/build/build.go",
         "lego/operator/internal/publish/publish.go"
@@ -109,7 +109,7 @@
       "upstream": "quay.io/skopeo/stable:v1.22.2",
       "committed": "quay.io/skopeo/stable:v1.22.2@sha256:2b7d76dde38c5924e1945348840c58786fc192201f2fd545832e58b53d26f7b8",
       "resolved_at": "2026-09-30T18:08:55Z",
-      "source": "Quay skopeo/stable:v1.22.2 OCI image index (the digest quay STORES; the converted Docker manifest-list digest it reports for that media type is not addressable \u2014 w7/m85)",
+      "source": "Quay skopeo/stable:v1.22.2 OCI image index (the digest quay STORES; the converted Docker manifest-list digest it reports for that media type is not addressable — w7/m85)",
       "files": [
         "lego/operator/internal/build/build.go"
       ]
@@ -129,9 +129,9 @@
       "id": "native-elixir",
       "kind": "native-base",
       "upstream": "docker.io/library/elixir:1.18",
-      "committed": "elixir:1.18@sha256:16382709b3765b946748714575d8748ea7dcb7cb9a4849730bcdc56533503691",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official elixir:1.18 rebuilt on Debian trixie root @1793827419, same suite as before; ELIXIR_VERSION=1.18.6 (was 1.18.4) on linux/amd64 and linux/arm64 image configs, both published",
+      "committed": "elixir:1.18@sha256:6aff289bc053eadc3dfd50e44d3fb4030af9100af748c09e9461dd2a177cb5aa",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): official elixir:1.18 rebuilt on Debian trixie root @1795392000, same suite as before; ELIXIR_VERSION=1.18.6 (unchanged; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published; OTP_VERSION 28.5.0.8 -> 28.5.0.9 (the line names only OTP 28)",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -140,9 +140,9 @@
       "id": "native-go",
       "kind": "native-base",
       "upstream": "docker.io/library/golang:1.27-bookworm",
-      "committed": "golang:1.27-bookworm@sha256:4fa7c968ba93f1635670522dbb01a2c78150443e1385746924566079f36570ea",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official golang:1.27-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; GOLANG_VERSION=1.27.4 (was 1.27.3) on linux/amd64 and linux/arm64 image configs, both published",
+      "committed": "golang:1.27-bookworm@sha256:ce59b41415e2524ae99926fe1f37ce48ba8c194dcbd2a56a65436cdcefa2bd34",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): official golang:1.27-bookworm rebuilt on Debian bookworm root @1795392000, same suite as before; GOLANG_VERSION=1.27.4 (unchanged; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -162,9 +162,9 @@
       "id": "native-bun",
       "kind": "native-base",
       "upstream": "docker.io/oven/bun:1.4",
-      "committed": "oven/bun:1.4@sha256:1d22548f177f4ff38e0c15baa3c2c46c6c2060ba2d1bc573bb4720b407548f1d",
-      "resolved_at": "2026-10-23T22:00:00Z",
-      "source": "Docker Hub oven/bun:1.4 multi-arch index (linux/amd64 + linux/arm64), Bun 1.4.4 (same digest as oven/bun:1.4.4), Render's default line (w5/m144); binary copied into the native toolchain image (w8/m71)",
+      "committed": "oven/bun:1.4@sha256:3aa040e5445efa09d75bb428a64ba50db13e2b3ac9b6b0c7f145615f62b2ee18",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): oven/bun:1.4 multi-arch index (linux/amd64 + linux/arm64), Bun 1.4.5 (was 1.4.4; org.opencontainers.image.version on both image configs), Render's default line (w5/m144); binary copied into the native toolchain image (w8/m71)",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -217,9 +217,9 @@
       "id": "native-hugo-image",
       "kind": "helper",
       "upstream": "ghcr.io/bex-co/bex-hugo:0.111.3",
-      "committed": "ghcr.io/bex-co/bex-hugo:0.111.3@sha256:61d72075abce6f36b4d4c24203dca249f352f59afd3848d44e119d8d0880e5d8",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "ghcr.io multi-arch index (linux/amd64 + linux/arm64) from hugo-image.yml run 43576647981 at 3a8a988ba (the 2026-11-14 GitHub Actions bump republished the unchanged recipe): both platforms' single layer is byte-identical to the w8/m148 image (run 42799436346 at b05e83e1d), only the revision label differs; reviewed 2026-11-16 (w6/m291)",
+      "committed": "ghcr.io/bex-co/bex-hugo:0.111.3@sha256:86115df682de381ab8d892e0c2833d1c581d6ce88023fd0d94918c0c294f7385",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "ghcr.io multi-arch index (linux/amd64 + linux/arm64) from hugo-image.yml run 45019148719 at e4a2ef995 (a push of the unchanged recipe): both platforms' single layer is byte-identical to the w8/m148 image and to run 43576647981's, only the revision label differs; reviewed 2026-11-26 (w3/m635)",
       "files": [
         "lego/operator/internal/build/nativehugo.go"
       ]
@@ -261,9 +261,9 @@
       "id": "native-node",
       "kind": "native-base",
       "upstream": "docker.io/library/node:24-bookworm",
-      "committed": "node:24-bookworm@sha256:9d266751ca3d7fdbe651c878ffd5ad0a42fed49a18c283509267c97f025b7496",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official node:24-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; NODE_VERSION=24.22.3 (was 24.22.1) on linux/amd64 and linux/arm64 image configs, both published",
+      "committed": "node:24-bookworm@sha256:49f7adaf9f1574bc45c20ea317139b39a59d7e758d0e93745e112fd85cb42623",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): official node:24-bookworm rebuilt on Debian bookworm root @1795392000, same suite as before; NODE_VERSION=24.22.3 (unchanged; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go",
         "deploy/native-base/Dockerfile",
@@ -274,9 +274,9 @@
       "id": "native-python",
       "kind": "native-base",
       "upstream": "docker.io/library/python:3.13-bookworm",
-      "committed": "python:3.13-bookworm@sha256:cc55e4ded9c95f6ce2133b3d096db43f214d280c2a8af65d83e246c8fa7d168c",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official python:3.13-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; PYTHON_VERSION=3.13.18 (unchanged patch; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
+      "committed": "python:3.13-bookworm@sha256:ee1a30c36c5cf43df939eb664489fb167e1bbe07cd884ea694054f6aff4dd9d9",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): official python:3.13-bookworm rebuilt on Debian bookworm root @1795392000, same suite as before; PYTHON_VERSION=3.13.18 (unchanged; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/types/toolchains/python.go"
       ]
@@ -285,9 +285,9 @@
       "id": "native-ruby",
       "kind": "native-base",
       "upstream": "docker.io/library/ruby:3.4-bookworm",
-      "committed": "ruby:3.4-bookworm@sha256:d7c312a48736dd291d7ce043c847f04dfde9bdf7334491ca6a545a4a184395be",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official ruby:3.4-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; RUBY_VERSION=3.4.12 (unchanged patch; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
+      "committed": "ruby:3.4-bookworm@sha256:9d047dfbfd4d94305e66bcb5317d58af0ac6b8b77f892d497c728e45c0e0afba",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): official ruby:3.4-bookworm rebuilt on Debian bookworm root @1795392000, same suite as before; RUBY_VERSION=3.4.13 (was 3.4.12) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -296,9 +296,9 @@
       "id": "native-rust",
       "kind": "native-base",
       "upstream": "docker.io/library/rust:1-bookworm",
-      "committed": "rust:1-bookworm@sha256:ade39a710ef85f3506cffcfec3e8a24ba090badef1dff2fb798f71d878833fea",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official rust:1-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; RUST_VERSION=1.100.0 (was 1.99.1) on linux/amd64 and linux/arm64 image configs, both published",
+      "committed": "rust:1-bookworm@sha256:75d26c23c24cc6ea1cdabf0714a6bff8fd7bf3248716043fd7ae86dac7f41b94",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): official rust:1-bookworm rebuilt on Debian bookworm root @1795392000, same suite as before; RUST_VERSION=1.100.0 (unchanged; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -318,9 +318,9 @@
       "id": "native-python-3-11",
       "kind": "native-base",
       "upstream": "docker.io/library/python:3.11-bookworm",
-      "committed": "python:3.11-bookworm@sha256:726d304906fa5eb468e5531e366548d1903286352f5adb54ef508ac01fbd80c6",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official python:3.11-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; PYTHON_VERSION=3.11.18 (unchanged patch; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
+      "committed": "python:3.11-bookworm@sha256:9884c17ef6d305098e3111a7d285941b247fadbd5e0292563b32f8c04bb8ebe0",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): official python:3.11-bookworm rebuilt on Debian bookworm root @1795392000, same suite as before; PYTHON_VERSION=3.11.18 (unchanged; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/types/toolchains/python.go"
       ]
@@ -329,9 +329,9 @@
       "id": "native-python-3-12",
       "kind": "native-base",
       "upstream": "docker.io/library/python:3.12-bookworm",
-      "committed": "python:3.12-bookworm@sha256:4209fae09a3e20afd863e528bfddc235da5fd5977983e1996cd54cc9a72e6267",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official python:3.12-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; PYTHON_VERSION=3.12.16 (unchanged patch; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
+      "committed": "python:3.12-bookworm@sha256:5f0cc9bc924d72614831d2b1575de5d7c4114609a0d42ca60dfc2f0abca10dd6",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): official python:3.12-bookworm rebuilt on Debian bookworm root @1795392000, same suite as before; PYTHON_VERSION=3.12.16 (unchanged; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/types/toolchains/python.go"
       ]
@@ -340,9 +340,9 @@
       "id": "native-python-3-14",
       "kind": "native-base",
       "upstream": "docker.io/library/python:3.14-bookworm",
-      "committed": "python:3.14-bookworm@sha256:3fe825da0a80fa8e2cd79baadeb76b03c0ddf3d6cdbc8346778a0208b9d6038c",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official python:3.14-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; PYTHON_VERSION=3.14.10 (unchanged patch; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
+      "committed": "python:3.14-bookworm@sha256:fbaf91204f2758a70a7f7d6cf3c2871851227152a54e6a7b5b59941c4566b6b5",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): official python:3.14-bookworm rebuilt on Debian bookworm root @1795392000, same suite as before; PYTHON_VERSION=3.14.10 (unchanged; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/types/toolchains/python.go"
       ]
@@ -351,9 +351,9 @@
       "id": "native-python-3-15",
       "kind": "native-base",
       "upstream": "docker.io/library/python:3.15-bookworm",
-      "committed": "python:3.15-bookworm@sha256:6f060cab421d9509c6c6a6a7762c651baf03c3f1d0145befe16b688762b7fe81",
-      "resolved_at": "2026-11-16T15:33:00Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w8/335): new line, official python:3.15-bookworm (same index as 3.15.2-bookworm) on Debian bookworm root @1793827419, the other lines' suite; PYTHON_VERSION=3.15.2 on linux/amd64 and linux/arm64 image configs, both published",
+      "committed": "python:3.15-bookworm@sha256:2bf848386eab766326ae3fc2f061788ae858d7945aefce74967d4a861ebdad12",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): official python:3.15-bookworm rebuilt on Debian bookworm root @1795392000, same suite as before; PYTHON_VERSION=3.15.2 (unchanged; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/types/toolchains/python.go"
       ]
@@ -362,9 +362,9 @@
       "id": "native-node-22",
       "kind": "native-base",
       "upstream": "docker.io/library/node:22-bookworm",
-      "committed": "node:22-bookworm@sha256:e13726ca604184d7a91fcacab1fc09eefd642dc28e79ac34e85540dd93b78cfb",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official node:22-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; NODE_VERSION=22.23.5 (was 22.23.4) on linux/amd64 and linux/arm64 image configs, both published",
+      "committed": "node:22-bookworm@sha256:7c400d78797d8cbe3f6bb21d2227b86af4cd24b0014cc9f62ff989cc16de988e",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): official node:22-bookworm rebuilt on Debian bookworm root @1795392000, same suite as before; NODE_VERSION=22.23.5 (unchanged; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -373,9 +373,9 @@
       "id": "native-node-26",
       "kind": "native-base",
       "upstream": "docker.io/library/node:26-bookworm",
-      "committed": "node:26-bookworm@sha256:b7087bc4d973034b30854b378ba107f9fab622b47514cb7e2592e41b8bab8d49",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official node:26-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; NODE_VERSION=26.13.1 (was 26.12.1) on linux/amd64 and linux/arm64 image configs, both published",
+      "committed": "node:26-bookworm@sha256:893ea48106e988a5f91e69629d6472600daa9d0494adf7db87eb0b886ce82255",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): official node:26-bookworm rebuilt on Debian bookworm root @1795392000, same suite as before; NODE_VERSION=26.13.1 (unchanged; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -384,9 +384,9 @@
       "id": "native-ruby-3-3",
       "kind": "native-base",
       "upstream": "docker.io/library/ruby:3.3-bookworm",
-      "committed": "ruby:3.3-bookworm@sha256:ae098d019fd2995e6cb82e16a87529348ba26a7c83ad6189937decc2846b0730",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official ruby:3.3-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; RUBY_VERSION=3.3.13 (unchanged patch; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
+      "committed": "ruby:3.3-bookworm@sha256:e2bd2e75c5543d79ce392526f3b53ebae08d7004449771fac54d4303ab1ec22d",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): official ruby:3.3-bookworm rebuilt on Debian bookworm root @1795392000, same suite as before; RUBY_VERSION=3.3.14 (was 3.3.13) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -395,9 +395,9 @@
       "id": "native-ruby-4-0",
       "kind": "native-base",
       "upstream": "docker.io/library/ruby:4.0-bookworm",
-      "committed": "ruby:4.0-bookworm@sha256:862aacfe5415f2dcb399677d9139963ef4cd989140096cf723a91256ae8a9de3",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official ruby:4.0-bookworm rebuilt on Debian bookworm root @1793827419, same suite as before; RUBY_VERSION=4.0.9 (unchanged patch; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
+      "committed": "ruby:4.0-bookworm@sha256:a74fe73b00b18a1d329486025f4753d4f4b051fa763b8e08a3d0da9d81f26080",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): official ruby:4.0-bookworm rebuilt on Debian bookworm root @1795392000, same suite as before; RUBY_VERSION=4.0.10 (was 4.0.9) on linux/amd64 and linux/arm64 image configs, both published",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -406,9 +406,9 @@
       "id": "native-elixir-1-17",
       "kind": "native-base",
       "upstream": "docker.io/library/elixir:1.17",
-      "committed": "elixir:1.17@sha256:08879d1eff5207a26ecab32ac7a7c5df610fce532b791eccbae7288a4e4b27b3",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official elixir:1.17 rebuilt on Debian bookworm root @1793827419, same suite as before; ELIXIR_VERSION=1.17.3 (unchanged patch; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published",
+      "committed": "elixir:1.17@sha256:0dcd5012ce7449eef13e92ae5dcd67094bedd71857b825d9a6076e9f51633b81",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): official elixir:1.17 rebuilt on Debian bookworm root @1795392000, same suite as before; ELIXIR_VERSION=1.17.3 (unchanged; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published; OTP_VERSION 27.3.4.19 -> 27.3.4.20 (the line names only OTP 27)",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -417,9 +417,9 @@
       "id": "native-elixir-1-19",
       "kind": "native-base",
       "upstream": "docker.io/library/elixir:1.19",
-      "committed": "elixir:1.19@sha256:7e27df3e4a684163e4a18e618eede53badb70e97e0c92a1845ab22e2e1d96da2",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official elixir:1.19 rebuilt on Debian trixie root @1793827419, same suite as before; ELIXIR_VERSION=1.19.7 (was 1.19.6) on linux/amd64 and linux/arm64 image configs, both published",
+      "committed": "elixir:1.19@sha256:c30251c267e35a7252873a0573d99e401b214c34315c782a833d1c4c7c9f7dec",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): official elixir:1.19 rebuilt on Debian trixie root @1795392000, same suite as before; ELIXIR_VERSION=1.19.7 (unchanged; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published; OTP_VERSION 28.5.0.8 -> 28.5.0.9 (the line names only OTP 28)",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -540,9 +540,9 @@
       "id": "native-elixir-1-20",
       "kind": "native-base",
       "upstream": "docker.io/library/elixir:1.20",
-      "committed": "elixir:1.20@sha256:1b850191faeaae55678b782cd8b34d391f793672f3175b1956d024f794ca321b",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Docker Hub reviewed 2026-11-16 (w6/m291): official elixir:1.20 rebuilt on Debian trixie root @1793827419, same suite as before; ELIXIR_VERSION=1.20.5 (was 1.20.4) on linux/amd64 and linux/arm64 image configs, both published",
+      "committed": "elixir:1.20@sha256:028a755eef5692f4f64b06c68104b7a326e0f610646e9d8faa8d3a651f1060f3",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Docker Hub reviewed 2026-11-26 (w3/m635): official elixir:1.20 rebuilt on Debian trixie root @1795392000, same suite as before; ELIXIR_VERSION=1.20.5 (unchanged; base-layer rebuild) on linux/amd64 and linux/arm64 image configs, both published; OTP_VERSION 29.1.2 -> 29.1.3 (the line names only OTP 29)",
       "files": [
         "lego/operator/internal/build/native.go"
       ]
@@ -551,9 +551,9 @@
       "id": "native-common-bookworm-source",
       "kind": "native-base",
       "upstream": "docker.io/library/buildpack-deps:bookworm",
-      "committed": "buildpack-deps:bookworm@sha256:f53cd4c58cdb96a467b98696cd510a949ef4ccd7d23e07b75107de754773007a",
-      "resolved_at": "2026-11-16T11:10:46Z",
-      "source": "Anonymous Docker Hub index and linux/amd64 + linux/arm64 child manifests resolved 2026-11-16 (w6/m291), Debian bookworm root @1793827419; common factory input only, no published common candidate or runtime compatibility/adoption claim.",
+      "committed": "buildpack-deps:bookworm@sha256:c82cc01646f8d244ddc4f095488f261cef7634d445dc5829fc67215bbec98ab8",
+      "resolved_at": "2026-11-26T12:50:00Z",
+      "source": "Anonymous Docker Hub index and linux/amd64 + linux/arm64 child manifests resolved 2026-11-26 (w3/m635), Debian bookworm root @1795392000; common factory input only, no published common candidate or runtime compatibility/adoption claim.",
       "files": [
         "deploy/native-common/Dockerfile"
       ]

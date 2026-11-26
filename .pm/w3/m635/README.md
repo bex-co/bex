@@ -1,13 +1,13 @@
 # w3 · m635 — Build toolchain pins are fresh again and #201 closes
 
-**Worker:** worker3 **Goal:** every pinned build-toolchain image equals its upstream at review time, the native Bun 1.4 and Ruby 3.3 / 3.4 / 4.0 lines carry the current patches, and the freshness monitor closes #201 on its own run. **Status:** todo
+**Worker:** worker3 **Goal:** every pinned build-toolchain image equals its upstream at review time, the native Bun 1.4 and Ruby 3.3 / 3.4 / 4.0 lines carry the current patches, and the freshness monitor closes #201 on its own run. **Status:** in progress (t001, t002 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Re-resolve the drift and list what moves | 20m | — |
-| t002 | Bump the native Bun and Ruby lines | 45m | t001 |
+| t001 | [Re-resolve the drift and list what moves](done/t001.md) — **DONE** | 20m | — |
+| t002 | [Bump the native Bun and Ruby lines](done/t002.md) — **DONE** | 45m | t001 |
 | t003 | Refresh the Paketo builder and stack images | 45m | t001 |
 | t004 | Adopt the rebuilt native-common-bookworm image | 30m | t001 |
 | t005 | Qualify the new images on dev-3 | 60m | t002, t003, t004 |
@@ -29,3 +29,43 @@
 - **Expected outcome:** native Bun and Ruby builds use current releases, the Paketo stack carries upstream fixes, and the review issue is closed.
 - **Why now:** the issue has sat for six days with every observed digest already superseded; w9/138 deliberately left the 3.4 line on 3.4.12 until a real-build qualification, which this milestone runs.
 - **Render parity omitted:** no REST, GraphQL, MCP or dashboard change; pins only, as in m291.
+
+## Review list — 2026-11-26 (t001, `toolchain-freshness.py resolve` at `cb2e989e7d`)
+
+`validate` passes. 25 of the 56 entries have moved upstream, #201's eight among them; #201's own digests were already stale. Versions were read from each image's linux/amd64 and linux/arm64 configs (the CNB builder is a single amd64 image):
+
+| id | #201 | upstream | committed → observed | carries |
+| --- | --- | --- | --- | --- |
+| `cnb-builder` | yes | `docker.io/paketobuildpacks/builder-jammy-base:latest` | `5cd813b83496…` → `4ba599c03e4b…` | lifecycle 0.21.29 → 0.21.30, 135 buildpacks, stack `io.buildpacks.stacks.jammy` |
+| `cnb-run-image` |  | `ghcr.io/bex-co/bex-cnb-run:latest` | `77061d60c38f…` → `c01de4f8624d…` | the same Paketo run base, republished by `cnb-run-image.yml` run 45019148491; rebuilt on the new `cnb-stack-run` instead |
+| `cnb-stack-build` | yes | `docker.io/paketobuildpacks/build-jammy-base:latest` | `5fce29993757…` → `267bfd510aa3…`, then `763449c86cdd…` at 13:37Z | stack released 2026-11-26T00:51:36Z, then again at 12:43:57Z (was 2026-11-16) |
+| `cnb-stack-run` | yes | `docker.io/paketobuildpacks/run-jammy-base:latest` | `6031575989ab…` → `64ca273de9e3…`, then `031b3fa694e7…` at 13:37Z | stack released 2026-11-26T00:51:36Z, then again at 12:43:57Z (was 2026-11-16) |
+| `native-bun` | yes | `docker.io/oven/bun:1.4` | `1d22548f177f…` → `3aa040e5445e…` | Bun 1.4.4 → 1.4.5 |
+| `native-common-bookworm` | yes | `ghcr.io/bex-co/bex-cnb-run:native-common-bookworm` | `49dbbd727e03…` → `d63d00b79187…` | the push run of `3624550656` (every `native*.go` push republishes the tag); adopted through a families run instead (t004) |
+| `native-common-bookworm-source` |  | `docker.io/library/buildpack-deps:bookworm` | `f53cd4c58cdb…` → `c82cc01646f8…` | Debian bookworm root `@1793827419` → `@1795392000` |
+| `native-elixir` |  | `docker.io/library/elixir:1.18` | `16382709b376…` → `6aff289bc053…` | Elixir 1.18.6, OTP 28.5.0.8 → 28.5.0.9 |
+| `native-elixir-1-17` |  | `docker.io/library/elixir:1.17` | `08879d1eff52…` → `0dcd5012ce74…` | Elixir 1.17.3, OTP 27.3.4.19 → 27.3.4.20 |
+| `native-elixir-1-19` |  | `docker.io/library/elixir:1.19` | `7e27df3e4a68…` → `c30251c267e3…` | Elixir 1.19.7, OTP 28.5.0.8 → 28.5.0.9 |
+| `native-elixir-1-20` |  | `docker.io/library/elixir:1.20` | `1b850191faea…` → `028a755eef56…` | Elixir 1.20.5, OTP 29.1.2 → 29.1.3 |
+| `native-go` |  | `docker.io/library/golang:1.27-bookworm` | `4fa7c968ba93…` → `ce59b41415e2…` | Go 1.27.4 (unchanged) |
+| `native-hugo-image` |  | `ghcr.io/bex-co/bex-hugo:0.111.3` | `61d72075abce…` → `86115df682de…` | republished by `hugo-image.yml` run 45019148719; both platforms' single layer byte-identical, only the revision label differs |
+| `native-node` |  | `docker.io/library/node:24-bookworm` | `9d266751ca3d…` → `49f7adaf9f15…` | Node 24.22.3 (unchanged) |
+| `native-node-22` |  | `docker.io/library/node:22-bookworm` | `e13726ca6041…` → `7c400d78797d…` | Node 22.23.5 (unchanged) |
+| `native-node-26` |  | `docker.io/library/node:26-bookworm` | `b7087bc4d973…` → `893ea48106e9…` | Node 26.13.1 (unchanged) |
+| `native-python` |  | `docker.io/library/python:3.13-bookworm` | `cc55e4ded9c9…` → `ee1a30c36c5c…` | Python 3.13.18 (unchanged) |
+| `native-python-3-11` |  | `docker.io/library/python:3.11-bookworm` | `726d304906fa…` → `9884c17ef6d3…` | Python 3.11.18 (unchanged) |
+| `native-python-3-12` |  | `docker.io/library/python:3.12-bookworm` | `4209fae09a3e…` → `5f0cc9bc924d…` | Python 3.12.16 (unchanged) |
+| `native-python-3-14` |  | `docker.io/library/python:3.14-bookworm` | `3fe825da0a80…` → `fbaf91204f27…` | Python 3.14.10 (unchanged) |
+| `native-python-3-15` |  | `docker.io/library/python:3.15-bookworm` | `6f060cab421d…` → `2bf848386eab…` | Python 3.15.2 (unchanged) |
+| `native-ruby` | yes | `docker.io/library/ruby:3.4-bookworm` | `d7c312a48736…` → `9d047dfbfd4d…` | Ruby 3.4.12 → 3.4.13 |
+| `native-ruby-3-3` | yes | `docker.io/library/ruby:3.3-bookworm` | `ae098d019fd2…` → `e2bd2e75c554…` | Ruby 3.3.13 → 3.3.14 |
+| `native-ruby-4-0` | yes | `docker.io/library/ruby:4.0-bookworm` | `862aacfe5415…` → `a74fe73b00b1…` | Ruby 4.0.9 → 4.0.10 |
+| `native-rust` |  | `docker.io/library/rust:1-bookworm` | `ade39a710ef8…` → `75d26c23c24c…` | Rust 1.100.0 (unchanged) |
+
+A second `resolve` at 13:37Z found only the two Paketo stacks moved again (their second release of the day), and the pins take that release. Paketo had published no builder for it, so the builder stays on the 00:51Z stack's, as the reviewed builder and stack were paired before (w6/m291). The second `resolve` also ran the new line-version check (t008) against the registries: every line's `version` field equals the patch its image records.
+
+Every official image above was rebuilt on the Debian root `@1795392000` (was `@1793827419`) and keeps its suite (bookworm, or trixie for Elixir 1.18–1.20); linux/amd64 and linux/arm64 are both published.
+
+**All 25 move, not only #201's eight.** The monitor closes its issue only when no entry drifts (`issue_action`), so #201 can close by itself only once every entry matches, and the goal is every pinned image. The 17 entries beyond #201 are digest-only Debian rebuilds of unchanged runtimes, Elixir's OTP maintenance patches (the lines name only the OTP major) and the two bex republishes.
+
+**#201 was reopened 2026-11-26.** GitHub closed it on 2026-11-25 through the closing keyword in the filing commit's message (`39e2cea8a9`, "… close #201"), not through a review or the monitor, so the DoD's "closed by the freshness run" could not be shown. The reopen comment says so.

@@ -111,15 +111,15 @@ FROM python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce72
 RUN --mount=type=bind,source=agent-image/python-tree.sh,target=/python-tree.sh sh /python-tree.sh 3.9
 FROM python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8 AS python-3.10
 RUN --mount=type=bind,source=agent-image/python-tree.sh,target=/python-tree.sh sh /python-tree.sh 3.10
-FROM python:3.11-bookworm@sha256:726d304906fa5eb468e5531e366548d1903286352f5adb54ef508ac01fbd80c6 AS python-3.11
+FROM python:3.11-bookworm@sha256:9884c17ef6d305098e3111a7d285941b247fadbd5e0292563b32f8c04bb8ebe0 AS python-3.11
 RUN --mount=type=bind,source=agent-image/python-tree.sh,target=/python-tree.sh sh /python-tree.sh 3.11
-FROM python:3.12-bookworm@sha256:4209fae09a3e20afd863e528bfddc235da5fd5977983e1996cd54cc9a72e6267 AS python-3.12
+FROM python:3.12-bookworm@sha256:5f0cc9bc924d72614831d2b1575de5d7c4114609a0d42ca60dfc2f0abca10dd6 AS python-3.12
 RUN --mount=type=bind,source=agent-image/python-tree.sh,target=/python-tree.sh sh /python-tree.sh 3.12
-FROM python:3.13-bookworm@sha256:cc55e4ded9c95f6ce2133b3d096db43f214d280c2a8af65d83e246c8fa7d168c AS python-3.13
+FROM python:3.13-bookworm@sha256:ee1a30c36c5cf43df939eb664489fb167e1bbe07cd884ea694054f6aff4dd9d9 AS python-3.13
 RUN --mount=type=bind,source=agent-image/python-tree.sh,target=/python-tree.sh sh /python-tree.sh 3.13
-FROM python:3.14-bookworm@sha256:3fe825da0a80fa8e2cd79baadeb76b03c0ddf3d6cdbc8346778a0208b9d6038c AS python-3.14
+FROM python:3.14-bookworm@sha256:fbaf91204f2758a70a7f7d6cf3c2871851227152a54e6a7b5b59941c4566b6b5 AS python-3.14
 RUN --mount=type=bind,source=agent-image/python-tree.sh,target=/python-tree.sh sh /python-tree.sh 3.14
-FROM python:3.15-bookworm@sha256:6f060cab421d9509c6c6a6a7762c651baf03c3f1d0145befe16b688762b7fe81 AS python-3.15
+FROM python:3.15-bookworm@sha256:2bf848386eab766326ae3fc2f061788ae858d7945aefce74967d4a861ebdad12 AS python-3.15
 RUN --mount=type=bind,source=agent-image/python-tree.sh,target=/python-tree.sh sh /python-tree.sh 3.15
 
 # The resolver the driver asks which Python a session runs (w4/m544): the

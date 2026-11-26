@@ -4,7 +4,7 @@
 ARG BASE_IMAGE=scratch
 FROM ${BASE_IMAGE} AS primary
 
-FROM node:24-bookworm@sha256:9d266751ca3d7fdbe651c878ffd5ad0a42fed49a18c283509267c97f025b7496 AS node-tools
+FROM node:24-bookworm@sha256:49f7adaf9f1574bc45c20ea317139b39a59d7e758d0e93745e112fd85cb42623 AS node-tools
 WORKDIR /opt/bex/native-node-tools
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts --no-audit --no-fund \

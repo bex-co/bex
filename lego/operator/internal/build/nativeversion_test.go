@@ -728,6 +728,9 @@ func TestNativeBuildJobRunsTheResolverAfterThePreparer(t *testing.T) {
 // Bun is an opt-in companion (w8/m71), resolved with Render's precedence; no
 // signal leaves the build without it.
 func TestResolveNativeBun(t *testing.T) {
+	// The default line's reviewed patch, read from the table so a refresh of
+	// the line needs no edit here.
+	bun14, _ := nativeBun.find("1.4")
 	for _, tc := range []struct {
 		name    string
 		env     map[string]string
@@ -739,7 +742,7 @@ func TestResolveNativeBun(t *testing.T) {
 	}{
 		{"sweep306 BUN_VERSION", map[string]string{"BUN_VERSION": "1.3.4"}, nil, "1.3", "BUN_VERSION=1.3.4", "1.3.4", ""},
 		{"Render's elysiajs template (w8/315)", map[string]string{"BUN_VERSION": "1.3.0"}, nil, "1.3", "BUN_VERSION=1.3.0", "1.3.0", ""},
-		{"the reviewed patch", map[string]string{"BUN_VERSION": "1.4.4"}, nil, "1.4", "BUN_VERSION=1.4.4", "", ""},
+		{"the reviewed patch", map[string]string{"BUN_VERSION": bun14.version}, nil, "1.4", "BUN_VERSION=" + bun14.version, "", ""},
 		{"Render's default line (w5/m144)", map[string]string{"BUN_VERSION": "1.4.3"}, nil, "1.4", "BUN_VERSION=1.4.3", "1.4.3", ""},
 		{"BUN_VERSION wins over the file", map[string]string{"BUN_VERSION": "1.2.20"}, map[string]string{".bun-version": "1.3.0\n"}, "1.2", "BUN_VERSION=1.2.20", "1.2.20", ""},
 		{".bun-version", nil, map[string]string{".bun-version": "# pinned\nv1.2.21\n"}, "1.2", ".bun-version", "1.2.21", ""},
@@ -993,6 +996,15 @@ func TestResolveNativeBunDatedDefault(t *testing.T) {
 		return created
 	}
 	lock := map[string]string{"bun.lock": "{}"}
+	// A dated default is installed exactly unless it is its line's reviewed
+	// patch, read from the table so a refresh of a line needs no edit here.
+	exact := func(line, version string) string {
+		if reviewed, _ := nativeBun.find(line); reviewed.version == version {
+			return ""
+		}
+		return version
+	}
+	bun14, _ := nativeBun.find("1.4")
 	for _, tc := range []struct {
 		name    string
 		created time.Time
@@ -1002,17 +1014,17 @@ func TestResolveNativeBunDatedDefault(t *testing.T) {
 		exact   string
 		log     string
 	}{
-		{"since 2026-11-20", at("2026-11-20T00:00:00Z"), nil, lock, "1.4", "1.4.5", ""},
-		{"the day before", at("2026-11-19T23:59:59Z"), nil, lock, "1.4", "", "==> Using Bun version 1.4.4 (default)"},
-		{"binary lockfile", at("2026-11-21T08:59:23Z"), nil, map[string]string{"bun.lockb": "\x00"}, "1.4", "1.4.5", ""},
-		{"2026-10-12 to 2026-10-22", at("2026-10-15T00:00:00Z"), nil, lock, "1.4", "1.4.3", ""},
-		{"2026-09-09 to 2026-10-12", at("2026-09-09T00:00:00Z"), nil, lock, "1.4", "1.4.2", ""},
-		{"2026-07-16 to 2026-09-09: the 1.3 line's patch", at("2026-08-01T00:00:00Z"), nil, lock, "1.3", "", "==> Using Bun version 1.3.14 (default)"},
-		{"2025-12-08 to 2026-07-16", at("2026-01-01T00:00:00Z"), nil, lock, "1.3", "1.3.4", ""},
-		{"2025-08-18 to 2025-12-08", at("2025-08-18T00:00:00Z"), nil, lock, "1.2", "1.2.20", ""},
+		{"since 2026-11-20", at("2026-11-20T00:00:00Z"), nil, lock, "1.4", exact("1.4", "1.4.5"), "==> Using Bun version 1.4.5 (default)"},
+		{"the day before", at("2026-11-19T23:59:59Z"), nil, lock, "1.4", exact("1.4", "1.4.4"), "==> Using Bun version 1.4.4 (default)"},
+		{"binary lockfile", at("2026-11-21T08:59:23Z"), nil, map[string]string{"bun.lockb": "\x00"}, "1.4", exact("1.4", "1.4.5"), ""},
+		{"2026-10-12 to 2026-10-22", at("2026-10-15T00:00:00Z"), nil, lock, "1.4", exact("1.4", "1.4.3"), ""},
+		{"2026-09-09 to 2026-10-12", at("2026-09-09T00:00:00Z"), nil, lock, "1.4", exact("1.4", "1.4.2"), ""},
+		{"2026-07-16 to 2026-09-09: the 1.3 line's patch", at("2026-08-01T00:00:00Z"), nil, lock, "1.3", exact("1.3", "1.3.14"), "==> Using Bun version 1.3.14 (default)"},
+		{"2025-12-08 to 2026-07-16", at("2026-01-01T00:00:00Z"), nil, lock, "1.3", exact("1.3", "1.3.4"), ""},
+		{"2025-08-18 to 2025-12-08", at("2025-08-18T00:00:00Z"), nil, lock, "1.2", exact("1.2", "1.2.20"), ""},
 		{"before 2025-08-18: 1.1.0 on no reviewed line (w8/372)", at("2025-01-01T00:00:00Z"), nil, lock, "1.4", "1.1.0", ""},
-		{"unknown age", time.Time{}, nil, lock, "1.4", "", "==> Using Bun version 1.4.4 (default)"},
-		{"an explicit BUN_VERSION=1.4.4 wins", at("2026-11-21T00:00:00Z"), map[string]string{"BUN_VERSION": "1.4.4"}, lock, "1.4", "", "==> Using Bun 1.4.4 (from BUN_VERSION=1.4.4)"},
+		{"unknown age", time.Time{}, nil, lock, "1.4", "", "==> Using Bun version " + bun14.version + " (default)"},
+		{"an explicit BUN_VERSION=1.4.4 wins", at("2026-11-21T00:00:00Z"), map[string]string{"BUN_VERSION": "1.4.4"}, lock, "1.4", exact("1.4", "1.4.4"), "==> Using Bun 1.4.4 (from BUN_VERSION=1.4.4)"},
 		{"a .bun-version line wins", at("2026-11-21T00:00:00Z"), nil, map[string]string{".bun-version": "1.3\n", "bun.lock": "{}"}, "1.3", "", ""},
 		{"latest", at("2026-11-21T00:00:00Z"), map[string]string{"BUN_VERSION": "latest"}, nil, "1.4", "", ""},
 		{"canary", at("2026-11-21T00:00:00Z"), map[string]string{"BUN_VERSION": "canary"}, lock, "1.4", "canary", ""},
@@ -1029,7 +1041,10 @@ func TestResolveNativeBunDatedDefault(t *testing.T) {
 			if reviewed, _ := nativeBun.find(tc.line); choice.Image != reviewed.image {
 				t.Errorf("image = %q, want the reviewed %s line's %q", choice.Image, tc.line, reviewed.image)
 			}
-			if tc.log != "" && shown(choice.Narration()) != tc.log+bunDocs {
+			// An exact release is named once the resolve phase pins it
+			// (TestResolveNativeBuildPinsTheDatedDefaultBun); a reviewed
+			// patch is named here.
+			if tc.log != "" && tc.exact == "" && shown(choice.Narration()) != tc.log+bunDocs {
 				t.Errorf("narration = %q, want %q", shown(choice.Narration()), tc.log+bunDocs)
 			}
 		})
@@ -1038,22 +1053,24 @@ func TestResolveNativeBunDatedDefault(t *testing.T) {
 
 // w8/371: the resolve phase installs a lockfile-only service's dated default
 // Bun exactly, pinned by digest and named in the log; a missing tag keeps the
-// reviewed patch and says so.
+// reviewed patch and says so. Render's 1.4.3 (services created 2026-10-12 to
+// 2026-10-22) stays behind the 1.4 line's reviewed patch however the line is
+// refreshed, which is read from the table.
 func TestResolveNativeBuildPinsTheDatedDefaultBun(t *testing.T) {
 	o := nativeOptions()
 	o.Runtime = "node"
-	created := time.Date(2026, time.November, 21, 8, 59, 23, 0, time.UTC)
-	exact := &fakeExact{digests: map[string]string{bunRepo + ":1.4.5": exactDigest}}
+	created := time.Date(2026, time.October, 15, 8, 59, 23, 0, time.UTC)
+	exact := &fakeExact{digests: map[string]string{bunRepo + ":1.4.3": exactDigest}}
 	bundle, dockerfile, src := writeResolveFixture(t, o, nil, map[string]string{".nvmrc": "22\n", "bun.lock": "{}"})
 	choices, err := ResolveNativeBuildExact(t.Context(), exact, created, "node", bundle, dockerfile, src)
-	if err != nil || len(choices) != 2 || choices[1].Line != "1.4.5" || choices[1].Image != "oven/bun:1.4.5@"+exactDigest {
-		t.Fatalf("choices = %+v, %v; want Bun 1.4.5 pinned to its digest", choices, err)
+	if err != nil || len(choices) != 2 || choices[1].Line != "1.4.3" || choices[1].Image != "oven/bun:1.4.3@"+exactDigest {
+		t.Fatalf("choices = %+v, %v; want Bun 1.4.3 pinned to its digest", choices, err)
 	}
 	// The lockfile names no version, so Render's line says its default (w9/139).
-	if got := shown(choices[1].Narration()); got != "==> Using Bun version 1.4.5 (default)"+bunDocs {
+	if got := shown(choices[1].Narration()); got != "==> Using Bun version 1.4.3 (default)"+bunDocs {
 		t.Errorf("narration = %q", got)
 	}
-	if df, _ := os.ReadFile(dockerfile); !strings.Contains(string(df), "COPY --link --from=oven/bun:1.4.5@"+exactDigest+" /usr/local/bin/bun") {
+	if df, _ := os.ReadFile(dockerfile); !strings.Contains(string(df), "COPY --link --from=oven/bun:1.4.3@"+exactDigest+" /usr/local/bin/bun") {
 		t.Fatalf("Dockerfile does not copy the dated default Bun:\n%s", df)
 	}
 
@@ -1061,8 +1078,8 @@ func TestResolveNativeBuildPinsTheDatedDefaultBun(t *testing.T) {
 	choices, err = ResolveNativeBuildExact(t.Context(), &fakeExact{}, created, "node", bundle, dockerfile, src)
 	reviewed, _ := nativeBun.find("1.4")
 	if err != nil || len(choices) != 2 || choices[1].Image != reviewed.image ||
-		shown(choices[1].Narration()) != "==> Using Bun version 1.4.4 (default)"+bunDocs+"\n==> No official image oven/bun:1.4.5; using the reviewed Bun 1.4 image" {
-		t.Fatalf("missing tag choices = %+v, %v; want the reviewed 1.4.4, said", choices, err)
+		shown(choices[1].Narration()) != "==> Using Bun version "+reviewed.version+" (default)"+bunDocs+"\n==> No official image oven/bun:1.4.3; using the reviewed Bun 1.4 image" {
+		t.Fatalf("missing tag choices = %+v, %v; want the reviewed %s, said", choices, err, reviewed.version)
 	}
 
 	// Render's 1.1.0 for a service created before 2025-08-18 is on no reviewed
@@ -1076,8 +1093,8 @@ func TestResolveNativeBuildPinsTheDatedDefaultBun(t *testing.T) {
 	bundle, dockerfile, src = writeResolveFixture(t, o, nil, map[string]string{".nvmrc": "22\n", "bun.lock": "{}"})
 	choices, err = ResolveNativeBuildExact(t.Context(), &fakeExact{}, old, "node", bundle, dockerfile, src)
 	if err != nil || len(choices) != 2 || choices[1].Image != reviewed.image ||
-		shown(choices[1].Narration()) != "==> Using Bun version 1.4.4 (default)"+bunDocs+"\n==> No official image oven/bun:1.1.0; using the reviewed Bun 1.4 image" {
-		t.Fatalf("pre-2025-08-18 missing tag choices = %+v, %v; want the reviewed 1.4.4, said", choices, err)
+		shown(choices[1].Narration()) != "==> Using Bun version "+reviewed.version+" (default)"+bunDocs+"\n==> No official image oven/bun:1.1.0; using the reviewed Bun 1.4 image" {
+		t.Fatalf("pre-2025-08-18 missing tag choices = %+v, %v; want the reviewed %s, said", choices, err, reviewed.version)
 	}
 }
 

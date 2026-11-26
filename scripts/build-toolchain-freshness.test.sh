@@ -409,6 +409,108 @@ else
   echo "ok: released lines compare numerically, and current ones are not drift"
 fi
 
+# A reviewed line's version field must be the patch its image carries
+# (w3/m635): resolve reads the patch from the committed image's config and
+# reports a line whose field disagrees, in the issue too. Elixir records its
+# own as v1.18.6.
+mkdir -p "$tmp/version"
+write_tree "$tmp/version"
+python3 - "$tmp/version" "$DIGEST_B" "$DIGEST_C" <<'PYFIXTURE'
+import json, sys
+from pathlib import Path
+fixture, ruby, elixir = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
+native = fixture / "lego/operator/internal/build/native.go"
+native.parent.mkdir(parents=True)
+native.write_text(
+    '\t{line: "3.4", version: "3.4.12", image: "ruby:3.4-bookworm@' + ruby + '"},\n'
+    '\t{line: "1.18", version: "1.18.6", otp: "28", image: "elixir:1.18@' + elixir + '", debian: "trixie"},\n')
+inventory = json.loads((fixture / "inv.json").read_text())
+base = inventory["images"][0]
+inventory["images"] += [
+    dict(base, id="native-ruby", kind="native-base", upstream="docker.io/library/ruby:3.4-bookworm",
+         committed="ruby:3.4-bookworm@" + ruby, files=[str(native.relative_to(fixture))]),
+    dict(base, id="native-elixir", kind="native-base", upstream="docker.io/library/elixir:1.18",
+         committed="elixir:1.18@" + elixir, files=[str(native.relative_to(fixture))]),
+]
+(fixture / "inv.json").write_text(json.dumps(inventory))
+(fixture / "digests.json").write_text(json.dumps({
+    "docker.io/example/builder:latest": base["committed"].split("@")[1],
+    "docker.io/library/ruby:3.4-bookworm": ruby, "docker.io/library/elixir:1.18": elixir}))
+PYFIXTURE
+version_resolve() {
+  printf '{"%s":"%s","%s":"v1.18.6"}\n' "$DIGEST_B" "$1" "$DIGEST_C" >"$tmp/version/versions.json"
+  env FRESHNESS_ROOT="$tmp/version" FRESHNESS_INVENTORY="$tmp/version/inv.json" \
+      FRESHNESS_PIN_SITES=$'pin.go\nlego/operator/internal/build/native.go' \
+      FRESHNESS_DIGESTS="$tmp/version/digests.json" FRESHNESS_IMAGE_VERSIONS="$tmp/version/versions.json" \
+      "$SCRIPT" resolve
+}
+version_resolve 3.4.13 >"$tmp/version/stale.json"
+if python3 - "$tmp/version/stale.json" <<'PYCHECK'
+import json, sys
+report = {image["id"]: image for image in json.load(open(sys.argv[1]))["images"]}
+assert report["native-ruby"]["changed"] is True, report["native-ruby"]
+assert report["native-ruby"]["version_mismatch"] == {"field": "3.4.12", "image": "3.4.13"}, report["native-ruby"]
+assert not report["native-elixir"]["changed"] and "version_mismatch" not in report["native-elixir"], report["native-elixir"]
+assert not report["cnb-builder"]["changed"], report["cnb-builder"]
+PYCHECK
+then
+  echo "ok: a version field the image does not carry is drift, and v1.18.6 is 1.18.6"
+else
+  echo "FAIL: a stale version field was not flagged on its line alone: $(cat "$tmp/version/stale.json")" >&2
+  fails=$((fails + 1))
+fi
+assert_stdout "the issue body names the stale version field" 'version field `3.4.12`, but the committed image carries `3.4.13`' \
+  "$SCRIPT" issue-body "$tmp/version/stale.json"
+version_resolve 3.4.12 >"$tmp/version/current.json"
+if grep -q '"changed": true' "$tmp/version/current.json"; then
+  echo "FAIL: version fields that match their images are drift: $(cat "$tmp/version/current.json")" >&2
+  fails=$((fails + 1))
+else
+  echo "ok: version fields that match their images are not drift"
+fi
+# The registry path reads the linux/amd64 config: an Env variable, or Bun's
+# label; a repository that records no patch is never read.
+if version_out="$(python3 - "$here/lib/toolchain-freshness.py" <<'PY' 2>&1
+import importlib.util, os, sys
+spec = importlib.util.spec_from_file_location("freshness", sys.argv[1])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+for key in ("FRESHNESS_DIGESTS", "FRESHNESS_IMAGE_VERSIONS"):
+    os.environ.pop(key, None)
+configs = {
+    "ruby": {"Env": ["PATH=/usr/local/bin", "RUBY_VERSION=3.4.13"]},
+    "bun": {"Env": ["PATH=/usr/local/bin"], "Labels": {"org.opencontainers.image.version": "1.4.5"}},
+}
+calls = []
+def fake_json(url, headers=None):
+    calls.append(url)
+    if "/token" in url:
+        return {"token": "anon"}
+    name = "bun" if "oven/bun" in url else "ruby"
+    if url.endswith("/manifests/sha256:" + "a" * 64):
+        return {"manifests": [
+            {"digest": "sha256:arm", "platform": {"os": "linux", "architecture": "arm64"}},
+            {"digest": "sha256:amd", "platform": {"os": "linux", "architecture": "amd64"}}]}
+    if url.endswith("/manifests/sha256:amd"):
+        return {"config": {"digest": "sha256:cfg"}}
+    if url.endswith("/blobs/sha256:cfg"):
+        return {"config": configs[name]}
+    raise AssertionError(url)
+m.http_json = fake_json
+digest = "sha256:" + "a" * 64
+assert m.image_version("docker.io/library/ruby:3.4-bookworm", digest) == "3.4.13"
+assert not any("sha256:arm" in url for url in calls), calls
+assert m.image_version("docker.io/oven/bun:1.4", digest) == "1.4.5"
+calls.clear()
+assert m.image_version("docker.io/library/golang:1.27-bookworm", digest) is None and calls == [], calls
+PY
+)"; then
+  echo "ok: image versions come from the linux/amd64 config's Env or label"
+else
+  echo "FAIL: image version read — $version_out" >&2
+  fails=$((fails + 1))
+fi
+
 # The native Go line moves itself (w4/719): go-release plans a bump once
 # go.dev's newest stable release is newer than the pinned image's Go and the
 # official golang:<line>-bookworm index carries it on both platforms;

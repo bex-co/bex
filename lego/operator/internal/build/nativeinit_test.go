@@ -383,6 +383,7 @@ func TestNativeNodeBunWritesStartLinesForNativeInit(t *testing.T) {
 		must(t, err)
 		return tm
 	}
+	bun14, _ := nativeBun.find("1.4")
 	wantStep := func(lines ...string) string {
 		return "COPY --chmod=0644 <<'" + nativeInitStartLinesEOF + "' " + nativeInitStartLinesPath + "\n" +
 			strings.Join(lines, "\n") + "\n" + nativeInitStartLinesEOF + "\n"
@@ -414,17 +415,19 @@ func TestNativeNodeBunWritesStartLinesForNativeInit(t *testing.T) {
 			wantLines: []string{"==> Using Bun version 1.3.4 (default)", bunDocs},
 		},
 		{
+			// Render's 1.4.3 (2026-10-12 to 2026-10-22) is behind the reviewed
+			// patch, so a missing tag falls back to the table's 1.4 line.
 			name:      "bun.lock dated default fallback omits build note",
-			created:   at("2026-11-21T00:00:00Z"),
+			created:   at("2026-10-15T00:00:00Z"),
 			files:     map[string]string{"bun.lock": "{}"},
-			wantLines: []string{"==> Using Bun version 1.4.4 (default)", bunDocs},
+			wantLines: []string{"==> Using Bun version " + bun14.version + " (default)", bunDocs},
 		},
 		{
 			name:      "bun.lockb dated default resolved",
-			created:   at("2026-11-21T00:00:00Z"),
+			created:   at("2026-10-15T00:00:00Z"),
 			files:     map[string]string{"bun.lockb": "\x00"},
-			digests:   map[string]string{bunRepo + ":1.4.5": exactDigest},
-			wantLines: []string{"==> Using Bun version 1.4.5 (default)", bunDocs},
+			digests:   map[string]string{bunRepo + ":1.4.3": exactDigest},
+			wantLines: []string{"==> Using Bun version 1.4.3 (default)", bunDocs},
 		},
 		{
 			name:      ".bun-version reviewed line",
