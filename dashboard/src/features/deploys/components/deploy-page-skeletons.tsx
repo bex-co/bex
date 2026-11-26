@@ -39,7 +39,10 @@ const FACTS = [
  * The deploy page's header while its deploy loads: the title and id lines,
  * then the facts grid at the loaded grid's columns, tile size and line
  * heights, so the log viewer under it does not move when the deploy lands.
- * Skeleton-only, so the route's pending frame can import it.
+ * Skeleton-only, so the route's pending frame can import it. The Notices
+ * between the header and the log (w1/m659) stand on the deploy's own facts,
+ * which a plain live deploy has none of, so the frame reserves none, as
+ * Render's page shows no Notices heading over an empty list.
  */
 export function DeployHeaderSkeleton() {
   return (

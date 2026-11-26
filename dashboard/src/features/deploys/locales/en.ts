@@ -940,6 +940,12 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_http_port, w8/388); en starts with the space that joins it to the sentence before; params are the sentence's values: ports is the comma-separated list of open ports that answer no HTTP",
   },
+  "deploys.reason.hint_reserved_port": {
+    message:
+      " The process serves HTTP on port {reserved}, which is reserved: bind the server to 0.0.0.0 on the port in PORT ({port}) instead. The reserved ports are 18012, 18013 and 19099.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_reserved_port, w1/m659); en starts with the space that joins it to the sentence before; params are the sentence's values: reserved is the reserved port the process serves HTTP on, port the one in PORT",
+  },
   "deploys.reason.hint_crash_port_bind": {
     message:
       " If the crash is a port bind: the process must listen on $PORT ({port}).",
@@ -1080,6 +1086,116 @@ const enDeploys: Record<string, TranslationEntry> = {
     message: "Couldn't copy the Build Source ID",
     description:
       "Deploy page: toast shown when copying the Build Source ID fails",
+  },
+  "deploys.noticesTitle": {
+    message: "Notices",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): the section heading over the list, shown in small capitals",
+  },
+  "deploys.noticeTroubleshoot": {
+    message: "Read our {link} for common ways to troubleshoot your deploy.",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): the line under a failed deploy's reason; {link} is the noticeTroubleshootLink link to bex's troubleshooting docs",
+  },
+  "deploys.noticeTroubleshootLink": {
+    message: "docs",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): the link text inside noticeTroubleshoot",
+  },
+  "deploys.noticeBuildCacheCleared": {
+    message: "Build cache cleared",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): the deploy was opened with Clear build cache & deploy",
+  },
+  "deploys.noticeFreePlan": {
+    message: "Updated to a free compute plan",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): a settings deploy that moved the service from a paid plan to the free one",
+  },
+  "deploys.noticeMaintenance": {
+    message:
+      "bex periodically runs zero-downtime maintenance to ensure platform reliability.",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): a deploy the platform itself started (trigger deployed_by_render)",
+  },
+  "deploys.noticeRolledBackTo": {
+    message: "Rolled back to {deploy}",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): a rollback deploy; {deploy} is the target deploy's id, a link",
+  },
+  "deploys.noticeBuildGone": {
+    message: "Rollback is not available because this build no longer exists.",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): a past deploy whose build is no longer stored",
+  },
+  "deploys.noticeSyncedFrom": {
+    message: "Synced from {blueprint}",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): a deploy a Blueprint sync opened; {blueprint} is the Blueprint's id, a link",
+  },
+  "deploys.noticeInProgress": {
+    message: "{deploy} is in progress",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): a queued deploy; {deploy} is the noticeAnotherDeploy link to the deploy in progress",
+  },
+  "deploys.noticeAnotherDeploy": {
+    message: "Another deploy",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): the link text inside noticeInProgress",
+  },
+  "deploys.noticeCancelPolicy": {
+    message:
+      "To avoid canceling active deploys when new ones are triggered, adjust your {policy}",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): under a deploy a newer one canceled, when the workspace's Overlapping Deploy Policy is Override; {policy} is the noticePolicyLink link to Workspace Settings",
+  },
+  "deploys.noticeQueuePolicy": {
+    message: "To avoid queuing deploys, adjust your {policy}",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): under a queued deploy, when the workspace's Overlapping Deploy Policy is Wait; {policy} is the noticePolicyLink link to Workspace Settings",
+  },
+  "deploys.noticePolicyLink": {
+    message: "overlapping deploy policy.",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): the link text inside noticeCancelPolicy and noticeQueuePolicy, the workspace's Overlapping Deploy Policy",
+  },
+  "deploys.noticeHealthWaiting": {
+    message: "Waiting for internal {link} to return a successful response code",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): a deploy rolling out on a service with a Health Check Path; {link} is the noticeHealthLink link to the health check docs",
+  },
+  "deploys.noticeHealthWaitingAt": {
+    message:
+      "Waiting for internal {link} to return a successful response code at: {address}",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): noticeHealthWaiting with the address checked; {address} is host:port/path in code type",
+  },
+  "deploys.noticeHealthTimedOut": {
+    message:
+      "Timed out after waiting for internal {link} to return a successful response code",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): a failed deploy that ran out of its rollout window, on a service with a Health Check Path; {link} as in noticeHealthWaiting",
+  },
+  "deploys.noticeHealthTimedOutAt": {
+    message:
+      "Timed out after waiting for internal {link} to return a successful response code at: {address}",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): noticeHealthTimedOut with the address checked; {address} is host:port/path in code type",
+  },
+  "deploys.noticeHealthLink": {
+    message: "health check",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): the link text inside the health check notices",
+  },
+  "deploys.reservedPortWarning": {
+    message:
+      "It looks like your service might be listening on port {port}, which is a reserved port for {link} Please configure your service to listen on a port that is not part of our reserved ports: {ports}.",
+    description:
+      "Deploy page banner (w1/m659, Render's free-plan warning): the instance serves HTTP on a reserved port; {port} is that port, {link} the reservedPortWarningLink link to bex's pricing, {ports} the reserved ports",
+  },
+  "deploys.reservedPortWarningLink": {
+    message: "free compute plans.",
+    description: "The link text inside reservedPortWarning (w1/m659)",
   },
   "deploys.rollbackTitle": {
     message: "Confirm Rollback",

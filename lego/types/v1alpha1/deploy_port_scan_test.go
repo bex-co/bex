@@ -121,3 +121,33 @@ func TestPortScanFindingNamesThePortPORTSets(t *testing.T) {
 		}
 	}
 }
+
+// w1/m659: the reserved listener a stall or failure reason names reads back as
+// its port, on a stall still scanning for an open port, and only a reserved
+// port in that hint does.
+func TestReservedPortListenerReadsTheReasonsHint(t *testing.T) {
+	hint := func(reserved string) string {
+		return FormatDeployReason(DeployReasonHintReservedPort, DeployReasonParam{Name: "port", Value: "10000"}, DeployReasonParam{Name: "reserved", Value: reserved})
+	}
+	open := OpenPortProbeStallReason("startup", 0)
+	http := ProbeStallReason("readiness", false, "/healthz", "10000", 0)
+	for _, c := range []struct {
+		name, reason string
+		want         int32
+	}{
+		{"an open-port stall", open + hint("18012"), 18012},
+		{"a health-check stall", http + hint("19099"), 19099},
+		{"after another hint", http + FormatDeployReason(DeployReasonHintNoHTTPDiscovered) + hint("18013"), 18013},
+		{"a port that is not reserved", open + hint("8080"), 0},
+		{"no reserved hint", open + FormatDeployReason(DeployReasonHintNoOpenPort, DeployReasonParam{Name: "port", Value: "10000"}), 0},
+		{"the hint alone, with no reason", hint("18012"), 0},
+		{"no reason", "", 0},
+	} {
+		if got := ReservedPortListener(c.reason); got != c.want {
+			t.Errorf("%s: ReservedPortListener(%q) = %d, want %d", c.name, c.reason, got, c.want)
+		}
+	}
+	if scan := PortScanOf(http + hint("18012")); scan != PortScanNoOpenPort {
+		t.Fatalf("a health-check stall naming a reserved listener reads as port scan %d, want no open port", scan)
+	}
+}

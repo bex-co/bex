@@ -251,6 +251,9 @@ func (r *AppReconciler) scanForBoundPort(ctx context.Context, app *appv1alpha1.A
 	others, err := r.httpListeners(ctx, app, pod.Status.PodIP, candidates)
 	switch len(others) {
 	case 0:
+		if reserved := r.reservedHTTPListener(ctx, app, pod, open.Ports); reserved > 0 {
+			return reservedPortMessage(app, port, reserved)
+		}
 		switch scanFinding(open, candidates, err == nil) {
 		case appv1alpha1.PortScanLocalhostOnly:
 			return localhostOnlyMessage(app, port, open.Loopback)
@@ -272,7 +275,9 @@ func (r *AppReconciler) scanForBoundPort(ctx context.Context, app *appv1alpha1.A
 // detectBoundPort leaves an image's port alone, so the stall named only the
 // closed default port, and so did the failure reason at the budget. Only the
 // node's reader sees loopback, so a node without one adds nothing. Between
-// scans it replays the last scan's verdict, as detectBoundPort does.
+// scans it replays the last scan's verdict, as detectBoundPort does. The
+// reader's answer also names an HTTP listener on a reserved port, which
+// discovery leaves out (w1/m659).
 func (r *AppReconciler) detectLocalhostAfterDiscovery(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) string {
 	network := app.Status.ImageNetwork
 	if r.Listeners == nil || !discoversWebImagePort(app) || network == nil || network.HTTPSelection != appv1alpha1.HTTPSelectionFallback {
@@ -283,12 +288,68 @@ func (r *AppReconciler) detectLocalhostAfterDiscovery(ctx context.Context, app *
 		return r.replayPortHint(ctx, key, dep, port)
 	}
 	text := ""
-	if open, err := r.readerListeners(ctx, pod); err == nil && scanFinding(open, nil, false) == appv1alpha1.PortScanLocalhostOnly {
+	open, err := r.readerListeners(ctx, pod)
+	switch {
+	case err != nil:
+		if !errors.Is(err, errNoListenerReader) {
+			logf.FromContext(ctx).Info("listener read failed", "app", app.Name, "error", err.Error())
+		}
+	case scanFinding(open, nil, false) == appv1alpha1.PortScanLocalhostOnly:
 		text = localhostOnlyMessage(app, port, open.Loopback)
-	} else if err != nil && !errors.Is(err, errNoListenerReader) {
-		logf.FromContext(ctx).Info("listener read failed", "app", app.Name, "error", err.Error())
+	default:
+		if reserved := r.reservedHTTPListener(ctx, app, pod, open.Ports); reserved > 0 {
+			text = reservedPortMessage(app, port, reserved)
+		}
 	}
 	return r.keepPortHint(key, pod, port, text)
+}
+
+// reservedHTTPListener is the lowest of open's reserved ports (ReservedImagePorts)
+// that answers HTTP, 0 for none (w1/m659). Nothing routes to one, so a web
+// service serving only there never goes live, and Render's deploy page warns
+// about it. A port a platform container of pod declares is bex's own: a pod
+// template from before w3/m489 may still run the edge-cache sidecar on 19099.
+func (r *AppReconciler) reservedHTTPListener(ctx context.Context, app *appv1alpha1.App, pod *corev1.Pod, open []int) int {
+	var reserved []int32
+	for _, p := range open {
+		if appv1alpha1.IsReservedImagePort(int32(p)) && !platformPort(pod, int32(p)) {
+			reserved = append(reserved, int32(p))
+		}
+	}
+	if len(reserved) == 0 {
+		return 0
+	}
+	slices.Sort(reserved)
+	answering, err := r.httpListeners(ctx, app, pod.Status.PodIP, slices.Compact(reserved))
+	if err != nil || len(answering) == 0 {
+		return 0
+	}
+	return answering[0]
+}
+
+// platformPort reports a port a container of pod other than the app's own
+// declares, or the edge-cache sidecar's.
+func platformPort(pod *corev1.Pod, port int32) bool {
+	for _, c := range pod.Spec.Containers {
+		if c.Name == appContainerName {
+			continue
+		}
+		if c.Name == edgeCacheContainerName && port == edgeCachePort {
+			return true
+		}
+		if slices.ContainsFunc(c.Ports, func(p corev1.ContainerPort) bool { return p.ContainerPort == port }) {
+			return true
+		}
+	}
+	return false
+}
+
+// reservedPortMessage is the stall text for a web service whose only HTTP
+// listener is reserved, a reserved port (w1/m659). port is the port probed;
+// the text names the one the process receives in PORT (processPort).
+func reservedPortMessage(app *appv1alpha1.App, port, reserved int) string {
+	return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintReservedPort,
+		portParam(int32(processPort(app, port))), appv1alpha1.DeployReasonParam{Name: "reserved", Value: strconv.Itoa(reserved)})
 }
 
 // scanFinding is what a web service's scan found when no listener answers

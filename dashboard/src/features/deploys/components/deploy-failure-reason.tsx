@@ -7,7 +7,7 @@ import {
 
 /**
  * One cause presentation for every surface that shows why a deploy ended
- * (w1/m138 + w4/089): the deploy detail header, the deploys list row, and the
+ * (w1/m138 + w4/089): the deploy page's Notices (w1/m659), the deploys list row, and the
  * events feed row. `failureReason` is destructive (build/rollout failures);
  * `cancelReason` is neutral (superseded by a newer release). The treatment is
  * owned here; callers add layout only.

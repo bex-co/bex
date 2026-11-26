@@ -833,6 +833,7 @@ func (r *recordingStore) CreateDeploy(ctx context.Context, appID, trigger, image
 		return store.Deploy{}, r.err
 	}
 	d := store.Deploy{ID: "dep-test", AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, TriggeredBy: triggeredBy, Status: store.DeployUpdateInProgress}
+	d.BlueprintID, d.BlueprintSyncID = store.BlueprintSyncOf(ctx)
 	r.deployCalls = append(r.deployCalls, d)
 	return d, nil
 }

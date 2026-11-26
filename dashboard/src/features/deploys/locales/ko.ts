@@ -929,6 +929,12 @@ const koDeploys: Record<string, TranslationEntry> = {
     description:
       "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_http_port, w8/388); en starts with the space that joins it to the sentence before; params are the sentence's values: ports is the comma-separated list of open ports that answer no HTTP",
   },
+  "deploys.reason.hint_reserved_port": {
+    message:
+      " 프로세스가 예약 포트 {reserved}에서 HTTP를 제공하고 있습니다. 대신 PORT({port})에 지정된 포트에서 0.0.0.0에 서버를 바인딩하세요. 예약 포트는 18012, 18013, 19099입니다.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_reserved_port, w1/m659); en starts with the space that joins it to the sentence before; params are the sentence's values: reserved is the reserved port the process serves HTTP on, port the one in PORT",
+  },
   "deploys.reason.hint_crash_port_bind": {
     message:
       " 크래시가 포트 바인딩 문제라면: 프로세스는 $PORT({port})에서 수신 대기해야 합니다.",
@@ -1070,6 +1076,116 @@ const koDeploys: Record<string, TranslationEntry> = {
     message: "빌드 소스 ID를 복사하지 못했습니다",
     description:
       "Deploy page: toast shown when copying the Build Source ID fails",
+  },
+  "deploys.noticesTitle": {
+    message: "알림",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): the section heading over the list, shown in small capitals",
+  },
+  "deploys.noticeTroubleshoot": {
+    message: "배포 문제를 해결하는 일반적인 방법은 {link}를 참고하세요.",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): the line under a failed deploy's reason; {link} is the noticeTroubleshootLink link to bex's troubleshooting docs",
+  },
+  "deploys.noticeTroubleshootLink": {
+    message: "문서",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): the link text inside noticeTroubleshoot",
+  },
+  "deploys.noticeBuildCacheCleared": {
+    message: "빌드 캐시를 비웠습니다",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): the deploy was opened with Clear build cache & deploy",
+  },
+  "deploys.noticeFreePlan": {
+    message: "무료 컴퓨팅 플랜으로 변경했습니다",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): a settings deploy that moved the service from a paid plan to the free one",
+  },
+  "deploys.noticeMaintenance": {
+    message:
+      "bex는 플랫폼 안정성을 위해 다운타임 없는 유지보수를 주기적으로 실행합니다.",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): a deploy the platform itself started (trigger deployed_by_render)",
+  },
+  "deploys.noticeRolledBackTo": {
+    message: "{deploy}(으)로 롤백했습니다",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): a rollback deploy; {deploy} is the target deploy's id, a link",
+  },
+  "deploys.noticeBuildGone": {
+    message: "이 빌드가 더 이상 존재하지 않아 롤백할 수 없습니다.",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): a past deploy whose build is no longer stored",
+  },
+  "deploys.noticeSyncedFrom": {
+    message: "{blueprint}에서 동기화했습니다",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): a deploy a Blueprint sync opened; {blueprint} is the Blueprint's id, a link",
+  },
+  "deploys.noticeInProgress": {
+    message: "{deploy}가 진행 중입니다",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): a queued deploy; {deploy} is the noticeAnotherDeploy link to the deploy in progress",
+  },
+  "deploys.noticeAnotherDeploy": {
+    message: "다른 배포",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): the link text inside noticeInProgress",
+  },
+  "deploys.noticeCancelPolicy": {
+    message:
+      "새 배포가 시작될 때 진행 중인 배포가 취소되지 않게 하려면 {policy}을 조정하세요.",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): under a deploy a newer one canceled, when the workspace's Overlapping Deploy Policy is Override; {policy} is the noticePolicyLink link to Workspace Settings",
+  },
+  "deploys.noticeQueuePolicy": {
+    message: "배포가 대기열에 쌓이지 않게 하려면 {policy}을 조정하세요.",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): under a queued deploy, when the workspace's Overlapping Deploy Policy is Wait; {policy} is the noticePolicyLink link to Workspace Settings",
+  },
+  "deploys.noticePolicyLink": {
+    message: "중복 배포 정책",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): the link text inside noticeCancelPolicy and noticeQueuePolicy, the workspace's Overlapping Deploy Policy",
+  },
+  "deploys.noticeHealthWaiting": {
+    message: "내부 {link}가 성공 응답 코드를 반환하기를 기다리는 중입니다",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): a deploy rolling out on a service with a Health Check Path; {link} is the noticeHealthLink link to the health check docs",
+  },
+  "deploys.noticeHealthWaitingAt": {
+    message:
+      "내부 {link}가 성공 응답 코드를 반환하기를 기다리는 중입니다: {address}",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): noticeHealthWaiting with the address checked; {address} is host:port/path in code type",
+  },
+  "deploys.noticeHealthTimedOut": {
+    message:
+      "내부 {link}가 성공 응답 코드를 반환하기를 기다리다 시간이 초과되었습니다",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): a failed deploy that ran out of its rollout window, on a service with a Health Check Path; {link} as in noticeHealthWaiting",
+  },
+  "deploys.noticeHealthTimedOutAt": {
+    message:
+      "내부 {link}가 성공 응답 코드를 반환하기를 기다리다 시간이 초과되었습니다: {address}",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): noticeHealthTimedOut with the address checked; {address} is host:port/path in code type",
+  },
+  "deploys.noticeHealthLink": {
+    message: "헬스 체크",
+    description:
+      "Deploy page Notices (w1/m659, Render's DeployContainer): the link text inside the health check notices",
+  },
+  "deploys.reservedPortWarning": {
+    message:
+      "서비스가 포트 {port}에서 수신 대기 중인 것 같습니다. 이 포트는 {link}의 예약 포트입니다. 예약 포트({ports})가 아닌 포트에서 수신 대기하도록 서비스를 설정하세요.",
+    description:
+      "Deploy page banner (w1/m659, Render's free-plan warning): the instance serves HTTP on a reserved port; {port} is that port, {link} the reservedPortWarningLink link to bex's pricing, {ports} the reserved ports",
+  },
+  "deploys.reservedPortWarningLink": {
+    message: "무료 컴퓨팅 플랜",
+    description: "The link text inside reservedPortWarning (w1/m659)",
   },
   "deploys.rollbackTitle": {
     message: "롤백 확인",

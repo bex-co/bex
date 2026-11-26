@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -738,6 +739,35 @@ func TestDeployStackChangedServiceRedeploys(t *testing.T) {
 	}
 	if got := a.Annotations[appv1alpha1.AnnotationReleaseGeneration]; got != strconv.FormatInt(existing.Generation+1, 10) {
 		t.Errorf("release-generation annotation = %q, want %d", got, existing.Generation+1)
+	}
+}
+
+// w1/m659: a Blueprint sync's redeploy of a changed service names the
+// Blueprint and the sync run that opened it, the deploy page's "Synced from";
+// a render.yaml applied with no Blueprint names none.
+func TestBlueprintSyncRedeployNamesItsSync(t *testing.T) {
+	blueprint, sync := ids.New(ids.Blueprint), ids.New(ids.BlueprintSync)
+	for name, tc := range map[string]struct {
+		req             DeployRequest
+		blueprint, sync string
+	}{
+		"a Blueprint sync":                {req: DeployRequest{BlueprintID: blueprint, BlueprintRunID: sync}, blueprint: blueprint, sync: sync},
+		"a render.yaml with no Blueprint": {},
+	} {
+		rec := &recordingStore{}
+		existing := managedApp("web", "srv-1")
+		existing.Spec.Image = "old:1"
+		svc, _ := newService(rec, existing)
+		tc.req.Manifest = "services:\n  - {name: web, type: web, runtime: image, image: {url: new:1}}\n"
+		if _, err := svc.DeployStack(context.Background(), tc.req); err != nil {
+			t.Fatalf("%s: DeployStack: %v", name, err)
+		}
+		if len(rec.deployCalls) != 1 {
+			t.Fatalf("%s: deploys = %+v, want one", name, rec.deployCalls)
+		}
+		if d := rec.deployCalls[0]; d.BlueprintID != tc.blueprint || d.BlueprintSyncID != tc.sync {
+			t.Errorf("%s: deploy names blueprint %q sync %q, want %q %q", name, d.BlueprintID, d.BlueprintSyncID, tc.blueprint, tc.sync)
+		}
 	}
 }
 

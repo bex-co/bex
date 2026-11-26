@@ -28,6 +28,16 @@ query Deploy($serviceId: String!, $deployId: String!) {
     failureReason
     cancelReason
     stallReason
+    # The facts the page's Notices read (w1/m659): a cleared build cache, a
+    # move to the free plan, the Blueprint sync that opened the deploy, the
+    # rollout budget a failed deploy ran out of, and a reserved port its
+    # instance serves HTTP on.
+    clearCache
+    isTransitionToFreeTier
+    blueprintId
+    blueprintSyncId
+    timedOutSeconds
+    reservedPort
     # The three sentences by code, worded in the dashboard's language
     # (w4/566, w4/591), a hint's or cause's sentences as parts
     # (w5/m356).

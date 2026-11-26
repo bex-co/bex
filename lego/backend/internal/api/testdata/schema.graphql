@@ -1488,10 +1488,13 @@ input DatastoreMetricsQueryInput {
 }
 
 type Deploy {
+  blueprintId: String
+  blueprintSyncId: String
   buildAvailable: Boolean
   buildId: String
   cancelReason: String
   cancelReasonTemplate: DeployReason
+  clearCache: Boolean!
   commitCreatedAt: String
   commitId: String
   commitMessage: String
@@ -1504,13 +1507,16 @@ type Deploy {
   imageSha: String
   initialDeployHookFinishedAt: String
   initialDeployHookStatus: String
+  isTransitionToFreeTier: Boolean!
   preDeployStatus: String
+  reservedPort: Int
   rollbackOf: String
   serviceId: String
   stallReason: String
   stallReasonTemplate: DeployReason
   startedAt: String
   status: String
+  timedOutSeconds: Int
   trigger: String
   updatedAt: String
 }

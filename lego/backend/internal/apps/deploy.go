@@ -968,6 +968,9 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	// BlueprintID and correctly keeps the surface it arrived on.
 	if req.BlueprintID != "" {
 		ctx = core.WithBlueprintApply(ctx)
+		// A changed service's redeploy names the sync that opened it, the
+		// deploy page's "Synced from" (w1/m659).
+		ctx = store.WithBlueprintSync(ctx, req.BlueprintID, req.BlueprintRunID)
 	}
 	// One index of the platform's host claims serves the preflight and every
 	// service the apply writes, each of which records its claims in it.

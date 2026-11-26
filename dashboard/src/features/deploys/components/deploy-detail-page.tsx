@@ -23,6 +23,7 @@ import { DeployLogPanel } from "./deploy-log-panel";
 import { DeployTimeline } from "./deploy-timeline";
 import { DeployActions } from "./deploy-actions";
 import { DeployRollback } from "./deploy-rollback";
+import { DeployNotices } from "./deploy-notices";
 import { DEPLOY_BODY_CLASS, DEPLOY_PAGE_TOP_CLASS } from "./deploy-page-layout";
 
 export interface DeployDetailPageProps {
@@ -67,7 +68,7 @@ function DeployDetail({
   const base = useServiceBase();
   const { deploy, error, notFound, refetch } = useDeploy(serviceId, deployId);
   // The service chrome above already reads it; this shares the cached read.
-  const { service } = useServer(serviceId, { poll: false });
+  const { service, ownerId } = useServer(serviceId, { poll: false });
   const { source: buildSource } = useBuildSource(
     service?.buildSourceId ?? null,
   );
@@ -187,6 +188,12 @@ function DeployDetail({
           }
         />
       </div>
+      <DeployNotices
+        serviceId={serviceId}
+        deploy={deploy}
+        service={service}
+        ownerId={ownerId}
+      />
       {rollback ? (
         <DeployRollback
           serviceId={serviceId}

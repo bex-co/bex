@@ -1814,10 +1814,13 @@ export type DatastoreMetricsQueryInput = {
 
 export type Deploy = {
   __typename: 'Deploy';
+  blueprintId: Maybe<Scalars['String']['output']>;
+  blueprintSyncId: Maybe<Scalars['String']['output']>;
   buildAvailable: Maybe<Scalars['Boolean']['output']>;
   buildId: Maybe<Scalars['String']['output']>;
   cancelReason: Maybe<Scalars['String']['output']>;
   cancelReasonTemplate: Maybe<DeployReason>;
+  clearCache: Scalars['Boolean']['output'];
   commitCreatedAt: Maybe<Scalars['String']['output']>;
   commitId: Maybe<Scalars['String']['output']>;
   commitMessage: Maybe<Scalars['String']['output']>;
@@ -1830,13 +1833,16 @@ export type Deploy = {
   imageSha: Maybe<Scalars['String']['output']>;
   initialDeployHookFinishedAt: Maybe<Scalars['String']['output']>;
   initialDeployHookStatus: Maybe<Scalars['String']['output']>;
+  isTransitionToFreeTier: Scalars['Boolean']['output'];
   preDeployStatus: Maybe<Scalars['String']['output']>;
+  reservedPort: Maybe<Scalars['Int']['output']>;
   rollbackOf: Maybe<Scalars['String']['output']>;
   serviceId: Maybe<Scalars['String']['output']>;
   stallReason: Maybe<Scalars['String']['output']>;
   stallReasonTemplate: Maybe<DeployReason>;
   startedAt: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;
+  timedOutSeconds: Maybe<Scalars['Int']['output']>;
   trigger: Maybe<Scalars['String']['output']>;
   updatedAt: Maybe<Scalars['String']['output']>;
 };

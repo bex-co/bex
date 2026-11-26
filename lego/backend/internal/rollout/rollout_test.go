@@ -43,6 +43,8 @@ type fakeDeployStore struct {
 	created []store.Deploy
 	// adopted is each CreateDeploy's store.AdoptedRelease.
 	adopted []int64
+	// freePlan is each CreateDeploy's store.FreePlanTransition.
+	freePlan []bool
 	// err fails every CreateDeploy.
 	err error
 }
@@ -53,6 +55,7 @@ func (f *fakeDeployStore) LatestDeployCommit(_ context.Context, _ string) (store
 
 func (f *fakeDeployStore) CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string, clearCache ...bool) (store.Deploy, error) {
 	f.adopted = append(f.adopted, store.AdoptedRelease(ctx))
+	f.freePlan = append(f.freePlan, store.FreePlanTransition(ctx))
 	if f.err != nil {
 		return store.Deploy{}, f.err
 	}
@@ -130,6 +133,32 @@ func TestOpenReportsTheDeployItOpened(t *testing.T) {
 			(&Tracker{Store: &fakeDeployStore{err: tc.err}}).Open(ctx, Snapshot{appID: "srv-web", generation: 1, rolls: tc.rolls}, a, store.TriggerSettingsChange)
 			if got := opened(); got != tc.want {
 				t.Fatalf("opened deploy = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// w1/m659: a write that moves a service from a paid plan to the free one opens
+// the deploy Render's deploy page notes as "Updated to a free compute plan";
+// no other write does.
+func TestOpenMarksAMoveToTheFreePlan(t *testing.T) {
+	for _, tc := range []struct {
+		name, before, after string
+		want                bool
+	}{
+		{"paid to free", "starter", "free", true},
+		{"paid to the empty free tier", "standard", "", true},
+		{"free to paid", "free", "starter", false},
+		{"paid to paid", "starter", "standard", false},
+		{"free stays free", "free", "free", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ds := &fakeDeployStore{}
+			a := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Generation: 2}, Spec: appv1alpha1.AppSpec{Image: "web:v1", Tier: tc.after}}
+			before := Snapshot{appID: "srv-web", generation: 1, rolls: true, spec: appv1alpha1.AppSpec{Image: "web:v1", Tier: tc.before}}
+			(&Tracker{Store: ds}).Open(context.Background(), before, a, store.TriggerSettingsChange)
+			if len(ds.freePlan) != 1 || ds.freePlan[0] != tc.want {
+				t.Fatalf("free plan moves marked = %v, want [%v]", ds.freePlan, tc.want)
 			}
 		})
 	}

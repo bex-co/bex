@@ -5,7 +5,7 @@
 /** The back link to the deploys list, close over the header it leads. */
 export const DEPLOY_PAGE_TOP_CLASS = "space-y-2";
 
-/** Title row, any failure reason, then the facts grid. */
+/** Title row, then the facts grid; the reasons are Notices (w1/m659). */
 export const DEPLOY_HEADER_CLASS = "space-y-5";
 
 /** The title block on the left, the deploy's actions on the right. */

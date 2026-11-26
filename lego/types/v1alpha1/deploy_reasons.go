@@ -162,6 +162,10 @@ const (
 	// w8/388: Render's two other port-scan findings on a web service.
 	DeployReasonHintNoOpenPortLocalhost = "hint_no_open_port_localhost"
 	DeployReasonHintNoOpenHTTPPort      = "hint_no_open_http_port"
+	// w1/m659: the only listener answering HTTP is on a port bex reserves
+	// (ReservedImagePorts), which nothing routes to; Render's deploy page
+	// warns about it on a free plan.
+	DeployReasonHintReservedPort = "hint_reserved_port"
 	// w8/386: a startup crash's port advice, by how the process exited.
 	DeployReasonHintCrashPortBind = "hint_crash_port_bind"
 	DeployReasonHintEarlyExitPort = "hint_early_exit_port"
@@ -323,6 +327,7 @@ var deployReasonPartTemplates = map[string]string{
 	DeployReasonHintNoOpenServicePort:      hintNoOpenPort + "the service's port ({port}).",
 	DeployReasonHintNoOpenPortLocalhost:    " No open port was detected on 0.0.0.0, but ports are open on localhost ({ports}): the server must bind host 0.0.0.0 on the port in PORT ({port}).",
 	DeployReasonHintNoOpenHTTPPort:         " Ports are open on 0.0.0.0 ({ports}) but none answers HTTP: the server must serve HTTP on the port in PORT ({port}). " + hintPrivateService + ".",
+	DeployReasonHintReservedPort:           " The process serves HTTP on port {reserved}, which is reserved: bind the server to 0.0.0.0 on the port in PORT ({port}) instead. The reserved ports are 18012, 18013 and 19099.",
 	DeployReasonHintCrashPortBind:          " If the crash is a port bind: the process must listen on $PORT ({port}).",
 	DeployReasonHintEarlyExitPort:          " The server must keep listening on $PORT ({port}) until it receives SIGTERM.",
 	// Render's "Bind your service to port {port} or update the PORT

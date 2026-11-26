@@ -524,6 +524,53 @@ type Deploy struct {
 	// clearCache=clear (w4/413), so the events feed can report it long after
 	// the release-scoped App annotation has moved on.
 	ClearCache bool `json:"-"`
+	// BlueprintID and BlueprintSyncID are the Blueprint and the sync run that
+	// opened this deploy (durable blp- and bsr- keys), "" for any other deploy
+	// and for rows written before w1/m659: the deploy page's "Synced from"
+	// notice. Not Render deploy fields on REST.
+	BlueprintID     string `json:"-"`
+	BlueprintSyncID string `json:"-"`
+	// FreePlanTransition records a settings deploy that moved the service
+	// from a paid plan to the free one (w1/m659): Render's
+	// triggerDetails.isTransitionToFreeTier, the deploy page's "Updated to a
+	// free compute plan" notice.
+	FreePlanTransition bool `json:"-"`
+}
+
+type blueprintSyncKey struct{}
+
+// blueprintSyncRef is the Blueprint sync WithBlueprintSync names.
+type blueprintSyncRef struct{ blueprintID, syncID string }
+
+// WithBlueprintSync tells a Blueprint sync's deploy row opened under ctx which
+// Blueprint and sync run opened it (w1/m659), durable keys. Only a
+// TriggerBlueprintSync row records them.
+func WithBlueprintSync(ctx context.Context, blueprintID, syncID string) context.Context {
+	if blueprintID == "" || syncID == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, blueprintSyncKey{}, blueprintSyncRef{blueprintID: ids.BlueprintStorageID(blueprintID), syncID: ids.BlueprintSyncStorageID(syncID)})
+}
+
+// BlueprintSyncOf is the Blueprint and sync run WithBlueprintSync named, as
+// durable keys, or "" and "".
+func BlueprintSyncOf(ctx context.Context) (blueprintID, syncID string) {
+	ref, _ := ctx.Value(blueprintSyncKey{}).(blueprintSyncRef)
+	return ref.blueprintID, ref.syncID
+}
+
+type freePlanTransitionKey struct{}
+
+// WithFreePlanTransition marks the deploy row opened under ctx as one that
+// moves its service from a paid plan to the free one (w1/m659).
+func WithFreePlanTransition(ctx context.Context) context.Context {
+	return context.WithValue(ctx, freePlanTransitionKey{}, true)
+}
+
+// FreePlanTransition reports a ctx WithFreePlanTransition marked.
+func FreePlanTransition(ctx context.Context) bool {
+	marked, _ := ctx.Value(freePlanTransitionKey{}).(bool)
+	return marked
 }
 
 // Domain is a row of `domains` — a BYOD custom domain attached to an app.
@@ -2881,7 +2928,10 @@ func (s *PGStore) createDeploy(ctx context.Context, appID, trigger, image string
 	if id := AwaitingBuildDeployID(ctx); id != "" {
 		return s.promoteAwaitingBuildDeploy(ctx, id, appID, image, generation, commit, replaced)
 	}
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, BuildID: commit.BuildID, BuildDeployScope: BuildDeployScopeFrom(ctx), TriggeredBy: triggeredBy, ClearCache: clearCache, Status: DeployCreated}
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, BuildID: commit.BuildID, BuildDeployScope: BuildDeployScopeFrom(ctx), TriggeredBy: triggeredBy, ClearCache: clearCache, FreePlanTransition: FreePlanTransition(ctx), Status: DeployCreated}
+	if trigger == TriggerBlueprintSync {
+		d.BlueprintID, d.BlueprintSyncID = BlueprintSyncOf(ctx)
+	}
 	if err := s.awaitDeployAheadRecorded(ctx, appID); err != nil {
 		return Deploy{}, classify("deploy", err)
 	}
@@ -2903,10 +2953,10 @@ func insertDeploy(ctx context.Context, tx pgx.Tx, d *Deploy, replacedReason stri
 	d.OverlapPending = status == DeployQueued
 	d.Repo, d.Branch = deploySource(appRepo, appBranch, d.Image, d.Trigger)
 	return tx.QueryRow(ctx,
-		`INSERT INTO deploys (id, app_id, trigger, image, repo, branch, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, finished_at, cancel_reason, clear_cache, build_id, build_deploy_scope)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CASE WHEN $12 = $14 THEN clock_timestamp() END, $15, $16, NULLIF($17, ''), $18)
+		`INSERT INTO deploys (id, app_id, trigger, image, repo, branch, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, finished_at, cancel_reason, clear_cache, build_id, build_deploy_scope, blueprint_id, blueprint_sync_id, free_plan_transition)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CASE WHEN $12 = $14 THEN clock_timestamp() END, $15, $16, NULLIF($17, ''), $18, NULLIF($19, ''), NULLIF($20, ''), $21)
 		 RETURNING created_at, updated_at, finished_at`,
-		d.ID, d.AppID, d.Trigger, d.Image, d.Repo, d.Branch, d.Generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.TriggeredBy, d.Status, d.OverlapPending, DeployCanceled, d.CancelReason, d.ClearCache, d.BuildID, d.BuildDeployScope,
+		d.ID, d.AppID, d.Trigger, d.Image, d.Repo, d.Branch, d.Generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.TriggeredBy, d.Status, d.OverlapPending, DeployCanceled, d.CancelReason, d.ClearCache, d.BuildID, d.BuildDeployScope, d.BlueprintID, d.BlueprintSyncID, d.FreePlanTransition,
 	).Scan(&d.CreatedAt, &d.UpdatedAt, &d.FinishedAt)
 }
 
@@ -3716,7 +3766,7 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, repo, branch, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, port_scan_since, port_scan_until, COALESCE(port_scan_found, ''), port_scan_found_at, detected_http_port, COALESCE(build_id, ''), restart_deferred, build_deploy_scope, awaiting_build, end_exit_code, end_oom_killed, end_timed_out_seconds, rollout_started_at, app_started_at, COALESCE(rollout_command, ''), COALESCE(rollout_web_concurrency, 0), COALESCE(rollout_instance_announces, false), rollout_first_exit_at, rollout_first_exit_code, live_urls, pre_deploy_started_at, pre_deploy_container_started_at, pre_deploy_finished_at, COALESCE(pre_deploy_command, ''), COALESCE(pre_deploy_native, false), pre_deploy_exit_code, COALESCE(pre_deploy_oom_killed, false)`
+const deployColumns = `id, app_id, trigger, image, resolved_image, repo, branch, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, port_scan_since, port_scan_until, COALESCE(port_scan_found, ''), port_scan_found_at, detected_http_port, COALESCE(build_id, ''), restart_deferred, build_deploy_scope, awaiting_build, end_exit_code, end_oom_killed, end_timed_out_seconds, rollout_started_at, app_started_at, COALESCE(rollout_command, ''), COALESCE(rollout_web_concurrency, 0), COALESCE(rollout_instance_announces, false), rollout_first_exit_at, rollout_first_exit_code, live_urls, pre_deploy_started_at, pre_deploy_container_started_at, pre_deploy_finished_at, COALESCE(pre_deploy_command, ''), COALESCE(pre_deploy_native, false), pre_deploy_exit_code, COALESCE(pre_deploy_oom_killed, false), COALESCE(blueprint_id, ''), COALESCE(blueprint_sync_id, ''), free_plan_transition`
 
 // scanDeploy scans deployColumns, then any extra columns a query appends.
 func scanDeploy(row pgx.Row, extra ...any) (Deploy, error) {
@@ -3724,7 +3774,7 @@ func scanDeploy(row pgx.Row, extra ...any) (Deploy, error) {
 	err := row.Scan(append([]any{&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.Repo, &d.Branch, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason, &d.PortScanSince, &d.PortScanUntil, &d.PortScanFound, &d.PortScanFoundAt, &d.DetectedHTTPPort, &d.BuildID, &d.Deferred, &d.BuildDeployScope, &d.AwaitingBuild, &d.End.ExitCode, &d.End.OOMKilled, &d.End.TimedOutSeconds,
 		&d.Rollout.StartedAt, &d.Rollout.AppStarts, &d.Rollout.Command, &d.Rollout.WebConcurrency, &d.Rollout.InstanceAnnounces, &d.Rollout.FirstExitAt, &d.Rollout.FirstExitCode, &d.LiveURLs,
 		&d.PreDeployRun.StartedAt, &d.PreDeployRun.ContainerStartedAt, &d.PreDeployRun.FinishedAt, &d.PreDeployRun.Command, &d.PreDeployRun.Native,
-		&d.PreDeployRun.ExitCode, &d.PreDeployRun.OOMKilled}, extra...)...)
+		&d.PreDeployRun.ExitCode, &d.PreDeployRun.OOMKilled, &d.BlueprintID, &d.BlueprintSyncID, &d.FreePlanTransition}, extra...)...)
 	return d, err
 }
 

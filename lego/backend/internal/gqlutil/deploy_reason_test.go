@@ -171,7 +171,7 @@ func TestDeployReasonsRoundTrip(t *testing.T) {
 		{Name: "kind", Value: "readiness"}, {Name: "limit", Value: "3"}, {Name: "memory", Value: "512Mi"}, {Name: "minutes", Value: "10"},
 		{Name: "noun", Value: "workspace"}, {Name: "path", Value: "/healthz"},
 		{Name: "port", Value: "8080"}, {Name: "ports", Value: "80, 9000, 9009"}, {Name: "previous", Value: "3000"},
-		{Name: "ref", Value: "g3-1a2b3c4d"}, {Name: "resources", Value: "cpu, ephemeral-storage"},
+		{Name: "ref", Value: "g3-1a2b3c4d"}, {Name: "reserved", Value: "18012"}, {Name: "resources", Value: "cpu, ephemeral-storage"},
 		{Name: "restarts", Value: "3"}, {Name: "result", Value: "HTTP health check failed: dial tcp 10.0.0.7:8080: connect: connection refused"},
 		{Name: "status", Value: "403"},
 		{Name: "wait", Value: "3h0m0s"},

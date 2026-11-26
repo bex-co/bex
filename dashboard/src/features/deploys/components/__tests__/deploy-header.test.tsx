@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import i18n from "@/i18n/init";
 import { DeployHeader } from "@/features/deploys/components/deploy-header";
 import type { DeployView } from "@/features/deploys/hooks/use-deploy";
 
@@ -273,80 +272,20 @@ describe("DeployHeader", () => {
     expect(screen.getByText("In progress")).toBeInTheDocument();
   });
 
-  // w4/m112: a rollout gated on a failing health check used to show a bare
-  // "In Progress" for the full 900s budget — the page named no probe, and a
-  // user could not tell it from a slow image pull. Live on 2026-09-17 with
-  // Health Check Path /qa-bogus-health.
-  it("names what an in-progress rollout is waiting on", () => {
-    const stall =
-      "the container is running but its readiness health check has not " +
-      "succeeded, so the rollout is waiting: GET /qa-bogus-health on port 3000.";
-    render(
-      <DeployHeader
-        deploy={deploy({ status: "update_in_progress", stallReason: stall })}
-      />,
-    );
-
-    expect(screen.getByText(stall)).toBeInTheDocument();
-    expect(screen.getByText("In Progress")).toBeInTheDocument();
-  });
-
-  // Before the diagnosis arrives (~2 min) the page reads exactly as it did.
-  it("shows nothing extra while a rollout is progressing normally", () => {
+  // w1/m659: the failure, cancel and stall reasons are the deploy page's
+  // Notices now (deploy-notices.test.tsx), so the header leaves them out.
+  it("leaves a deploy's reasons to the Notices", () => {
     const { container } = render(
-      <DeployHeader deploy={deploy({ status: "update_in_progress" })} />,
-    );
-    expect(container.textContent).not.toContain("health check");
-  });
-
-  // The server clears stall_reason as the row goes terminal, so the terminal
-  // states keep their own copy. Assert the component does not resurrect it.
-  it("keeps the failure copy for a terminal deploy", () => {
-    render(
       <DeployHeader
         deploy={deploy({
           status: "update_failed",
-          failureReason:
-            "the deploy did not become healthy within the health-gate window",
-          stallReason: "",
-          failureReasonTemplate: null,
-          stallReasonTemplate: null,
-          cancelReasonTemplate: null,
+          failureReason: "the deploy failed its health check",
+          stallReason: "waiting on GET /healthz",
         })}
       />,
     );
-    expect(
-      screen.getByText(
-        "the deploy did not become healthy within the health-gate window",
-      ),
-    ).toBeInTheDocument();
-  });
-
-  // w4/591: a zh owner read "Superseded by dep-…" in English.
-  it("words a supersede cancel in zh, keeping the deploy id", async () => {
-    await i18n.changeLanguage("zh");
-    try {
-      render(
-        <DeployHeader
-          deploy={deploy({
-            status: "canceled",
-            cancelReason: "Superseded by dep-d4newer",
-            cancelReasonTemplate: {
-              code: "superseded_by",
-              params: { deploy: "dep-d4newer" },
-              parts: [],
-              remainder: "",
-            },
-          })}
-        />,
-      );
-      expect(screen.getByText("已被 dep-d4newer 取代")).toBeInTheDocument();
-      expect(
-        screen.queryByText("Superseded by dep-d4newer"),
-      ).not.toBeInTheDocument();
-    } finally {
-      await i18n.changeLanguage("en");
-    }
+    expect(container.textContent).not.toContain("health check");
+    expect(container.textContent).not.toContain("/healthz");
   });
 
   // w2/m612 t005: linked-service deploy headers show buildId and Build Source provenance.
@@ -375,10 +314,9 @@ describe("DeployHeader", () => {
 
     const sourceFact = screen.getByTestId("deploy-build-source");
     expect(sourceFact).toHaveTextContent("Monorepo Build");
-    expect(screen.getByRole("link", { name: "Monorepo Build" })).toHaveAttribute(
-      "href",
-      "/build-sources/bds-mono001",
-    );
+    expect(
+      screen.getByRole("link", { name: "Monorepo Build" }),
+    ).toHaveAttribute("href", "/build-sources/bds-mono001");
     expect(sourceFact).toHaveTextContent("bds-mono001");
     expect(
       screen.getByRole("button", { name: "Copy Build Source ID" }),

@@ -89,6 +89,36 @@ var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"failureReasonTemplate": gqlutil.DeployReasonField(func(d DeployView) string { return d.FailureReason }),
 		"stallReasonTemplate":   gqlutil.DeployReasonField(func(d DeployView) string { return d.StallReason }),
 		"cancelReasonTemplate":  gqlutil.DeployReasonField(func(d DeployView) string { return d.CancelReason }),
+		// The trigger facts Render's deploy page Notices read (w1/m659),
+		// Render's triggerDetails flattened as rollbackOf is: the deploy
+		// cleared the build cache ("Build cache cleared"), moved the service
+		// to the free plan ("Updated to a free compute plan"), and the
+		// Blueprint and sync that opened it ("Synced from"), null for any
+		// other deploy. REST and MCP keep Render's deploy object, which has
+		// none of them.
+		"clearCache":             gqlutil.ReqBoolField(func(d DeployView) any { return d.ClearCache }),
+		"isTransitionToFreeTier": gqlutil.ReqBoolField(func(d DeployView) any { return d.FreePlanTransition }),
+		"blueprintId":            gqlutil.OptionalStrField(func(d DeployView) any { return d.BlueprintID }),
+		"blueprintSyncId":        gqlutil.OptionalStrField(func(d DeployView) any { return d.BlueprintSyncID }),
+		// timedOutSeconds is the rollout budget a failed deploy ran out of,
+		// null for any other: Render's deploy_ended reason.timedOutSeconds,
+		// its deploy page's "Timed out" (w1/m659).
+		"timedOutSeconds": gqlutil.IntField(func(d DeployView) any {
+			if d.TimedOutSeconds == 0 {
+				return nil
+			}
+			return d.TimedOutSeconds
+		}),
+		// reservedPort is the port bex reserves (18012, 18013, 19099) that
+		// the deploy's instance serves HTTP on, as its in-flight or failure
+		// reason names it; null for none. Render's deploy page warns about
+		// it on a free plan, from openPorts' HTTP mark (w1/m659).
+		"reservedPort": gqlutil.IntField(func(d DeployView) any {
+			if d.ReservedPort == 0 {
+				return nil
+			}
+			return d.ReservedPort
+		}),
 	},
 })
 

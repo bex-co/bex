@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -182,6 +183,25 @@ type DeployView struct {
 	// observation, never a verdict: a deploy carrying one may still go live.
 	// A bex extra beyond Render's deploy shape, like FailureReason.
 	StallReason string
+	// ClearCache, BlueprintID, BlueprintSyncID and FreePlanTransition are the
+	// trigger facts Render's deploy page Notices read (w1/m659): a deploy that
+	// cleared the build cache, the Blueprint and sync run (public exs- and
+	// exe- ids) that opened it, "" for any other deploy, and a settings deploy
+	// that moved the service to the free plan. GraphQL only: Render's public
+	// deploy object carries none of them.
+	ClearCache         bool
+	BlueprintID        string
+	BlueprintSyncID    string
+	FreePlanTransition bool
+	// TimedOutSeconds is the rollout budget a failed deploy ran out of
+	// (store.DeployEnd, w8/m146), 0 for any other deploy: Render's
+	// deploy_ended reason.timedOutSeconds, which its deploy page reads as
+	// "Timed out" (w1/m659).
+	TimedOutSeconds int32
+	// ReservedPort is the reserved port the operator's scan found the
+	// deploy's instance serving HTTP on, read from its stall reason while it
+	// is open and its failure reason once it failed (w1/m659); 0 for none.
+	ReservedPort int32
 }
 
 func view(a *appv1alpha1.App, d store.Deploy) DeployView {
@@ -214,7 +234,22 @@ func view(a *appv1alpha1.App, d store.Deploy) DeployView {
 		FailureReason:               d.FailureReason,
 		CancelReason:                d.CancelReason,
 		StallReason:                 d.StallReason,
+		ClearCache:                  d.ClearCache,
+		BlueprintID:                 ids.BlueprintPublicID(d.BlueprintID),
+		BlueprintSyncID:             ids.BlueprintSyncPublicID(d.BlueprintSyncID),
+		FreePlanTransition:          d.FreePlanTransition,
+		TimedOutSeconds:             d.End.TimedOutSeconds,
+		ReservedPort:                reservedPort(d),
 	}
+}
+
+// reservedPort is the reserved port d's own reasons say its instance serves
+// HTTP on: the open deploy's stall, else the failed deploy's verdict.
+func reservedPort(d store.Deploy) int32 {
+	if port := appv1alpha1.ReservedPortListener(d.StallReason); port > 0 {
+		return port
+	}
+	return appv1alpha1.ReservedPortListener(d.FailureReason)
 }
 
 // initialDeployHookRun is the App's latest initialDeployHook run when it ran

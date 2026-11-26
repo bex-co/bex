@@ -27,7 +27,6 @@ import {
 } from "@/features/deploys/lib/deploy-presentation";
 import { repoCommitUrl } from "@/features/services/lib/repo";
 import { CommitSha } from "./commit-sha";
-import { DeployFailureReason } from "./deploy-failure-reason";
 import { DeployHeaderSkeleton } from "./deploy-page-skeletons";
 import { DeployStatusIcon } from "./deploy-status-icon";
 import {
@@ -127,30 +126,6 @@ export function DeployHeader({
         </div>
         {actions}
       </div>
-
-      {/* Why a deploy ended, or what an open rollout waits on, sits under the
-          title where the eye lands first. Actionable cause of a failed deploy
-          (w9/011); a supersede cancel (w4/089) and a stalled rollout (w4/m112)
-          are observations, so they read neutral. The server clears the stall
-          as the deploy goes terminal. */}
-      {deploy.failureReason || deploy.cancelReason || deploy.stallReason ? (
-        <div className="space-y-1">
-          <DeployFailureReason
-            reason={deploy.failureReason}
-            template={deploy.failureReasonTemplate}
-          />
-          <DeployFailureReason
-            reason={deploy.cancelReason}
-            template={deploy.cancelReasonTemplate}
-            tone="neutral"
-          />
-          <DeployFailureReason
-            reason={deploy.stallReason}
-            template={deploy.stallReasonTemplate}
-            tone="neutral"
-          />
-        </div>
-      ) : null}
 
       <dl className={DEPLOY_FACTS_GRID_CLASS}>
         {/* "Did it go live?" is the page's first question, so Status alone

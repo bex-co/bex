@@ -421,6 +421,11 @@ func (t *Tracker) Open(ctx context.Context, snapshot Snapshot, a *appv1alpha1.Ap
 			commit = live.CommitInfo()
 		}
 	}
+	// A patch that moved the service from a paid plan to the free one is
+	// the deploy page's "Updated to a free compute plan" (w1/m659).
+	if core.PaidPlan(snapshot.spec.Tier) && !core.PaidPlan(a.Spec.Tier) {
+		ctx = store.WithFreePlanTransition(ctx)
+	}
 	// A waiting deploy the patched App reports adopted is in flight, so this
 	// release waits behind it rather than replacing it (w8/396).
 	d, err := t.Store.CreateDeploy(store.WithAdoptedRelease(ctx, a), snapshot.appID, trigger, image, generation, commit, core.SubjectFrom(ctx), false)

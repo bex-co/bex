@@ -105,8 +105,10 @@ func ReadPortScan(stall string) (PortScan, PortScanFinding) {
 }
 
 // noOpenPortHints are the stall hints that say the scan found no open port.
+// A listener on a reserved port is no open port to serve (w1/m659): Render's
+// scan leaves those ports out.
 var noOpenPortHints = []string{
-	DeployReasonHintNoOpenPort, DeployReasonHintNoOpenPortBefore, DeployReasonHintNoOpenServicePort,
+	DeployReasonHintNoOpenPort, DeployReasonHintNoOpenPortBefore, DeployReasonHintNoOpenServicePort, DeployReasonHintReservedPort,
 }
 
 // listeningHints are the stall hints that name a port the process listens on.
@@ -210,3 +212,30 @@ var probeStallCodes = append([]string{
 	DeployReasonProbeTCPWaiting, DeployReasonProbeTCPWaitingRestarted,
 	DeployReasonProbeOtherWaiting, DeployReasonProbeOtherWaitingRestarted,
 }, openPortProbeCodes...)
+
+// ReservedPortListener is the reserved port that reason, a deploy's stall or
+// failure reason, says the instance serves HTTP on (DeployReasonHintReservedPort,
+// w1/m659); 0 when it says none.
+func ReservedPortListener(reason string) int32 {
+	_, params, ok := ParseDeployReason(reason)
+	if !ok {
+		return 0
+	}
+	for _, p := range params {
+		if p.Name != "hint" {
+			continue
+		}
+		parts, _ := ParseDeployReasonParts(p.Value)
+		for _, part := range parts {
+			if part.Code != DeployReasonHintReservedPort {
+				continue
+			}
+			for _, param := range part.Params {
+				if port, err := strconv.Atoi(param.Value); param.Name == "reserved" && err == nil && IsReservedImagePort(int32(port)) {
+					return int32(port)
+				}
+			}
+		}
+	}
+	return 0
+}

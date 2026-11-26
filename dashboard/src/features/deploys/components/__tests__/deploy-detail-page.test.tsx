@@ -90,6 +90,7 @@ vi.mock("@/features/services/hooks/use-server", () => ({
     service: serverState.service,
     loading: false,
     error: undefined,
+    ownerId: serverState.service ? "tea-1" : null,
   }),
 }));
 vi.mock("@/features/services/hooks/use-build-sources", () => ({
@@ -126,6 +127,23 @@ vi.mock("../deploy-header", () => ({
     >
       {actions}
     </div>
+  ),
+}));
+// The Notices have their own suite (deploy-notices.test.tsx); the page
+// hands them the deploy, its service and the service's workspace.
+vi.mock("../deploy-notices", () => ({
+  DeployNotices: ({
+    deploy,
+    ownerId,
+  }: {
+    deploy?: { id: string } | null;
+    ownerId?: string | null;
+  }) => (
+    <div
+      data-testid="deploy-notices"
+      data-deploy={deploy?.id ?? ""}
+      data-owner={ownerId ?? ""}
+    />
   ),
 }));
 vi.mock("../deploy-actions", () => ({
@@ -249,6 +267,37 @@ describe("DeployDetailPage", () => {
     expect(section).toHaveAttribute("data-auto-deploy", "true");
     for (const part of ["deploy-timeline", "build-log"]) {
       expect(screen.queryByTestId(part)).not.toBeInTheDocument();
+    }
+  });
+
+  // w1/m659: Render's Notices sit between the deploy header and the log, and
+  // above the Confirm Rollback section on its route.
+  it("puts the Notices between the header and the log", () => {
+    serverState.service = { id: "web" };
+    for (const rollback of [false, true]) {
+      const { unmount } = render(
+        <DeployDetailPage
+          serviceId="web"
+          deployId="dep-1"
+          rollback={rollback}
+        />,
+      );
+      const notices = screen.getByTestId("deploy-notices");
+      expect(notices).toHaveAttribute("data-deploy", "dep-1");
+      expect(notices).toHaveAttribute("data-owner", "tea-1");
+      const header = screen.getByTestId("deploy-header");
+      const body = screen.getByTestId(
+        rollback ? "deploy-rollback" : "build-log",
+      );
+      expect(
+        header.compareDocumentPosition(notices) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        notices.compareDocumentPosition(body) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      unmount();
     }
   });
 

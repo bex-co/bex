@@ -75,6 +75,21 @@ export interface DeployView {
   failureReasonTemplate: DeployReasonTemplate | null;
   stallReasonTemplate: DeployReasonTemplate | null;
   cancelReasonTemplate: DeployReasonTemplate | null;
+  /*
+   * The facts the deploy page's Notices read (w1/m659), read by the detail
+   * query only: absent on a list row.
+   */
+  /** The deploy cleared the build cache ("Build cache cleared"). */
+  clearCache?: boolean;
+  /** A settings deploy that moved the service to the free plan. */
+  isTransitionToFreeTier?: boolean;
+  /** The Blueprint (exs-…) and sync (exe-…) that opened it; null otherwise. */
+  blueprintId?: string | null;
+  blueprintSyncId?: string | null;
+  /** The rollout budget a failed deploy ran out of, in seconds; null otherwise. */
+  timedOutSeconds?: number | null;
+  /** A port bex reserves (18012, 18013, 19099) its instance serves HTTP on. */
+  reservedPort?: number | null;
 }
 
 export interface UseDeployResult {
@@ -191,5 +206,11 @@ function toDeployView(
     failureReasonTemplate: toDeployReasonTemplate(d.failureReasonTemplate),
     stallReasonTemplate: toDeployReasonTemplate(d.stallReasonTemplate),
     cancelReasonTemplate: toDeployReasonTemplate(d.cancelReasonTemplate),
+    clearCache: d.clearCache,
+    isTransitionToFreeTier: d.isTransitionToFreeTier,
+    blueprintId: d.blueprintId ?? null,
+    blueprintSyncId: d.blueprintSyncId ?? null,
+    timedOutSeconds: d.timedOutSeconds ?? null,
+    reservedPort: d.reservedPort ?? null,
   };
 }
