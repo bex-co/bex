@@ -25,12 +25,15 @@ import (
 	"testing"
 )
 
+// cliStreamFixture is the `bex agent` stream fixture both sides read.
+var cliStreamFixture = filepath.Join("..", "..", "..", "cli", "testdata", "agent-stream-replay.sse")
+
 // TestReplayChunksMatchCLIStreamContract is the backend twin of the `bex
 // agent` stream fixture (lego/cli/testdata/agent-stream-replay.sse, ADR106
 // D9): every chunk Expand replays for a text, reasoning or tool item must be a
 // type the fixture shows the CLI, carrying the fields the CLI reads from it.
 func TestReplayChunksMatchCLIStreamContract(t *testing.T) {
-	f, err := os.Open(filepath.Join("..", "..", "..", "cli", "testdata", "agent-stream-replay.sse"))
+	f, err := os.Open(cliStreamFixture)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,5 +79,27 @@ func TestReplayChunksMatchCLIStreamContract(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// TestCLIStreamFixtureEndsWithOneDone pins the stream rule both sides share
+// (ADR047 D9, w3/m406): `[DONE]` is a settled stream's last frame, sent once,
+// after the replay adapter's closing finish. The gateway sends it only once the
+// turn has settled (agentattach's sandbox_wait_test.go); the CLI attaches again
+// to a stream that closes without it (its stream_test.go).
+func TestCLIStreamFixtureEndsWithOneDone(t *testing.T) {
+	raw, err := os.ReadFile(cliStreamFixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var frames []string
+	for _, line := range strings.Split(string(raw), "\n") {
+		if payload, ok := strings.CutPrefix(line, "data: "); ok {
+			frames = append(frames, payload)
+		}
+	}
+	n := len(frames)
+	if n < 2 || frames[n-1] != "[DONE]" || frames[n-2] != `{"type":"finish"}` || strings.Count(string(raw), "[DONE]\n") != 1 {
+		t.Fatalf("the settled stream fixture must end with finish, then exactly one [DONE]: %q", frames)
 	}
 }

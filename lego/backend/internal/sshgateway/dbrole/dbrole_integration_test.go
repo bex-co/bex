@@ -248,11 +248,14 @@ func TestGatewayScopedRoleAllowsOwnSurfaceDeniesTheRest(t *testing.T) {
 	exercised["AppendAgentSessionTranscript"] = true
 
 	// The agent-session row (ADR054 D7): the "Open in Zed" SSH resolver reads it
-	// (GetAgentSession) to derive the sandbox pod after authorizing. A missing id
-	// returns ErrNotFound — this asserts only that the SELECT privilege is present.
+	// (GetAgentSession) to derive the sandbox pod after authorizing, and the
+	// attach transport reads it while it holds a stream for a sandbox that does
+	// not serve yet (w3/m406). A missing id returns ErrNotFound — this asserts
+	// only that the SELECT privilege is present.
 	if _, err := st.GetAgentSession(ctx, "ags-nope000000000000000"); permDenied(err) {
 		t.Errorf("agent_sessions SELECT denied under scoped role: %v", err)
 	}
+	exercised["GetAgentSession"] = true
 
 	// --- DENY: sensitive tables are refused by Postgres ----------------------
 	for _, table := range sensitiveTables {

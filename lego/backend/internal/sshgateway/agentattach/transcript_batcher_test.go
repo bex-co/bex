@@ -28,6 +28,7 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -260,11 +261,12 @@ func TestLiveSpliceChargesReplayOnceAndKeepsConcurrentSuffix(t *testing.T) {
 				quota += int64(len(payload))
 			}
 			wire.WriteString("data: [DONE]\n\n")
-			server := &Server{Store: st, MaxTranscriptBytes: quota, HTTPClient: &http.Client{Transport: transcriptTransport(func(*http.Request) (*http.Response, error) {
+			server := &Server{Store: st, Pods: fixedPodIP{ip: "127.0.0.1"}, MaxTranscriptBytes: quota, HTTPClient: &http.Client{Transport: transcriptTransport(func(*http.Request) (*http.Response, error) {
 				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(wire.String()))}, nil
 			})}}
 			w := httptest.NewRecorder()
-			server.streamAgentAttach(context.Background(), server.startAgentSSE(w, w), "127.0.0.1", nil, "ags-test", 1)
+			claims := agentsessionticket.Claims{SessionID: "ags-test", Pod: "sandbox-1-0", Turn: 1}
+			server.streamAgentAttach(context.Background(), server.startAgentSSE(w, w), claims)
 			if w.Body.String() != wire.String() {
 				t.Fatalf("replay/splice lost or duplicated bytes: got %q want %q", w.Body.String(), wire.String())
 			}

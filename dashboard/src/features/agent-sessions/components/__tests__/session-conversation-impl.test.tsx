@@ -456,6 +456,72 @@ describe("SessionConversationImpl", () => {
     expect(open()).toEqual([false, false, false]);
   });
 
+  // `[DONE]` ends a stream only once its turn has settled (ADR047 D9,
+  // w3/m406). A stream the gateway closed without it was cut first — its
+  // sandbox did not serve in time, or its driver connection dropped — and the
+  // column attaches again while the session works, so the turn keeps showing
+  // live without a reload.
+  it("attaches again to a stream cut before its turn settled, and not after [DONE]", async () => {
+    const streams = makeLiveStreams();
+    const transport = createAgentSessionTransport({
+      sessionId: "as-cut",
+      mintTicket,
+      fetch: streams.fetch,
+    });
+    render(
+      <SessionConversationImpl
+        sessionId="as-cut"
+        isTerminal={false}
+        phase="running"
+        attachSignal="2:sbx-1:false"
+        transport={transport}
+      />,
+    );
+    await waitFor(() => expect(streams.opened).toHaveLength(1));
+    await act(async () => {
+      for (const chunk of RUNNING_TRANSCRIPT_HEAD)
+        streams.opened[0].push(chunk);
+      streams.opened[0].cut();
+    });
+    await waitFor(() => expect(streams.opened).toHaveLength(2), {
+      timeout: 3000,
+    });
+    await act(async () => {
+      for (const chunk of TERMINAL_TRANSCRIPT) streams.opened[1].push(chunk);
+      streams.opened[1].done();
+    });
+    await waitFor(() =>
+      expect(screen.getByText(/Task committed\./)).toBeInTheDocument(),
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 1500)));
+    expect(streams.opened).toHaveLength(2);
+  });
+
+  it("does not attach again to a cut stream once the session has settled", async () => {
+    const streams = makeLiveStreams();
+    const transport = createAgentSessionTransport({
+      sessionId: "as-cut-done",
+      mintTicket,
+      fetch: streams.fetch,
+    });
+    render(
+      <SessionConversationImpl
+        sessionId="as-cut-done"
+        isTerminal
+        phase="completed"
+        attachSignal="2:sbx-1:true"
+        transport={transport}
+      />,
+    );
+    await waitFor(() => expect(streams.opened).toHaveLength(1));
+    await act(async () => {
+      for (const chunk of TERMINAL_TRANSCRIPT) streams.opened[0].push(chunk);
+      streams.opened[0].cut();
+    });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 1500)));
+    expect(streams.opened).toHaveLength(1);
+  });
+
   it("reads as connecting, not as an empty conversation, while a re-attach replaces its stream", async () => {
     // Ending the replaced stream settles the mount replay; until the
     // re-attach's own replay settles, the column is still connecting.

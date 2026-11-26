@@ -32,7 +32,9 @@ import (
 // single-use, 90-second read ticket; the isolated gateway answers GET
 // <streamUrl> carrying it with the AI SDK v1 UI-message stream — the durable
 // transcript replayed as chunks, then the live tail, then `[DONE]`. The ticket
-// is the stream's only credential, so no bearer is sent.
+// is the stream's only credential, so no bearer is sent. `[DONE]` comes only
+// once the turn has settled; a stream that closes without it was cut, and is
+// attached again (w3/m406).
 
 const (
 	// ticketHeader carries the agent-session ticket (agentsessionticket.TicketHeader).
@@ -63,6 +65,9 @@ var (
 type attachTicket struct {
 	Ticket    string `json:"ticket"`
 	StreamURL string `json:"streamUrl"`
+	// Turns is the session's turn count when the ticket was minted: a later
+	// turn (a queued message) streams on a ticket of its own.
+	Turns int `json:"turns"`
 }
 
 // attachTicket mints a read ticket for id's stream.
@@ -92,26 +97,25 @@ func (a *api) attachTicket(ctx context.Context, id string) (attachTicket, error)
 	return t, nil
 }
 
-// streamOnce reads one connection of t's stream into r, until `[DONE]` or
-// the connection ends.
-func (a *api) streamOnce(ctx context.Context, t attachTicket, r *chunkRenderer) error {
+// streamOnce reads one connection of t's stream into r, until `[DONE]` (done)
+// or the connection ends.
+func (a *api) streamOnce(ctx context.Context, t attachTicket, r *chunkRenderer) (done bool, err error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, t.StreamURL, nil)
 	if err != nil {
-		return err
+		return false, err
 	}
 	req.Header.Set(ticketHeader, t.Ticket)
 	req.Header.Set("Accept", "text/event-stream")
 	resp, err := a.http.Do(req)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
-		return responseError(resp, body)
+		return false, responseError(resp, body)
 	}
-	_, err = readSSE(resp.Body, r.chunk)
-	return err
+	return readSSE(resp.Body, r.chunk)
 }
 
 // readSSE calls emit with each event's data until `[DONE]` or the end of the
@@ -154,11 +158,12 @@ func readSSE(body io.Reader, emit func([]byte)) (done bool, err error) {
 }
 
 // streamUntilSettled shows id's stream through r until the session settles,
-// and returns that read. A connection can end before the turn does: dropped,
-// or closed by the gateway with `[DONE]` because the turn's new sandbox does
-// not serve yet. Either way the session is read, and while it is still
-// working the stream is attached again with a fresh ticket (r skips what it
-// already printed), backing off while nothing new arrives.
+// and returns that read. A stream that ends with `[DONE]` has shown its turn
+// to the end: the session is read until it settles, which follows within the
+// Completer's next poll, and attached again only when a message queued behind
+// that turn has started the next one. A stream that ends without `[DONE]` was
+// cut before its turn settled, and is attached again with a fresh ticket (r
+// skips what it already printed), backing off while nothing new arrives.
 // errStreamUnavailable: no stream here, or one that keeps failing.
 func (a *api) streamUntilSettled(ctx context.Context, id string, r *chunkRenderer) (session, []byte, error) {
 	var poll poller
@@ -167,6 +172,11 @@ func (a *api) streamUntilSettled(ctx context.Context, id string, r *chunkRendere
 		t, err := a.attachTicket(ctx, id)
 		switch {
 		case errors.Is(err, errNotAttachable):
+			// No sandbox yet: the turn may also have ended before one started.
+			s, raw, ok, err := a.readSession(ctx, id, &poll)
+			if err != nil || (ok && settled(s)) {
+				return s, raw, err
+			}
 		case errors.Is(err, errStreamUnavailable):
 			return session{}, nil, err
 		case err != nil:
@@ -176,10 +186,16 @@ func (a *api) streamUntilSettled(ctx context.Context, id string, r *chunkRendere
 		default:
 			before := r.printed
 			r.reconnect()
-			err := a.streamOnce(ctx, t, r)
+			done, err := a.streamOnce(ctx, t, r)
 			switch {
 			case ctx.Err() != nil:
 				return session{}, nil, ctx.Err()
+			case done:
+				s, raw, next, err := a.settleAfterDone(ctx, id, t.Turns, &poll)
+				if err != nil || !next {
+					return s, raw, err
+				}
+				delay, drops = pollFirst, 0
 			case r.printed > before:
 				delay, drops = pollFirst, 0
 			case err != nil:
@@ -188,15 +204,29 @@ func (a *api) streamUntilSettled(ctx context.Context, id string, r *chunkRendere
 				}
 			}
 		}
-		s, raw, ok, err := a.readSession(ctx, id, &poll)
-		if err != nil {
-			return session{}, nil, err
-		}
-		if ok && settled(s) {
-			return s, raw, nil
-		}
 		if err := poll.sleep(ctx, a, delay); err != nil {
 			return session{}, nil, err
+		}
+		delay = nextPoll(delay)
+	}
+}
+
+// settleAfterDone reads id after a stream minted at turns ended with `[DONE]`,
+// until the session settles or (next) a later turn has started.
+func (a *api) settleAfterDone(ctx context.Context, id string, turns int, poll *poller) (s session, raw []byte, next bool, err error) {
+	delay := pollFirst
+	for {
+		s, raw, ok, err := a.readSession(ctx, id, poll)
+		switch {
+		case err != nil:
+			return session{}, nil, false, err
+		case ok && settled(s):
+			return s, raw, false, nil
+		case ok && s.Turns > turns:
+			return s, raw, true, nil
+		}
+		if err := poll.sleep(ctx, a, delay); err != nil {
+			return session{}, nil, false, err
 		}
 		delay = nextPoll(delay)
 	}

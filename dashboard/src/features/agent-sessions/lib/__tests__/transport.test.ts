@@ -176,4 +176,78 @@ describe("createAgentSessionTransport holds one open stream", () => {
       transport.reconnectToStream({ chatId: "as-1" }),
     ).rejects.toThrow("not ready");
   });
+
+  // `[DONE]` ends a stream only once its turn has settled (ADR047 D9,
+  // w3/m406); a stream closed without it was cut, and the column attaches
+  // again on that signal.
+  it("reports a stream that closed without [DONE] as cut, and only that one", async () => {
+    const streams = makeLiveStreams();
+    const transport = createAgentSessionTransport({
+      sessionId: "as-cut",
+      mintTicket: vi.fn(async () => ({ ticket: "t" })),
+      fetch: streams.fetch,
+    });
+    const drain = async (body: ReadableStream<unknown> | null) => {
+      const reader = body!.getReader();
+      for (;;) {
+        try {
+          if ((await reader.read()).done) return;
+        } catch {
+          return;
+        }
+      }
+    };
+
+    const settled = drain(
+      await transport.reconnectToStream({ chatId: "as-cut" }),
+    );
+    streams.opened[0].push({ type: "start" });
+    streams.opened[0].done();
+    await settled;
+    expect(transport.endedWithoutDone).toBe(false);
+
+    const cut = drain(await transport.reconnectToStream({ chatId: "as-cut" }));
+    streams.opened[1].push({ type: "start" });
+    expect(transport.endedWithoutDone).toBe(false); // still open
+    streams.opened[1].cut();
+    await cut;
+    expect(transport.endedWithoutDone).toBe(true);
+
+    // A replaced stream is not a cut, and a new one starts uncut.
+    const replaced = drain(
+      await transport.reconnectToStream({ chatId: "as-cut" }),
+    );
+    expect(transport.endedWithoutDone).toBe(false);
+    void drain(await transport.reconnectToStream({ chatId: "as-cut" }));
+    await replaced;
+    expect(streams.opened[2].signal.aborted).toBe(true);
+    expect(transport.endedWithoutDone).toBe(false);
+    transport.close();
+  });
+
+  it("finds a [DONE] split across chunks", async () => {
+    const encoder = new TextEncoder();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          encoder.encode('data: {"type":"start"}\n\ndata: [DO'),
+        );
+        controller.enqueue(encoder.encode("NE]\n\n"));
+        controller.close();
+      },
+    });
+    const transport = createAgentSessionTransport({
+      sessionId: "as-split",
+      mintTicket: vi.fn(async () => ({ ticket: "t" })),
+      fetch: (async () =>
+        new Response(body, {
+          headers: { "content-type": "text/event-stream" },
+        })) as typeof globalThis.fetch,
+    });
+    const reader = (await transport.reconnectToStream({
+      chatId: "as-split",
+    }))!.getReader();
+    while (!(await reader.read()).done);
+    expect(transport.endedWithoutDone).toBe(false);
+  });
 });

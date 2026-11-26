@@ -90,13 +90,32 @@ type fakeAttachStore struct {
 	parts         map[string]map[int64]store.AgentSessionTranscriptPart
 	claims        map[string]bool
 	turns         map[string][]store.AgentSessionTurn
+	sessions      map[string]store.AgentSession
 	started       []store.SSHSessionAudit
 	ended         []string
 	appendBatches atomic.Int32
 }
 
 func newFakeAttachStore() *fakeAttachStore {
-	return &fakeAttachStore{parts: map[string]map[int64]store.AgentSessionTranscriptPart{}, claims: map[string]bool{}, turns: map[string][]store.AgentSessionTurn{}}
+	return &fakeAttachStore{parts: map[string]map[int64]store.AgentSessionTranscriptPart{}, claims: map[string]bool{}, turns: map[string][]store.AgentSessionTurn{}, sessions: map[string]store.AgentSession{}}
+}
+
+// GetAgentSession answers the session row set with setSession, ErrNotFound
+// for any other.
+func (f *fakeAttachStore) GetAgentSession(_ context.Context, id string) (store.AgentSession, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	record, ok := f.sessions[id]
+	if !ok {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	return record, nil
+}
+
+func (f *fakeAttachStore) setSession(id, phase, sandboxID string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.sessions[id] = store.AgentSession{ID: id, Phase: phase, SandboxID: sandboxID}
 }
 
 func (f *fakeAttachStore) AppendAgentSessionTranscript(_ context.Context, id string, parts []store.AgentSessionTranscriptPart) error {

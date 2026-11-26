@@ -22,6 +22,11 @@ import { config } from "@/config/config";
 // after an in-place re-attach replaced it, or after the column unmounted. The
 // reconnect here ends the stream it replaces before it mints, and `close()` ends
 // the last one.
+//
+// `[DONE]` ends a stream only once its turn has settled (ADR047 D9, w3/m406);
+// a stream the gateway closes without it was cut before that, and the column
+// attaches again. The SDK's parser drops the sentinel, so the transport watches
+// the bytes for it and reports a cut in `endedWithoutDone`.
 
 /** The header the m43 gateway attach listener verifies the attach ticket in. */
 export const AGENT_TICKET_HEADER = "X-Bex-Agent-Ticket";
@@ -69,6 +74,7 @@ export function agentSessionStreamUrl(sessionId: string): string {
 export class AgentSessionTransport extends DefaultChatTransport<UIMessage> {
   readonly #ticketHeaders: () => Promise<Record<string, string>>;
   #live: AbortController | undefined;
+  #cut = false;
 
   constructor(options: AgentSessionTransportOptions) {
     const ticketHeaders = async (): Promise<Record<string, string>> => {
@@ -98,6 +104,7 @@ export class AgentSessionTransport extends DefaultChatTransport<UIMessage> {
     >[0],
   ): Promise<ReadableStream<UIMessageChunk> | null> {
     this.close();
+    this.#cut = false;
     const live = new AbortController();
     this.#live = live;
     try {
@@ -110,11 +117,24 @@ export class AgentSessionTransport extends DefaultChatTransport<UIMessage> {
       if (response.status === 204) return null;
       if (!response.ok) throw new Error(await response.text());
       if (!response.body) throw new Error("The response body is empty.");
-      return this.processResponseStream(response.body);
+      return this.processResponseStream(
+        watchForDone(response.body, (done) => {
+          if (this.#live === live) this.#cut = !done;
+        }),
+      );
     } catch (err) {
       if (live.signal.aborted) return null;
       throw err;
     }
+  }
+
+  /**
+   * Whether the last stream this transport opened closed without `[DONE]`: cut
+   * before its turn settled. False while it is open, and for one that ended
+   * with `[DONE]`, failed or was replaced.
+   */
+  get endedWithoutDone(): boolean {
+    return this.#cut;
   }
 
   /** Ends the open stream, if any. The column calls it when it unmounts. */
@@ -122,6 +142,40 @@ export class AgentSessionTransport extends DefaultChatTransport<UIMessage> {
     this.#live?.abort();
     this.#live = undefined;
   }
+}
+
+// `[DONE]` is a stream's last frame: the bytes it ends with carry it.
+const TAIL_BYTES = 32;
+const DONE_AT_END = /(?:^|\n)data: ?\[DONE\]\s*$/;
+
+/**
+ * Passes `body` through unchanged, then calls `onEnd` once it closes, with
+ * whether it ended with the `[DONE]` sentinel. A stream that errors or is
+ * aborted never closes, so `onEnd` is not called for it.
+ */
+function watchForDone(
+  body: ReadableStream<Uint8Array>,
+  onEnd: (done: boolean) => void,
+): ReadableStream<Uint8Array> {
+  let tail = new Uint8Array(0);
+  return body.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        if (chunk.length >= TAIL_BYTES) {
+          tail = chunk.slice(-TAIL_BYTES);
+        } else {
+          const joined = new Uint8Array(tail.length + chunk.length);
+          joined.set(tail);
+          joined.set(chunk, tail.length);
+          tail = joined.slice(-TAIL_BYTES);
+        }
+        controller.enqueue(chunk);
+      },
+      flush() {
+        onEnd(DONE_AT_END.test(new TextDecoder().decode(tail)));
+      },
+    }),
+  );
 }
 
 /**

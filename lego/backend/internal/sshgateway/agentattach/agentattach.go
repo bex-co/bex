@@ -24,7 +24,10 @@ limitations under the License.
 //   - GET  /v1/agent-sessions/{id}/stream — replays the durable transcript, then
 //     splices the live driver stream, teeing new parts into the store. A terminal
 //     session (its pod gone) replays the stored transcript and closes with
-//     `[DONE]`. This replay mode IS the transcript-read API.
+//     `[DONE]`. This replay mode IS the transcript-read API. `[DONE]` means the
+//     turn has settled: a stream whose sandbox does not serve yet is held until
+//     it does, and one that ends before the turn settles closes without
+//     `[DONE]`, for the client to attach again (w3/m406).
 //   - POST /v1/agent-sessions/{id}/stream — forwards a live prompt turn to the
 //     driver and streams the turn's parts back (w3/m43 t004).
 //
@@ -42,14 +45,17 @@ package agentattach
 import (
 	"bufio"
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -58,6 +64,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsessions"
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/agenttranscript"
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -104,6 +111,13 @@ const replayPageBytes = 4 << 20
 // indefinitely, so a write that cannot complete in this window fails the stream.
 const defaultSSEWriteTimeout = 30 * time.Second
 
+// sandboxPollFirst and sandboxPollMax are the backoff between attempts to
+// reach a held stream's sandbox.
+const (
+	sandboxPollFirst = 500 * time.Millisecond
+	sandboxPollMax   = 5 * time.Second
+)
+
 // defaultSSEHeartbeatInterval keeps an otherwise-idle live attach below the
 // browser-facing edge's idle timeout. Agent turns can spend minutes in a tool or
 // credential scrub without producing a UI part; the comment is transport-only
@@ -125,10 +139,6 @@ const maxSessionTranscriptBytes = store.MaxAgentSessionTranscriptBytes
 // maxSSEPartBytes; the caller ends the stream rather than buffering it.
 var errPartTooLarge = errors.New("agent attach: transcript part exceeds size limit")
 
-// errReplayOnly marks a ticket with no pod claim (ADR065 D2): the session's
-// sandbox is gone, so the attach serves the durable replay and never dials.
-var errReplayOnly = errors.New("agent attach: replay-only ticket, no pod to dial")
-
 // Store is the transport's narrow transcript and content-free session-audit
 // authority. The ticket nonce claim reaches shell_ticket_nonces through the
 // injected sshgateway.NonceGuard.
@@ -136,6 +146,9 @@ type Store interface {
 	AgentSessionTranscriptReplay(ctx context.Context, sessionID string, after store.TranscriptPosition, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)
 	AgentSessionTranscriptBytes(ctx context.Context, sessionID string) (int64, error)
 	AgentSessionTurns(ctx context.Context, sessionID string) ([]store.AgentSessionTurn, error)
+	// GetAgentSession reads the session's phase and sandbox while a stream
+	// waits for a sandbox that does not serve yet (w3/m406).
+	GetAgentSession(ctx context.Context, id string) (store.AgentSession, error)
 	AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []store.AgentSessionTranscriptPart) error
 	StartSSHSession(context.Context, store.SSHSessionAudit) error
 	EndSSHSession(context.Context, string, string, time.Time) error
@@ -244,6 +257,16 @@ type Server struct {
 	// HeartbeatInterval overrides the live read/turn SSE comment cadence. Zero
 	// uses the platform default; negative disables it for focused tests.
 	HeartbeatInterval time.Duration
+
+	// SandboxStartWait overrides how long a read stream is held for a working
+	// session whose sandbox does not serve yet; zero => the bound a starting
+	// sandbox holds an editor's SSH login and the Terminal for
+	// (agentsessions.SSHWakeTimeout), past which the session has settled.
+	SandboxStartWait time.Duration
+
+	// sandboxPoll replaces the backoff with a fixed interval, so tests poll in
+	// milliseconds.
+	sandboxPoll time.Duration
 }
 
 func (s *Server) defaults() {
@@ -320,6 +343,13 @@ func (s *Server) heartbeatInterval() time.Duration {
 	return defaultSSEHeartbeatInterval
 }
 
+func (s *Server) sandboxStartWait() time.Duration {
+	if s.SandboxStartWait > 0 {
+		return s.SandboxStartWait
+	}
+	return agentsessions.SSHWakeTimeout
+}
+
 func (s *Server) httpClient() *http.Client {
 	if s.HTTPClient != nil {
 		return s.HTTPClient
@@ -333,11 +363,22 @@ func (s *Server) httpClient() *http.Client {
 	// can reach cluster-wide — and Go's default client would re-send the turn
 	// POST there. Surface the 3xx as-is; the call sites reject any non-2xx.
 	return &http.Client{
+		Transport: driverTransport,
 		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
 }
+
+// driverTransport bounds how long the driver may take to answer a request's
+// headers, which it flushes at once (driver server.ts streamHeaders): a driver
+// that accepts a connection and says nothing is tried again, not waited on
+// for the whole session.
+var driverTransport = func() *http.Transport {
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	t.ResponseHeaderTimeout = 10 * time.Second
+	return t
+}()
 
 func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 	if !s.Enabled() {
@@ -463,23 +504,20 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	// A replay-only ticket (empty pod claim, ADR065 D2 — minted for a reaped
-	// terminal session) never dials: the durable-transcript replay +
-	// `[DONE]` below is the whole response. Verify already guarantees a turn
-	// ticket always binds a pod, so POST can never reach the driver this way.
-	var podIP string
-	ipErr := errReplayOnly
-	if claims.Pod != "" {
-		podIP, ipErr = s.Pods.PodIP(ctx, claims.Namespace, claims.Pod)
+	if r.Method == http.MethodGet {
+		s.streamAgentAttach(ctx, s.startAgentSSE(w, flusher), claims)
+		return
 	}
 
+	// A turn needs a live driver. Verify guarantees a turn ticket binds a pod.
+	podIP, ipErr := s.Pods.PodIP(ctx, claims.Namespace, claims.Pod)
 	// A POST turn's body must be read BEFORE the SSE response starts: Go's http
 	// server closes the request body the moment the handler writes a response
 	// (ErrBodyReadAfterClose), so forwarding r.Body after startAgentSSE always
 	// fails. The read stays bounded by maxAgentTurnRequest (silent truncation,
 	// as before).
 	var turnBody []byte
-	if r.Method == http.MethodPost && ipErr == nil {
+	if ipErr == nil {
 		tb, err := io.ReadAll(io.LimitReader(r.Body, maxAgentTurnRequest))
 		if err != nil {
 			http.Error(w, "turn body read failed", http.StatusBadRequest)
@@ -487,19 +525,13 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 		}
 		turnBody = tb
 	}
-
 	sse := s.startAgentSSE(w, flusher)
-
-	if r.Method == http.MethodPost {
-		if ipErr != nil {
-			// A turn needs a live driver; a gone pod cannot accept one.
-			sse.errorAndDone("session is not live")
-			return
-		}
-		s.forwardAgentTurn(ctx, sse, podIP, claims.SessionID, claims.Turn, bytes.NewReader(turnBody))
+	if ipErr != nil {
+		// A gone pod cannot accept a turn.
+		sse.errorAndDone("session is not live")
 		return
 	}
-	s.streamAgentAttach(ctx, sse, podIP, ipErr, claims.SessionID, claims.Turn)
+	s.forwardAgentTurn(ctx, sse, podIP, claims.SessionID, claims.Turn, bytes.NewReader(turnBody))
 }
 
 // revalidate is the redemption check, re-run on every watchdog tick: the
@@ -514,9 +546,6 @@ func (s *Server) revalidate(ctx context.Context, claims agentsessionticket.Claim
 	return s.KeyGrants.RequireTicket(ctx, claims.Subject, claims.KeyAction)
 }
 
-// streamAgentAttach replays the durable transcript to the client, then — if the
-// driver is reachable — splices the live driver stream and tees new parts into
-// the store. A terminal/gone session (ipErr) replays and closes with `[DONE]`.
 // remoteAddress resolves who actually connected, for the session audit row.
 // Behind Traefik the immediate peer is a pod IP, so a raw RemoteAddr makes every
 // row say the same thing; the web shell's handler derives it the same way
@@ -529,130 +558,269 @@ func (s *Server) remoteAddress(r *http.Request) string {
 	return r.RemoteAddr
 }
 
-func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, podIP string, ipErr error, sessionID string, turn int) {
-	turns, err := s.Store.AgentSessionTurns(ctx, sessionID)
+// streamAgentAttach replays the durable transcript to the client, then follows
+// the turn live from the ticket's sandbox, teeing new parts into the store.
+//
+// The stream ends with `[DONE]` only once the turn has settled (w3/m406,
+// ADR047 D9): a replay-only ticket's terminal session, the driver ending its
+// turn (or the stream stopping for good at the transcript quota or an
+// oversized part), or a session that settled while the stream waited for its
+// sandbox. Every other end — the sandbox not serving within SandboxStartWait,
+// the session moving to another sandbox, a dropped driver connection, a store
+// failure — closes the stream without `[DONE]`, and the client attaches again
+// with a fresh ticket.
+func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, claims agentsessionticket.Claims) {
+	turns, err := s.Store.AgentSessionTurns(ctx, claims.SessionID)
 	if err != nil {
-		log.Printf("agent attach: durable turns unavailable (session=%s): %v", sessionID, err)
-		sse.errorAndDone("transcript unavailable")
+		log.Printf("agent attach: durable turns unavailable (session=%s): %v", claims.SessionID, err)
 		return
 	}
+	replay := &durableReplay{s: s, sse: sse, sessionID: claims.SessionID, turn: claims.Turn, turns: turns,
+		after: store.TranscriptStart, replayed: newReplayedTurn()}
 	// A UI-message response must start before custom data parts. Durable prompts
 	// are replay-adapter events (the raw assistant chunks cannot encode a user
 	// role), so establish one synthetic response message before interleaving them.
-	if len(turns) > 0 {
-		start, _ := json.Marshal(map[string]any{"type": "start", "messageId": "durable-" + sessionID})
+	if replay.adapted() {
+		start, _ := json.Marshal(map[string]any{"type": "start", "messageId": "durable-" + claims.SessionID})
 		if err := sse.frame(string(start)); err != nil {
 			return
 		}
 	}
-	nextTurn := 0
-	emitPromptsThrough := func(lastTurn int) bool {
-		for nextTurn < len(turns) && turns[nextTurn].Turn <= lastTurn {
-			data := map[string]any{
-				"turn":         turns[nextTurn].Turn,
-				"text":         turns[nextTurn].Prompt,
-				"complete":     turns[nextTurn].TranscriptComplete,
-				"settled":      turns[nextTurn].CompletedAt != nil,
-				"truncated":    turns[nextTurn].TranscriptTruncated,
-				"reason":       turns[nextTurn].TruncationReason,
-				"deliveryMode": turns[nextTurn].DeliveryMode,
-			}
-			// The files the turn attached (ADR095 D3), as snapshotted at binding.
-			if len(turns[nextTurn].Attachments) > 0 {
-				data["attachments"] = turns[nextTurn].Attachments
-			}
-			payload, _ := json.Marshal(map[string]any{"type": "data-user-prompt", "data": data})
-			if err := sse.frame(string(payload)); err != nil {
-				return false
-			}
-			nextTurn++
-		}
-		return true
+	if !replay.run(ctx) {
+		return
 	}
-	// Replay the durable transcript in bounded pages rather than materializing the
-	// whole (up to 64 MiB) transcript at once (F10 follow-up). Peak memory per
-	// reader is one page, not the full session quota, so concurrent replays can't
-	// sum past the pod memory limit; and a stalled or disconnected client aborts
-	// the replay — freeing the page buffer and the shared session-limiter slot —
-	// instead of pinning them for the whole write.
-	quota := s.transcriptQuota()
-	pageBudget := s.replayPageQuota()
-	var replayedBytes int64
-	replayed := newReplayedTurn()
-	after := store.TranscriptStart
-replay:
-	for {
-		if ctx.Err() != nil {
+	// A replay-only ticket (empty pod claim, ADR065 D2 — minted for a settled
+	// session) never dials: the replay above is the whole history.
+	end := liveTurnEnded
+	if claims.Pod != "" {
+		stopHeartbeat := sse.startHeartbeat(ctx, s.heartbeatInterval())
+		end = s.followLive(ctx, claims, replay)
+		stopHeartbeat()
+	}
+	switch end {
+	case liveCut:
+		return // no [DONE]: the client attaches again
+	case liveSettledWhileWaiting:
+		// What the turn stored since the replay above (the Completer's
+		// harvest), then [DONE].
+		if !replay.run(ctx) {
 			return
+		}
+	}
+	replay.finish()
+}
+
+// durableReplay frames the durable transcript in bounded pages rather than
+// materializing the whole (up to 64 MiB) transcript at once (F10 follow-up).
+// Peak memory per reader is one page, not the full session quota, so concurrent
+// replays can't sum past the pod memory limit; and a stalled or disconnected
+// client aborts the replay — freeing the page buffer and the shared
+// session-limiter slot — instead of pinning them for the whole write. It keeps
+// its place, so a stream that waited for its sandbox frames only what was
+// stored meanwhile.
+type durableReplay struct {
+	s         *Server
+	sse       *agentSSE
+	sessionID string
+	turn      int // the ticket's turn: the splice skips its replayed items
+	turns     []store.AgentSessionTurn
+	nextTurn  int // the next durable prompt to frame
+	after     store.TranscriptPosition
+	bytes     int64 // framed so far, against the session quota
+	capped    bool  // the quota ended the replay
+	replayed  *replayedTurn
+}
+
+func (r *durableReplay) adapted() bool { return len(r.turns) > 0 }
+
+// run frames every stored part after the last one framed, each after the
+// durable prompts of the turns up to its own, then every prompt still unframed:
+// a prompt is durable before async dispatch, so it may legitimately have no
+// assistant part yet (provisioning/failure), and the accepted user intent is
+// shown before the live splice or terminal sentinel. False when the stream
+// cannot go on (client gone, store failed).
+func (r *durableReplay) run(ctx context.Context) bool {
+	quota, pageBudget := r.s.transcriptQuota(), r.s.replayPageQuota()
+	for !r.capped {
+		if ctx.Err() != nil {
+			return false
 		}
 		// Row-unbounded (limit 0): the replay pages purely by byte budget.
-		page, err := s.Store.AgentSessionTranscriptReplay(ctx, sessionID, after, pageBudget, 0)
+		page, err := r.s.Store.AgentSessionTranscriptReplay(ctx, r.sessionID, r.after, pageBudget, 0)
 		if err != nil {
-			log.Printf("agent attach: transcript replay failed (session=%s): %v", sessionID, err)
-			sse.errorAndDone("transcript unavailable")
-			return
+			log.Printf("agent attach: transcript replay failed (session=%s): %v", r.sessionID, err)
+			return false
 		}
 		if len(page) == 0 {
 			break
 		}
 		for _, part := range page {
-			if !emitPromptsThrough(part.Turn) {
-				return
+			if !r.promptsThrough(part.Turn) {
+				return false
 			}
 			// Cap the cumulative replay at the session quota (a stored transcript
 			// that ever outgrew it is truncated rather than framed without limit).
-			if replayedBytes+int64(len(part.Part)) > quota {
-				log.Printf("agent attach: transcript replay truncated at cap (session=%s)", sessionID)
-				break replay
+			if r.bytes+int64(len(part.Part)) > quota {
+				log.Printf("agent attach: transcript replay truncated at cap (session=%s)", r.sessionID)
+				r.capped = true
+				break
 			}
-			if part.Turn == turn {
-				replayed.add(part)
+			if part.Turn == r.turn {
+				r.replayed.add(part)
 			}
-			replayedBytes += int64(len(part.Part))
-			// A stored item replays as its minimal standard chunk sequence; a
-			// legacy row is already one chunk (ADR051 § Item model).
-			chunks := []json.RawMessage{part.Part}
-			if part.Item {
-				chunks = agenttranscript.Expand(part.Part)
-			}
-			for _, chunk := range chunks {
-				// Each driver turn carries its own start/finish chunks. The replay
-				// adapter has already opened one response message so durable prompts and
-				// all turns remain one ordered part stream; forwarding the nested
-				// structural chunks makes AI SDK duplicate cumulative messages.
-				payload, skip := replayUIChunk(chunk, part.Turn, turn, len(turns) > 0)
-				if skip {
-					continue
-				}
-				if err := sse.frame(string(payload)); err != nil {
-					// Client gone or stalled past the write deadline: stop now so the
-					// deferred limiter release + this return free the reader's memory.
-					return
-				}
+			r.bytes += int64(len(part.Part))
+			if !r.frame(part) {
+				return false
 			}
 		}
-		after = page[len(page)-1].Position()
+		r.after = page[len(page)-1].Position()
 	}
-	// A prompt is durable before async dispatch, so it may legitimately have no
-	// assistant part yet (provisioning/failure). Emit it before the live splice or
-	// terminal sentinel rather than hiding the accepted user intent.
-	if !emitPromptsThrough(int(^uint(0) >> 1)) {
-		return
+	return r.promptsThrough(math.MaxInt)
+}
+
+// finish ends the stream of a settled turn: the adapter's closing finish (a
+// legacy prompt-less transcript got no synthetic start, so its own structural
+// chunks remain the only safe framing), then [DONE].
+func (r *durableReplay) finish() {
+	if r.adapted() {
+		_ = r.sse.frame(`{"type":"finish"}`)
 	}
-	if ipErr != nil {
-		// No live driver: this is the terminal-session history path.
-		finishConversation(sse, turns)
-		sse.done()
-		return
+	r.sse.done()
+}
+
+// frame writes one stored part: an item as its minimal standard chunk
+// sequence, a legacy row as the one chunk it already is (ADR051 § Item model).
+func (r *durableReplay) frame(part store.AgentSessionTranscriptPart) bool {
+	chunks := []json.RawMessage{part.Part}
+	if part.Item {
+		chunks = agenttranscript.Expand(part.Part)
 	}
-	stopHeartbeat := sse.startHeartbeat(ctx, s.heartbeatInterval())
-	err = s.spliceDriverStream(ctx, sse, podIP, sessionID, turn, replayedBytes, replayed, len(turns) > 0)
-	stopHeartbeat()
-	if err != nil {
-		log.Printf("agent attach: live splice ended (session=%s): %v", sessionID, err)
+	for _, chunk := range chunks {
+		// Each driver turn carries its own start/finish chunks. The replay
+		// adapter has already opened one response message so durable prompts and
+		// all turns remain one ordered part stream; forwarding the nested
+		// structural chunks makes AI SDK duplicate cumulative messages.
+		payload, skip := replayUIChunk(chunk, part.Turn, r.turn, r.adapted())
+		if skip {
+			continue
+		}
+		if err := r.sse.frame(string(payload)); err != nil {
+			// Client gone or stalled past the write deadline: stop now so the
+			// deferred limiter release + this return free the reader's memory.
+			return false
+		}
 	}
-	finishConversation(sse, turns)
-	sse.done()
+	return true
+}
+
+// promptsThrough frames the durable prompt of every turn up to lastTurn that
+// is not framed yet.
+func (r *durableReplay) promptsThrough(lastTurn int) bool {
+	for r.nextTurn < len(r.turns) && r.turns[r.nextTurn].Turn <= lastTurn {
+		turn := r.turns[r.nextTurn]
+		data := map[string]any{
+			"turn":         turn.Turn,
+			"text":         turn.Prompt,
+			"complete":     turn.TranscriptComplete,
+			"settled":      turn.CompletedAt != nil,
+			"truncated":    turn.TranscriptTruncated,
+			"reason":       turn.TruncationReason,
+			"deliveryMode": turn.DeliveryMode,
+		}
+		// The files the turn attached (ADR095 D3), as snapshotted at binding.
+		if len(turn.Attachments) > 0 {
+			data["attachments"] = turn.Attachments
+		}
+		payload, _ := json.Marshal(map[string]any{"type": "data-user-prompt", "data": data})
+		if err := r.sse.frame(string(payload)); err != nil {
+			return false
+		}
+		r.nextTurn++
+	}
+	return true
+}
+
+// liveEnd is how the live half of a read stream ended.
+type liveEnd int
+
+const (
+	// liveCut: the stream ended before its turn settled. It closes without
+	// [DONE], and the client attaches again.
+	liveCut liveEnd = iota
+	// liveTurnEnded: the driver ended the turn, or the stream stopped for good
+	// (the transcript quota, an oversized part).
+	liveTurnEnded
+	// liveSettledWhileWaiting: the session settled while its sandbox did not
+	// serve.
+	liveSettledWhileWaiting
+)
+
+// followLive splices the driver stream of the ticket's sandbox. A sandbox that
+// does not serve yet — its pod has no address, or its driver does not answer —
+// is not the end of the turn while the session still works on it (w3/m406):
+// the stream is held (the caller's heartbeat keeps it open) and the sandbox is
+// tried again with backoff, up to SandboxStartWait.
+func (s *Server) followLive(ctx context.Context, claims agentsessionticket.Claims, replay *durableReplay) liveEnd {
+	// Wall clock, not s.now() (the injected ticket clock): an operational bound.
+	deadline := time.Now().Add(s.sandboxStartWait())
+	wait := cmp.Or(s.sandboxPoll, sandboxPollFirst)
+	for {
+		resp, err := s.dialDriverStream(ctx, claims)
+		if err == nil {
+			defer func() { _ = resp.Body.Close() }()
+			return s.spliceDriverStream(ctx, resp, replay)
+		}
+		switch s.sandboxState(ctx, claims) {
+		case sandboxSettled:
+			return liveSettledWhileWaiting
+		case sandboxReplaced:
+			log.Printf("agent attach: the session left the ticket's sandbox while its stream waited (session=%s)", claims.SessionID)
+			return liveCut
+		}
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			log.Printf("agent attach: sandbox did not serve within %s (session=%s): %v", s.sandboxStartWait(), claims.SessionID, err)
+			return liveCut
+		}
+		if replay.sse.Err() != nil {
+			return liveCut // a client that stopped reading the heartbeat
+		}
+		timer := time.NewTimer(min(wait, remaining))
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return liveCut
+		case <-timer.C:
+		}
+		wait = min(2*wait, cmp.Or(s.sandboxPoll, sandboxPollMax))
+	}
+}
+
+// sandboxState is where the session of a stream waiting for its sandbox stands.
+type sandboxState int
+
+const (
+	sandboxStarting sandboxState = iota // still working on the ticket's sandbox
+	sandboxSettled                      // settled, or deleted: nothing more will come
+	sandboxReplaced                     // working on another sandbox, or none yet
+)
+
+func (s *Server) sandboxState(ctx context.Context, claims agentsessionticket.Claims) sandboxState {
+	record, err := s.Store.GetAgentSession(ctx, claims.SessionID)
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		return sandboxSettled
+	case err != nil:
+		if ctx.Err() == nil {
+			log.Printf("agent attach: session read failed while its stream waited (session=%s): %v", claims.SessionID, err)
+		}
+		return sandboxStarting // ask again on the next attempt
+	case slices.Contains(store.TerminalAgentSessionPhases, record.Phase):
+		return sandboxSettled
+	case record.SandboxID != claims.SandboxID:
+		return sandboxReplaced
+	}
+	return sandboxStarting
 }
 
 // Decode once for both replay adaptations: structural chunks belong to the
@@ -686,43 +854,33 @@ func structuralUIChunk(part []byte) bool {
 	return t == "start" || t == "finish"
 }
 
-func finishConversation(sse *agentSSE, turns []store.AgentSessionTurn) {
-	// No synthetic start was emitted for a legacy prompt-less transcript, so its
-	// original structural chunks remain the only safe framing.
-	if len(turns) > 0 {
-		_ = sse.frame(`{"type":"finish"}`)
-	}
-}
-
 // spliceDriverStream reads the driver's /stream (which replays its full history
 // then goes live), folds every chunk into the turn's items and tees each
 // completed item into the durable store under its turn-local index (ADR051 §
 // Item model), and forwards verbatim only the chunks of items this client did
 // not already replay.
-func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, sessionID string, turn int, storedBytes int64, replayed *replayedTurn, adaptedReplay bool) error {
-	resp, err := s.dialDriverStream(ctx, podIP)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	tee := newTurnTee(ctx, s.Store, sessionID, turn, storedBytes, s.transcriptQuota(), replayed)
+func (s *Server) spliceDriverStream(ctx context.Context, resp *http.Response, replay *durableReplay) liveEnd {
+	sessionID := replay.sessionID
+	tee := newTurnTee(ctx, s.Store, sessionID, replay.turn, replay.bytes, s.transcriptQuota(), replay.replayed)
 	defer tee.close()
 
 	var ordinal int64 = -1
 	reader := bufio.NewReader(resp.Body)
 	for {
 		payload, done, err := readSSEData(reader, maxSSEPartBytes)
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-		if done { // driver `data: [DONE]` sentinel
-			return nil
-		}
-		if payload == "" {
+		switch {
+		case done: // driver `data: [DONE]` sentinel: the turn ended
+			return liveTurnEnded
+		case errors.Is(err, errPartTooLarge):
+			// Every reattach would meet the same part again (the driver replays
+			// its history), so the stream stops for good.
+			log.Printf("agent attach: live splice stopped (session=%s): %v", sessionID, err)
+			return liveTurnEnded
+		case err != nil:
+			// The driver connection ended without the sentinel: the turn did not.
+			log.Printf("agent attach: live splice cut (session=%s): %v", sessionID, err)
+			return liveCut
+		case payload == "":
 			continue
 		}
 		ordinal++
@@ -733,27 +891,31 @@ func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, s
 		forward, ok := tee.push(ordinal, payload)
 		if !ok {
 			log.Printf("agent attach: session transcript byte quota reached, stopping splice (session=%s)", sessionID)
-			return nil
+			return liveTurnEnded
 		}
 		// Only suppress what this client actually replayed. A DB max-index
 		// query here could include a concurrent writer's not-yet-replayed items.
-		if !forward || (adaptedReplay && structuralUIChunk([]byte(payload))) {
+		if !forward || (replay.adapted() && structuralUIChunk([]byte(payload))) {
 			continue
 		}
 		// Forward first; the tee persists completed items through a bounded
 		// batch so browser delivery is not blocked on PostgreSQL latency (w5/m77).
-		if err := sse.frame(payload); err != nil {
+		if err := replay.sse.frame(payload); err != nil {
 			// Client gone or stalled past the write deadline. The tee still
 			// persists completed items and flushes in-flight ones as partial;
 			// the Completer's harvest replaces those at session end.
-			return err
+			return liveCut
 		}
 	}
 }
 
-// dialDriverStream opens the in-sandbox driver's GET /stream (which replays its
-// full history then goes live) for browser live-splice.
-func (s *Server) dialDriverStream(ctx context.Context, podIP string) (*http.Response, error) {
+// dialDriverStream opens the GET /stream of the ticket's sandbox's driver
+// (which replays its full history then goes live) for browser live-splice.
+func (s *Server) dialDriverStream(ctx context.Context, claims agentsessionticket.Claims) (*http.Response, error) {
+	podIP, err := s.Pods.PodIP(ctx, claims.Namespace, claims.Pod)
+	if err != nil {
+		return nil, err
+	}
 	url := fmt.Sprintf("http://%s/stream", net.JoinHostPort(podIP, strconv.Itoa(s.driverPort())))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -1014,10 +1176,6 @@ func (a *agentSSE) flush() {
 func (a *agentSSE) frame(payload string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return a.frameLocked(payload)
-}
-
-func (a *agentSSE) frameLocked(payload string) error {
 	if a.err != nil {
 		return a.err
 	}
@@ -1098,13 +1256,6 @@ func (a *agentSSE) Err() error {
 // errorAndDone emits a UI-message `error` part then the terminator, so a Vercel
 // AI SDK client surfaces the failure and settles rather than hanging.
 func (a *agentSSE) errorAndDone(message string) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	_ = a.frameLocked(fmt.Sprintf(`{"type":"error","errorText":%q}`, message))
-	if a.err == nil {
-		a.setDeadline()
-		if a.put("data: [DONE]\n\n") {
-			a.flush()
-		}
-	}
+	_ = a.frame(fmt.Sprintf(`{"type":"error","errorText":%q}`, message))
+	a.done()
 }

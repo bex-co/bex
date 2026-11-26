@@ -3,6 +3,7 @@ import {
   memo,
   startTransition,
   useEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -168,6 +169,31 @@ const INITIAL_WINDOW = 200;
 const WINDOW_STEP = 200;
 const STREAM_THROTTLE_MS = 50;
 
+// How many cut streams in a row the column attaches again to (see `cuts`).
+const MAX_CUTS = 8;
+
+/**
+ * Resumes the stream, then calls `onEnd` once it settles, unless the effect
+ * that started it was cleaned up first: the returned function is that cleanup.
+ */
+function attachOnce(
+  resumeStream: () => Promise<void>,
+  onEnd: () => void,
+): () => void {
+  let live = true;
+  resumeStream()
+    // `makeRequest` already routes every failure into `error`/`status`
+    // rather than rejecting; this trace is a backstop in case that internal
+    // contract ever changes.
+    .catch((err) => console.error(err))
+    .finally(() => {
+      if (live) onEnd();
+    });
+  return () => {
+    live = false;
+  };
+}
+
 export function SessionConversationImpl({
   sessionId,
   isTerminal,
@@ -266,38 +292,51 @@ export function SessionConversationImpl({
   // the mount replay owns the initial attach and the re-attach below fires only
   // on genuine subsequent changes.
   const lastAttachSignal = useRef(attachSignal);
+  // A stream the gateway closed without `[DONE]` was cut before its turn
+  // settled (ADR047 D9, w3/m406): while the session works, attach again,
+  // backing off from 1s to 15s, at most MAX_CUTS times in a row. `cuts` counts
+  // them since the last stream that ended otherwise; a new attach target starts
+  // again at 0.
+  const [cuts, setCuts] = useState(0);
+  const countCut = useEffectEvent(() => {
+    const cut = transport.endedWithoutDone && !isTerminal;
+    setCuts((n) => (cut ? n + 1 : 0));
+  });
   useEffect(() => {
-    let live = true;
     const target = lastAttachSignal.current;
-    resumeStream()
-      // `makeRequest` already routes every failure into `error`/`status`
-      // (read below) rather than rejecting; this trace is a backstop in case
-      // that internal contract ever changes.
-      .catch((err) => console.error(err))
-      .finally(() => {
-        if (live && lastAttachSignal.current === target) {
-          setSettledResume({ resumeStream, attachSignal: target });
-        }
-      });
-    return () => {
-      live = false;
-    };
+    return attachOnce(resumeStream, () => {
+      if (lastAttachSignal.current !== target) return;
+      setSettledResume({ resumeStream, attachSignal: target });
+      countCut();
+    });
   }, [resumeStream]);
 
   // Re-attach in place when `attachSignal` changes (see the prop doc).
   useEffect(() => {
     if (attachSignal === lastAttachSignal.current) return;
     lastAttachSignal.current = attachSignal;
-    let live = true;
-    resumeStream()
-      .catch((err) => console.error(err))
-      .finally(() => {
-        if (live) setSettledResume({ resumeStream, attachSignal });
-      });
-    return () => {
-      live = false;
-    };
+    setCuts(0);
+    return attachOnce(resumeStream, () => {
+      setSettledResume({ resumeStream, attachSignal });
+      countCut();
+    });
   }, [attachSignal, resumeStream]);
+
+  // Attach again after a cut (see `cuts`).
+  useEffect(() => {
+    if (cuts === 0 || cuts > MAX_CUTS || isTerminal) return;
+    let stop: (() => void) | undefined;
+    const timer = setTimeout(
+      () => {
+        stop = attachOnce(resumeStream, () => countCut());
+      },
+      Math.min(1000 * 2 ** (cuts - 1), 15_000),
+    );
+    return () => {
+      clearTimeout(timer);
+      stop?.();
+    };
+  }, [cuts, isTerminal, resumeStream]);
 
   // Publish the live-steering handle to the detail page. Withheld (null) while
   // the stream is errored so the composer disables its live POST path instead of

@@ -277,6 +277,8 @@ export interface LiveStream {
   signal: AbortSignal;
   push: (chunk: UIMessageChunk) => void;
   done: () => void;
+  /** Closes the stream without `[DONE]`, as the gateway closes a cut one. */
+  cut: () => void;
 }
 
 /**
@@ -314,6 +316,9 @@ export function makeLiveStreams(): {
       },
       done() {
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        controller.close();
+      },
+      cut() {
         controller.close();
       },
     });

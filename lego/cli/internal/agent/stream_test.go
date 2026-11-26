@@ -94,13 +94,28 @@ data: [DONE]
 // streamFake serves attach-ticket, a stream that drops its first connection
 // halfway, and a session that is settled once the stream has ended.
 func streamFake(t *testing.T, ticketStatus []int) (*routeFake, *atomic.Int32, *atomic.Int32) {
-	return streamFakeWith(t, ticketStatus, false)
+	fixture := replayFixture(t)
+	cut := fixture[:strings.Index(fixture, "data: {\"type\":\"text-start\"")]
+	return scriptedStream(t, streamScript{ticketStatus: ticketStatus, bodies: []string{cut, fixture},
+		state: func(connects int32) (string, int) {
+			if connects >= 2 {
+				return stateSucceeded, 1
+			}
+			return stateWorking, 1
+		}})
 }
 
-// streamFakeWith's first connection ends early: cut mid-turn, or (earlyDone)
-// closed with [DONE] after only the prompt, as the gateway does while the
-// turn's new sandbox does not serve yet.
-func streamFakeWith(t *testing.T, ticketStatus []int, earlyDone bool) (*routeFake, *atomic.Int32, *atomic.Int32) {
+// streamScript is what scriptedStream serves: refusals before the first
+// ticket, each connection's body in turn (the last repeats), and the session's
+// state and turns (which a ticket reports too) by how many connections the
+// stream has had.
+type streamScript struct {
+	ticketStatus []int
+	bodies       []string
+	state        func(connects int32) (state string, turns int)
+}
+
+func scriptedStream(t *testing.T, sc streamScript) (*routeFake, *atomic.Int32, *atomic.Int32) {
 	var mints, connects atomic.Int32
 	var f *routeFake
 	f = newRouteFake(t, map[string]http.HandlerFunc{
@@ -109,11 +124,12 @@ func streamFakeWith(t *testing.T, ticketStatus []int, earlyDone bool) (*routeFak
 			if r.URL.Query().Get("action") != "read" {
 				t.Errorf("attach-ticket action %q, want read", r.URL.Query().Get("action"))
 			}
-			if n <= len(ticketStatus) {
-				writeAPIError(w, ticketStatus[n-1], "AGENT_SESSION_NOT_ATTACHABLE", "no sandbox yet")
+			if n <= len(sc.ticketStatus) {
+				writeAPIError(w, sc.ticketStatus[n-1], "AGENT_SESSION_NOT_ATTACHABLE", "no sandbox yet")
 				return
 			}
-			writeJSON(w, http.StatusOK, map[string]any{"id": r.PathValue("id"), "ticket": "tkt-" + string(rune('a'+n)),
+			_, turns := sc.state(connects.Load())
+			writeJSON(w, http.StatusOK, map[string]any{"id": r.PathValue("id"), "ticket": "tkt-" + string(rune('a'+n)), "turns": turns,
 				"streamUrl": f.srv.URL + "/v1/agent-sessions/" + r.PathValue("id") + "/stream"})
 		},
 		"GET /v1/agent-sessions/{id}/stream": func(w http.ResponseWriter, r *http.Request) {
@@ -121,23 +137,14 @@ func streamFakeWith(t *testing.T, ticketStatus []int, earlyDone bool) (*routeFak
 				t.Errorf("stream request headers: ticket %q, authorization %q", r.Header.Get(ticketHeader), r.Header.Get("Authorization"))
 			}
 			w.Header().Set("Content-Type", "text/event-stream")
-			fixture := replayFixture(t)
-			if connects.Add(1) == 1 {
-				if earlyDone {
-					_, _ = w.Write([]byte(fixture[:strings.Index(fixture, "data: {\"type\":\"reasoning-start\"")] + "data: [DONE]\n\n"))
-					return
-				}
-				_, _ = w.Write([]byte(fixture[:strings.Index(fixture, "data: {\"type\":\"text-start\"")]))
-				return
-			}
-			_, _ = w.Write([]byte(fixture))
+			n := int(connects.Add(1))
+			_, _ = w.Write([]byte(sc.bodies[min(n, len(sc.bodies))-1]))
 		},
 		"GET /v1/agent-sessions/{id}": func(w http.ResponseWriter, r *http.Request) {
-			state := stateWorking
-			if connects.Load() >= 2 {
-				state = stateSucceeded
-			}
-			writeJSON(w, http.StatusOK, sessionJSON(r.PathValue("id"), state))
+			state, turns := sc.state(connects.Load())
+			s := sessionJSON(r.PathValue("id"), state)
+			s["turns"] = turns
+			writeJSON(w, http.StatusOK, s)
 		},
 	})
 	return f, &mints, &connects
@@ -180,14 +187,61 @@ func TestErrorLineSkipsFences(t *testing.T) {
 	}
 }
 
-// TestFollowReattachesAfterAnEarlyDone: right after a create or steer the
-// gateway can answer before the turn's sandbox serves, replaying and closing
-// with [DONE]. That is not the end of the turn; follow must attach again and
-// show the turn.
-func TestFollowReattachesAfterAnEarlyDone(t *testing.T) {
-	f, _, connects := streamFakeWith(t, nil, true)
+// `[DONE]` ends a stream only once its turn has settled (w3/m406), though the
+// session reads working until the Completer's next poll (about 4.5 s on
+// production, 2026-11-26). follow waits for it without attaching again.
+func TestFollowWaitsForTheSessionAfterDone(t *testing.T) {
+	var reads atomic.Int32
+	f, _, connects := scriptedStream(t, streamScript{bodies: []string{replayFixture(t)},
+		state: func(int32) (string, int) {
+			if reads.Add(1) <= 2 {
+				return stateWorking, 1
+			}
+			return stateSucceeded, 1
+		}})
+	stdout, stderr, code := run(t, f.deps(), "-o", "text", "logs", "ags-live1", "--follow")
+	if code != 0 || stdout != renderedReplay || connects.Load() != 1 {
+		t.Fatalf("exit %d after %d connections, want one\nstdout %s\nstderr %s", code, connects.Load(), stdout, stderr)
+	}
+}
+
+// A message queued behind the streamed turn starts the next one, which has a
+// stream of its own: follow attaches again, printing only the new turn.
+func TestFollowAttachesAgainForAQueuedTurn(t *testing.T) {
+	turn1 := replayFixture(t)
+	both := strings.Replace(turn1, "data: [DONE]\n", `data: {"type":"data-user-prompt","data":{"turn":2,"text":"Add a test"}}
+
+data: {"type":"text-start","id":"t2"}
+
+data: {"type":"text-delta","id":"t2","delta":"Added."}
+
+data: {"type":"text-end","id":"t2"}
+
+data: [DONE]
+`, 1)
+	f, _, connects := scriptedStream(t, streamScript{bodies: []string{turn1, both},
+		state: func(connects int32) (string, int) {
+			if connects >= 2 {
+				return stateSucceeded, 2
+			}
+			return stateWorking, int(min(connects+1, 2)) // the ticket is minted at turn 1
+		}})
+	stdout, stderr, code := run(t, f.deps(), "-o", "text", "logs", "ags-live1", "--follow")
+	if code != 0 || stdout != renderedReplay+"── turn 2 ──\n> Add a test\nAdded.\n" || connects.Load() != 2 {
+		t.Fatalf("exit %d after %d connections\nstdout %s\nstderr %s", code, connects.Load(), stdout, stderr)
+	}
+}
+
+// A stream that closes without `[DONE]` was cut before its turn settled: it
+// is attached again even when the session has settled meanwhile, so the rest
+// of the turn still prints.
+func TestFollowAttachesAgainAfterACutEvenOnceSettled(t *testing.T) {
+	fixture := replayFixture(t)
+	cut := fixture[:strings.Index(fixture, "data: {\"type\":\"text-start\"")]
+	f, _, connects := scriptedStream(t, streamScript{bodies: []string{cut, fixture},
+		state: func(int32) (string, int) { return stateSucceeded, 1 }})
 	stdout, stderr, code := run(t, f.deps(), "-o", "text", "logs", "ags-live1", "--follow")
 	if code != 0 || stdout != renderedReplay || connects.Load() != 2 {
-		t.Fatalf("exit %d after %d connections\nstdout %s\nstderr %s", code, connects.Load(), stdout, stderr)
+		t.Fatalf("exit %d after %d connections, want the cut attached again\nstdout %s\nstderr %s", code, connects.Load(), stdout, stderr)
 	}
 }

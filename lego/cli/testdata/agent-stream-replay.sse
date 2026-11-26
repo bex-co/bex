@@ -1,3 +1,5 @@
+: [DONE] ends a stream once, last, and only once its turn has settled; a stream that closes without it was cut, and the client attaches again (ADR047 D9, w3/m406)
+
 data: {"type":"start","messageId":"durable-ags-d0abc123def456ghij78"}
 
 data: {"type":"data-user-prompt","data":{"turn":1,"text":"Fix the crash in crash.log","complete":true,"settled":true,"truncated":false,"reason":"","deliveryMode":"pr"}}
