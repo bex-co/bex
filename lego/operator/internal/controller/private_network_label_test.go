@@ -17,12 +17,16 @@ limitations under the License.
 package controller
 
 import (
+	"context"
+	"encoding/json"
 	"testing"
 
 	. "github.com/onsi/gomega"
 
+	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -210,4 +214,54 @@ func TestSyncRestoredPolicyLabelsFollowTheServedPlan(t *testing.T) {
 	if syncRestoredPolicyLabels(tpl, toFree) || len(tpl.Labels) != 1 {
 		t.Fatalf("a canceled Starter → Free still runs Starter and receives: labels %v", tpl.Labels)
 	}
+}
+
+// A failed rollout over a served release restores that release's recorded
+// template, like a canceled deploy does — and the restored template takes the
+// plan's current network policy labels. A record from before w6/m640 has no
+// send-only label, and restoring it verbatim reopens a background worker to
+// private traffic until the next converge pass rolls it again.
+func TestFailedRolloutRestoreConvergesPolicyLabels(t *testing.T) {
+	g := NewWithT(t)
+	app := projectionApp(func(a *appv1alpha1.App) {
+		a.Spec.Type, a.Spec.Tier = appv1alpha1.TypeBackgroundWorker, "starter"
+		a.Labels = map[string]string{labelWorkspace: "ws"}
+	})
+	app.UID = "failed-restore-uid"
+	app.Status.ActiveRevision = "rev-1"
+	app.Status.ReleaseGeneration = 2
+	// The served release's record as the operator wrote it before w6/m640:
+	// a starter worker's resources, but no send-only label.
+	recorded := corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
+			labelApp: app.Name, labelAppID: appIDOrName(app), labelWorkspace: "ws", labelRevision: "rev-1",
+		}},
+		Spec: corev1.PodSpec{Containers: []corev1.Container{{
+			Name: appContainerName, Resources: resourcesForTier("starter"),
+		}}},
+	}
+	raw, err := json.Marshal(recorded)
+	g.Expect(err).NotTo(HaveOccurred())
+	rec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: appv1alpha1.ReleaseRecordName(app.Name, 1), Namespace: app.Namespace,
+		},
+		Data: map[string][]byte{appv1alpha1.ReleaseRecordPodTemplateKey: raw},
+	}
+	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
+	dep.Spec.Template.Labels = map[string]string{labelRevision: "rev-2"}
+	scheme := wakeScheme()
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, dep, rec).Build()
+	r := &AppReconciler{Client: cl, Scheme: scheme, Mode: ModeKubernetes}
+	restored, wait, err := r.restoreServedTemplate(context.Background(), app, dep, 1)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(wait).To(BeZero())
+	g.Expect(restored).To(BeTrue(), "the failed release's template restores onto the served one")
+	labels := dep.Spec.Template.Labels
+	g.Expect(sendOnly(labels)).To(BeTrue(),
+		"a restored worker template must not receive private traffic: %v", labels)
+	g.Expect(labels).NotTo(HaveKey(execution.LabelFreePlan), "a paid worker gains no free-plan label: %v", labels)
+	g.Expect(labels).To(HaveKeyWithValue(labelWorkspace, "ws"), "the restore keeps the workspace label: %v", labels)
+	// The restore is now converged: a following pass changes nothing.
+	g.Expect(syncRestoredPolicyLabels(&dep.Spec.Template, app)).To(BeFalse())
 }
