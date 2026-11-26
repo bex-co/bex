@@ -24,7 +24,7 @@ images:
 # The local CAPD cluster runs Kubernetes v1.36, where ImageVolume is GA, so the
 # operator mounts its health-probe helper from an image volume of its own image
 # instead of the bex-health-probe-install init container (w6/m624). Production
-# turns it on in config/prod once its API servers and App kubelets carry the
+# turns it on in config/prod too: its API servers and App kubelets carry the
 # gate (infra/clusterapi/overlays/hetzner-caph/cluster.yaml).
 patches:
   - target:

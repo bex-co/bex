@@ -142,6 +142,22 @@ patches:
         value:
           name: BEX_DB_CLUSTER_ISSUER
           value: letsencrypt-prod
+      # w6/m624: a pod that carries the health-probe helper mounts it from an
+      # `image` volume of bex's own image instead of the
+      # bex-health-probe-install init container, so the kubelet starts the
+      # app in the pass that starts the pod rather than on its next relist
+      # (0-1 s). It needs ImageVolume (beta, off by default on v1.34) on
+      # kube-apiserver and on the kubelet of every node that runs an App:
+      # the control plane rolled onto it in 30588c6353 and bex-tenant-0 in
+      # c98690e829, and the bex-tenant-0/-xl/-xxl templates carry it
+      # (scripts/clusterapi-validate.sh). Each template adopts it on its next
+      # deploy, restart or settings change; turning it on rolls no service.
+      # Rollback: remove this; templates return to the installer the same way.
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_HEALTH_PROBE_IMAGE_VOLUME
+          value: "true"
   # THE objectgw KILL SWITCH (docs/ADR112-object-storage.md D4,
   # docs/runbooks/objectgw-kill-switch.md). Argo CD syncs production from this
   # overlay with selfHeal, so a `kubectl scale` is reverted within minutes;
