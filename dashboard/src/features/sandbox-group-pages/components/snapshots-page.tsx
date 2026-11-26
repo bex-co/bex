@@ -59,10 +59,8 @@ import {
   StartedSandboxesList,
   TimeRangeSelect,
 } from "./parts";
-import {
-  SnapshotsListSkeleton,
-  DrawerBodySkeleton,
-} from "./group-page-skeletons";
+import { SnapshotsListSkeleton } from "./group-page-skeletons";
+import { SnapshotDrawerSkeleton } from "./drawer-frames";
 
 /**
  * A sandbox group's Snapshots page, Render's (w1/m658): its snapshots with
@@ -355,7 +353,10 @@ function SnapshotDrawer({
         className="w-full gap-0 overflow-y-auto sm:max-w-xl"
       >
         {!snapshot && byId.loading ? (
-          <DrawerBodySkeleton />
+          <>
+            <SheetTitle className="sr-only">{snapshotId}</SheetTitle>
+            <SnapshotDrawerSkeleton />
+          </>
         ) : !snapshot && byId.error ? (
           <div className="p-4 pr-12">
             <SheetTitle className="sr-only">{snapshotId}</SheetTitle>

@@ -38,7 +38,6 @@ import {
 import { useSandboxGroupDetail } from "@/features/sandbox-group-pages/lib/group-detail";
 import {
   formatSeconds,
-  isActiveSandbox,
   isEndedSandbox,
   LIFECYCLE_LABEL,
   snapshotFailureKey,
@@ -52,7 +51,11 @@ import {
   SandboxStatusBadge,
   SnapshotStatusBadge,
 } from "./parts";
-import { SandboxDrawerSkeleton } from "./group-page-skeletons";
+import {
+  EventsFrame,
+  SandboxDrawerSkeleton,
+  SnapshotRowsFrame,
+} from "./drawer-frames";
 import {
   SANDBOX_DRAWER_TABS,
   type SandboxDrawerTab,
@@ -113,7 +116,10 @@ export function SandboxDrawer({
         data-route-skeleton={!sandbox ? "sandbox-drawer" : undefined}
       >
         {loading ? (
-          <SandboxDrawerSkeleton />
+          <>
+            <SheetTitle className="sr-only">{sandboxId}</SheetTitle>
+            <SandboxDrawerSkeleton tab={tab} />
+          </>
         ) : error ? (
           <div className="p-4 pr-12">
             <SheetTitle className="sr-only">{sandboxId}</SheetTitle>
@@ -132,7 +138,9 @@ export function SandboxDrawer({
         ) : (
           <>
             <SheetHeader className="border-b pr-12">
-              <div className="flex items-center gap-2">
+              {/* The menu's 32 px whether or not the sandbox still has one,
+                  so the header keeps its height when the sandbox ends. */}
+              <div className="flex min-h-8 items-center gap-2">
                 <SheetTitle className="truncate">
                   {sandbox.name ?? sandbox.id}
                 </SheetTitle>
@@ -229,18 +237,8 @@ function EventsTab({
   ownerId: string;
 }) {
   const { t } = useTranslations();
-  const events = useSandboxEvents(
-    sandbox.id,
-    ownerId,
-    isActiveSandbox(sandbox.status),
-  );
-  if (events.loading) {
-    return (
-      <p className="text-muted-foreground text-sm">
-        {t("sandboxGroupPages.loadingEvents")}
-      </p>
-    );
-  }
+  const events = useSandboxEvents(sandbox.id, ownerId, sandbox.status);
+  if (events.loading) return <EventsFrame />;
   if (events.error) {
     return <p className="text-sm">{t("sandboxGroupPages.loadEventsError")}</p>;
   }
@@ -371,12 +369,7 @@ function SnapshotsTab({ sandbox }: { sandbox: SandboxRow }) {
     ownerId: group.ownerId,
     sourceSandboxId: sandbox.id,
   });
-  if (loading)
-    return (
-      <p className="text-muted-foreground text-sm">
-        {t("sandboxGroupPages.loading")}
-      </p>
-    );
+  if (loading) return <SnapshotRowsFrame />;
   if (error)
     return (
       <p className="text-sm">{t("sandboxGroupPages.loadSnapshotsError")}</p>

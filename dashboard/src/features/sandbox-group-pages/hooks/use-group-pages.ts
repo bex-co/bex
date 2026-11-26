@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApolloClient, useMutation, useQuery } from "@apollo/client/react";
 import {
   DeleteGroupSandboxSnapshotDocument,
@@ -26,6 +26,7 @@ import {
 import { skipPollWhenHidden } from "@/common/lib/polling";
 import {
   rangeStart,
+  isActiveSandbox,
   isEndedSandbox,
   type SandboxStatus,
   type TimeRange,
@@ -181,22 +182,32 @@ const EVENT_PAGE = 50;
 
 /**
  * A sandbox's events, newest first: the newest page polled while the
- * sandbox runs, and earlier pages on demand, joined as other Load more lists
- * join theirs (common/lib/appended-pages.ts).
+ * sandbox is active, and earlier pages on demand, joined as other Load more
+ * lists join theirs (common/lib/appended-pages.ts). A change of `status`
+ * reads the newest page once more: polling stops when the sandbox ends, and
+ * the event that ended it (Terminated, Errored, Suspended) would otherwise
+ * wait for a reload.
  */
 export function useSandboxEvents(
   sandboxId: string,
   ownerId: string,
-  live: boolean,
+  status: string,
 ) {
   const client = useApolloClient();
   const head = useQuery(SandboxEventsDocument, {
     variables: { sandboxId, ownerId, limit: EVENT_PAGE },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
-    pollInterval: live ? LIVE_POLL_MS : 0,
+    pollInterval: isActiveSandbox(status) ? LIVE_POLL_MS : 0,
     skipPollAttempt: skipPollWhenHidden,
   });
+  const seenStatus = useRef(status);
+  const { refetch } = head;
+  useEffect(() => {
+    if (seenStatus.current === status) return;
+    seenStatus.current = status;
+    void refetch();
+  }, [refetch, status]);
   const [appended, setAppended] =
     useState<AppendedPages<SandboxEventRow>>(NO_APPENDED);
   const [loadingEarlier, setLoadingEarlier] = useState(false);

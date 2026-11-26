@@ -53,6 +53,7 @@ vi.mock(
 );
 
 import { SandboxDrawer } from "@/features/sandbox-group-pages/components/sandbox-drawer";
+import { StartedSandboxesList } from "@/features/sandbox-group-pages/components/parts";
 import type { SandboxDrawerTab } from "@/features/sandbox-group-pages/lib/drawer-tabs";
 
 const GROUP = {
@@ -269,5 +270,196 @@ describe("SandboxDrawer (w1/m658)", () => {
     };
     renderDrawer();
     expect(screen.getByText("Sandbox not found")).toBeInTheDocument();
+  });
+});
+
+/** The classes that set a line's height: its box kind and its type size.
+ *  Badges are counted on their own (rowFrames). */
+function lineBoxes(parent: Element) {
+  return [...parent.children]
+    .filter(
+      (el) =>
+        !el.classList.contains("sr-only") &&
+        !el.matches("[data-slot=badge]") &&
+        !el.querySelector("[data-slot=badge]"),
+    )
+    .map((el) => ({
+      block:
+        ["P", "DIV"].includes(el.tagName) || el.classList.contains("block"),
+      size: [...el.classList].find((c) => /^text-(xs|sm|base)$/.test(c)),
+    }));
+}
+
+/** A list's rows as their heights see them: the row, its lines, its badges. */
+function rowFrames(list: Element) {
+  return [...list.children].map((row) => ({
+    row: row.className,
+    lines: lineBoxes(row.querySelector(":scope > div") ?? row),
+    badges: row.querySelectorAll("[data-slot=badge]").length,
+  }));
+}
+
+const LIFECYCLE = (id: string, type: string) => ({
+  __typename: "SandboxLifecycleEvent",
+  id,
+  timestamp: "2026-11-26T10:00:00Z",
+  outcome: "SUCCESS",
+  label: type,
+  lifecycleType: type,
+  trigger: "DASHBOARD",
+  userEmail: "ada@example.com",
+});
+
+// t009's production walk: each of these said "Loading" on one line, and the
+// drawer grew by the list when the data landed (the Events tab from 20 to
+// 506 px). Each now draws the ready rows' line boxes while it loads.
+describe("SandboxDrawer's loading frames (w1/m658 t009)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    state.details = {
+      sandbox: SANDBOX,
+      loading: false,
+      notFound: false,
+      error: undefined,
+      refetch: vi.fn(),
+    };
+    state.snapshots = { snapshots: [], loading: false, error: undefined };
+  });
+
+  function drawer(tab: SandboxDrawerTab) {
+    return (
+      <SandboxGroupDetailProvider value={{ group: GROUP, refetch: vi.fn() }}>
+        <SandboxDrawer
+          sandboxId={SANDBOX.id}
+          tab={tab}
+          onTabChange={vi.fn()}
+          onClose={vi.fn()}
+          onTerminated={vi.fn()}
+        />
+      </SandboxGroupDetailProvider>
+    );
+  }
+
+  it("holds a new sandbox's two events while they load", () => {
+    state.events = { events: [], loading: true, hasMore: false };
+    const { rerender } = render(drawer("events"));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("status")).toHaveTextContent(
+      "Loading events",
+    );
+    const loading = rowFrames(dialog.querySelector("ol")!);
+    expect(loading).toHaveLength(2);
+
+    state.events = {
+      events: [LIFECYCLE("evt-2", "READY"), LIFECYCLE("evt-1", "CREATED")],
+      loading: false,
+      hasMore: false,
+      loadEarlier: vi.fn(),
+      loadingEarlier: false,
+      earlierError: false,
+    };
+    rerender(drawer("events"));
+    expect(within(dialog).queryByRole("status")).toBeNull();
+    expect(rowFrames(dialog.querySelector("ol")!)).toEqual(loading);
+  });
+
+  it("holds a snapshot row while the sandbox's snapshots load", () => {
+    state.events = { events: [], loading: false, hasMore: false };
+    state.snapshots = { snapshots: [], loading: true, error: undefined };
+    const { rerender } = render(drawer("snapshots"));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("status")).toHaveTextContent("Loading");
+    const loading = rowFrames(dialog.querySelector("ul")!);
+    expect(loading).toEqual([expect.objectContaining({ badges: 1 })]);
+
+    state.snapshots = {
+      snapshots: [
+        {
+          id: "snp-0000000000000000000t",
+          name: "nightly",
+          status: "available",
+          requestedAt: "2026-11-26T10:01:00Z",
+          sizeBytes: 1024,
+        },
+      ],
+      loading: false,
+      error: undefined,
+    };
+    rerender(drawer("snapshots"));
+    expect(rowFrames(dialog.querySelector("ul")!)).toEqual(loading);
+  });
+
+  it("draws the ready header and tab bar while the sandbox loads", () => {
+    state.events = { events: [], loading: false, hasMore: false };
+    state.details = { sandbox: null, loading: true, refetch: vi.fn() };
+    const { rerender } = render(drawer("events"));
+    const dialog = screen.getByRole("dialog");
+    const frame = {
+      titleRow: dialog.querySelector("[data-slot=sheet-header] > div")!
+        .className,
+      tabs: within(dialog)
+        .getAllByRole("tab", { hidden: true })
+        .map((tab) => [tab.textContent, tab.className]),
+    };
+    expect(frame.tabs.map(([name]) => name)).toEqual([
+      "Events",
+      "Snapshots",
+      "Details",
+    ]);
+
+    state.details = {
+      sandbox: { ...SANDBOX, status: "terminated" },
+      loading: false,
+      notFound: false,
+      refetch: vi.fn(),
+    };
+    rerender(drawer("events"));
+    // An ended sandbox has no menu, and its title row keeps the menu's 32 px.
+    expect(
+      screen.queryByRole("button", { name: "Sandbox actions" }),
+    ).toBeNull();
+    expect(
+      dialog.querySelector("[data-slot=sheet-header] > div")!.className,
+    ).toBe(frame.titleRow);
+    expect(frame.titleRow).toContain("min-h-8");
+    expect(
+      within(dialog)
+        .getAllByRole("tab")
+        .map((tab) => [
+          tab.textContent,
+          tab.className.replace(/\s*disabled:\S+/g, ""),
+        ]),
+    ).toEqual(
+      frame.tabs.map(([name, cls]) => [
+        name,
+        cls!.replace(/\s*disabled:\S+/g, ""),
+      ]),
+    );
+  });
+});
+
+describe("StartedSandboxesList's loading frame (w1/m658 t009)", () => {
+  it("holds one row while the sandboxes started from it load", () => {
+    const { rerender, container } = render(
+      <StartedSandboxesList
+        groupId={GROUP.id}
+        sandboxes={[]}
+        loading
+        empty="None yet."
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Loading");
+    const loading = rowFrames(container.querySelector("ul")!);
+    expect(loading).toHaveLength(1);
+
+    rerender(
+      <StartedSandboxesList
+        groupId={GROUP.id}
+        sandboxes={[{ id: SANDBOX.id, name: "alpha", status: "running" }]}
+        loading={false}
+        empty="None yet."
+      />,
+    );
+    expect(rowFrames(container.querySelector("ul")!)).toEqual(loading);
   });
 });

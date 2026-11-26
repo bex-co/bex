@@ -391,6 +391,49 @@ describe("ImagesPage (w1/m658)", () => {
     ).toBeInTheDocument();
   });
 
+  // t009's production walk: the drawer drew a header and six detail rows with
+  // no tab bar while the versions loaded, then a 38 px tab bar and a version
+  // list appeared. It now draws the ready header, tabs and a version row.
+  it("draws the drawer's header, tabs and a version row while the versions load", () => {
+    state.versions = { versions: [], loading: true, error: undefined };
+    const page = (
+      <ImagesPage
+        openImage="runtime"
+        openTab="versions"
+        onOpen={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+    const { rerender } = render(wrap(page));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("status")).toHaveTextContent("Loading");
+    const shape = () => ({
+      header: [
+        ...dialog.querySelector("[data-slot=sheet-header]")!.children,
+      ].map((line) => line.className.includes("items-center")),
+      tabs: within(dialog)
+        .getAllByRole("tab", { hidden: true })
+        .map((tab) => tab.textContent),
+      rows: [...dialog.querySelectorAll("ul > li")].map((li) => [
+        li.className,
+        li.children.length,
+      ]),
+    });
+    const loading = shape();
+    expect(loading.tabs).toEqual(["Versions", "Details", "Sandboxes"]);
+
+    state.versions = {
+      versions: [build("sbb-0000000000000000000a", "succeeded")],
+      loading: false,
+      error: undefined,
+    };
+    rerender(wrap(page));
+    expect(within(dialog).queryByRole("status")).toBeNull();
+    expect(shape().tabs).toEqual(loading.tabs);
+    expect(shape().rows).toEqual(loading.rows);
+    expect(shape().header).toHaveLength(loading.header.length);
+  });
+
   it("starts an empty group with Render's import starter code", () => {
     state.sources = { ...state.sources, sources: [] };
     render(

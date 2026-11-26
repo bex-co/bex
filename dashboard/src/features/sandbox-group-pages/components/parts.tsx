@@ -21,6 +21,7 @@ import { CodeBlock } from "@/common/components/code-block";
 import { CopyButton } from "@/common/components/copy-button";
 import { useNow } from "@/common/hooks/use-now";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { StartedRowsFrame } from "./drawer-frames";
 import { formatDuration } from "@/common/lib/format/format-duration";
 import {
   BUILD_STATUS_LABEL,
@@ -464,14 +465,7 @@ export function StartedSandboxesList({
   loading: boolean;
   empty: string;
 }) {
-  const { t } = useTranslations();
-  if (loading) {
-    return (
-      <p className="text-muted-foreground text-sm">
-        {t("sandboxGroupPages.loading")}
-      </p>
-    );
-  }
+  if (loading) return <StartedRowsFrame />;
   if (sandboxes.length === 0) {
     return <p className="text-muted-foreground text-sm">{empty}</p>;
   }

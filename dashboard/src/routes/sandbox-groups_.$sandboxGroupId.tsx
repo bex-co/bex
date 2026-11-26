@@ -139,9 +139,13 @@ function SandboxGroupLayout({ routePending = false }: { routePending?: boolean }
               data-skeleton-region="resource-title"
               className="flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-1"
             >
-              {/* The h1's text-xl line box is 28px. */}
+              {/* The h1's text-xl line box is 28px; the id's line is the
+                  copy button's 32px (t009: a 16px bar left the header 4px
+                  short at 1440 and 16px at 390). */}
               <Skeleton className="h-7 w-48" />
-              <Skeleton className="h-4 w-56" />
+              <div className="flex h-8 items-center">
+                <Skeleton className="h-4 w-56" />
+              </div>
             </div>
           )}
         </div>

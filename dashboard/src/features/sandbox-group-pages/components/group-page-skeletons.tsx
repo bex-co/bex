@@ -1,5 +1,15 @@
-import { Card, CardContent, CardHeader } from "@/common/components/ui/card";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import {
+  ReservedButton,
+  ReservedText,
+} from "@/common/components/reserved-skeleton";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/common/components/ui/card";
+import { Skeleton, SkeletonSpan } from "@/common/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -8,23 +18,35 @@ import {
   TableHeader,
   TableRow,
 } from "@/common/components/ui/table";
+import { useTranslations } from "@/common/hooks/use-translations";
+import { SandboxGroupCredentialsPanelSkeleton } from "@/features/sandbox-groups/components/sandbox-group-skeletons";
+import { DetailRowsFrame } from "./drawer-frames";
 
 /**
- * The pending frames of a sandbox group's pages and drawers (w1/m658), each
- * the ready page's structure at the same breakpoint: the toolbar, the
- * summary, a table at md and up and stacked rows below it, and the drawer's
- * header, tabs and rows. Skeleton-only, so the routes' pending components
- * stay out of the pages' lazy chunks (w3/066).
+ * The pending frames of a sandbox group's pages (w1/m658), each the ready
+ * page's structure at the same breakpoint: the toolbar, the summary, a table
+ * at md and up and stacked rows below it. Rows reserve the ready rows' line
+ * boxes (a name over its id, a status badge), and static copy is laid out
+ * invisibly under a bar, so nothing moves when the data lands (t009 measured
+ * the first frames 14 to 30 px short on production). Skeleton-only, so the
+ * routes' pending components stay out of the pages' lazy chunks (w3/066).
  */
 
 function TablePreview({
-  columns,
-  rows = 5,
   region,
+  columns,
+  checkbox = false,
+  twoLine,
+  rows = 5,
 }: {
-  columns: number;
-  rows?: number;
   region: string;
+  /** The ready table's columns after its checkbox column. */
+  columns: number;
+  /** A leading select column, as the Sandboxes table has. */
+  checkbox?: boolean;
+  /** The first column shows a name over its id, as Sandboxes and Snapshots do. */
+  twoLine: boolean;
+  rows?: number;
 }) {
   return (
     <div data-skeleton-region={region} aria-hidden="true">
@@ -32,6 +54,11 @@ function TablePreview({
         <Table>
           <TableHeader>
             <TableRow>
+              {checkbox ? (
+                <TableHead className="w-10">
+                  <Skeleton className="size-4 rounded-sm" />
+                </TableHead>
+              ) : null}
               {Array.from({ length: columns }).map((_, i) => (
                 <TableHead key={i}>
                   <Skeleton className="h-3.5 w-16" />
@@ -42,9 +69,32 @@ function TablePreview({
           <TableBody>
             {Array.from({ length: rows }).map((_, r) => (
               <TableRow key={r}>
+                {checkbox ? (
+                  <TableCell>
+                    <Skeleton className="size-4 rounded-sm" />
+                  </TableCell>
+                ) : null}
                 {Array.from({ length: columns }).map((_, c) => (
-                  <TableCell key={c} className="py-3">
-                    <Skeleton className={c === 0 ? "h-4 w-36" : "h-4 w-20"} />
+                  <TableCell key={c}>
+                    {c === 0 ? (
+                      <>
+                        <div className="flex h-5 items-center">
+                          <Skeleton className="h-3.5 w-36" />
+                        </div>
+                        {twoLine ? (
+                          <div className="flex h-4 items-center">
+                            <Skeleton className="h-3 w-44" />
+                          </div>
+                        ) : null}
+                      </>
+                    ) : c === 1 ? (
+                      // The status badge's 22 px box.
+                      <Skeleton className="h-[22px] w-16 rounded-md" />
+                    ) : (
+                      <div className="flex h-5 items-center">
+                        <Skeleton className="h-3.5 w-20" />
+                      </div>
+                    )}
                   </TableCell>
                 ))}
               </TableRow>
@@ -54,13 +104,24 @@ function TablePreview({
       </div>
       <div className="space-y-2 md:hidden">
         {Array.from({ length: Math.min(rows, 3) }).map((_, r) => (
-          <div key={r} className="space-y-2 rounded-lg border p-3">
-            <div className="flex items-center justify-between gap-2">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-5 w-16 rounded-md" />
+          <div key={r} className="flex items-start gap-3 rounded-lg border p-3">
+            {checkbox ? (
+              <Skeleton className="mt-0.5 size-4 shrink-0 rounded-sm" />
+            ) : null}
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex h-[22px] items-center justify-between gap-2">
+                <Skeleton className="h-3.5 w-32" />
+                <Skeleton className="h-[22px] w-16 rounded-md" />
+              </div>
+              <div className="flex h-4 items-center">
+                <Skeleton className="h-3 w-44" />
+              </div>
+              {twoLine ? (
+                <div className="flex h-4 items-center">
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              ) : null}
             </div>
-            <Skeleton className="h-3 w-44" />
-            <Skeleton className="h-3 w-20" />
           </div>
         ))}
       </div>
@@ -96,7 +157,65 @@ function ToolbarSkeleton({
 }
 
 export function SandboxesListSkeleton() {
-  return <TablePreview region="sandboxes-table" columns={7} />;
+  return <TablePreview region="sandboxes-table" checkbox columns={6} twoLine />;
+}
+
+/** RunSummary's cards and chart, its labels laid out invisibly. */
+function RunSummaryFrame() {
+  const { t } = useTranslations();
+  const cards = [
+    t("sandboxGroupPages.summaryTotal"),
+    t("sandboxGroupPages.summaryErrored"),
+    t("sandboxGroupPages.summaryRunning"),
+  ];
+  const legend = [
+    t("sandboxGroupPages.runsSucceeded"),
+    t("sandboxGroupPages.runsErrored"),
+  ];
+  return (
+    <div
+      data-skeleton-region="run-summary"
+      aria-hidden="true"
+      className="space-y-3"
+    >
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+        {cards.map((label) => (
+          <Card key={label} className="gap-1 py-3">
+            <CardHeader className="px-3 py-0 sm:px-4">
+              <CardDescription className="truncate">
+                <span className="relative">
+                  <ReservedText>{label}</ReservedText>
+                </span>
+              </CardDescription>
+              <CardTitle
+                as="div"
+                className="text-base font-semibold tabular-nums"
+              >
+                <span className="relative">
+                  <ReservedText>—</ReservedText>
+                </span>
+              </CardTitle>
+            </CardHeader>
+          </Card>
+        ))}
+      </div>
+      <div className="rounded-lg border p-3">
+        <Skeleton className="h-[72px] w-full" />
+        <div className="text-muted-foreground mt-2 flex gap-4 text-xs">
+          {legend.map((label) => (
+            <span
+              key={label}
+              className="relative inline-flex items-center gap-1"
+            >
+              <span className="inline-block size-2 rounded-sm" />
+              <span className="invisible">{label}</span>
+              <SkeletonSpan />
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /** The Sandboxes page: toolbar, Total/Errored/Running, the chart, the list. */
@@ -104,33 +223,14 @@ export function SandboxesPageSkeleton() {
   return (
     <div className="space-y-6">
       <ToolbarSkeleton region="sandboxes-toolbar" actions />
-      <div
-        data-skeleton-region="run-summary"
-        aria-hidden="true"
-        className="space-y-3"
-      >
-        <div className="grid grid-cols-3 gap-2 sm:gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i} className="gap-1 py-3">
-              <CardHeader className="px-3 py-0 sm:px-4">
-                <Skeleton className="h-3.5 w-14" />
-                <Skeleton className="h-5 w-10" />
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
-        <div className="rounded-lg border p-3">
-          <Skeleton className="h-[72px] w-full" />
-          <Skeleton className="mt-2 h-3 w-40" />
-        </div>
-      </div>
+      <RunSummaryFrame />
       <SandboxesListSkeleton />
     </div>
   );
 }
 
 export function SnapshotsListSkeleton() {
-  return <TablePreview region="snapshots-table" columns={6} />;
+  return <TablePreview region="snapshots-table" columns={6} twoLine />;
 }
 
 export function SnapshotsPageSkeleton() {
@@ -143,7 +243,7 @@ export function SnapshotsPageSkeleton() {
 }
 
 export function ImagesListSkeleton() {
-  return <TablePreview region="images-table" columns={5} />;
+  return <TablePreview region="images-table" columns={5} twoLine={false} />;
 }
 
 export function ImagesPageSkeleton() {
@@ -157,77 +257,60 @@ export function ImagesPageSkeleton() {
 
 /** Settings: General, the brokered credentials and Delete sandbox group. */
 export function SandboxGroupSettingsSkeleton() {
+  const { t } = useTranslations();
   return (
     <div className="space-y-6" aria-hidden="true">
       <Card data-skeleton-region="group-general" className="gap-3 py-4">
         <CardHeader className="px-4">
-          <Skeleton className="h-5 w-20" />
+          <CardTitle as="div" className="relative w-fit text-base">
+            <ReservedText>{t("sandboxGroupPages.general")}</ReservedText>
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 px-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="flex justify-between py-1">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-28" />
+        <CardContent className="px-4">
+          <DetailRowsFrame
+            rows={[
+              { label: "sandboxGroups.fieldName" },
+              { label: "sandboxGroups.fieldRegion" },
+              // Its value carries Make default, a 32 px button.
+              { label: "sandboxGroups.fieldDefault", tall: true },
+            ]}
+          />
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+            <div className="flex flex-1 flex-col gap-1 text-sm">
+              <span className="relative w-fit">
+                <ReservedText>
+                  {t("sandboxGroups.fieldConcurrencyLimit")}
+                </ReservedText>
+              </span>
+              <Skeleton className="h-8 w-full rounded-md sm:max-w-40" />
             </div>
-          ))}
-          <Skeleton className="h-8 w-full sm:w-52" />
+            <ReservedButton variant="default" size="sm">
+              {t("sandboxGroupPages.save")}
+            </ReservedButton>
+          </div>
         </CardContent>
       </Card>
-      <Card data-skeleton-region="credentials-panel" className="gap-3 py-4">
+      <SandboxGroupCredentialsPanelSkeleton />
+      <Card
+        data-skeleton-region="danger-zone"
+        className="border-destructive/40 gap-3 py-4"
+      >
         <CardHeader className="px-4">
-          <Skeleton className="h-5 w-40" />
-          <Skeleton className="h-4 w-64 max-w-full" />
-        </CardHeader>
-        <CardContent className="space-y-2 px-4">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
-          ))}
-        </CardContent>
-      </Card>
-      <Card data-skeleton-region="danger-zone" className="gap-3 py-4">
-        <CardHeader className="px-4">
-          <Skeleton className="h-5 w-44" />
+          <CardTitle as="div" className="relative w-fit text-base">
+            <ReservedText>{t("sandboxGroupPages.deleteGroup")}</ReservedText>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 px-4">
-          <Skeleton className="h-4 w-72 max-w-full" />
-          <Skeleton className="h-8 w-40" />
+          <p className="text-muted-foreground relative text-sm">
+            <ReservedText>
+              {t("sandboxGroupPages.deleteGroupHelp")}
+            </ReservedText>
+          </p>
+          <ReservedButton variant="destructive" size="sm">
+            {t("sandboxGroupPages.deleteGroup")}
+          </ReservedButton>
         </CardContent>
       </Card>
     </div>
   );
-}
-
-/** A drawer's body while its resource loads: header, tabs, rows. */
-export function DrawerBodySkeleton({ tabs = 0 }: { tabs?: number }) {
-  return (
-    <div aria-hidden="true" data-skeleton-region="drawer-body">
-      <div className="space-y-2 border-b p-4 pr-12">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-5 w-40" />
-          <Skeleton className="h-5 w-16 rounded-md" />
-        </div>
-        <Skeleton className="h-4 w-56" />
-      </div>
-      {tabs > 0 ? (
-        <div className="flex gap-1 border-b px-4 py-2">
-          {Array.from({ length: tabs }).map((_, i) => (
-            <Skeleton key={i} className="h-5 w-16" />
-          ))}
-        </div>
-      ) : null}
-      <div className="space-y-3 p-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="flex justify-between gap-4">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-32" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** The sandbox drawer: its header, the Events, Snapshots and Details tabs. */
-export function SandboxDrawerSkeleton() {
-  return <DrawerBodySkeleton tabs={3} />;
 }

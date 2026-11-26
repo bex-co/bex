@@ -54,7 +54,8 @@ import {
   StarterPanel,
   StartedSandboxesList,
 } from "./parts";
-import { DrawerBodySkeleton, ImagesListSkeleton } from "./group-page-skeletons";
+import { ImagesListSkeleton } from "./group-page-skeletons";
+import { ImageDrawerSkeleton } from "./drawer-frames";
 import {
   IMAGE_DRAWER_TABS,
   type ImageDrawerTab,
@@ -330,7 +331,10 @@ function ImageDrawer({
         className="w-full gap-0 overflow-y-auto sm:max-w-xl"
       >
         {loading ? (
-          <DrawerBodySkeleton />
+          <>
+            <SheetTitle className="sr-only">{name}</SheetTitle>
+            <ImageDrawerSkeleton tab={tab} />
+          </>
         ) : error ? (
           <div className="p-4 pr-12">
             <SheetTitle className="sr-only">{name}</SheetTitle>

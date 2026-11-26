@@ -1,9 +1,16 @@
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { PageFrame, PageHeader } from "@/common/components/page-frame";
+import { Plus } from "lucide-react";
+import {
+  ReservedButton,
+  ReservedText,
+} from "@/common/components/reserved-skeleton";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
+  CardTitle,
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
@@ -132,18 +139,31 @@ export function SandboxGroupCredentialsPanelSkeleton({
 }: {
   rows?: number;
 }) {
+  const { t } = useTranslations();
   return (
     <Card
       data-skeleton-region="credentials-panel"
       className="gap-4"
       aria-hidden="true"
     >
+      {/* The ready header's own title and description, laid out invisibly
+          so the description wraps as it will at this width (w1/m658 t009:
+          one bar each left the header 18 px short at 1440 and 58 at 390). */}
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1.5">
-          <Skeleton className="h-5 w-44" />
-          <Skeleton className="h-4 w-72 max-w-full" />
+        <div className="space-y-1">
+          <CardTitle as="div" className="relative w-fit">
+            <ReservedText>{t("sandboxGroups.credSectionTitle")}</ReservedText>
+          </CardTitle>
+          <CardDescription className="relative">
+            <ReservedText>
+              {t("sandboxGroups.credSectionDescription")}
+            </ReservedText>
+          </CardDescription>
         </div>
-        <Skeleton className="h-8 w-32 shrink-0 rounded-md" />
+        <ReservedButton variant="default" size="sm">
+          <Plus aria-hidden="true" />
+          {t("sandboxGroups.credAddButton")}
+        </ReservedButton>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Desktop table preview */}

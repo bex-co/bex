@@ -56,6 +56,7 @@ vi.mock(
 );
 
 import { SandboxesPage } from "@/features/sandbox-group-pages/components/sandboxes-page";
+import { SandboxesPageSkeleton } from "@/features/sandbox-group-pages/components/group-page-skeletons";
 
 const GROUP = {
   __typename: "SandboxGroup" as const,
@@ -277,5 +278,67 @@ describe("SandboxesPage (w1/m658)", () => {
     expect(
       screen.getByText("drawer sbx-0000000000000000000b"),
     ).toBeInTheDocument();
+  });
+});
+
+/** The summary's boxes as their classes size them: each card's header, label
+ *  and value, and the chart's legend line. */
+function summaryShape(root: Element) {
+  const summary = root.querySelector("[data-skeleton-region=run-summary]")!;
+  return {
+    cards: [...summary.querySelectorAll("[data-slot=card]")].map((card) =>
+      [
+        card,
+        card.querySelector("[data-slot=card-header]"),
+        card.querySelector("[data-slot=card-description]"),
+        card.querySelector("[data-slot=card-title]"),
+      ].map((el) => el?.className),
+    ),
+    chart: summary.querySelector(".h-\\[72px\\]") !== null,
+    legend: summary.querySelector(".mt-2")?.className,
+  };
+}
+
+/** The first table row and the first stacked row, as their lines size them. */
+function rowShape(root: Element) {
+  const cells = [...root.querySelector("tbody tr")!.children];
+  const stacked = root.querySelector(".md\\:hidden > *")!;
+  return {
+    cells: cells.length,
+    nameLines: cells[1].children.length,
+    stackedLines: stacked.querySelector(".space-y-1")!.children.length,
+  };
+}
+
+// t009 measured the first frame 14 px short in the summary on production (a
+// 14 px label bar and a 20 px value bar under 20 and 24 px lines) and each
+// table row 12 px short (one bar where the row shows a name over its id).
+describe("SandboxesPageSkeleton matches the ready page (w1/m658 t009)", () => {
+  beforeEach(() => {
+    state.calls = [];
+    state.list = listState();
+  });
+
+  it("draws the summary's cards and legend and the rows' lines as the page does", () => {
+    const pending = render(<SandboxesPageSkeleton />);
+    const frame = {
+      summary: summaryShape(pending.container),
+      rows: rowShape(pending.container),
+    };
+    pending.unmount();
+
+    const ready = render(
+      <SandboxGroupDetailProvider value={{ group: GROUP, refetch: vi.fn() }}>
+        <SandboxesPage
+          openSandboxId={undefined}
+          openTab="events"
+          onOpen={vi.fn()}
+          onClose={vi.fn()}
+        />
+      </SandboxGroupDetailProvider>,
+    );
+    expect(summaryShape(ready.container)).toEqual(frame.summary);
+    expect(rowShape(ready.container)).toEqual(frame.rows);
+    expect(frame.rows).toEqual({ cells: 7, nameLines: 2, stackedLines: 3 });
   });
 });
