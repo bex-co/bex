@@ -19,6 +19,7 @@ package core
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -161,6 +162,60 @@ func TestAuthorizeAuditLogForEveryoneElse(t *testing.T) {
 	}
 	if got := allow.Authz.(*fakeAllowChecker).lastObject; got != OrganizationObject("org-a") {
 		t.Errorf("OpenFGA was asked about %q", got)
+	}
+}
+
+// orgRoleChecker is OpenFGA's org model: the role each subject holds in
+// org-a; anyone else holds nothing. An Owner holds can_manage on org-a, an
+// Owner, Member or Guest can_view.
+type orgRoleChecker map[string]string
+
+func (c orgRoleChecker) Check(_ context.Context, subject, relation, object string) (bool, error) {
+	role := c[strings.TrimPrefix(subject, "user:")]
+	if object != OrganizationObject("org-a") || role == "" {
+		return false, nil
+	}
+	if relation == RelCanManage {
+		return role == OrgRoleOwner, nil
+	}
+	return true, nil
+}
+
+// A person reading an org's own audit log meets the same refusal matrix as
+// the org's key management (ADR115 D11): a Member or Guest is refused plain
+// FORBIDDEN, never told the org was not found, while someone outside the org
+// — and an org that does not exist — answers ORGANIZATION_NOT_FOUND, so an
+// org id reveals nothing. The gate checked can_manage first, telling a
+// stranger FORBIDDEN where the keys verbs answer ORGANIZATION_NOT_FOUND.
+func TestAuthorizeOrganizationAuditLogRefusalMatrix(t *testing.T) {
+	keys := orgKeyStore{keyOrg: map[string]string{}}
+	as := func(subject string) context.Context {
+		return WithIdentity(context.Background(), Identity{Subject: subject, Method: MethodSession})
+	}
+	b := &Base{Authz: orgRoleChecker{"owner": OrgRoleOwner, "member": OrgRoleMember, "guest": OrgRoleGuest}, KeyGrants: keys, OrganizationKeys: keys}
+	notFound := func(err error) bool {
+		var coded *CodedError
+		return errors.As(err, &coded) && coded.Code == CodeOrganizationNotFound
+	}
+	if orgKey, err := b.AuthorizeOrganizationAuditLog(as("owner"), "org-a"); err != nil || orgKey {
+		t.Errorf("owner: %v (org key %v), want allowed", err, orgKey)
+	}
+	for _, who := range []string{"member", "guest"} {
+		if _, err := b.AuthorizeOrganizationAuditLog(as(who), "org-a"); !errors.Is(err, ErrForbidden) || notFound(err) {
+			t.Errorf("%s: %v, want plain FORBIDDEN", who, err)
+		}
+	}
+	for name, err := range map[string]error{
+		"a stranger":     second(b.AuthorizeOrganizationAuditLog(as("stranger"), "org-a")),
+		"an unknown org": second(b.AuthorizeOrganizationAuditLog(as("owner"), "org-missing")),
+	} {
+		if !notFound(err) {
+			t.Errorf("%s: %v, want ORGANIZATION_NOT_FOUND", name, err)
+		}
+	}
+	// A workspace log is decided as before: the org mapping never touches it.
+	if _, err := b.AuthorizeWorkspaceAuditLog(as("stranger"), "tea-a"); !errors.Is(err, ErrForbidden) || notFound(err) {
+		t.Errorf("a stranger on a workspace log: %v, want plain FORBIDDEN", err)
 	}
 }
 

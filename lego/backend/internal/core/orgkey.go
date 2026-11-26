@@ -18,6 +18,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"log"
 	"strings"
 )
@@ -83,6 +84,24 @@ func (b *Base) AuthorizeOrganizationAuditLog(ctx context.Context, orgID string) 
 func (b *Base) authorizeAuditLog(ctx context.Context, object, verb string, resolveErr error) (orgKey bool, err error) {
 	orgID, isOrgKey, err := b.OrganizationKey(ctx)
 	if err == nil && !isOrgKey {
+		// An org's own log names who is told it was not found, exactly as the
+		// org's key management does (apikeys.authorizeOrganizationKeys): a
+		// caller who cannot view the org learns nothing from its id, while a
+		// Member or Guest the org holds is refused FORBIDDEN. The funnel below
+		// only checks can_manage, so without this a stranger is told
+		// FORBIDDEN where the keys verbs answer ORGANIZATION_NOT_FOUND.
+		if target, isOrg := strings.CutPrefix(object, OrganizationObjectPrefix); isOrg && resolveErr == nil {
+			if verr := b.checkAuthz(ctx, RelCanView, object); verr != nil {
+				if IsLoginRefusal(verr) || !errors.Is(verr, ErrForbidden) {
+					return false, verr
+				}
+				nferr := NewOrganizationNotFoundError(target)
+				if auditsDenial(RelCanManage) {
+					b.emit(ctx, verb, RelCanManage, object, "", nferr)
+				}
+				return false, nferr
+			}
+		}
 		return false, b.authorizeAndAudit(ctx, RelCanManage, object, "", verb, resolveErr)
 	}
 	if err == nil {
