@@ -3969,30 +3969,35 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "Source picker GitHub tab: button under the no-match message that empties the repository search field",
   },
-  "services.sourceNoChanges": {
-    message: "保存する変更はありません。",
+  "services.sourceNoChangesDeploy": {
+    message: "デプロイする変更はありません。",
     description:
-      "Update Source dialog footer: why Update source is disabled when the dialog still shows the service's current source",
+      "Update Source dialog footer, beside a disabled Deploy button (the GitHub, Public Git and Build source tabs): the dialog still shows the service's current source and build settings, so there is nothing to deploy",
+  },
+  "services.sourceNoChangesConnect": {
+    message: "接続する変更はありません。",
+    description:
+      "Update Source dialog footer, beside a disabled Connect button (the Existing Image tab): the dialog still shows the image and registry credential the service already runs, so there is nothing to connect",
   },
   "services.sourceSelectRepo": {
     message: "リポジトリを選択してください。",
     description:
-      "Update Source dialog footer: why Update source is disabled on the GitHub tab before a repository is picked",
+      "Update Source dialog footer: why Deploy is disabled on the GitHub tab before a repository is picked",
   },
   "services.sourceSelectBuildSource": {
     message: "ビルドソースを選択してください。",
     description:
-      "Update Source dialog footer: why Update source is disabled on the Build source tab before one is picked",
+      "Update Source dialog footer: why Deploy is disabled on the Build source tab before one is picked",
   },
   "services.sourceEnterRepoUrl": {
     message: "リポジトリの URL を入力してください。",
     description:
-      "Update Source dialog footer: why Update source is disabled on the Public Git URL tab while the URL field is empty",
+      "Update Source dialog footer: why Deploy is disabled on the Public Git URL tab while the URL field is empty",
   },
   "services.sourceEnterImage": {
     message: "イメージを入力してください。",
     description:
-      "Update Source dialog footer: why Update source is disabled on the Existing Image tab while the image field is empty",
+      "Update Source dialog footer: why Connect is disabled on the Existing Image tab while the image field is empty",
   },
   "services.createRepoOpenCredentials": {
     message: "認証情報を開く",
@@ -4002,7 +4007,7 @@ const jaServices: Record<string, TranslationEntry> = {
   "services.sourcePending": {
     message: "新しいソース: {source}",
     description:
-      "Update Source dialog footer: names what Update source will save. {source} is a repository and branch, an image, or a build source's name",
+      "Update Source dialog footer: names what the primary button (Deploy, or Connect on the Existing Image tab) will deploy. {source} is a repository and branch, an image, or a build source's name",
   },
   "services.sourceBranchLocked": {
     message: "リポジトリを選ぶと使えます。",
@@ -4012,12 +4017,12 @@ const jaServices: Record<string, TranslationEntry> = {
   "services.sourceNoBuildSources": {
     message: "選択できるビルドソースがありません。",
     description:
-      "Update Source dialog footer: why Update source is disabled on the Build source tab when the workspace has no build sources",
+      "Update Source dialog footer: why Deploy is disabled on the Build source tab when the workspace has no build sources",
   },
   "services.sourceFixField": {
     message: "続けるには、上の項目を入力してください。",
     description:
-      "Update Source dialog footer: why Update source is disabled while a field is malformed (its own message is under it) or a required one is empty",
+      "Update Source dialog footer: why the primary button (Deploy, or Connect on the Existing Image tab) is disabled while a field is malformed (its own message is under it) or a required one is empty",
   },
   "services.createRepoNoMatchHint": {
     message:

@@ -80,10 +80,12 @@ const TAB_TRIGGER_CLASS = cn(
   "sm:flex-auto sm:px-3",
 );
 
-// Update Source on a phone: the list takes the height the dialog has left,
-// never under three rows.
-const REPO_LIST_FILL_CLASS =
-  "max-sm:h-auto max-sm:min-h-32 max-sm:flex-[1_1_0]";
+// Update Source: the list takes the height the dialog has left, never under
+// three rows, so the fields under it (Branch, Runtime) stay above the footer
+// and the list is what gives way. A flex basis of 0 keeps the column's minimum
+// at the list's minimum, so a dialog too short for even that scrolls its body
+// rather than drawing the fields over the list.
+const REPO_LIST_FILL_CLASS = "h-auto min-h-32 flex-[1_1_0] sm:h-auto";
 // `min-h-full`, not `h-full`: a note taller than the list (two wrapped
 // buttons in a list at its minimum) then scrolls from its top, where centring
 // a fixed height cut the top off out of reach.
@@ -306,8 +308,9 @@ export function ServiceSourcePicker({
   titleKey?: string | null;
   idPrefix?: string;
   /**
-   * The picker sits in a column taller than it needs (Update Source on a
-   * phone): it grows to fill it, and the repository list takes the height.
+   * The picker sits in a column of a set height (Update Source): it grows to
+   * fill it, and the repository list takes the height the fields under it
+   * leave.
    */
   fillHeight?: boolean;
 }) {

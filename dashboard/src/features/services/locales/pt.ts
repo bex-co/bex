@@ -3990,30 +3990,35 @@ const ptServices: Record<string, TranslationEntry> = {
     description:
       "Source picker GitHub tab: button under the no-match message that empties the repository search field",
   },
-  "services.sourceNoChanges": {
-    message: "Nenhuma alteração para salvar.",
+  "services.sourceNoChangesDeploy": {
+    message: "Nenhuma alteração para fazer deploy.",
     description:
-      "Update Source dialog footer: why Update source is disabled when the dialog still shows the service's current source",
+      "Update Source dialog footer, beside a disabled Deploy button (the GitHub, Public Git and Build source tabs): the dialog still shows the service's current source and build settings, so there is nothing to deploy",
+  },
+  "services.sourceNoChangesConnect": {
+    message: "Nenhuma alteração para conectar.",
+    description:
+      "Update Source dialog footer, beside a disabled Connect button (the Existing Image tab): the dialog still shows the image and registry credential the service already runs, so there is nothing to connect",
   },
   "services.sourceSelectRepo": {
     message: "Selecione um repositório.",
     description:
-      "Update Source dialog footer: why Update source is disabled on the GitHub tab before a repository is picked",
+      "Update Source dialog footer: why Deploy is disabled on the GitHub tab before a repository is picked",
   },
   "services.sourceSelectBuildSource": {
     message: "Selecione uma origem de build.",
     description:
-      "Update Source dialog footer: why Update source is disabled on the Build source tab before one is picked",
+      "Update Source dialog footer: why Deploy is disabled on the Build source tab before one is picked",
   },
   "services.sourceEnterRepoUrl": {
     message: "Informe a URL de um repositório.",
     description:
-      "Update Source dialog footer: why Update source is disabled on the Public Git URL tab while the URL field is empty",
+      "Update Source dialog footer: why Deploy is disabled on the Public Git URL tab while the URL field is empty",
   },
   "services.sourceEnterImage": {
     message: "Informe uma imagem.",
     description:
-      "Update Source dialog footer: why Update source is disabled on the Existing Image tab while the image field is empty",
+      "Update Source dialog footer: why Connect is disabled on the Existing Image tab while the image field is empty",
   },
   "services.createRepoOpenCredentials": {
     message: "Abrir Credenciais",
@@ -4023,7 +4028,7 @@ const ptServices: Record<string, TranslationEntry> = {
   "services.sourcePending": {
     message: "Nova origem: {source}",
     description:
-      "Update Source dialog footer: names what Update source will save. {source} is a repository and branch, an image, or a build source's name",
+      "Update Source dialog footer: names what the primary button (Deploy, or Connect on the Existing Image tab) will deploy. {source} is a repository and branch, an image, or a build source's name",
   },
   "services.sourceBranchLocked": {
     message: "Disponível quando você escolher um repositório.",
@@ -4033,12 +4038,12 @@ const ptServices: Record<string, TranslationEntry> = {
   "services.sourceNoBuildSources": {
     message: "Nenhuma origem de build para escolher.",
     description:
-      "Update Source dialog footer: why Update source is disabled on the Build source tab when the workspace has no build sources",
+      "Update Source dialog footer: why Deploy is disabled on the Build source tab when the workspace has no build sources",
   },
   "services.sourceFixField": {
     message: "Preencha os campos acima para continuar.",
     description:
-      "Update Source dialog footer: why Update source is disabled while a field is malformed (its own message is under it) or a required one is empty",
+      "Update Source dialog footer: why the primary button (Deploy, or Connect on the Existing Image tab) is disabled while a field is malformed (its own message is under it) or a required one is empty",
   },
   "services.createRepoNoMatchHint": {
     message:

@@ -90,6 +90,12 @@ const FOOTER_PRIMARY_CLASS = cn(
   "disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100",
 );
 
+// The body's lower edge while fields run on below it: a native runtime's two
+// command fields can, on a short screen, once the repository list is at its
+// minimum. The page's section bar fades its clipped edge the same way.
+const BODY_MORE_BELOW_CLASS =
+  "[mask-image:linear-gradient(to_bottom,#000_calc(100%_-_2rem),transparent)]";
+
 const DEFAULT_BUILD_COMMANDS = new Set(
   Object.values(RUNTIME_COMMANDS).map((c) => c.build),
 );
@@ -470,7 +476,11 @@ function SourceEditDialog({
             : !valid
               ? t("services.sourceFixField")
               : !dirty
-                ? t("services.sourceNoChanges")
+                ? t(
+                    tab === "image"
+                      ? "services.sourceNoChangesConnect"
+                      : "services.sourceNoChangesDeploy",
+                  )
                 : null;
 
   // What submitting will deploy. The choice is otherwise a check mark on one
@@ -589,6 +599,25 @@ function SourceEditDialog({
     return () => observer.disconnect();
   }, [dialog]);
 
+  // Whether fields run on below the body's lower edge: the end of the fields
+  // is out of the body's view. An observer, not a measure on render: the
+  // fields change height without this component rendering (a tab's panel
+  // mounts a render late, a branch list arrives), and so does the screen.
+  const [bodyEnd, setBodyEnd] = useState<HTMLDivElement | null>(null);
+  const [moreBelow, setMoreBelow] = useState(false);
+  useEffect(() => {
+    const body = bodyEnd?.parentElement;
+    if (!bodyEnd || !body || typeof IntersectionObserver === "undefined") {
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setMoreBelow(entry !== undefined && !entry.isIntersecting),
+      { root: body },
+    );
+    observer.observe(bodyEnd);
+    return () => observer.disconnect();
+  }, [bodyEnd]);
+
   function changeTab(next: SourceTab) {
     tabSwitchedRef.current = true;
     setTab(next);
@@ -674,7 +703,16 @@ function SourceEditDialog({
           dialog sideways on a phone. */}
       <DialogContent
         ref={setDialog}
-        className="top-4 flex max-h-[calc(100dvh-2rem)] translate-y-0 flex-col gap-0 overflow-hidden p-0 max-sm:has-[[data-repo-list]]:h-[calc(100dvh-2rem)] sm:top-[max(1rem,calc((100dvh-44rem)/2))] sm:max-h-[min(calc(100dvh-2rem),44rem)] sm:max-w-2xl"
+        className={cn(
+          "top-4 flex max-h-[calc(100dvh-2rem)] translate-y-0 flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl",
+          // With the repository list showing, the dialog is as tall as it may
+          // be (`h-dvh` clamped by the cap), and the list takes what the
+          // fields under it leave (`fillHeight` below).
+          "has-[[data-repo-list]]:h-dvh",
+          // The cap holds the tallest body: a native runtime's GitHub tab, the
+          // list at its minimum over Branch, Runtime and the two commands.
+          "sm:top-[max(1rem,calc((100dvh-51rem)/2))] sm:max-h-[min(calc(100dvh-2rem),51rem)]",
+        )}
       >
         <DialogHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
           <DialogTitle className="pr-8">
@@ -688,16 +726,21 @@ function SourceEditDialog({
             )}
           </DialogDescription>
         </DialogHeader>
-        {/* On a phone the repository list fills what the screen has left,
-            in any language: with it showing the dialog is the screen's
-            height (`has-[[data-repo-list]]` above), and the picker grows
-            into this column (`fillHeight`). A height worked out from the
-            viewport fitted English only: German's longer title and source
-            names pushed the Branch hint under the footer. The list never
-            goes under three rows; past that this body scrolls. */}
+        {/* The repository list fills what the dialog has left, in any
+            language: with it showing the dialog is as tall as it may be
+            (`has-[[data-repo-list]]` above), and the picker grows into this
+            column (`fillHeight`). A height worked out from the viewport
+            fitted English only: German's longer title and source names
+            pushed the Branch hint under the footer. The list never goes
+            under three rows; past that this body scrolls, and its lower edge
+            fades while there is more below. */}
         <div
           ref={bodyRef}
-          className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 py-4"
+          data-more-below={moreBelow || undefined}
+          className={cn(
+            "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 py-4",
+            moreBelow && BODY_MORE_BELOW_CLASS,
+          )}
         >
           <ServiceSourcePicker
             tab={tab}
@@ -843,10 +886,7 @@ function SourceEditDialog({
                 </Select>
               </div>
               {nativeGit && (
-                <div
-                  className="space-y-4"
-                  data-testid="source-native-commands"
-                >
+                <div className="space-y-4" data-testid="source-native-commands">
                   <div className="space-y-2">
                     <Label htmlFor="update-source-git-build-command">
                       {t("services.buildCommandLabel")}
@@ -881,6 +921,9 @@ function SourceEditDialog({
               <AlertDescription>{inlineError}</AlertDescription>
             </Alert>
           )}
+          {/* The end of the body's fields, which says whether any are below
+              its lower edge. No height, and the gap above it cancelled. */}
+          <div ref={setBodyEnd} aria-hidden="true" className="-mt-4 shrink-0" />
         </div>
         {/* Side by side on a phone too: stacked, the two buttons cost the
             list a row. */}

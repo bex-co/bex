@@ -7,24 +7,18 @@ import type { SourceMutationResult } from "@/features/services/hooks/use-source-
 const navigate = vi.fn();
 let currentBase: "/services" | "/static" = "/services";
 
-const setImage = vi.fn(
-  async (): Promise<SourceMutationResult> => ({
-    ok: true,
-    deployId: "dep-img-1",
-  }),
-);
-const setRepo = vi.fn(
-  async (): Promise<SourceMutationResult> => ({
-    ok: true,
-    deployId: "dep-git-1",
-  }),
-);
-const linkBuildSource = vi.fn(
-  async (): Promise<SourceMutationResult> => ({
-    ok: true,
-    deployId: "dep-bds-1",
-  }),
-);
+const setImage = vi.fn(async (): Promise<SourceMutationResult> => ({
+  ok: true,
+  deployId: "dep-img-1",
+}));
+const setRepo = vi.fn(async (): Promise<SourceMutationResult> => ({
+  ok: true,
+  deployId: "dep-git-1",
+}));
+const linkBuildSource = vi.fn(async (): Promise<SourceMutationResult> => ({
+  ok: true,
+  deployId: "dep-bds-1",
+}));
 let repoLastError: string | null = null;
 let imageLastError: string | null = null;
 let linkLastError: string | null = null;
@@ -423,7 +417,9 @@ describe("ServiceSourceCard", () => {
   });
 
   // A disabled primary action with no reason beside it read as a broken form,
-  // and an enabled one never said what it was about to save.
+  // and an enabled one never said what it was about to save. The idle line
+  // names the button beside it: "No changes to save." outlived the rename of
+  // the button to Deploy (w3/110).
   it("says why Deploy is disabled, then what it will deploy", async () => {
     const user = userEvent.setup();
     render(
@@ -443,13 +439,13 @@ describe("ServiceSourceCard", () => {
     await user.click(screen.getByRole("button", { name: "Edit" }));
     const save = screen.getByRole("button", { name: "Deploy" });
     expect(save).toBeDisabled();
-    expect(save).toHaveAccessibleDescription("No changes to save.");
+    expect(save).toHaveAccessibleDescription("No changes to deploy.");
 
     const branch = screen.getByRole("combobox", { name: "Branch" });
     await user.clear(branch);
     await user.type(branch, "release");
     expect(save).toBeEnabled();
-    expect(screen.queryByText("No changes to save.")).toBeNull();
+    expect(screen.queryByText("No changes to deploy.")).toBeNull();
     expect(save).toHaveAccessibleDescription("New source: acme/api · release");
   });
 
@@ -628,6 +624,84 @@ describe("ServiceSourceCard", () => {
       window.matchMedia = matchMedia;
       globalThis.ResizeObserver = OriginalResizeObserver;
       Element.prototype.animate = originalAnimate;
+    }
+  });
+
+  // Once the repository list is at its minimum, a native runtime's two command
+  // fields can still run past the footer on a short screen. The body's lower
+  // edge fades while the end of its fields is out of its view (w3/110).
+  it("fades the body's lower edge while fields run on below it", async () => {
+    const user = userEvent.setup();
+    const observers: {
+      report: (isIntersecting: boolean) => void;
+      root: Element | Document | null | undefined;
+      targets: Element[];
+    }[] = [];
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        targets: Element[] = [];
+        constructor(
+          callback: IntersectionObserverCallback,
+          options?: IntersectionObserverInit,
+        ) {
+          observers.push({
+            root: options?.root,
+            targets: this.targets,
+            report: (isIntersecting) =>
+              callback(
+                [{ isIntersecting } as IntersectionObserverEntry],
+                this as unknown as IntersectionObserver,
+              ),
+          });
+        }
+        observe(target: Element) {
+          this.targets.push(target);
+        }
+        unobserve() {}
+        disconnect() {}
+        takeRecords() {
+          return [];
+        }
+      },
+    );
+    try {
+      render(
+        <ServiceSourceCard
+          serviceId="srv-1"
+          serviceType="web_service"
+          repo="https://github.com/acme/api"
+          branch="main"
+          runtime="node"
+          imagePath={null}
+          registryCredentialId={null}
+          buildSourceId={null}
+          startCommand="npm start"
+          pushDeliveryMethod="github_app"
+        />,
+      );
+      await user.click(screen.getByRole("button", { name: "Edit" }));
+      const observer = observers.at(-1);
+      expect(observer).toBeDefined();
+      // Observed from the body, at the end of every field it holds.
+      const body = observer!.root as HTMLElement;
+      const end = observer!.targets[0]!;
+      expect(body).toContainElement(
+        screen.getByRole("textbox", { name: "Start Command" }),
+      );
+      expect(end.parentElement).toBe(body);
+      expect(body.lastElementChild).toBe(end);
+      expect(body).not.toHaveAttribute("data-more-below");
+
+      act(() => observer!.report(false));
+      expect(body).toHaveAttribute("data-more-below");
+      expect(body.className).toContain("mask-image");
+
+      act(() => observer!.report(true));
+      expect(body).not.toHaveAttribute("data-more-below");
+      expect(body.className).not.toContain("mask-image");
+    } finally {
+      vi.unstubAllGlobals();
     }
   });
 
@@ -1038,6 +1112,7 @@ describe("ServiceSourceCard — unchanged image source (w4/275)", () => {
         "docker.io/library/busybox:1.37.0",
       );
       expect(connect()).toBeDisabled();
+      expect(connect()).toHaveAccessibleDescription("No changes to connect.");
 
       await user.type(input, "  ");
       expect(connect()).toBeDisabled();
