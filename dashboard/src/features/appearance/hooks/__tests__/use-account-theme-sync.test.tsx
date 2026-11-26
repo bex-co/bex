@@ -32,7 +32,13 @@ const userQuery = (themeSetting: string, logThemeSetting: string) => ({
   request: { query: UserThemeSettingsDocument },
   result: {
     data: {
-      user: { __typename: "User", id: USER_ID, themeSetting, logThemeSetting },
+      user: {
+        __typename: "User",
+        id: USER_ID,
+        themeSetting,
+        logThemeSetting,
+        avatarDownload: null,
+      },
     },
   },
 });

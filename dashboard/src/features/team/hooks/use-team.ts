@@ -31,6 +31,7 @@ function toMembers(
       mfaEnabled: m.mfaEnabled ?? false,
       identityResolved: m.identityResolved ?? true,
       isSelf: m.isSelf ?? false,
+      avatarURL: m.avatarDownload?.url ?? null,
     }));
 }
 

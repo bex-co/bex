@@ -1,0 +1,28 @@
+# Account and workspace avatars in Render's own operations (w1/m648,
+# docs/render-artifacts/avatars.md). An avatar is one uploaded image or none:
+# avatarPresignedUpload mints a one-time URL the browser PUTs a 128x128 JPEG
+# to (a cropped photo or a drawn monogram), and deleteAvatar goes back to the
+# default (a Gravatar, else a monogram, drawn here).
+
+# The signed-in account's own avatar rides UserThemeSettings
+# (features/appearance/api/appearance.graphql), so the shell asks for its User
+# once.
+
+query AvatarPresignedUpload(
+  $avatarOwnerId: String!
+  $avatarType: AvatarType!
+  $avatarSizeBytes: Int!
+) {
+  avatarPresignedUpload(
+    avatarOwnerId: $avatarOwnerId
+    avatarType: $avatarType
+    avatarSizeBytes: $avatarSizeBytes
+  ) {
+    url
+    verb
+  }
+}
+
+mutation DeleteAvatar($avatarOwnerId: String!, $avatarType: AvatarType!) {
+  deleteAvatar(avatarOwnerId: $avatarOwnerId, avatarType: $avatarType)
+}

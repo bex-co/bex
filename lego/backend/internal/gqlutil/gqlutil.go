@@ -610,3 +610,50 @@ func ScopeArg(fields graphql.Fields, arg string, scope func(context.Context, str
 	}
 	return out
 }
+
+// PresignedDownload is Render's avatar image URL object, `avatarDownload {
+// url }` (w1/m648). It is null when the owner has no uploaded avatar: the
+// client then draws the default (a Gravatar, else a monogram).
+type PresignedDownload struct {
+	URL string
+}
+
+// PresignedDownloadType is Render's PresignedDownload, shared by every type
+// that carries an avatarDownload.
+var PresignedDownloadType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "PresignedDownload",
+	Fields: graphql.Fields{
+		"url": ReqStrField(func(d PresignedDownload) any { return d.URL }),
+	},
+})
+
+// AvatarDownloadField is the `avatarDownload` field of a type whose source T
+// names an avatar owner. Every such field in one document is read in a single
+// store query: the resolver names its owner to the document's batch and
+// returns a thunk, and graphql-go runs the thunks only after every field of
+// the document has resolved. A source that names no owner, or a document with
+// no batch wired, reads null.
+func AvatarDownloadField[T any](owner func(T) core.AvatarOwner) *graphql.Field {
+	return &graphql.Field{
+		Type:        PresignedDownloadType,
+		Description: "The uploaded avatar image, or null when there is none (the client then shows the default).",
+		Resolve: func(p graphql.ResolveParams) (any, error) {
+			v, ok := p.Source.(T)
+			if !ok {
+				return nil, nil
+			}
+			o := owner(v)
+			batch := core.AvatarBatchFrom(p.Context)
+			if o.ID == "" || batch == nil {
+				return nil, nil
+			}
+			batch.Add(o)
+			return func() (any, error) {
+				if url := batch.URL(p.Context, o); url != "" {
+					return PresignedDownload{URL: url}, nil
+				}
+				return nil, nil
+			}, nil
+		},
+	}
+}

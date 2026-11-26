@@ -61,6 +61,8 @@ describe("useCreateWorkspace", () => {
       organization: null,
       primary: false,
       privacy: null,
+      // A new workspace has no avatar yet (w1/m648).
+      avatarURL: null,
     });
     expect(mutate).toHaveBeenCalledWith({
       variables: { name: "acme-staging", plan: "hobby" },

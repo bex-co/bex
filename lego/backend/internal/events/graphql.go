@@ -40,8 +40,9 @@ import (
 var userRefGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "EventUser",
 	Fields: graphql.Fields{
-		"id":    gqlutil.StrField(func(u UserRef) any { return u.ID }),
-		"email": gqlutil.StrField(func(u UserRef) any { return u.Email }),
+		"id":             gqlutil.StrField(func(u UserRef) any { return u.ID }),
+		"email":          gqlutil.StrField(func(u UserRef) any { return u.Email }),
+		"avatarDownload": gqlutil.AvatarDownloadField(func(u UserRef) core.AvatarOwner { return core.AccountAvatar(u.ID) }),
 	},
 })
 

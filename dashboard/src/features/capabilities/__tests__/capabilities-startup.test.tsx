@@ -47,7 +47,8 @@ const workspaces = ["tea-first", "tea-second"].map((id) => ({
   requireGoogleLogin: false,
   organization: null,
   primary: false,
-  privacy: null
+  privacy: null,
+  avatarDownload: null,
 }));
 
 interface Operation {

@@ -109,10 +109,16 @@ query ServiceEvents(
       suspendedByUser {
         id
         email
+        avatarDownload {
+          url
+        }
       }
       resumedByUser {
         id
         email
+        avatarDownload {
+          url
+        }
       }
       triggeredByUser
       # Deploy enrichment (w1/m47): image, commit info, timing for dashboard display
@@ -177,6 +183,9 @@ query ServiceEvents(
         user {
           id
           email
+          avatarDownload {
+            url
+          }
         }
       }
       # edge_cache_enabled / _disabled / _purged (w9/m345): who changed the
@@ -186,6 +195,9 @@ query ServiceEvents(
         user {
           id
           email
+          avatarDownload {
+            url
+          }
         }
       }
     }

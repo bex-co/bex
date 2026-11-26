@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS avatar_uploads;
+DROP TABLE IF EXISTS avatars;

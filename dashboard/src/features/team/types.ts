@@ -32,6 +32,9 @@ export interface MemberView {
    *  role change (CANNOT_REMOVE_SELF / CANNOT_CHANGE_OWN_ROLE). Server-derived
    *  so the UI never has to match subjects against session data itself. */
   isSelf: boolean;
+  /** The member's uploaded avatar (w1/m648); null or absent when they show
+   *  their Gravatar or monogram. */
+  avatarURL?: string | null;
 }
 
 /** A pending (unaccepted) invite — Render's pendingInvites shape. */

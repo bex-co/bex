@@ -33,6 +33,7 @@ function toWorkspaceViews(
       organization: w.organization ?? null,
       primary: w.primary,
       privacy: toWorkspacePrivacy(w.privacy),
+      avatarURL: w.avatarDownload?.url ?? null,
     }));
 }
 

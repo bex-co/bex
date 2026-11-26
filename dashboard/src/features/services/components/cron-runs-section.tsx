@@ -1,4 +1,6 @@
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
+import { UserAvatar } from "@/features/avatars/components/avatar";
+import { useMemberAvatarURL } from "@/features/avatars/hooks/use-member-avatar";
 import { Link } from "@tanstack/react-router";
 import { Loader2, Search, TriangleAlert, X } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
@@ -458,6 +460,7 @@ function CronRunRow({
   const ranAt = ago
     ? t("services.cronRunStartedAgo", { timestamp: ago })
     : null;
+  const triggeredByAvatar = useMemberAvatarURL(run.triggeredBy);
   const isViewer = (email: string | null) =>
     Boolean(email && viewerEmail && email === viewerEmail);
   const canceledBy =
@@ -535,7 +538,13 @@ function CronRunRow({
               </InstantTooltip>
             ) : null}
             {ranAt && run.triggeredBy ? (
-              <span className="min-w-0 break-all">
+              <span className="inline-flex min-w-0 items-center gap-1 break-all">
+                {/* Who ran it, with their avatar (w1/m648). */}
+                <UserAvatar
+                  email={run.triggeredBy}
+                  imageURL={triggeredByAvatar}
+                  size="tiny"
+                />
                 {isViewer(run.triggeredBy)
                   ? t("services.cronRunByYou")
                   : t("services.cronRunBy", { user: run.triggeredBy })}

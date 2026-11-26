@@ -23,6 +23,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/bex-co/bex/lego/backend/internal/avatars"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/oidcissuer"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
@@ -126,6 +127,8 @@ var alwaysPublicInventory = map[string]string{
 	sandbox.ConnectStreamPattern:                                 "sandbox run connect token (HMAC, single-use, ≤60s, bound to workspace+sandbox+execution+command; minted by the gated runs/{operation}/token route); IP-keyed pre-lookup limiter shared with deploy hooks, sheds pre-verify (w7/m147)",
 	sandbox.ConnectFileUploadPattern:                             "sandbox file connect token (HMAC, single-use, ≤60s, bound to caller+workspace+sandbox+operation+path); IP-keyed pre-verify limiter, gateway streaming byte/time bounds",
 	sandbox.ConnectFileDownloadPattern:                           "sandbox file connect token (HMAC, single-use, ≤60s, bound to caller+workspace+sandbox+operation+path); IP-keyed pre-verify limiter, gateway streaming byte/time bounds",
+	avatars.UploadPattern:                                        "avatar upload slot token (256 random bits, single-use, ≤10 min, SHA-256 stored, bound to owner + exact size; minted by the gated avatarPresignedUpload); shared limiter keyed on the client address (w1/m648)",
+	avatars.DownloadPattern:                                      "avatar image by its 128-bit download key, as Render's presigned avatarDownload URL; shown wherever its owner is, so no credential; shared limiter keyed on the client address (w1/m648)",
 	oidcIssuerHost + "/":                                         "Managed OIDC issuer host (ADR116): every workspace's discovery document and JWKS, public by design (providers fetch them with no credential); no workspace lookup; shared limiter keyed on the client address",
 }
 

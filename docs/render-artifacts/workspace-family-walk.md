@@ -23,7 +23,7 @@ What this catches: missing pages, dashboard-unconsumed capabilities, dead-ends, 
 
 - **Slack notification delivery** — off-roadmap (DO_NOT_DO; compose via an outbound webhook → Slack bridge). Both Notifications and the service override stay email-only.
 - **External log/metric drains** — off-roadmap non-goal; not part of any workspace page.
-- **Member avatars / `name` trait** — Kratos schema records only email + UUID; avatars are future work, member mutations stay subject-keyed (documented ADR024 divergence).
+- **Member avatars / `name` trait** — Kratos schema records only email + UUID, and member mutations stay subject-keyed (documented ADR024 divergence). Avatars shipped in w1/m648 ([avatars.md](avatars.md)): each member's upload, Gravatar or monogram.
 - **Billing management UI** (invoice editing/refunds/subscription editing) — Render exposes no public billing-management API either; bex's flows are Stripe-hosted (checkout/Portal), API-first.
 - **Blueprint create/edit/delete exclusion is superseded.** `w2/m62` and `w8/m21` delivered dashboard create/edit/disconnect, environment prompts, sync review and settings. The old API/Git-first statement is not a current non-goal; PR previews remain excluded.
 - Email is plain-text where Render's is HTML (cosmetic, documented in `notify-on-fail.md`).

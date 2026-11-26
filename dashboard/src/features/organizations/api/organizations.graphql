@@ -22,6 +22,10 @@ fragment OrganizationFields on Organization {
     privacy
     primary
     viewerIsMember
+    # The workspace's uploaded avatar (w1/m648), as Render's org workspaces.
+    avatarDownload {
+      url
+    }
   }
 }
 
@@ -156,6 +160,10 @@ query OrganizationMembers($organizationId: String!) {
     createdAt
     workspaces
     isSelf
+    # The member's uploaded avatar (w1/m648), as Render's org members list.
+    avatarDownload {
+      url
+    }
   }
 }
 

@@ -35,6 +35,11 @@ export interface WorkspaceView {
   primary: boolean;
   /** An org workspace's privacy, "public" or "invite_only"; null outside an org. */
   privacy: WorkspacePrivacy | null;
+  /**
+   * The workspace's uploaded avatar (w1/m648); null or absent when it shows
+   * the monogram of its name.
+   */
+  avatarURL?: string | null;
 }
 
 /** The org a workspace belongs to, as the workspaces list carries it. */

@@ -169,7 +169,13 @@ export function useWorkspaceCreationBilling(
               const workspaces = existing?.workspaces ?? [];
               if (workspaces.some((workspace) => workspace?.id === created.id))
                 return existing;
-              return { workspaces: [...workspaces, created] };
+              // A new workspace has no avatar yet (w1/m648).
+              return {
+                workspaces: [
+                  ...workspaces,
+                  { ...created, avatarDownload: null },
+                ],
+              };
             });
           },
         });
@@ -199,6 +205,7 @@ export function useWorkspaceCreationBilling(
           organization: workspace.organization ?? null,
           primary: workspace.primary,
           privacy: toWorkspacePrivacy(workspace.privacy),
+          avatarURL: null,
         } satisfies WorkspaceView;
       } catch (error) {
         // ADR091 D10.5–D10.6: a refused card (prepaid, or linked to an

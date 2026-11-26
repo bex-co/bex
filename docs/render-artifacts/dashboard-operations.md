@@ -651,15 +651,15 @@ Grouped by product area, then sorted by name.
 | `agenticTokenSignIn` | mutation | gap | `w1/150` (Render's Stripe integrations: the Stripe account connection and Stripe's agentic account link) |
 | `ApiKeyWorkspace` | query | matched | ADR018 § Identity, workspaces & account: API-key management (create · list · revoke · metadata); fine-grained keys (`w9/m496`) |
 | `apiTokens` | query | matched | ADR018 § Identity, workspaces & account: API-key management (create · list · revoke · metadata); fine-grained keys (`w9/m496`) |
-| `avatarPresignedUpload` | query | gap | `w1/m648` (avatars) |
-| `avatarsForWorkspaceMembers` | query | gap | `w1/m648` (avatars) |
+| `avatarPresignedUpload` | query | matched | ADR018 § Identity, workspaces & account: Avatars: an account's and a workspace's (upload image · change monogram · reset to default) (`w1/m648`) |
+| `avatarsForWorkspaceMembers` | query | matched | ADR018 § Identity, workspaces & account: Avatars: an account's and a workspace's (upload image · change monogram · reset to default) (`w1/m648`, `avatarDownload` on `organizationMembers` and the organization's workspaces) |
 | `bitbucketAuthMutation` | mutation | matched | ADR018 § Identity, workspaces & account: Sign-in providers: Google, GitHub, GitLab, Bitbucket |
 | `bitbucketSignUpMutation` | mutation | matched | ADR018 § Identity, workspaces & account: Sign-in providers: Google, GitHub, GitLab, Bitbucket |
 | `canChangeEmail` | query | matched | ADR018 § Identity, workspaces & account: Email recovery / verification |
 | `confirmAgenticAccountLink` | mutation | gap | `w1/150` (Render's Stripe integrations: the Stripe account connection and Stripe's agentic account link) |
 | `createPassword` | mutation | matched | ADR018 § Identity, workspaces & account: Login · sessions · account settings (password set and change in `/settings`) |
 | `createSSHPublicKey` | mutation | matched | ADR018 § Identity, workspaces & account: SSH public keys |
-| `deleteAvatar` | mutation | gap | `w1/m648` (avatars) |
+| `deleteAvatar` | mutation | matched | ADR018 § Identity, workspaces & account: Avatars: an account's and a workspace's (upload image · change monogram · reset to default) (`w1/m648`) |
 | `deleteSSHPublicKey` | mutation | matched | ADR018 § Identity, workspaces & account: SSH public keys |
 | `deleteUserAccount` | mutation | matched | [ADR018 § Account deletion](../ADR018-render-parity.md#account-deletion-w2m84-adr086) ([ADR086](../ADR086-account-deletion.md)) |
 | `disable2FA` | mutation | matched | ADR018 § Identity, workspaces & account: MFA (TOTP / passkeys) |
@@ -669,11 +669,11 @@ Grouped by product area, then sorted by name.
 | `googleSignInMutation` | mutation | matched | ADR018 § Identity, workspaces & account: Sign-in providers: Google, GitHub, GitLab, Bitbucket |
 | `googleSignUpMutation` | mutation | matched | ADR018 § Identity, workspaces & account: Sign-in providers: Google, GitHub, GitLab, Bitbucket |
 | `markTOSAccepted` | mutation | n/a | Render's own terms-of-service re-acceptance banner; bex's legal terms are its own |
-| `memberAvatarsForOrganization` | query | gap | `w1/m648` (avatars) |
+| `memberAvatarsForOrganization` | query | matched | ADR018 § Identity, workspaces & account: Avatars: an account's and a workspace's (upload image · change monogram · reset to default) (`w1/m648`, `avatarDownload` on `organizationMembers`) |
 | `new2FABackupCodes` | mutation | matched | ADR018 § Identity, workspaces & account: MFA (TOTP / passkeys) |
 | `newOTPRequest` | mutation | matched | ADR018 § Identity, workspaces & account: MFA (TOTP / passkeys) |
 | `oauthConnections` | query | matched | [ADR025](../ADR025-connect-an-agent.md): Account Settings → Connected agents lists and revokes OAuth clients |
-| `organizationsForUserWithAvatars` | query | gap | `w1/m648` (avatars) |
+| `organizationsForUserWithAvatars` | query | matched | ADR018 § Identity, workspaces & account: Avatars: an account's and a workspace's (upload image · change monogram · reset to default) (`w1/m648`, `avatarDownload` on the organization's workspaces) |
 | `provisionAPIToken` | mutation | matched | ADR018 § Identity, workspaces & account: API-key management (create · list · revoke · metadata); fine-grained keys (`w9/m496`) |
 | `ProvisionScopedApiToken` | mutation | matched | ADR018 § Identity, workspaces & account: API-key management (create · list · revoke · metadata); fine-grained keys (`w9/m496`) |
 | `requestEmailReset` | mutation | matched | ADR018 § Identity, workspaces & account: Email recovery / verification |
@@ -702,7 +702,7 @@ Grouped by product area, then sorted by name.
 | `verifyOTPRequest` | mutation | matched | ADR018 § Identity, workspaces & account: MFA (TOTP / passkeys) |
 | `whoami` | query | matched | ADR018 § Identity, workspaces & account: Login · sessions · account settings |
 | `WorkspaceApiTokenScopes` | query | matched | ADR018 § Identity, workspaces & account: API-key management (create · list · revoke · metadata); fine-grained keys (`w9/m496`) |
-| `workspaceAvatarsForOrganization` | query | gap | `w1/m648` (avatars) |
+| `workspaceAvatarsForOrganization` | query | matched | ADR018 § Identity, workspaces & account: Avatars: an account's and a workspace's (upload image · change monogram · reset to default) (`w1/m648`, `avatarDownload` on the organization's workspaces) |
 | `workspacesForUser` | query | matched | ADR018 § Identity, workspaces & account: Login · sessions · account settings |
 | `workspacesForUserMinimal` | query | matched | ADR018 § Identity, workspaces & account: Login · sessions · account settings |
 

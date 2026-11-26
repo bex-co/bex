@@ -1,4 +1,5 @@
 import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
+import { sha256Hex } from "@/common/lib/utils/sha256";
 
 // The resource name bex-api derives from a free-form service name on create
 // (w5/m153), the same mapping a Blueprint name gets: blueprintResourceSlug in
@@ -56,13 +57,7 @@ export function shortResourceSlug(name: string): string | null {
 export async function resourceSlug(name: string): Promise<string> {
   const short = shortResourceSlug(name);
   if (short !== null) return short;
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(name),
-  );
-  const sum = Array.from(new Uint8Array(digest).slice(0, HASH_LENGTH / 2))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  const sum = (await sha256Hex(name)).slice(0, HASH_LENGTH);
   const slug = uncappedSlug(name);
   // Nothing in a-z or 0-9 left: a name-specific fallback, so two different
   // non-Latin names stay distinct (w4/385).

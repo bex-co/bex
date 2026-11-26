@@ -499,7 +499,11 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     ]);
     // The Kratos flow's six cards, in the order Ory draws them, each with Ory's
     // own title reserved.
-    expect(frames("account")).toEqual(["account-settings-flow-skeleton"]);
+    expect(frames("account")).toEqual([
+      "account-settings-flow-skeleton",
+      // Render's Avatar row after the profile (w1/m648).
+      "account-avatar-card-skeleton",
+    ]);
     const cards = [
       ...section("account").querySelectorAll<HTMLElement>("[data-ory-group]"),
     ];

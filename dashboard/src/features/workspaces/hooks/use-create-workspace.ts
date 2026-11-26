@@ -53,7 +53,13 @@ export function useCreateWorkspace(): UseCreateWorkspaceResult {
               ) {
                 return existing;
               }
-              return { workspaces: [...workspaces, created] };
+              // A new workspace has no avatar yet (w1/m648).
+              return {
+                workspaces: [
+                  ...workspaces,
+                  { ...created, avatarDownload: null },
+                ],
+              };
             });
           },
         });
@@ -72,6 +78,7 @@ export function useCreateWorkspace(): UseCreateWorkspaceResult {
           organization: w.organization ?? null,
           primary: w.primary,
           privacy: toWorkspacePrivacy(w.privacy),
+          avatarURL: null,
         };
       } catch (err) {
         setError(mutationErrorMessage(err, t("workspaces.createError")));

@@ -62,6 +62,8 @@ describe("useWorkspaces", () => {
         organization: null,
         primary: false,
         privacy: null,
+        // No avatarDownload: the monogram of its name (w1/m648).
+        avatarURL: null,
       },
     ]);
   });

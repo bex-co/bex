@@ -92,6 +92,7 @@ async function renderCard(
           },
           primary: true,
           privacy: "invite_only",
+          avatarDownload: null,
         },
       ],
     },

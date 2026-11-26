@@ -8,6 +8,7 @@ import { AccountDeletionCard } from "@/features/auth/pages/settings-page/account
 import { AccountSettingsFlow } from "@/features/auth/pages/settings-page/account-settings-flow";
 import { AccountSettingsFlowSkeleton } from "@/features/auth/pages/settings-page/account-settings-flow-skeleton";
 import { AppearanceCard } from "@/features/auth/pages/settings-page/appearance-card";
+import { AccountAvatarCard } from "@/features/auth/pages/settings-page/account-avatar-card";
 import { PageFrame, PageHeader } from "@/common/components/page-frame";
 import { SettingsNavigation } from "@/features/auth/pages/settings-page/settings-navigation";
 import { SettingsSection } from "@/features/auth/pages/settings-page/settings-section";
@@ -49,6 +50,8 @@ export default function SettingsPage() {
             ) : (
               <AccountSettingsFlowSkeleton />
             )}
+            {/* Render's Avatar row follows the profile (w1/m648). */}
+            <AccountAvatarCard />
           </SettingsSection>
 
           {/* Render's Appearance, after the profile as Render orders it

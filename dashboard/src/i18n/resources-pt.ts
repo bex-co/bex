@@ -8,6 +8,7 @@ import ptDatabases from "@/features/databases/locales/pt";
 import ptKeyValue from "@/features/keyvalue/locales/pt";
 import ptApiKeys from "@/features/api-keys/locales/pt";
 import ptWorkspaces from "@/features/workspaces/locales/pt";
+import ptAvatars from "@/features/avatars/locales/pt";
 import ptTeam from "@/features/team/locales/pt";
 import ptUsage from "@/features/usage/locales/pt";
 import ptAudit from "@/features/audit/locales/pt";
@@ -56,6 +57,7 @@ const pt: Record<string, string> = {
   ...extractMessages(ptKeyValue),
   ...extractMessages(ptApiKeys),
   ...extractMessages(ptWorkspaces),
+  ...extractMessages(ptAvatars),
   ...extractMessages(ptTeam),
   ...extractMessages(ptUsage),
   ...extractMessages(ptAudit),

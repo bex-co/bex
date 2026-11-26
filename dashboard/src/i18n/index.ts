@@ -8,6 +8,7 @@ import enDatabases from "@/features/databases/locales/en";
 import enKeyValue from "@/features/keyvalue/locales/en";
 import enApiKeys from "@/features/api-keys/locales/en";
 import enWorkspaces from "@/features/workspaces/locales/en";
+import enAvatars from "@/features/avatars/locales/en";
 import enTeam from "@/features/team/locales/en";
 import enUsage from "@/features/usage/locales/en";
 import enAudit from "@/features/audit/locales/en";
@@ -74,6 +75,7 @@ export const en: Record<string, string> = {
   ...extractMessages(enKeyValue),
   ...extractMessages(enApiKeys),
   ...extractMessages(enWorkspaces),
+  ...extractMessages(enAvatars),
   ...extractMessages(enTeam),
   ...extractMessages(enUsage),
   ...extractMessages(enAudit),

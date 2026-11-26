@@ -392,6 +392,12 @@ func (s *PGStore) CleanupAccountSubject(ctx context.Context, subject, marker str
 			`DELETE FROM notification_settings WHERE subject = $1`,
 			// The account's Dashboard and Log Explorer themes (w3/m531).
 			`DELETE FROM user_theme_settings WHERE subject = $1`,
+			// The account's avatar and its open upload slots (w1/m648). The
+			// avatar is keyed by the own- id, which owner_ids still maps to
+			// the subject here: the marker swap below runs after the deletes.
+			`DELETE FROM avatars WHERE avatar_type = 'ACCOUNT'
+				AND owner_id IN (SELECT own_id FROM owner_ids WHERE subject = $1)`,
+			`DELETE FROM avatar_uploads WHERE subject = $1`,
 			`DELETE FROM ssh_keys WHERE subject = $1`,
 			// S3 access keys the subject made (ADR112 D3). The credential cleanup
 			// that runs first deletes them with their OpenBao secrets; a row it

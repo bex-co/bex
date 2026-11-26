@@ -8,6 +8,7 @@ import ruDatabases from "@/features/databases/locales/ru";
 import ruKeyValue from "@/features/keyvalue/locales/ru";
 import ruApiKeys from "@/features/api-keys/locales/ru";
 import ruWorkspaces from "@/features/workspaces/locales/ru";
+import ruAvatars from "@/features/avatars/locales/ru";
 import ruTeam from "@/features/team/locales/ru";
 import ruUsage from "@/features/usage/locales/ru";
 import ruAudit from "@/features/audit/locales/ru";
@@ -56,6 +57,7 @@ const ru: Record<string, string> = {
   ...extractMessages(ruKeyValue),
   ...extractMessages(ruApiKeys),
   ...extractMessages(ruWorkspaces),
+  ...extractMessages(ruAvatars),
   ...extractMessages(ruTeam),
   ...extractMessages(ruUsage),
   ...extractMessages(ruAudit),

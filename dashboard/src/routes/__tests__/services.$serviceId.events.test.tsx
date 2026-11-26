@@ -298,6 +298,44 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
     expect(screen.queryByText(/usr-ada/)).not.toBeInTheDocument();
   });
 
+  // w1/m648: who acted, with their avatar, as Render's events feed.
+  it("shows the actor's uploaded avatar beside their email", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          deployEvent({
+            details: {
+              deployId: "dep-live-001",
+              deployStatus: "succeeded",
+              preDeployStatus: "",
+              trigger: {
+                manual: true,
+                user: {
+                  id: "usr-ada",
+                  email: "ada@example.com",
+                  avatarDownload: {
+                    __typename: "PresignedDownload",
+                    url: "https://api.bex.test/v1/avatars/k1",
+                  },
+                },
+              },
+            },
+          }),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(
+      await screen.findByRole("img", {
+        name: "User-uploaded Avatar for ada@example.com",
+      }),
+    ).toHaveAttribute("src", "https://api.bex.test/v1/avatars/k1");
+  });
+
   it("shows a deploy's duration as the Deploys list does (w4/601)", async () => {
     const timed = (id: string, startedAt?: string) =>
       deployEvent({

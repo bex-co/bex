@@ -22,6 +22,7 @@ import (
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
@@ -33,13 +34,14 @@ import (
 var organizationMemberGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "OrganizationMember",
 	Fields: graphql.Fields{
-		"subject":    gqlutil.ReqStrField(func(m OrganizationMemberView) any { return m.Subject }),
-		"userId":     gqlutil.StrField(func(m OrganizationMemberView) any { return m.UserID }),
-		"email":      gqlutil.StrField(func(m OrganizationMemberView) any { return m.Email }),
-		"role":       gqlutil.ReqStrField(func(m OrganizationMemberView) any { return m.Role }),
-		"createdAt":  gqlutil.StrField(func(m OrganizationMemberView) any { return m.CreatedAt }),
-		"workspaces": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(m OrganizationMemberView) any { return m.Workspaces }),
-		"isSelf":     gqlutil.ReqBoolField(func(m OrganizationMemberView) any { return m.IsSelf }),
+		"subject":        gqlutil.ReqStrField(func(m OrganizationMemberView) any { return m.Subject }),
+		"userId":         gqlutil.StrField(func(m OrganizationMemberView) any { return m.UserID }),
+		"email":          gqlutil.StrField(func(m OrganizationMemberView) any { return m.Email }),
+		"role":           gqlutil.ReqStrField(func(m OrganizationMemberView) any { return m.Role }),
+		"createdAt":      gqlutil.StrField(func(m OrganizationMemberView) any { return m.CreatedAt }),
+		"workspaces":     gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(m OrganizationMemberView) any { return m.Workspaces }),
+		"isSelf":         gqlutil.ReqBoolField(func(m OrganizationMemberView) any { return m.IsSelf }),
+		"avatarDownload": gqlutil.AvatarDownloadField(func(m OrganizationMemberView) core.AvatarOwner { return core.AccountAvatar(m.UserID) }),
 	},
 })
 

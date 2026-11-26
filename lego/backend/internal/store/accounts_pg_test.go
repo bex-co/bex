@@ -299,6 +299,7 @@ var accountDeletionDispositions = map[string]string{
 	"product_activity_events.actor_type":           "anonymize: CleanupAccountSubject sets the deleted actor's type to unknown",
 	"push_deliveries.subject":                      "cascade: membership deletion removes notifications and their deliveries",
 	"user_theme_settings.subject":                  "delete: CleanupAccountSubject removes the account's Dashboard and Log Explorer themes (w3/m531)",
+	"avatar_uploads.subject":                       "delete: CleanupAccountSubject removes the account's open avatar upload slots, which expire within 10 minutes anyway; its avatar (keyed by own- id) goes with them (w1/m648)",
 	"agent_session_attachments.created_by":         "anonymize: CleanupAccountSubject replaces the uploader; an unbound upload then has no owner and expires within 24 hours",
 	"agent_skills.updated_by":                      "anonymize: CleanupAccountSubject replaces the last editor on surviving workspace skills (ADR099)",
 	"agent_skill_versions.created_by":              "anonymize: CleanupAccountSubject replaces the saver on surviving skill versions (ADR099)",

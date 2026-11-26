@@ -77,6 +77,14 @@ const refreshActions = vi.fn(async () => {});
 vi.mock("@/features/workspaces/context/hooks", () => ({
   useWorkspace: () => ({ currentWorkspaceId: "tea-1" }),
 }));
+// A run's "by" shows the member's avatar (w1/m648); none uploaded here.
+const memberAvatars = vi.hoisted(() => ({
+  byEmail: {} as Record<string, string>,
+}));
+vi.mock("@/features/avatars/hooks/use-member-avatar", () => ({
+  useMemberAvatarURL: (email: string | null) =>
+    (email && memberAvatars.byEmail[email]) || null,
+}));
 vi.mock("@/features/capabilities/hooks/use-resource-actions", () => ({
   useServerActions: (serviceId: string) => ({
     status: actionsStatus,
@@ -329,6 +337,32 @@ describe("CronRunsSection rows (w3/m556)", () => {
       within(theirs).getByText("Canceled by ops@example.com"),
     ).toBeInTheDocument();
     expect(within(nobody).getByText("Canceled")).toBeInTheDocument();
+  });
+
+  // w1/m648: who ran it, with their avatar: the member's upload, else the
+  // monogram of their email.
+  it("shows the avatar of who ran it", () => {
+    memberAvatars.byEmail = {
+      "ops@example.com": "https://api.bex.test/v1/avatars/k1",
+    };
+    runs = [
+      finished("crr-2", "successful", 45, 5, {
+        triggeredBy: "ops@example.com",
+      }),
+      finished("crr-1", "successful", 69, 5, {
+        triggeredBy: "dev@example.com",
+      }),
+    ];
+    render(<CronRunsSection serviceId="nightly" />);
+    const [ops, dev] = rows();
+    expect(
+      within(ops).getByRole("img", {
+        name: "User-uploaded Avatar for ops@example.com",
+      }),
+    ).toHaveAttribute("src", "https://api.bex.test/v1/avatars/k1");
+    expect(within(dev).queryByRole("img")).toBeNull();
+    expect(dev.querySelector('[data-slot="monogram"]')).toHaveTextContent("D");
+    memberAvatars.byEmail = {};
   });
 
   it("has no Trigger Run of its own while it lists runs (the header has it, w3/m555)", () => {

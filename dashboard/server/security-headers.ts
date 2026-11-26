@@ -24,6 +24,11 @@ export const DEFAULT_SHELL_WS_URL = "wss://ssh.bex.co/shell";
 
 const GOOGLE_TAG_MANAGER = "https://*.googletagmanager.com";
 
+// A person's default avatar is their Gravatar, fetched by the browser from
+// Render's own URL shape (w1/m648, docs/render-artifacts/avatars.md); it
+// answers 404 rather than redirecting when there is none.
+export const GRAVATAR_ORIGIN = "https://en.gravatar.com";
+
 /** The first-party URLs the browser connects to besides the Kratos origin. All
  * come from the build env (vite.config.ts); a relative or missing one is the
  * page's own origin or unknown. */
@@ -100,7 +105,12 @@ export function buildSecurityHeaders(
   if (process.env.NODE_ENV !== "production") {
     scriptOrigins.add(new URL(kratosProxyTarget).origin);
   }
-  const imgOrigins = [new URL(attachmentsOrigin).origin];
+  // Uploaded avatars are served by bex-api itself (GET /v1/avatars/<key>);
+  // a relative or missing API URL is the page's own origin, which 'self'
+  // already covers.
+  const imgOrigins = [new URL(attachmentsOrigin).origin, GRAVATAR_ORIGIN];
+  const apiOrigin = originOf(connect.apiURL);
+  if (apiOrigin) imgOrigins.push(apiOrigin);
   if (connect.googleAnalytics) {
     scriptOrigins.add(GOOGLE_TAG_MANAGER);
     imgOrigins.push("https://*.google-analytics.com", GOOGLE_TAG_MANAGER);
@@ -130,7 +140,8 @@ export function buildSecurityHeaders(
       `script-src 'self' 'unsafe-inline' https://js.stripe.com ${[...scriptOrigins].join(" ")}`,
       "style-src 'self' 'unsafe-inline'",
       // Agent-session attachment thumbnails load from presigned URLs on the
-      // attachments bucket's own origin (ADR095 D7), never from a bex origin.
+      // attachments bucket's own origin (ADR095 D7); avatars from bex-api and
+      // Gravatar (w1/m648).
       `img-src 'self' data: https://*.stripe.com ${imgOrigins.join(" ")}`,
       "font-src 'self'",
       connectSrc,

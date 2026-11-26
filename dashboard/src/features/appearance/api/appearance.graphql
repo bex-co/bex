@@ -1,11 +1,16 @@
 # The account's Appearance settings in Render's own documents (w3/m531,
 # docs/render-artifacts/account-appearance.md): Dashboard Theme, with High
 # Contrast Mode as its `_HIGH_CONTRAST` twin, and Log Explorer Theme.
+# The same User carries its uploaded avatar (w1/m648), which the account menu
+# and Account Settings read from this one query.
 query UserThemeSettings {
   user {
     id
     themeSetting
     logThemeSetting
+    avatarDownload {
+      url
+    }
   }
 }
 

@@ -1,10 +1,5 @@
 import { useMemo } from "react";
-import { useQuery } from "@apollo/client/react";
-import {
-  WorkspaceMembersDocument,
-  type WorkspaceMembersQuery,
-} from "@/graphql/definitions";
-import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { useWorkspaceRoster } from "@/common/hooks/use-workspace-roster";
 
 /**
  * What a subject reads while the member list is still loading (w4/602): a
@@ -24,18 +19,10 @@ export function useWorkspaceSubjectLabel(
   subject: string,
   known?: string | null,
 ): string {
-  const { currentWorkspaceId } = useWorkspace();
-  const { data, loading } = useQuery(WorkspaceMembersDocument, {
-    variables: { workspaceId: currentWorkspaceId ?? "" },
-    skip: !currentWorkspaceId || !subject || !!known,
-    fetchPolicy: "cache-first",
-    errorPolicy: "all",
-  });
+  const { members, loading } = useWorkspaceRoster(!subject || !!known);
 
   return useMemo(() => {
     if (known) return known;
-    const members: NonNullable<WorkspaceMembersQuery["workspaceMembers"]> =
-      data?.workspaceMembers ?? [];
     const member = members.find(
       (candidate) =>
         candidate?.subject === subject || candidate?.userId === subject,
@@ -43,5 +30,5 @@ export function useWorkspaceSubjectLabel(
     const label = member?.email || member?.userId;
     if (label) return label;
     return loading ? SUBJECT_LABEL_PENDING : subject;
-  }, [data, loading, subject, known]);
+  }, [members, loading, subject, known]);
 }

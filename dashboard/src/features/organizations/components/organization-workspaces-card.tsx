@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { WorkspaceAvatar } from "@/features/avatars/components/avatar";
 import { useNavigate } from "@tanstack/react-router";
 import { Boxes, Globe, Loader2, Lock } from "lucide-react";
 import { Card, CardContent } from "@/common/components/ui/card";
@@ -69,6 +70,13 @@ function WorkspaceRow({
     <TableRow className={WORKSPACE_ROW_CLASS}>
       <TableCell className="w-full max-w-0">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          {/* The workspace's avatar, as Render's org workspaces list (w1/m648). */}
+          <WorkspaceAvatar
+            id={workspace.id}
+            name={workspace.name}
+            imageURL={workspace.avatarDownload?.url}
+            size="small"
+          />
           <span
             id={nameId}
             className="min-w-0 max-w-full break-words font-medium"

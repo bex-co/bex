@@ -49,6 +49,8 @@ func (s *Service) workspaceType() *graphql.Object {
 				"plan":      gqlutil.StrField(func(w WorkspaceView) any { return w.Plan }),
 				"role":      gqlutil.StrField(func(w WorkspaceView) any { return w.Role }),
 				"createdAt": gqlutil.StrField(func(w WorkspaceView) any { return w.CreatedAt }),
+				// Render's owner.avatarDownload (w1/m648).
+				"avatarDownload": gqlutil.AvatarDownloadField(func(w WorkspaceView) core.AvatarOwner { return core.WorkspaceAvatar(w.ID) }),
 				// requireTwoFactor is the workspace's "require two-factor
 				// authentication" setting, readable by every member so a blocked
 				// member can see why.

@@ -20,6 +20,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ActivityGate } from "@/features/capabilities/components/activity-gate";
 import { useWorkspaceSubjectLabel } from "@/common/hooks/use-workspace-subject-label";
+import { UserAvatar } from "@/features/avatars/components/avatar";
 import { EventIcon } from "@/features/events/components/event-icon";
 import {
   eventIconClass,
@@ -461,7 +462,11 @@ function FeedState({
  * Who acted on an event: the first user object the event names, with that
  * user's own email (w4/602), else a stored subject the roster resolves.
  */
-function eventActor(details: EventDetails): { subject: string; email: string } {
+function eventActor(details: EventDetails): {
+  subject: string;
+  email: string;
+  avatarURL: string | null;
+} {
   const user =
     [
       details?.suspendedByUser,
@@ -469,12 +474,18 @@ function eventActor(details: EventDetails): { subject: string; email: string } {
       details?.trigger?.user,
       details?.edgeCacheTrigger?.user,
     ].find((candidate) => candidate?.id) ?? null;
-  if (user) return { subject: user.id ?? "", email: user.email ?? "" };
+  if (user) {
+    return {
+      subject: user.id ?? "",
+      email: user.email ?? "",
+      avatarURL: user.avatarDownload?.url ?? null,
+    };
+  }
   const stored =
     (details?.actor && details.actor !== "user" ? details.actor : "") ||
     details?.triggeredByUser ||
     "";
-  return { subject: stored, email: "" };
+  return { subject: stored, email: "", avatarURL: null };
 }
 
 function EventRow({
@@ -633,7 +644,18 @@ function EventRow({
             <span>{t(trigger as Parameters<typeof t>[0])}</span>
           ) : null}
           {actor.subject ? (
-            <span>{t("services.eventsActor", { actor: actorLabel })}</span>
+            <span className="inline-flex items-center gap-1">
+              {/* Who acted, with their avatar, as Render's events feed
+                  (w1/m648): a person's, never a subject's. */}
+              {actorLabel.includes("@") ? (
+                <UserAvatar
+                  email={actorLabel}
+                  imageURL={actor.avatarURL}
+                  size="mini"
+                />
+              ) : null}
+              <span>{t("services.eventsActor", { actor: actorLabel })}</span>
+            </span>
           ) : null}
           {deployId ? <DeployReference id={deployId} /> : null}
           {artifactBuildId ? <BuildReference id={artifactBuildId} /> : null}

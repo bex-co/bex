@@ -37,6 +37,10 @@ var scopeClassOverrides = map[string]string{
 	// validate_ rather than get_/list_ (w34/012).
 	"REST POST /v1/blueprints/validate": core.OpClassRead,
 	"MCP validate_bex_yml":              core.OpClassRead,
+	// Render's avatarPresignedUpload is a query that mints a one-time upload
+	// URL, which the browser then writes the account's or workspace's avatar
+	// through (w1/m648): a write.
+	"GQL Query.avatarPresignedUpload": core.OpClassWrite,
 	// Durable-credential mint. AuthorizeMintClass still runs at the verb.
 	"REST POST /v1/api-keys": core.OpClassMint,
 	// Changing a key's grant is mint too (w9/m496, I8): it widens what a

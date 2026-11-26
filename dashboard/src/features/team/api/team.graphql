@@ -21,6 +21,10 @@ query WorkspaceMembers($workspaceId: String!) {
     # The caller's own row, whose Remove / role controls the server refuses
     # (w5/m101).
     isSelf
+    # The member's uploaded avatar (w1/m648), else their Gravatar or monogram.
+    avatarDownload {
+      url
+    }
   }
   workspaceSeatUsage(workspaceId: $workspaceId) {
     used

@@ -87,9 +87,11 @@ async function renderPage(org: Organization) {
 
 /** A workspace's row, found by its name. */
 function row(name: string) {
-  const found = screen
-    .getAllByRole("row")
-    .find((tr) => tr.querySelector("td span")?.textContent === name);
+  const found = screen.getAllByRole("row").find(
+    (tr) =>
+      // The first span after the avatar (w1/m648).
+      tr.querySelector("td span:not([data-slot])")?.textContent === name,
+  );
   if (!found) throw new Error(`no row for ${name}`);
   return found;
 }

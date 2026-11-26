@@ -19,7 +19,7 @@ const { navigate, invalidate, endBrowserSession, setTheme, viewport } =
     invalidate: vi.fn(),
     endBrowserSession: vi.fn(),
     setTheme: vi.fn(),
-    viewport: { isMobile: false },
+    viewport: { isMobile: false, avatarURL: null as string | null },
   }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -37,6 +37,15 @@ vi.mock("@/common/providers/theme-provider", () => ({
 
 vi.mock("@/common/hooks/use-mobile", () => ({
   useIsMobile: () => viewport.isMobile,
+}));
+
+// The account's uploaded avatar (w1/m648); none here unless a test sets one.
+vi.mock("@/features/avatars/hooks/use-user-avatar", () => ({
+  useUserAvatar: () => ({
+    userId: "usr-ada",
+    imageURL: viewport.avatarURL,
+    loading: false,
+  }),
 }));
 
 vi.mock("@/common/hooks/use-root-context", () => ({
@@ -229,5 +238,36 @@ describe("UserNav at narrow widths (w4/302)", () => {
     // persistLanguage writes the reload-surviving copy (cookie + storage).
     expect(localStorage.setItem).toHaveBeenCalledWith("i18nextLng", "zh");
     expect(navigate).not.toHaveBeenCalled();
+  });
+});
+
+// w1/m648: the trigger is the account's avatar, as on Render: its upload,
+// else (Gravatar aside, which jsdom never loads) the monogram of its email.
+describe("UserNav avatar", () => {
+  afterEach(() => {
+    viewport.avatarURL = null;
+  });
+
+  it("shows the account's uploaded avatar", () => {
+    viewport.avatarURL = "https://api.bex.test/v1/avatars/k1";
+    const { container } = render(
+      <I18nextProvider i18n={i18n}>
+        <UserNav />
+      </I18nextProvider>,
+    );
+    const img = container.querySelector("button img");
+    expect(img).toHaveAttribute("src", "https://api.bex.test/v1/avatars/k1");
+  });
+
+  it("shows the monogram of the email without one", () => {
+    const { container } = render(
+      <I18nextProvider i18n={i18n}>
+        <UserNav />
+      </I18nextProvider>,
+    );
+    expect(container.querySelector("button img")).toBeNull();
+    expect(
+      container.querySelector('button [data-slot="monogram"]'),
+    ).toHaveTextContent("A");
   });
 });

@@ -19,6 +19,7 @@ package appearance
 import (
 	"github.com/graphql-go/graphql"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -44,6 +45,7 @@ var userGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"id":              gqlutil.ReqStrField(func(v User) any { return v.ID }),
 		"themeSetting":    gqlutil.Typed(graphql.NewNonNull(themeSettingGQLEnum), func(v User) any { return v.ThemeSetting }),
 		"logThemeSetting": gqlutil.Typed(graphql.NewNonNull(logThemeSettingGQLEnum), func(v User) any { return v.LogThemeSetting }),
+		"avatarDownload":  gqlutil.AvatarDownloadField(func(v User) core.AvatarOwner { return core.AccountAvatar(v.ID) }),
 	},
 })
 

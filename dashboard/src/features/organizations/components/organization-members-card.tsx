@@ -9,6 +9,7 @@ import {
 } from "@/common/components/ui/table";
 import { PanelTableHeader } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { UserAvatar } from "@/features/avatars/components/avatar";
 import {
   MemberIdentity,
   PendingInvitesTable,
@@ -62,7 +63,17 @@ function MemberRow({
   return (
     <TableRow className={MEMBER_ROW_CLASS}>
       <TableCell className="w-full max-w-0">
-        <MemberIdentity identity={identity} isSelf={member.isSelf} />
+        <MemberIdentity
+          identity={identity}
+          isSelf={member.isSelf}
+          avatar={
+            <UserAvatar
+              email={member.email}
+              imageURL={member.avatarDownload?.url}
+              size="small"
+            />
+          }
+        />
       </TableCell>
       <TableCell>
         {manageable && role ? (

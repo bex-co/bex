@@ -96,6 +96,7 @@ import { SettingsNavigation } from "@/features/auth/pages/settings-page/settings
 import { SettingsSectionHeading } from "@/features/auth/pages/settings-page/settings-section";
 import { AccountSettingsFlowSkeleton } from "@/features/auth/pages/settings-page/account-settings-flow-skeleton";
 import { AppearanceCardSkeleton } from "@/features/auth/pages/settings-page/appearance-card-skeleton";
+import { AccountAvatarCardSkeleton } from "@/features/auth/pages/settings-page/account-avatar-card-skeleton";
 import { AccountDeletionCardSkeleton } from "@/features/auth/pages/settings-page/account-deletion-card-skeleton";
 import { ConnectGithubCardSkeleton } from "@/features/git/components/connect-github-card-skeleton";
 import { ApiKeysPanelSkeleton } from "@/features/api-keys/components/api-keys-panel-skeleton";
@@ -1964,6 +1965,7 @@ export function AccountSettingsPageSkeleton() {
           description={t("auth.accountSectionSubtitle")}
         >
           <AccountSettingsFlowSkeleton />
+          <AccountAvatarCardSkeleton />
         </SettingsSectionRegion>
         <SettingsSectionRegion
           name="appearance"

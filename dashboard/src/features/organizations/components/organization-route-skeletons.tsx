@@ -135,6 +135,7 @@ export function OrganizationWorkspacesCardSkeleton({
               <TableRow key={index} className={WORKSPACE_ROW_CLASS}>
                 <TableCell className="w-full max-w-0">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <Skeleton className="size-5 shrink-0 rounded-full" />
                     <span className="relative min-w-0 max-w-full break-words font-medium">
                       <ReservedText>{PLACEHOLDER_WORKSPACE}</ReservedText>
                     </span>
@@ -183,6 +184,7 @@ export function OrganizationMembersTableFrame() {
       <TableRow className={MEMBER_ROW_CLASS}>
         <TableCell className="w-full max-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <Skeleton className="size-5 shrink-0 rounded-full" />
             <span className="relative min-w-0 max-w-full break-words">
               <ReservedText>{PLACEHOLDER_EMAIL}</ReservedText>
             </span>

@@ -35,35 +35,37 @@ import {
 } from "@/features/workspaces/types";
 import { useOrganizations } from "@/features/organizations/hooks/use-organizations";
 import { groupSwitcherWorkspaces } from "@/features/organizations/lib/switcher-groups";
+import { WorkspaceAvatar } from "@/features/avatars/components/avatar";
 
 /**
- * A small rounded tile showing the workspace's first letter — the switcher's
- * per-workspace identity mark. It replaces a generic building glyph (which was
- * identical for every workspace) so the trigger and the list rows are scannable
- * at a glance, and it's the one visual the trigger and dropdown rows share.
+ * The workspace's avatar, the switcher's per-workspace identity mark, as on
+ * Render (w1/m648): its uploaded image, else the monogram of its name colored
+ * by its id. The trigger and the list rows share it.
  */
-function WorkspaceInitial({
-  name,
-  className,
+function WorkspaceMark({
+  workspace,
 }: {
-  name: string;
-  className?: string;
+  workspace: Pick<WorkspaceView, "id" | "name" | "avatarURL"> | null;
 }) {
-  const initial = name.trim().charAt(0).toUpperCase() || "?";
+  if (!workspace) {
+    return (
+      <span
+        aria-hidden="true"
+        className="size-5 shrink-0 rounded-full bg-muted"
+      />
+    );
+  }
   return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        "flex aspect-square items-center justify-center rounded-md bg-primary/10 text-[0.7rem] font-semibold text-primary",
-        className,
-      )}
-    >
-      {initial}
-    </span>
+    <WorkspaceAvatar
+      id={workspace.id}
+      name={workspace.name}
+      imageURL={workspace.avatarURL}
+      size="small"
+    />
   );
 }
 
-/** One workspace of the dropdown: its initial, name and plan, checked when current. */
+/** One workspace of the dropdown: its avatar, name and plan, checked when current. */
 function WorkspaceRadioItem({
   workspace,
   current,
@@ -88,7 +90,7 @@ function WorkspaceRadioItem({
         nested ? "pl-5" : "pl-2",
       )}
     >
-      <WorkspaceInitial name={workspace.name} className="size-5 shrink-0" />
+      <WorkspaceMark workspace={workspace} />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate">{workspace.name}</span>
         <span className="text-muted-foreground truncate text-xs">
@@ -173,10 +175,7 @@ export function WorkspaceSwitcher() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
-              <WorkspaceInitial
-                name={currentWorkspace?.name ?? "?"}
-                className="size-5 shrink-0"
-              />
+              <WorkspaceMark workspace={currentWorkspace ?? null} />
               <span className="truncate font-medium">
                 {currentWorkspace?.name ?? t("workspaces.switcherEmpty")}
               </span>

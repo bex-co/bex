@@ -1051,6 +1051,11 @@ export type Autoscaling = {
   targetMemoryPercent: Maybe<Scalars['Int']['output']>;
 };
 
+export enum AvatarType {
+  Account = 'ACCOUNT',
+  Workspace = 'WORKSPACE'
+}
+
 export type Billing = {
   __typename: 'Billing';
   credits: Maybe<BillingCredits>;
@@ -2051,6 +2056,8 @@ export type EstimatedCost = {
 
 export type EventUser = {
   __typename: 'EventUser';
+  /** The uploaded avatar image, or null when there is none (the client then shows the default). */
+  avatarDownload: Maybe<PresignedDownload>;
   email: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
 };
@@ -2508,6 +2515,8 @@ export type Mutation = {
   deleteAgentSession: Maybe<Scalars['Boolean']['output']>;
   /** Delete a workspace skill (admins only). */
   deleteAgentSkill: Maybe<Scalars['Boolean']['output']>;
+  /** Reset an account's or a workspace's avatar to its default. */
+  deleteAvatar: Scalars['Boolean']['output'];
   deleteBuildSource: Maybe<Scalars['Boolean']['output']>;
   deleteCustomDomain: Maybe<Scalars['Boolean']['output']>;
   deleteDatabase: Maybe<Scalars['Boolean']['output']>;
@@ -3226,6 +3235,12 @@ export type MutationDeleteAgentSessionArgs = {
 export type MutationDeleteAgentSkillArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
   skill: Scalars['String']['input'];
+};
+
+
+export type MutationDeleteAvatarArgs = {
+  avatarOwnerId: Scalars['String']['input'];
+  avatarType: AvatarType;
 };
 
 
@@ -4705,6 +4720,8 @@ export type OrganizationInvitePreview = {
 
 export type OrganizationMember = {
   __typename: 'OrganizationMember';
+  /** The uploaded avatar image, or null when there is none (the client then shows the default). */
+  avatarDownload: Maybe<PresignedDownload>;
   createdAt: Maybe<Scalars['String']['output']>;
   email: Maybe<Scalars['String']['output']>;
   isSelf: Scalars['Boolean']['output'];
@@ -4716,6 +4733,8 @@ export type OrganizationMember = {
 
 export type OrganizationWorkspace = {
   __typename: 'OrganizationWorkspace';
+  /** The uploaded avatar image, or null when there is none (the client then shows the default). */
+  avatarDownload: Maybe<PresignedDownload>;
   id: Scalars['String']['output'];
   name: Scalars['String']['output'];
   plan: Scalars['String']['output'];
@@ -4785,6 +4804,17 @@ export type PostgresConnectionInfo = {
   psqlCommand: Maybe<Scalars['String']['output']>;
   readReplicaConnectionStrings: Maybe<Array<Maybe<ReplicaConnectionStrings>>>;
   serverCaCertificate: Maybe<Scalars['String']['output']>;
+};
+
+export type PresignedDownload = {
+  __typename: 'PresignedDownload';
+  url: Scalars['String']['output'];
+};
+
+export type PresignedUpload = {
+  __typename: 'PresignedUpload';
+  url: Scalars['String']['output'];
+  verb: Scalars['String']['output'];
 };
 
 export type Project = {
@@ -4985,6 +5015,8 @@ export type Query = {
   apiKeys: Maybe<Array<Maybe<ApiKey>>>;
   auditLogs: Maybe<Array<Maybe<AuditLog>>>;
   autoscalingConfig: Maybe<Autoscaling>;
+  /** A one-time URL to upload an account's or a workspace's avatar to (PUT, exactly avatarSizeBytes of PNG or JPEG, within 10 minutes). The account's own, or a workspace's as its Admin. */
+  avatarPresignedUpload: PresignedUpload;
   blueprint: Maybe<Blueprint>;
   blueprintPlannedSync: Maybe<BlueprintPlannedSync>;
   blueprintPreview: Maybe<BlueprintPreview>;
@@ -5308,6 +5340,13 @@ export type QueryAuditLogsArgs = {
 
 export type QueryAutoscalingConfigArgs = {
   id: Scalars['String']['input'];
+};
+
+
+export type QueryAvatarPresignedUploadArgs = {
+  avatarOwnerId: Scalars['String']['input'];
+  avatarSizeBytes: Scalars['Int']['input'];
+  avatarType: AvatarType;
 };
 
 
@@ -6870,6 +6909,8 @@ export type UsageSummary = {
 
 export type User = {
   __typename: 'User';
+  /** The uploaded avatar image, or null when there is none (the client then shows the default). */
+  avatarDownload: Maybe<PresignedDownload>;
   id: Scalars['String']['output'];
   logThemeSetting: LogThemeSetting;
   themeSetting: ThemeSetting;
@@ -6931,6 +6972,8 @@ export type WebhookEndpoint = {
 
 export type Workspace = {
   __typename: 'Workspace';
+  /** The uploaded avatar image, or null when there is none (the client then shows the default). */
+  avatarDownload: Maybe<PresignedDownload>;
   createdAt: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   ipAllowList: Array<IpAllowListEntry>;
@@ -7020,6 +7063,8 @@ export type WorkspaceInvitePreview = {
 
 export type WorkspaceMember = {
   __typename: 'WorkspaceMember';
+  /** The uploaded avatar image, or null when there is none (the client then shows the default). */
+  avatarDownload: Maybe<PresignedDownload>;
   createdAt: Maybe<Scalars['String']['output']>;
   email: Maybe<Scalars['String']['output']>;
   identityResolved: Scalars['Boolean']['output'];

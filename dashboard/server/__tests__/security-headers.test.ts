@@ -33,13 +33,55 @@ describe("buildSecurityHeaders", () => {
     expect(emitted).toEqual([...SECURITY_HEADER_NAMES].sort());
   });
 
-  it("lets images load from the attachments bucket and nowhere new", () => {
+  it("lets images load from the attachments bucket and Gravatar and nowhere new", () => {
     const img = directive(
       buildSecurityHeaders("https://auth.bex.co", "https://auth.bex.co"),
       "img-src",
     );
     expect(img).toBe(
-      "img-src 'self' data: https://*.stripe.com https://s3.eu-central-2.wasabisys.com",
+      "img-src 'self' data: https://*.stripe.com https://s3.eu-central-2.wasabisys.com https://en.gravatar.com",
+    );
+  });
+
+  // w1/m648: an uploaded avatar is served by bex-api and a default one by
+  // Gravatar. Each is named by its exact origin: no wildcard, no scheme-wide
+  // source, and a path on the API URL never widens to it.
+  it("lets avatars load from the API origin and Gravatar, and nothing broader", () => {
+    const img = directive(
+      buildSecurityHeaders(
+        "https://auth.bex.co",
+        "https://auth.bex.co",
+        undefined,
+        {
+          apiURL: "https://api.bex.co/graphql",
+        },
+      ),
+      "img-src",
+    );
+    const sources = img.split(" ").slice(1);
+    expect(sources).toContain("https://api.bex.co");
+    expect(sources).toContain("https://en.gravatar.com");
+    expect(sources).not.toContain("https:");
+    expect(sources).not.toContain("*");
+    expect(sources.filter((src) => src.includes("gravatar"))).toEqual([
+      "https://en.gravatar.com",
+    ]);
+    expect(img).not.toContain("/graphql");
+
+    // A relative API URL is the page's own origin: 'self' already covers it.
+    const relative = directive(
+      buildSecurityHeaders(
+        "https://auth.bex.co",
+        "https://auth.bex.co",
+        undefined,
+        {
+          apiURL: "/graphql",
+        },
+      ),
+      "img-src",
+    );
+    expect(relative).toBe(
+      "img-src 'self' data: https://*.stripe.com https://s3.eu-central-2.wasabisys.com https://en.gravatar.com",
     );
   });
 
@@ -228,7 +270,7 @@ describe("the enforced connect-src", () => {
     );
   });
 
-  it("changes only connect-src against the policy production sent before", () => {
+  it("changes only connect-src and the avatar img-src origins against the policy production sent before", () => {
     const headers = production(() => build());
     expect(
       headers["Content-Security-Policy"]
@@ -238,7 +280,7 @@ describe("the enforced connect-src", () => {
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' https://js.stripe.com https://auth.bex.co https://static.cloudflareinsights.com",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https://*.stripe.com https://s3.eu-central-2.wasabisys.com",
+      "img-src 'self' data: https://*.stripe.com https://s3.eu-central-2.wasabisys.com https://en.gravatar.com https://api.bex.co",
       "font-src 'self'",
       "frame-src https://js.stripe.com https://hooks.stripe.com",
       "frame-ancestors 'none'",

@@ -87,6 +87,7 @@ const member = (
   createdAt: null,
   workspaces,
   isSelf,
+  avatarDownload: null,
 });
 
 const PEOPLE = (selfRole: OrganizationRole) => [
@@ -149,9 +150,11 @@ async function renderPage(role: OrganizationRole) {
 }
 
 function row(email: string) {
-  const found = screen
-    .getAllByRole("row")
-    .find((tr) => tr.querySelector("td span")?.textContent === email);
+  const found = screen.getAllByRole("row").find(
+    (tr) =>
+      // The first span after the avatar (w1/m648).
+      tr.querySelector("td span:not([data-slot])")?.textContent === email,
+  );
   if (!found) throw new Error(`no row for ${email}`);
   return found;
 }

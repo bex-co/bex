@@ -31,7 +31,8 @@ import { useIsMobile } from "@/common/hooks/use-mobile";
 import { useRootContext } from "@/common/hooks/use-root-context";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/common/components/ui/button.tsx";
-import { Avatar, AvatarFallback } from "@/common/components/ui/avatar.tsx";
+import { UserAvatar } from "@/features/avatars/components/avatar";
+import { useUserAvatar } from "@/features/avatars/hooks/use-user-avatar";
 import {
   LANGUAGE_NAMES,
   SUPPORTED_LANGUAGES,
@@ -41,18 +42,22 @@ import {
 import { switchLanguage } from "@/i18n/init";
 
 interface UserAvatarButtonProps {
-  userInitial: string;
-  /** Accessible name: the initial alone is not a name (w4/407). */
+  /** The account's email: its Gravatar and its monogram (w1/m648). */
+  email: string | undefined;
+  /** The account's uploaded avatar, when it has one. */
+  imageURL: string | null;
+  /** Accessible name: the avatar alone is not a name (w4/407). */
   label: string;
   onClick?: () => void;
 }
 
 /**
- * Reusable user avatar button component
- * Displays a circular avatar button with user initial
+ * The account menu's trigger: the account's avatar, as Render's shows it
+ * (its upload, else its Gravatar, else the monogram of its email).
  */
 export function UserAvatarButton({
-  userInitial,
+  email,
+  imageURL,
   label,
   onClick,
   ...props
@@ -66,9 +71,7 @@ export function UserAvatarButton({
       {...props}
       className="relative rounded-full hover:bg-accent p-0"
     >
-      <Avatar className="h-8 w-8" aria-hidden="true">
-        <AvatarFallback>{userInitial}</AvatarFallback>
-      </Avatar>
+      <UserAvatar email={email} imageURL={imageURL} size="large" />
     </Button>
   );
 }
@@ -133,8 +136,7 @@ export function UserNav() {
     void navigate({ to: "/settings" });
   };
 
-  const userInitial =
-    (traits?.name || traits?.email)?.[0]?.toUpperCase() || "U";
+  const { imageURL } = useUserAvatar();
 
   const themeItems = (
     [
@@ -173,7 +175,8 @@ export function UserNav() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <UserAvatarButton
-          userInitial={userInitial}
+          email={traits?.email}
+          imageURL={imageURL}
           label={
             traits?.email
               ? t("common.userMenuOpenFor", { name: traits.email })

@@ -8,6 +8,7 @@ import zhDatabases from "@/features/databases/locales/zh";
 import zhKeyValue from "@/features/keyvalue/locales/zh";
 import zhApiKeys from "@/features/api-keys/locales/zh";
 import zhWorkspaces from "@/features/workspaces/locales/zh";
+import zhAvatars from "@/features/avatars/locales/zh";
 import zhTeam from "@/features/team/locales/zh";
 import zhUsage from "@/features/usage/locales/zh";
 import zhAudit from "@/features/audit/locales/zh";
@@ -56,6 +57,7 @@ const zh: Record<string, string> = {
   ...extractMessages(zhKeyValue),
   ...extractMessages(zhApiKeys),
   ...extractMessages(zhWorkspaces),
+  ...extractMessages(zhAvatars),
   ...extractMessages(zhTeam),
   ...extractMessages(zhUsage),
   ...extractMessages(zhAudit),

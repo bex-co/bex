@@ -93,6 +93,8 @@ export function TeamMembersSkeleton({ canManage }: { canManage: boolean }) {
                 with MemberIdentity's gaps, and the id line truncates. */}
             <TableCell className="w-full max-w-0">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {/* The member's 20 px avatar (w1/m648). */}
+                <Skeleton className="size-5 shrink-0 rounded-full" />
                 <span className="min-w-0 max-w-full break-words text-transparent">
                   {own.email}
                 </span>

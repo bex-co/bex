@@ -8,6 +8,7 @@ import koDatabases from "@/features/databases/locales/ko";
 import koKeyValue from "@/features/keyvalue/locales/ko";
 import koApiKeys from "@/features/api-keys/locales/ko";
 import koWorkspaces from "@/features/workspaces/locales/ko";
+import koAvatars from "@/features/avatars/locales/ko";
 import koTeam from "@/features/team/locales/ko";
 import koUsage from "@/features/usage/locales/ko";
 import koAudit from "@/features/audit/locales/ko";
@@ -56,6 +57,7 @@ const ko: Record<string, string> = {
   ...extractMessages(koKeyValue),
   ...extractMessages(koApiKeys),
   ...extractMessages(koWorkspaces),
+  ...extractMessages(koAvatars),
   ...extractMessages(koTeam),
   ...extractMessages(koUsage),
   ...extractMessages(koAudit),

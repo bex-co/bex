@@ -32,6 +32,7 @@ export function orgWorkspace(
     privacy: "invite_only",
     primary: false,
     viewerIsMember: true,
+    avatarDownload: null,
     ...overrides,
   };
 }

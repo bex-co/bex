@@ -39,7 +39,8 @@ function membership(ids: string[]): WorkspacesQuery["workspaces"] {
     requireGoogleLogin: false,
     organization: null,
     primary: false,
-    privacy: null
+    privacy: null,
+    avatarDownload: null,
   }));
 }
 

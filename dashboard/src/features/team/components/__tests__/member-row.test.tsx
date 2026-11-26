@@ -201,3 +201,39 @@ describe("MemberRow — membership invariants (w5/m101)", () => {
     );
   });
 });
+
+// w1/m648: each member's avatar before their email, as Render's members list.
+describe("MemberRow — avatar", () => {
+  const row = (overrides: Partial<MemberView>) =>
+    render(
+      <table>
+        <tbody>
+          <MemberRow
+            member={member(overrides)}
+            canManage={false}
+            changing={false}
+            removing={false}
+            onChangeRole={vi.fn()}
+            onRemove={vi.fn()}
+          />
+        </tbody>
+      </table>,
+    );
+
+  it("shows a member's upload", () => {
+    row({ avatarURL: "https://api.bex.test/v1/avatars/k1" });
+    expect(
+      screen.getByRole("img", {
+        name: "User-uploaded Avatar for a@example.com",
+      }),
+    ).toHaveAttribute("src", "https://api.bex.test/v1/avatars/k1");
+  });
+
+  it("shows the monogram of the email without one", () => {
+    const { container } = row({});
+    expect(screen.queryByRole("img")).toBeNull();
+    expect(container.querySelector('[data-slot="monogram"]')).toHaveTextContent(
+      "A",
+    );
+  });
+});

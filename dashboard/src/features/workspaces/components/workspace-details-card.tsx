@@ -23,6 +23,11 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { LocalDate } from "@/common/components/local-time";
 import { useRenameWorkspace } from "@/features/workspaces/hooks/use-rename-workspace";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { WorkspaceAvatar } from "@/features/avatars/components/avatar";
+import { AvatarEditor } from "@/features/avatars/components/avatar-row";
+import { AvatarType } from "@/features/avatars/hooks/use-avatar-actions";
+import { workspaceMonogram } from "@/features/avatars/lib/avatar-utils";
 import { ChangePlanDialog } from "@/features/workspaces/components/change-plan-dialog";
 import { OrganizationPlanNote } from "@/features/workspaces/components/organization-plan-note";
 import {
@@ -63,6 +68,7 @@ export function WorkspaceDetailsCard({
   const { t } = useTranslations();
   const { rename, busy, error } = useRenameWorkspace();
   const { refetch, workspaces } = useWorkspace();
+  const capabilities = useCapabilities();
   const planOwner = organizationPlanOwner(workspace, workspaces);
 
   // Re-seed the draft when the card is pointed at a DIFFERENT workspace
@@ -138,6 +144,30 @@ export function WorkspaceDetailsCard({
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
+
+        {/* Render's Avatar, after the name (w1/m648): Admins change it; every
+            other member sees it with Edit disabled and the reason. */}
+        <div className="space-y-2">
+          <p className="text-sm leading-none font-medium">
+            {t("avatars.rowLabel")}
+          </p>
+          <AvatarEditor
+            ownerId={workspace.id}
+            avatarType={AvatarType.Workspace}
+            avatar={
+              <WorkspaceAvatar
+                id={workspace.id}
+                name={workspace.name}
+                imageURL={workspace.avatarURL}
+                size="xlarge"
+              />
+            }
+            isUpload={Boolean(workspace.avatarURL)}
+            defaultMonogram={workspaceMonogram(workspace.id, workspace.name)}
+            canEdit={capabilities.canManage}
+            noPermissionMessage={t("avatars.workspaceNoPermission")}
+          />
+        </div>
 
         <dl className="grid grid-cols-1 gap-4 border-t pt-4 text-sm @md:grid-cols-2 @3xl:grid-cols-4">
           <div className="space-y-1">

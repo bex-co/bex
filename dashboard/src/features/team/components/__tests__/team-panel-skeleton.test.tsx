@@ -22,9 +22,16 @@ const IDENTITY_ID = "9b2e4c1a-7d3f-4e8b-a6c5-1f0e2d3c4b5a";
 function ownCell(row: Element) {
   const cell = row.querySelector("td")!;
   return {
-    email: cell.querySelector(":scope > div > span")!,
+    // The first span after the avatar (w1/m648).
+    email: cell.querySelector(":scope > div > span:not([data-slot])")!,
     subject: cell.querySelector(":scope > div.font-mono")!,
   };
+}
+
+function cellText(row: Element): string {
+  const cell = row.querySelector("td")!.cloneNode(true) as Element;
+  cell.querySelectorAll('[data-slot="monogram"]').forEach((m) => m.remove());
+  return cell.textContent ?? "";
 }
 
 /** A class list without the colour, the one thing the frame changes. */
@@ -94,9 +101,9 @@ describe("TeamMembersSkeleton's own row (w7/095)", () => {
       expect(layoutClasses(pending.subject)).toEqual(
         layoutClasses(loaded.subject),
       );
-      expect(frame.row.querySelector("td")!.textContent).toBe(
-        ready.row.querySelector("td")!.textContent,
-      );
+      // The same words, the avatar's monogram letter aside (w1/m648).
+      expect(cellText(frame.row)).toBe(cellText(ready.row));
+      expect(frame.row.querySelector("td .rounded-full")).not.toBeNull();
       frame.unmount();
       ready.unmount();
     },

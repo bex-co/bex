@@ -8,6 +8,7 @@ import jaDatabases from "@/features/databases/locales/ja";
 import jaKeyValue from "@/features/keyvalue/locales/ja";
 import jaApiKeys from "@/features/api-keys/locales/ja";
 import jaWorkspaces from "@/features/workspaces/locales/ja";
+import jaAvatars from "@/features/avatars/locales/ja";
 import jaTeam from "@/features/team/locales/ja";
 import jaUsage from "@/features/usage/locales/ja";
 import jaAudit from "@/features/audit/locales/ja";
@@ -56,6 +57,7 @@ const ja: Record<string, string> = {
   ...extractMessages(jaKeyValue),
   ...extractMessages(jaApiKeys),
   ...extractMessages(jaWorkspaces),
+  ...extractMessages(jaAvatars),
   ...extractMessages(jaTeam),
   ...extractMessages(jaUsage),
   ...extractMessages(jaAudit),

@@ -24,6 +24,7 @@ import (
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -59,6 +60,7 @@ var organizationWorkspaceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"privacy":        gqlutil.ReqStrField(func(w OrganizationWorkspaceView) any { return w.Privacy }),
 		"primary":        gqlutil.ReqBoolField(func(w OrganizationWorkspaceView) any { return w.Primary }),
 		"viewerIsMember": gqlutil.ReqBoolField(func(w OrganizationWorkspaceView) any { return w.ViewerIsMember }),
+		"avatarDownload": gqlutil.AvatarDownloadField(func(w OrganizationWorkspaceView) core.AvatarOwner { return core.WorkspaceAvatar(w.ID) }),
 	},
 })
 

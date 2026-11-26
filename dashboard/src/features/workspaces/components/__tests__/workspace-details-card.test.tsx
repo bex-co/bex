@@ -29,6 +29,20 @@ vi.mock("@/features/workspaces/context/hooks", () => ({
   useWorkspace: () => ({ refetch: vi.fn(), workspaces: workspaceList.value }),
 }));
 
+// The Avatar row (w1/m648): its upload and reset are the editor's own tests;
+// here only who may use them. Admin unless a test says otherwise.
+const avatarActions = vi.hoisted(() => ({ upload: vi.fn(), reset: vi.fn() }));
+vi.mock("@/features/avatars/hooks/use-avatar-actions", async (original) => ({
+  ...(await original<
+    typeof import("@/features/avatars/hooks/use-avatar-actions")
+  >()),
+  useAvatarActions: () => avatarActions,
+}));
+const canManage = vi.hoisted(() => ({ value: true }));
+vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
+  useCapabilities: () => ({ canManage: canManage.value }),
+}));
+
 // Stand in for the real dialog: what matters here is whether the card opens it.
 vi.mock("@/features/workspaces/components/change-plan-dialog", () => ({
   ChangePlanDialog: ({ open }: { open: boolean }) =>
@@ -362,5 +376,73 @@ describe("WorkspaceDetailsCard — an organization's secondary (w7/m464)", () =>
         '[data-skeleton-region="organization-plan-note"]',
       ),
     ).toBeNull();
+  });
+
+  // Render's Avatar row, after the name (w1/m648): "Only workspace admins
+  // can set the workspace image."
+  describe("Avatar", () => {
+    const card = (view: WorkspaceView = workspace) =>
+      render(
+        <WorkspaceDetailsCard
+          workspace={view}
+          changePlanOpen={false}
+          onChangePlanOpenChange={vi.fn()}
+        />,
+      );
+
+    it("shows an Admin the monogram of the name with Render's Edit menu", async () => {
+      canManage.value = true;
+      const user = userEvent.setup();
+      const { container } = card();
+      expect(screen.getByText("Avatar")).toBeVisible();
+      expect(
+        container.querySelector('[data-slot="monogram"]'),
+      ).toHaveTextContent("A");
+      await user.click(screen.getByRole("button", { name: "Edit" }));
+      expect(
+        screen.getByRole("menuitem", { name: "Upload image" }),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole("menuitem", { name: "Reset to default" }),
+      ).toBeNull();
+    });
+
+    it("shows the upload, which an Admin can reset", async () => {
+      canManage.value = true;
+      const user = userEvent.setup();
+      card({ ...workspace, avatarURL: "https://api.bex.test/v1/avatars/k" });
+      expect(
+        screen.getByRole("img", { name: "User-uploaded Avatar" }),
+      ).toHaveAttribute("src", "https://api.bex.test/v1/avatars/k");
+      await user.click(screen.getByRole("button", { name: "Edit" }));
+      await user.click(
+        screen.getByRole("menuitem", { name: "Reset to default" }),
+      );
+      expect(avatarActions.reset).toHaveBeenCalled();
+    });
+
+    it("shows every other member the avatar with Edit disabled and the reason", async () => {
+      canManage.value = false;
+      const user = userEvent.setup();
+      card({ ...workspace, avatarURL: "https://api.bex.test/v1/avatars/k" });
+      expect(
+        screen.getByRole("img", { name: "User-uploaded Avatar" }),
+      ).toBeVisible();
+      const edit = screen.getByRole("button", { name: "Edit" });
+      expect(edit).toBeDisabled();
+      await user.hover(edit.parentElement!);
+      expect(
+        await screen.findAllByText(
+          "Only workspace admins can set the workspace image.",
+        ),
+      ).not.toHaveLength(0);
+      canManage.value = true;
+    });
+
+    it("reserves the row in the pending card: the 64 px circle over the Edit button", () => {
+      const { container } = render(<WorkspaceDetailsCardSkeleton />);
+      expect(screen.getByText("Avatar")).toBeInTheDocument();
+      expect(container.querySelector(".size-16.rounded-full")).not.toBeNull();
+    });
   });
 });

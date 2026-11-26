@@ -8,6 +8,7 @@ import esDatabases from "@/features/databases/locales/es";
 import esKeyValue from "@/features/keyvalue/locales/es";
 import esApiKeys from "@/features/api-keys/locales/es";
 import esWorkspaces from "@/features/workspaces/locales/es";
+import esAvatars from "@/features/avatars/locales/es";
 import esTeam from "@/features/team/locales/es";
 import esUsage from "@/features/usage/locales/es";
 import esAudit from "@/features/audit/locales/es";
@@ -56,6 +57,7 @@ const es: Record<string, string> = {
   ...extractMessages(esKeyValue),
   ...extractMessages(esApiKeys),
   ...extractMessages(esWorkspaces),
+  ...extractMessages(esAvatars),
   ...extractMessages(esTeam),
   ...extractMessages(esUsage),
   ...extractMessages(esAudit),

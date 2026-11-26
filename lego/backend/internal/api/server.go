@@ -51,6 +51,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/appearance"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/audit"
+	"github.com/bex-co/bex/lego/backend/internal/avatars"
 	"github.com/bex-co/bex/lego/backend/internal/bandwidth"
 	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/buildminutes"
@@ -111,6 +112,7 @@ type Server struct {
 	APIKeys       *apikeys.Service
 	Accounts      *accounts.Service
 	Appearance    *appearance.Service
+	Avatars       *avatars.Service
 	Router        *router.Service
 	SSHKeys       *sshkeys.Service
 	Sandbox       *sandbox.Service
@@ -437,9 +439,13 @@ type Deps struct {
 	// AppearanceStore keeps an account's Dashboard and Log Explorer themes
 	// (w3/m531). nil => the verbs report THEME_SETTINGS_UNAVAILABLE.
 	AppearanceStore appearance.Store
-	RouterURL       string
-	RouterSecret    string
-	RouterMembers   router.MemberStore
+	// AvatarStore keeps account and workspace avatars and their upload slots
+	// (w1/m648). nil => the verbs report AVATARS_UNAVAILABLE and every
+	// avatarDownload reads null.
+	AvatarStore   avatars.Store
+	RouterURL     string
+	RouterSecret  string
+	RouterMembers router.MemberStore
 	// SandboxClient is the OpenSandbox lifecycle client (pillar 5, ADR042/w3/m32);
 	// nil (BEX_OPENSANDBOX_URL unset) => the sandbox verbs report
 	// ErrSandboxesUnavailable and the feature is not registered. SandboxTemplates
@@ -1416,6 +1422,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Router:                &router.Service{Base: base, URL: d.RouterURL, Secret: d.RouterSecret, Members: d.RouterMembers},
 		SSHKeys:               &sshkeys.Service{Base: base, Store: d.SSHKeysStore},
 		Appearance:            &appearance.Service{Base: base, Store: d.AppearanceStore},
+		Avatars:               &avatars.Service{Base: base, Store: d.AvatarStore, PublicURL: d.DeployHookBaseURL},
 		Sandbox:               sandboxSvc,
 		AgentSessions:         agentSessionsSvc,
 		BlueprintRecovery:     &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
@@ -1627,6 +1634,7 @@ func (s *Server) features() []any {
 	out = appendFeature(out, s.APIKeys)
 	out = appendFeature(out, s.Accounts)
 	out = appendFeature(out, s.Appearance)
+	out = appendFeature(out, s.Avatars)
 	out = appendFeature(out, s.SSHKeys)
 	out = appendFeature(out, s.Router)
 	out = appendFeature(out, s.Sandbox)
@@ -1820,6 +1828,16 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 		files := refused(s.Sandbox.ConnectFileHandler())
 		mux.Handle(sandbox.ConnectFileUploadPattern, files)
 		mux.Handle(sandbox.ConnectFileDownloadPattern, files)
+	}
+	// Avatars (w1/m648): the upload URL avatarPresignedUpload mints carries its
+	// own single-use token, as Render's presigned PUT carries a signature, and
+	// an avatar image is shown wherever its owner is, by a 128-bit key. Both
+	// mount outside the gate, behind the shared client-address limiter so a
+	// flood of guessed tokens or keys sheds before it reaches the store.
+	if s.Avatars != nil {
+		limit := s.rateLimitMiddleware()
+		mux.Handle(avatars.UploadPattern, limit(s.Avatars.UploadHandler()))
+		mux.Handle(avatars.DownloadPattern, limit(s.Avatars.DownloadHandler()))
 	}
 	// All three adapters sit behind the same auth gate, with rate limiting inside
 	// the auth wrapper so the limiter keys on the resolved caller Identity. The
@@ -2234,6 +2252,11 @@ func (s *Server) executeGraphQL(parent context.Context, body graphqlRequestBody,
 		reads.envVars, reads.secretFiles = s.Secrets, s.Secrets
 		ctx = core.WithEnvVars(ctx, reads)
 		ctx = core.WithSecretFiles(ctx, reads)
+	}
+	// Every avatarDownload field of the document reads through one batch, so a
+	// members list costs one store read, not one per member (w1/m648).
+	if s.Avatars != nil {
+		ctx = core.WithAvatarBatch(ctx, core.NewAvatarBatch(s.Avatars.URLs()))
 	}
 	// The outboundIps field nests the apps Service's own outbound-IPs verb
 	// under the same stateless type through the matching reader seam.

@@ -8,6 +8,7 @@ import deDatabases from "@/features/databases/locales/de";
 import deKeyValue from "@/features/keyvalue/locales/de";
 import deApiKeys from "@/features/api-keys/locales/de";
 import deWorkspaces from "@/features/workspaces/locales/de";
+import deAvatars from "@/features/avatars/locales/de";
 import deTeam from "@/features/team/locales/de";
 import deUsage from "@/features/usage/locales/de";
 import deAudit from "@/features/audit/locales/de";
@@ -56,6 +57,7 @@ const de: Record<string, string> = {
   ...extractMessages(deKeyValue),
   ...extractMessages(deApiKeys),
   ...extractMessages(deWorkspaces),
+  ...extractMessages(deAvatars),
   ...extractMessages(deTeam),
   ...extractMessages(deUsage),
   ...extractMessages(deAudit),

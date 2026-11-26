@@ -6,6 +6,7 @@ import { PermissionTooltip } from "@/features/capabilities/components/permission
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ROLES, type MemberView, type Role } from "@/features/team/types";
 import { memberActionReasonKeys } from "@/features/team/lib/member-action-reasons";
+import { UserAvatar } from "@/features/avatars/components/avatar";
 import {
   MemberIdentity,
   RemoveMemberButton,
@@ -70,7 +71,17 @@ export function MemberRow({
           fit beside the name wrap to their own line. */}
       <TableCell className="w-full max-w-0">
         {/* Only the secondary subject line below truncates. */}
-        <MemberIdentity identity={identity} isSelf={member.isSelf}>
+        <MemberIdentity
+          identity={identity}
+          isSelf={member.isSelf}
+          avatar={
+            <UserAvatar
+              email={member.email}
+              imageURL={member.avatarURL}
+              size="small"
+            />
+          }
+        >
           {!member.identityResolved ? (
             <Badge
               variant="outline"

@@ -1,19 +1,19 @@
 # w1 · m648 — Users and workspaces have avatars, as on Render
 
-**Worker:** worker1 **Goal:** a user can upload an avatar image, set a text monogram or reset to the default (Gravatar, then a monogram of the email's first letter). A workspace admin can do the same for the workspace (default: a monogram of its name's first letter). The avatars show where Render shows them. **Status:** todo
+**Worker:** worker1 **Goal:** a user can upload an avatar image, set a text monogram (uploaded as an image, as Render does) or reset to the default (Gravatar, then a monogram of the email's first letter). A workspace admin can do the same for the workspace (default: a monogram of its name's first letter). The avatars show where Render shows them. **Status:** todo (t001–t004, t006–t008 done; t005 needs production)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Capture Render's avatars: operations, limits, defaults, display sites](t001.md) | 30m | — |
-| t002 | [Storage and GraphQL: upload, monogram, reset, avatar URLs](t002.md) | 2h30m | t001 |
-| t003 | [Avatar rows in Account Settings and Workspace Settings](t003.md) | 1h45m | t002 |
-| t004 | [Show avatars where Render shows them](t004.md) | 1h30m | t003 |
+| t001 | [Capture Render's avatars: operations, limits, defaults, display sites](done/t001.md) — **DONE** | 30m | — |
+| t002 | [Storage and GraphQL: upload, monogram, reset, avatar URLs](done/t002.md) — **DONE** | 2h30m | t001 |
+| t003 | [Avatar rows in Account Settings and Workspace Settings](done/t003.md) — **DONE** | 1h45m | t002 |
+| t004 | [Show avatars where Render shows them](done/t004.md) — **DONE** | 1h30m | t003 |
 | t005 | [Production walk and docs](t005.md) | 30m | t004 |
-| t006 | [Render parity](t006.md) | 20m | t005 |
-| t007 | [Simplify](t007.md) | 20m | t006 |
-| t008 | [Test coverage](t008.md) | 45m | t006 |
+| t006 | [Render parity](done/t006.md) — **DONE** | 20m | t005 |
+| t007 | [Simplify](done/t007.md) — **DONE** | 20m | t006 |
+| t008 | [Test coverage](done/t008.md) — **DONE** | 45m | t006 |
 | t009 | [Closeout](t009.md) | 10m | t008 |
 
 ## Definition of done
@@ -22,7 +22,7 @@
    - upload a PNG avatar;
    - replace it with a monogram;
    - reset it to the default.
-2. As admin of `bex-canary`, the QA user can set and reset the workspace avatar. The workspace switcher shows it. A non-admin sees the row without the controls.
+2. As admin of `bex-canary`, the QA user can set and reset the workspace avatar. The workspace switcher shows it. A non-admin sees the row with Edit disabled and the reason, as on Render.
 3. A user with no Gravatar and no upload shows the monogram of the email's first letter, in a color derived from the email.
 4. An oversized or non-image upload is refused with a message.
 5. ADR024's "bex has no avatar upload anywhere" is replaced, and ADR018 has an Avatars row.
@@ -45,3 +45,23 @@
 - **Why now:** an unrecorded divergence on two settings pages everyone opens. The parity rule requires matching it or recording it with sign-off, and no sign-off exists.
 - **Gravatar:** the default follows Render. The browser requests a hash of the user's email from gravatar.com, so the dashboard's CSP `img-src` must allow `en.gravatar.com`. A monogram-only default would be a divergence that needs the user's sign-off in ADR018. If wanted, file it as a separate follow-up rather than holding this milestone (AGENTS.md: never park parity on an optional decision).
 - **Render parity included:** GraphQL and dashboard change. Render's REST API and MCP have no avatar operation, and the parity task confirms bex adds none.
+
+## Render verification (2026-11-26)
+
+The orchestrator checked a Render Pro workspace in a headed browser and Render's public bundle the day the work started; its findings override the text above where they differ, and t001's [avatars.md](../../../docs/render-artifacts/avatars.md) records them. A monogram is an uploaded 128 × 128 JPEG, so there is one storage path; the upload is the query `avatarPresignedUpload { url verb }` plus `deleteAvatar`; `AvatarType` is `ACCOUNT | WORKSPACE` (Render has no organization avatar); Gravatar is SHA-256 with `d=404`.
+
+## Render parity (t006)
+
+| Aspect | Render | bex | Verdict |
+| --- | --- | --- | --- |
+| Operations | `avatarPresignedUpload` (query) `{ url verb }`, `deleteAvatar`, `avatarDownload { url }` | the same names, arguments and types; `avatarDownload` on `User`, `Workspace`, both member types, `OrganizationWorkspace` and `EventUser` | match |
+| Who may change it | the account itself; a workspace's admins (`updateWorkspaceAvatar`) | the account itself (API keys refused); `can_manage` on the workspace | match |
+| Client limits | PNG or JPEG; data URL ≤ 20,971,520 characters; Render's four toasts | the same checks and words | match |
+| What is stored | a 128 × 128 JPEG from the crop (white) or the monogram | the same; the server also refuses anything but a PNG or JPEG of ≤ 1 MiB and ≤ 4096 px a side, which the dashboard never sends | match; the server cap is bex's own bound for direct API callers |
+| Monogram | one character, eight colors, the default resets | the same | match |
+| Defaults | Gravatar (SHA-256, `d=404`, miss kept 5 minutes), else the email's letter on Render's hash of the email; workspace: its name's letter on the hash of its id | the same; a workspace has no email in bex, so the name alone | match |
+| Non-admin view | Edit disabled with the permission message | Edit disabled with "Only workspace admins can set the workspace image." | match |
+| Display sites | menu, switcher, settings, members, org pages, events, cron runs, and "created by" rows, deploy detail, API token header | all but the last three | **drift filed: [w1/159](../159.md)** |
+| Where the image lives | Render's object store, presigned | bex-api's database, behind a one-time bex-api URL; invisible except the URL's host | recorded in ADR018's row |
+| REST, MCP | none | none | match |
+

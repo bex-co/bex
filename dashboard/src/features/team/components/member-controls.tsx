@@ -35,15 +35,20 @@ import { useTranslations } from "@/common/hooks/use-translations";
 export function MemberIdentity({
   identity,
   isSelf,
+  avatar,
   children,
 }: {
   identity: string;
   isSelf: boolean;
+  /** The member's avatar before their name, as Render's members list draws
+   *  it (w1/m648). */
+  avatar?: ReactNode;
   children?: ReactNode;
 }) {
   const { t } = useTranslations();
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      {avatar}
       <span className="min-w-0 max-w-full break-words">{identity}</span>
       {isSelf ? (
         <Badge variant="secondary" className="shrink-0">
