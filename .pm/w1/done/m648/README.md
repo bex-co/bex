@@ -1,6 +1,6 @@
 # w1 · m648 — Users and workspaces have avatars, as on Render
 
-**Worker:** worker1 **Goal:** a user can upload an avatar image, set a text monogram (uploaded as an image, as Render does) or reset to the default (Gravatar, then a monogram of the email's first letter). A workspace admin can do the same for the workspace (default: a monogram of its name's first letter). The avatars show where Render shows them. **Status:** blocked (t001–t004, t006–t008 done; pin must carry `f8d5f58a8b`, then t005 on production and t009)
+**Worker:** worker1 **Goal:** a user can upload an avatar image, set a text monogram (uploaded as an image, as Render does) or reset to the default (Gravatar, then a monogram of the email's first letter). A workspace admin can do the same for the workspace (default: a monogram of its name's first letter). The avatars show where Render shows them. **Status:** done (2026-11-26; walked on production at pin `11695fb886cb`)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | [Storage and GraphQL: upload, monogram, reset, avatar URLs](done/t002.md) — **DONE** | 2h30m | t001 |
 | t003 | [Avatar rows in Account Settings and Workspace Settings](done/t003.md) — **DONE** | 1h45m | t002 |
 | t004 | [Show avatars where Render shows them](done/t004.md) — **DONE** | 1h30m | t003 |
-| t005 | [Production walk and docs](t005.md) | 30m | t004 |
+| t005 | [Production walk and docs](done/t005.md) — **DONE** | 30m | t004 |
 | t006 | [Render parity](done/t006.md) — **DONE** | 20m | t005 |
 | t007 | [Simplify](done/t007.md) — **DONE** | 20m | t006 |
 | t008 | [Test coverage](done/t008.md) — **DONE** | 45m | t006 |
-| t009 | [Closeout](t009.md) | 10m | t008 |
+| t009 | [Closeout](done/t009.md) — **DONE** | 10m | t008 |
 
 ## Definition of done
 
@@ -64,4 +64,15 @@ The orchestrator checked a Render Pro workspace in a headed browser and Render's
 | Display sites | menu, switcher, settings, members, org pages, events, cron runs, and "created by" rows, deploy detail, API token header | all but the last three | **drift filed: [w1/159](../../159.md)** |
 | Where the image lives | Render's object store, presigned | bex-api's database, behind a one-time bex-api URL; invisible except the URL's host | recorded in ADR018's row |
 | REST, MCP | none | none | match |
+
+
+## Unblocked (2026-11-26)
+
+- **Affected:** t005 (the production walk) and t009 (closeout).
+- **Source:** verified evidence. Production's pin `11695fb886cb` (`chore(deploy): pin platform images to 11695fb886cb`, `ec6211f2ca`) carries `f8d5f58a8b` (`git merge-base --is-ancestor f8d5f58a8b 11695fb886cb` exits 0), so the pin gate holds.
+- **Next:** walk t005 on production as the QA user (upload a PNG, a monogram, reset, an oversized and a non-image file; then the `bex-canary` workspace avatar and the switcher), restore both to their default, then t009.
+
+## Closed (2026-11-26)
+
+The definition of done holds on production at pin `11695fb886cb`, walked as the QA user ([t005](done/t005.md#production-walk-2026-11-26)): DoD 1 (upload, monogram, reset, each in the account menu without a reload), DoD 2 (`bex-canary`'s avatar set and reset as its admin, shown in the switcher; the non-admin view by component and real-DB tests), DoD 3 (the email's monogram when the Gravatar misses), DoD 4 (a 17 MB PNG and a text file refused with Render's messages, and the server's own 1 MiB and PNG/JPEG bounds), DoD 5 (ADR024 and the family walk rewritten, ADR018's Avatars row now records the production walk). Both avatars were restored to their default. Follow-ups: [w1/159](../../159.md) (Render's remaining avatar sites) and [w1/161](../../161.md) (the Authenticator App card's Save button at 390 px).
 
