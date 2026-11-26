@@ -408,6 +408,13 @@ const (
 	// names the real workspaces.Service method.
 	AuditVerbSetRequireGoogleLogin = "workspaces.SetRequireGoogleLogin"
 
+	// AuditVerbSendTwoFactorReminders is one reminder to enable 2FA emailed
+	// to a member (w1/m647), by an admin's Send reminders or by turning the
+	// requirement on. It names the real workspaces.Service method, so a
+	// refused send's denied row carries the same verb. Render's audit log has
+	// no event for it.
+	AuditVerbSendTwoFactorReminders = "workspaces.SendTwoFactorReminders"
+
 	// AuditVerbViewEnvVarValues and AuditVerbViewConnectionInfo are the reads
 	// Render audits (w4/m321): ViewEnvVarValuesEvent "logs when environment
 	// variable values are viewed", and ViewConnectionInfoEvent "tracks access

@@ -16,6 +16,7 @@ import { LoginRequirementImpactList } from "@/features/workspaces/components/log
 import { WorkspaceLoginRequirementCard } from "@/features/workspaces/components/workspace-login-requirement-card";
 import type { LoginRequirementImpactState } from "@/features/workspaces/hooks/use-login-requirement-impact";
 import type { WorkspaceView } from "@/features/workspaces/types";
+import { WorkspaceLoginRequirementImpactDocument } from "@/graphql/definitions";
 
 // The confirmation before an admin turns a workspace login requirement on
 // (w7/m471, docs/ADR012-auth.md 9c): who it would block, from bex-api's
@@ -305,8 +306,9 @@ describe("WorkspaceLoginRequirementCard — the enable confirmation (w7/m471)", 
       expect(mutate).toHaveBeenCalledWith({
         variables: { workspaceId: "tea-acme", enabled: false },
       });
+      // The impact read never runs; the enforced notice's own read may.
       expect(impactQuery).not.toHaveBeenCalledWith(
-        expect.anything(),
+        WorkspaceLoginRequirementImpactDocument,
         expect.objectContaining({ skip: false }),
       );
     },

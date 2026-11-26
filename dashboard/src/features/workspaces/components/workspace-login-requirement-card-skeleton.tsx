@@ -7,6 +7,7 @@ import {
 } from "@/common/components/ui/card";
 import type { WorkspaceLoginRequirement } from "@/common/apollo/auth-error-link";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { LoginRequirementNotice } from "@/features/workspaces/components/login-requirement-compliance";
 import {
   LoginRequirementRow,
   OrganizationRequirementNote,
@@ -36,12 +37,18 @@ import type { WorkspaceOrganizationRef } from "@/features/workspaces/types";
  * the workspace's org; w7/m466) settles to the card with the org's note, so
  * the preview reserves the note's footprint, the Owner's link included,
  * without its text.
+ *
+ * A workspace known to enforce it, for a caller who may be an admin, settles
+ * to the card with Render's notice under the switch (w1/m647): `notice` is
+ * how many members do not meet it, as last read (0: all do, the shape it
+ * takes when nothing was read yet), and the preview holds that notice's box.
  */
 export function WorkspaceLoginRequirementCardSkeleton({
   requirement,
   status = null,
   belowPro = false,
   organization = null,
+  notice = null,
 }: {
   requirement: WorkspaceLoginRequirement;
   /** Whether it is required, when the card will show the state (a
@@ -49,6 +56,9 @@ export function WorkspaceLoginRequirementCardSkeleton({
   status?: boolean | null;
   belowPro?: boolean;
   organization?: WorkspaceOrganizationRef | null;
+  /** The enforced notice's count, when the card will draw it; null when
+   *  it will not. */
+  notice?: number | null;
 }) {
   const { t } = useTranslations();
   const setting = LOGIN_REQUIREMENT_SETTINGS[requirement];
@@ -71,6 +81,13 @@ export function WorkspaceLoginRequirementCardSkeleton({
         />
         {lockedBy ? (
           <OrganizationRequirementNote organization={lockedBy} pending />
+        ) : null}
+        {notice !== null ? (
+          <LoginRequirementNotice
+            requirement={requirement}
+            count={notice}
+            pending
+          />
         ) : null}
         {belowPro ? (
           <p className="text-muted-foreground text-xs">

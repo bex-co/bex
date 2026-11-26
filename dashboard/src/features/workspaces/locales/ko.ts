@@ -777,6 +777,97 @@ const koWorkspaces: Record<string, TranslationEntry> = {
     description:
       "One line under the Google login confirmation's list: who the list cannot show",
   },
+  "workspaces.loginNoticeMembers_other": {
+    message: "멤버 {count}명",
+    description:
+      "The bold count in the notice under an enforced login requirement: how many members do not meet it (w1/m647, Render's wording)",
+  },
+  "workspaces.loginNoticeTwoFactor_other": {
+    message: "팀의 {members}이 아직 2단계 인증을 켜지 않았습니다.",
+    description:
+      "Notice under enforced 2FA when members have not enabled it; {members} is the bold count (Render's wording)",
+  },
+  "workspaces.loginNoticeGoogleLogin_other": {
+    message: "팀의 {members}이 아직 Google로 로그인하지 않았습니다.",
+    description:
+      "Notice under enforced Google login when members have not signed in with Google; {members} is the bold count (Render's wording)",
+  },
+  "workspaces.loginNoticeViewMembers_other": {
+    message: "멤버 보기",
+    description:
+      "Button on the notice that opens the list of members who do not meet the requirement (Render's wording)",
+  },
+  "workspaces.loginNoticeAllMembers": {
+    message: "모든 멤버",
+    description:
+      "The bold words of the all-compliant notice (Render's wording)",
+  },
+  "workspaces.loginNoticeAllTwoFactor": {
+    message: "팀의 {members}가 2단계 인증을 켰습니다!",
+    description:
+      "Notice under enforced 2FA when every member has enabled it; {members} is the bold 'All members' (Render's wording)",
+  },
+  "workspaces.loginNoticeAllGoogleLogin": {
+    message: "팀의 {members}가 Google로 로그인했습니다!",
+    description:
+      "Notice under enforced Google login when every member has signed in with Google; {members} is the bold 'All members' (Render's wording)",
+  },
+  "workspaces.loginMembersTitleTwoFactor": {
+    message: "2단계 인증을 사용하지 않는 멤버",
+    description:
+      "Title of the dialog listing members without 2FA (Render's wording)",
+  },
+  "workspaces.loginMembersTitleGoogleLogin": {
+    message: "Google로 로그인하지 않은 멤버",
+    description:
+      "Title of the dialog listing members who have not signed in with Google (Render's wording)",
+  },
+  "workspaces.loginMembersDescription_other": {
+    message:
+      "목록의 멤버는 현재 이 팀 워크스페이스와 그 안의 리소스에 접근할 수 없습니다.",
+    description:
+      "Description of the dialog listing members who do not meet the enforced requirement (Render's wording)",
+  },
+  "workspaces.twoFactorRemindTitle_other": {
+    message: "2FA를 켜도록 알림을 보낼까요?",
+    description:
+      "Title of the reminder callout in the members-without-2FA dialog (Render's wording)",
+  },
+  "workspaces.twoFactorRemindBody_other": {
+    message: "이메일로 알림을 보냅니다.",
+    description:
+      "Body of the reminder callout in the members-without-2FA dialog (Render's wording)",
+  },
+  "workspaces.twoFactorRemindAction_other": {
+    message: "알림 보내기",
+    description: "Button that emails the 2FA reminders (Render's wording)",
+  },
+  "workspaces.twoFactorRemindError": {
+    message:
+      "죄송합니다. 이 팀 멤버들에게 알림을 보내지 못했습니다. 다시 시도하시겠습니까?",
+    description:
+      "Shown in the members dialog when the reminders could not be sent (Render's wording)",
+  },
+  "workspaces.twoFactorRemindSentToast": {
+    message: "2단계 인증을 사용하지 않는 멤버에게 이메일 알림을 보냈습니다!",
+    description: "Toast after the 2FA reminders are sent (Render's wording)",
+  },
+  "workspaces.twoFactorRemindLimitTitle": {
+    message: "알림 한도에 도달했습니다!",
+    description:
+      "Title of the dialog shown when reminders were already sent today (Render's wording)",
+  },
+  "workspaces.twoFactorRemindLimitBody": {
+    message:
+      "오늘은 이미 알림을 보냈습니다. 내일 다시 알림을 보낼 수 있습니다.",
+    description:
+      "Body of the dialog shown when reminders were already sent today; the day is UTC (Render's wording)",
+  },
+  "workspaces.twoFactorConfirmReminder_other": {
+    message: "목록의 멤버에게 2FA를 켜라는 알림이 전송됩니다.",
+    description:
+      "Line in the require-2FA confirmation: turning it on emails a reminder to each member listed (Render's wording)",
+  },
   "workspaces.overlappingDeployPolicyTitle": {
     message: "중복 배포 정책",
     description:

@@ -2197,6 +2197,7 @@ type Mutation {
   runCronJob(id: String!): CronRun
   scaleService(id: String!, numInstances: Int!): Service
   selectGitClaim(installationId: Float!, ownerId: String, selectionId: String!): GitConnection
+  sendWorkspaceTwoFactorReminders(workspaceId: String!): Int!
   setAgentRepoEnvironment(checks: [AgentRepoStepInput!]!, ownerId: String, repo: String!, setup: [AgentRepoStepInput!]!): AgentRepoEnvironment!
   setAgentSecret(name: String!, ownerId: String, repo: String, scope: String, value: String): AgentSecret!
   setAgentSessionTags(id: String!, tags: [String!]!): AgentSession
@@ -2314,6 +2315,12 @@ type Mutation {
 type NameAvailability {
   available: Boolean
   suggestion: String
+}
+
+type NonCompliantMember {
+  email: String!
+  name: String!
+  userId: String!
 }
 
 type NotificationDeviceSubscription {
@@ -2792,6 +2799,7 @@ type Query {
   workspaceLimits(ownerId: String!): ResourceLimits
   workspaceLoginRequirementImpact(requirement: LoginRequirement!, workspaceId: String!): LoginRequirementImpact!
   workspaceMembers(workspaceId: String!): [WorkspaceMember]
+  workspaceNonCompliantMembers(requirement: LoginRequirement!, workspaceId: String!): [NonCompliantMember!]!
   workspaceSeatUsage(workspaceId: String!): WorkspaceSeatUsage
   workspaces: [Workspace]
 }

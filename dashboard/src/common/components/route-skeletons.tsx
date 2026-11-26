@@ -1844,6 +1844,7 @@ export function WorkspaceSettingsSkeletonSections({
           status={sections.loginRequirementStatus?.twoFactor}
           belowPro={sections.belowPro}
           organization={sections.organization}
+          notice={sections.loginRequirementNotice.twoFactor}
         />
       </Region>
       <Region name="google-login">
@@ -1852,6 +1853,7 @@ export function WorkspaceSettingsSkeletonSections({
           status={sections.loginRequirementStatus?.googleLogin}
           belowPro={sections.belowPro}
           organization={sections.organization}
+          notice={sections.loginRequirementNotice.googleLogin}
         />
       </Region>
       <Region name="team">

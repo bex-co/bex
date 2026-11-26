@@ -67,6 +67,19 @@ func TestPreview(t *testing.T) {
 				"bex will keep retrying on an exponential backoff.",
 			},
 		},
+		// The 2FA reminder (w1/m647, workspaces.twoFactorReminder).
+		"two-factor-reminder": {
+			Title: "Two-factor authentication required",
+			Paragraphs: []string{
+				`The "Acme Corp" workspace on bex requires two-factor authentication (2FA). You can't access the workspace or its resources until you enable it for your account.`,
+				"Until then, your API keys and SSH keys can't be used with the workspace either.",
+			},
+			CTA: &CTA{
+				Lead:  "Enable two-factor authentication in your account settings",
+				Label: "Enable two-factor authentication",
+				URL:   "https://dashboard.bex.co/settings#security",
+			},
+		},
 		// The Kratos verification courier shape (kratos_templates.go) with a
 		// concrete code in place of the sentinel, so the Code panel can be
 		// eyeballed next to the other shapes.
@@ -89,7 +102,7 @@ func TestPreview(t *testing.T) {
 		}
 		t.Logf("wrote %s", path)
 	}
-	// A gallery page that iframes all four so they can be viewed side by side.
+	// A gallery page that iframes them all so they can be viewed side by side.
 	gallery := filepath.Join(dir, "all-email-templates.html")
 	if err := os.WriteFile(gallery, []byte(galleryHTML), 0o644); err != nil {
 		t.Fatalf("write %s: %v", gallery, err)
@@ -98,6 +111,7 @@ func TestPreview(t *testing.T) {
 }
 
 // galleryHTML is a static index that embeds invite/deploy/webhook/verify.html
+// and two-factor-reminder.html
 // (written alongside it) in iframes — dark chrome so the light email cards
 // stand out.
 const galleryHTML = `<!doctype html>
@@ -121,13 +135,14 @@ const galleryHTML = `<!doctype html>
   <body>
     <header>
       <h1>bex email templates</h1>
-      <p class="sub">Rendered from internal/email — invite · deploy · webhook · verify</p>
+      <p class="sub">Rendered from internal/email — invite · deploy · webhook · verify · two-factor reminder</p>
     </header>
     <div class="grid">
       <div class="panel"><p class="label">Workspace invite <span>· members</span></p><iframe src="invite.html" title="invite"></iframe></div>
       <div class="panel"><p class="label">Deploy failed <span>· notifications</span></p><iframe src="deploy.html" title="deploy"></iframe></div>
       <div class="panel"><p class="label">Webhook failing <span>· webhooks</span></p><iframe src="webhook.html" title="webhook"></iframe></div>
       <div class="panel"><p class="label">Verify your email <span>· kratos courier</span></p><iframe src="verify.html" title="verify"></iframe></div>
+      <div class="panel"><p class="label">Two-factor reminder <span>· workspaces</span></p><iframe src="two-factor-reminder.html" title="two-factor reminder"></iframe></div>
     </div>
   </body>
 </html>

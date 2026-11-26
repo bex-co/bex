@@ -21,6 +21,7 @@ import (
 	"errors"
 	"log"
 	"strings"
+	"time"
 )
 
 // Workspace login requirements: two-factor authentication (w22/m402,
@@ -172,6 +173,39 @@ func NewWorkspaceTwoFactorAdminNotEnrolledError() *CodedError {
 func NewWorkspaceTwoFactorUnavailableError() *CodedError {
 	return NewConflictError(CodeWorkspaceTwoFactorUnavailable,
 		"two-factor enforcement is unavailable: this deployment cannot look up members' second factors", nil)
+}
+
+// The 2FA reminders' codes (w1/m647): the daily limit, Render's "rate
+// limited" ("Remind limit has been reached!"), a workspace that does not
+// require 2FA, and a deployment that cannot send them.
+const (
+	CodeWorkspaceTwoFactorReminderLimit        = "WORKSPACE_2FA_REMINDER_LIMIT"
+	CodeWorkspaceTwoFactorNotRequired          = "WORKSPACE_2FA_NOT_REQUIRED"
+	CodeWorkspaceTwoFactorRemindersUnavailable = "WORKSPACE_2FA_REMINDERS_UNAVAILABLE"
+)
+
+// NewWorkspaceTwoFactorReminderLimitError refuses a second batch of 2FA
+// reminders in a workspace the same UTC day: 429, with when the next batch
+// may go (nextReminderAt, the next 00:00 UTC).
+func NewWorkspaceTwoFactorReminderLimitError(workspaceID string, next time.Time) *CodedError {
+	return NewTooManyRequestsError(CodeWorkspaceTwoFactorReminderLimit,
+		"rate limited: reminders to enable two-factor authentication were already sent in this workspace today; you can send reminders again tomorrow (UTC)",
+		map[string]any{"workspaceId": workspaceID, "nextReminderAt": next.UTC().Format(time.RFC3339)})
+}
+
+// NewWorkspaceTwoFactorNotRequiredError refuses reminders in a workspace that
+// does not require 2FA, itself or through its org: nobody is locked out.
+func NewWorkspaceTwoFactorNotRequiredError(workspaceID string) *CodedError {
+	return NewConflictError(CodeWorkspaceTwoFactorNotRequired,
+		"this workspace does not require two-factor authentication, so there is nobody to remind",
+		map[string]any{"workspaceId": workspaceID})
+}
+
+// NewWorkspaceTwoFactorRemindersUnavailableError is a batch of reminders that
+// could not go: the deployment sends no email, or no reminder of the batch
+// was delivered (which leaves the day unclaimed, so the admin can try again).
+func NewWorkspaceTwoFactorRemindersUnavailableError(msg string) *CodedError {
+	return NewUnavailableError(CodeWorkspaceTwoFactorRemindersUnavailable, msg, nil)
 }
 
 // NewWorkspaceTwoFactorDefaultWorkspaceError refuses turning the setting on for
@@ -392,6 +426,18 @@ func (b *Base) RecordTwoFactorEnforcement(ctx context.Context, workspaceID strin
 	ev := b.verbAuditEvent(ctx, AuditVerbSetRequireTwoFactor, WorkspaceObject(workspaceID), "")
 	ev.Relation = RelCanManage
 	ev.TwoFactorRequiredTo = &enabled
+	b.recordAudit(ctx, ev)
+}
+
+// RecordTwoFactorReminderSent records one 2FA reminder emailed to a member
+// (w1/m647): the target is the member, and the row names their email, as an
+// invite's does. A batch writes one row per reminder delivered, whether an
+// admin sent it or turning the requirement on did; Render's audit log has no
+// event for it, so it keeps bex's verb.
+func (b *Base) RecordTwoFactorReminderSent(ctx context.Context, workspaceID, subject, email string) {
+	ev := b.verbAuditEvent(ctx, AuditVerbSendTwoFactorReminders, WorkspaceObject(workspaceID), MemberTarget(subject))
+	ev.Relation = RelCanManage
+	ev.TargetName = email
 	b.recordAudit(ctx, ev)
 }
 

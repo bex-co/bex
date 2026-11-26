@@ -168,7 +168,9 @@ var (
 	// concurrent work is full, such as a sandbox group at its concurrency limit
 	// (Render answers 429 there, w22/m311); adapters map it to 429. It is not a
 	// rate limit: waiting does not clear it, finishing or suspending other work
-	// does. Use NewTooManyRequestsError so the refusal is coded.
+	// does. A coded refusal that a wait does clear uses it too, with the time
+	// to wait for in its params (a workspace's daily 2FA reminders, w1/m647).
+	// Use NewTooManyRequestsError so the refusal is coded.
 	ErrTooManyRequests = errors.New("too many requests")
 	// ErrAuditUnavailable is returned by the audit-log read verb when the
 	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it

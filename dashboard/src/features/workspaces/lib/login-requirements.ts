@@ -70,6 +70,12 @@ interface LoginRequirementSetting extends LoginRequirementOutcomeCopy {
   /** The confirmation list's sentence above the members it would block, on a
    *  workspace's card and the org Security card alike. */
   impactMembersKey: string;
+  /** Once it is enforced (w1/m647): the notice that members do not meet it
+   *  (plural, `{members}` the bold count), the one that all of them do, and
+   *  the title of the dialog listing who does not, in Render's words. */
+  noticeKey: string;
+  allCompliantKey: string;
+  nonCompliantTitleKey: string;
 }
 
 export const LOGIN_REQUIREMENT_SETTINGS: Readonly<
@@ -93,6 +99,9 @@ export const LOGIN_REQUIREMENT_SETTINGS: Readonly<
     confirmTitleKey: "workspaces.requireTwoFactorConfirmTitle",
     confirmBodyKey: "workspaces.requireTwoFactorConfirm",
     impactMembersKey: "workspaces.loginImpactMembersTwoFactor",
+    noticeKey: "workspaces.loginNoticeTwoFactor",
+    allCompliantKey: "workspaces.loginNoticeAllTwoFactor",
+    nonCompliantTitleKey: "workspaces.loginMembersTitleTwoFactor",
     refusals: {
       WORKSPACE_2FA_ADMIN_NOT_ENROLLED: {
         messageKey: "workspaces.twoFactorErrorAdminNotEnrolled",
@@ -127,6 +136,9 @@ export const LOGIN_REQUIREMENT_SETTINGS: Readonly<
     confirmTitleKey: "workspaces.requireGoogleLoginConfirmTitle",
     confirmBodyKey: "workspaces.requireGoogleLoginConfirm",
     impactMembersKey: "workspaces.loginImpactMembersGoogleLogin",
+    noticeKey: "workspaces.loginNoticeGoogleLogin",
+    allCompliantKey: "workspaces.loginNoticeAllGoogleLogin",
+    nonCompliantTitleKey: "workspaces.loginMembersTitleGoogleLogin",
     refusals: {
       WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN: {
         messageKey: "workspaces.googleLoginErrorAdminNotSignedIn",

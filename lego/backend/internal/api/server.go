@@ -785,6 +785,10 @@ type Deps struct {
 	// a login requirement (w7/m471): twofactor.Gate. Nil answers that read
 	// with "could not check".
 	LoginAssessor workspaces.LoginAssessor
+	// TwoFactorReminders keeps each workspace's last day of 2FA reminders
+	// (w1/m647): *store.PGStore. Nil (or a nil Mailer) leaves Send reminders
+	// answering WORKSPACE_2FA_REMINDERS_UNAVAILABLE.
+	TwoFactorReminders workspaces.TwoFactorReminderDays
 	// Audit backs the audit-log read verb (w4/m10). cmd/api/main.go builds it
 	// and starts its retention loop when BEX_CP_DB_URI is set. nil => NewServer
 	// mounts it store-less, answering core.ErrAuditUnavailable (503).
@@ -975,6 +979,9 @@ func NewServer(base *core.Base, d Deps) *Server {
 		GoogleLogin:           d.GoogleLogin,
 		LoginAssessor:         d.LoginAssessor,
 		LoginImpactKeys:       newLoginImpactKeys(d.APIKeys, d.WorkspaceStore),
+		Mailer:                d.Mailer,
+		Reminders:             d.TwoFactorReminders,
+		DashboardURL:          d.DashboardURL,
 		// APIKeys satisfies workspaces.KeyOwnerReader structurally (KeyOwner has
 		// the identical signature) — no adapter, and no cache: the lookup runs at
 		// most once per GET /v1/users (cold path), only for API-key callers.

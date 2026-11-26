@@ -1112,6 +1112,7 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	// side, keeping workspace:tea-<id> tuples in step with tenant_members.
 	deps.WorkspaceStore = st
 	deps.WorkspaceCreationStore = st
+	deps.TwoFactorReminders = st
 	deps.WorkspaceKick = rec.Kick
 	if g, ok := authzChecker.(workspaces.WorkspaceGranter); ok {
 		deps.WorkspaceGranter = g

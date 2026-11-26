@@ -755,7 +755,7 @@ Grouped by product area, then sorted by name.
 | `revokeOrganizationSCIMToken` | mutation | non-goal | ADR018 § Identity, workspaces & account: SSO / SAML · SCIM (—); DO_NOT_DO: Enterprise/managed-infra surfaces |
 | `samlLoginURL` | query | non-goal | ADR018 § Identity, workspaces & account: SSO / SAML · SCIM (—); DO_NOT_DO: Enterprise/managed-infra surfaces |
 | `samlSSORequired` | query | non-goal | ADR018 § Identity, workspaces & account: SSO / SAML · SCIM (—); DO_NOT_DO: Enterprise/managed-infra surfaces |
-| `sendReminder2FAEnforcementNotificationMutation` | mutation | gap | `w1/m647` (who is locked out by an enforced login requirement, and reminders) |
+| `sendReminder2FAEnforcementNotificationMutation` | mutation | matched | ADR018 § Identity, workspaces & account: Workspace-enforced 2FA (`w1/m647`, GraphQL `sendWorkspaceTwoFactorReminders`) |
 | `ssoConnectionsForOrganization` | query | non-goal | ADR018 § Identity, workspaces & account: SSO / SAML · SCIM (—); DO_NOT_DO: Enterprise/managed-infra surfaces |
 | `team` | query | matched | ADR018 § Identity, workspaces & account: Workspace lifecycle (create · rename · delete · change plan) |
 | `teamInvite` | query | matched | ADR018 § Identity, workspaces & account: Workspace members & roles (list · invite · change role · remove) |

@@ -787,6 +787,98 @@ const jaWorkspaces: Record<string, TranslationEntry> = {
     description:
       "One line under the Google login confirmation's list: who the list cannot show",
   },
+  "workspaces.loginNoticeMembers_other": {
+    message: "{count} 人のメンバー",
+    description:
+      "The bold count in the notice under an enforced login requirement: how many members do not meet it (w1/m647, Render's wording)",
+  },
+  "workspaces.loginNoticeTwoFactor_other": {
+    message: "チームの{members}がまだ二要素認証を有効にしていません。",
+    description:
+      "Notice under enforced 2FA when members have not enabled it; {members} is the bold count (Render's wording)",
+  },
+  "workspaces.loginNoticeGoogleLogin_other": {
+    message: "チームの{members}がまだ Google でログインしていません。",
+    description:
+      "Notice under enforced Google login when members have not signed in with Google; {members} is the bold count (Render's wording)",
+  },
+  "workspaces.loginNoticeViewMembers_other": {
+    message: "メンバーを表示",
+    description:
+      "Button on the notice that opens the list of members who do not meet the requirement (Render's wording)",
+  },
+  "workspaces.loginNoticeAllMembers": {
+    message: "すべてのメンバー",
+    description:
+      "The bold words of the all-compliant notice (Render's wording)",
+  },
+  "workspaces.loginNoticeAllTwoFactor": {
+    message: "チームの{members}が二要素認証を有効にしています！",
+    description:
+      "Notice under enforced 2FA when every member has enabled it; {members} is the bold 'All members' (Render's wording)",
+  },
+  "workspaces.loginNoticeAllGoogleLogin": {
+    message: "チームの{members}が Google でログインしています！",
+    description:
+      "Notice under enforced Google login when every member has signed in with Google; {members} is the bold 'All members' (Render's wording)",
+  },
+  "workspaces.loginMembersTitleTwoFactor": {
+    message: "二要素認証を使用していないメンバー",
+    description:
+      "Title of the dialog listing members without 2FA (Render's wording)",
+  },
+  "workspaces.loginMembersTitleGoogleLogin": {
+    message: "Google でログインしていないメンバー",
+    description:
+      "Title of the dialog listing members who have not signed in with Google (Render's wording)",
+  },
+  "workspaces.loginMembersDescription_other": {
+    message:
+      "一覧のメンバーは現在、このチームワークスペースとそのリソースへのアクセスが禁止されています。",
+    description:
+      "Description of the dialog listing members who do not meet the enforced requirement (Render's wording)",
+  },
+  "workspaces.twoFactorRemindTitle_other": {
+    message: "2FA を有効にするようリマインドしますか？",
+    description:
+      "Title of the reminder callout in the members-without-2FA dialog (Render's wording)",
+  },
+  "workspaces.twoFactorRemindBody_other": {
+    message: "メールでリマインダーを送信します。",
+    description:
+      "Body of the reminder callout in the members-without-2FA dialog (Render's wording)",
+  },
+  "workspaces.twoFactorRemindAction_other": {
+    message: "リマインダーを送信",
+    description: "Button that emails the 2FA reminders (Render's wording)",
+  },
+  "workspaces.twoFactorRemindError": {
+    message:
+      "申し訳ありません。これらのチームメンバーにリマインダーを送信できませんでした。もう一度お試しください。",
+    description:
+      "Shown in the members dialog when the reminders could not be sent (Render's wording)",
+  },
+  "workspaces.twoFactorRemindSentToast": {
+    message:
+      "二要素認証を使用していないメンバーにリマインダーメールを送信しました！",
+    description: "Toast after the 2FA reminders are sent (Render's wording)",
+  },
+  "workspaces.twoFactorRemindLimitTitle": {
+    message: "リマインダーの上限に達しました！",
+    description:
+      "Title of the dialog shown when reminders were already sent today (Render's wording)",
+  },
+  "workspaces.twoFactorRemindLimitBody": {
+    message:
+      "本日はすでにリマインダーを送信しています。明日またリマインダーを送信できます。",
+    description:
+      "Body of the dialog shown when reminders were already sent today; the day is UTC (Render's wording)",
+  },
+  "workspaces.twoFactorConfirmReminder_other": {
+    message: "一覧のメンバーに 2FA を有効にするリマインダーが送信されます。",
+    description:
+      "Line in the require-2FA confirmation: turning it on emails a reminder to each member listed (Render's wording)",
+  },
   "workspaces.overlappingDeployPolicyTitle": {
     message: "重複デプロイポリシー",
     description:

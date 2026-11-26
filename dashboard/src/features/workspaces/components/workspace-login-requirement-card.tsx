@@ -15,6 +15,7 @@ import {
   LoginRequirementRow,
   OrganizationRequirementNote,
 } from "@/features/workspaces/components/login-requirement-row";
+import { LoginRequirementCompliance } from "@/features/workspaces/components/login-requirement-compliance";
 import { LoginRequirementImpactList } from "@/features/workspaces/components/login-requirement-impact-list";
 import { LoginRequirementRefusalAlert } from "@/features/workspaces/components/login-requirement-refusal-alert";
 import { useWorkspaceLoginRequirementImpact } from "@/features/workspaces/hooks/use-login-requirement-impact";
@@ -66,6 +67,14 @@ import {
  * would lose access and each API key and SSH key that would stop working,
  * from bex-api's read of the enforcement gate's own checks, as Render's SSO
  * enforcement lists them. Turning it off writes at once.
+ *
+ * While it is enforced, an admin reads Render's notice under the switch
+ * (w1/m647): how many members do not meet it, with the list and, for 2FA,
+ * the email reminders turning it on already sent once that day
+ * (`LoginRequirementCompliance`); or that all of them do. Turning 2FA on
+ * says so in the confirmation. Other members see no notice, as on Render,
+ * whose section is the admins'. While the role is still being checked the
+ * notice's box is held, as the Admin's frame is.
  */
 export function WorkspaceLoginRequirementCard({
   requirement,
@@ -112,6 +121,13 @@ export function WorkspaceLoginRequirementCard({
         />
         {lockedBy ? (
           <OrganizationRequirementNote organization={lockedBy} />
+        ) : null}
+        {required && (isAdmin || roleLoading) ? (
+          <LoginRequirementCompliance
+            requirement={requirement}
+            workspaceId={workspace.id}
+            pending={!isAdmin}
+          />
         ) : null}
         {belowPro ? (
           <p className="text-muted-foreground text-xs">
@@ -174,6 +190,16 @@ function WorkspaceLoginRequirementConfirm({
     requirement,
     open,
   );
+  // Turning 2FA on emails each member who loses access a reminder, as
+  // Render's confirmation says (w1/m647).
+  const losing =
+    impact.status === "ready"
+      ? impact.members.filter((member) => member.losesAccess).length
+      : 0;
+  const reminders =
+    requirement === "twoFactor" && losing > 0
+      ? t("workspaces.twoFactorConfirmReminder", { count: losing })
+      : null;
   return (
     <ConfirmDialog
       open={open}
@@ -184,7 +210,11 @@ function WorkspaceLoginRequirementConfirm({
       destructive={false}
       onConfirm={onConfirm}
     >
-      <LoginRequirementImpactList requirement={requirement} state={impact} />
+      <LoginRequirementImpactList
+        requirement={requirement}
+        state={impact}
+        membersNote={reminders}
+      />
     </ConfirmDialog>
   );
 }

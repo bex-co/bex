@@ -1,6 +1,11 @@
+import { useContext } from "react";
+import type { ApolloClient } from "@apollo/client";
+import { getApolloContext } from "@apollo/client/react";
 import type { WorkspaceLoginRequirement } from "@/common/apollo/auth-error-link";
+import { WorkspaceNonCompliantMembersDocument } from "@/graphql/definitions";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { LOGIN_REQUIREMENT_ENUM } from "@/features/workspaces/hooks/use-login-requirement-impact";
 import { workspaceRequires } from "@/features/workspaces/lib/login-requirements";
 import {
   getPersistedWorkspaceShape,
@@ -49,6 +54,30 @@ export interface WorkspaceSettingsPendingSections {
   loginRequirementStatus: Readonly<
     Record<WorkspaceLoginRequirement, boolean>
   > | null;
+  /** The notice under each enforced requirement (w1/m647), for a caller who
+   *  may be an admin of a workspace already loaded: how many members do not
+   *  meet it, as the cache last read it, else 0 (the all-compliant shape);
+   *  null where the card draws no notice. */
+  loginRequirementNotice: Readonly<
+    Record<WorkspaceLoginRequirement, number | null>
+  >;
+}
+
+/** How many members did not meet `requirement` when it was last read, or
+ *  null when it was never read. */
+function cachedNonCompliantCount(
+  client: ApolloClient | undefined,
+  workspaceId: string,
+  requirement: WorkspaceLoginRequirement,
+): number | null {
+  const cached = client?.readQuery({
+    query: WorkspaceNonCompliantMembersDocument,
+    variables: {
+      workspaceId,
+      requirement: LOGIN_REQUIREMENT_ENUM[requirement],
+    },
+  });
+  return cached?.workspaceNonCompliantMembers.length ?? null;
 }
 
 /** Which of Workspace Settings' conditional sections a pending frame
@@ -70,12 +99,21 @@ export interface WorkspaceSettingsPendingSections {
 export function useWorkspaceSettingsSkeletonSections(): WorkspaceSettingsPendingSections {
   const { currentWorkspace, currentWorkspaceId, workspaces } = useWorkspace();
   const capabilities = useCapabilities();
+  // The cache, read without throwing: a frame drawn outside the client's
+  // provider takes the all-compliant shape.
+  const { client } = useContext(getApolloContext());
   const shape = currentWorkspace
     ? workspaceShape(currentWorkspace, workspaces)
     : workspaces.length === 0
       ? getPersistedWorkspaceShape(currentWorkspaceId)
       : null;
   const canManage = capabilities.loading ? null : capabilities.canManage;
+  const notice = (requirement: WorkspaceLoginRequirement) =>
+    currentWorkspace &&
+    canManage !== false &&
+    workspaceRequires(requirement, currentWorkspace)
+      ? (cachedNonCompliantCount(client, currentWorkspace.id, requirement) ?? 0)
+      : null;
   return {
     buildPipeline: capabilities.canViewBilling || capabilities.loading,
     // Audit logs are `can_manage`'s; the list's role is "admin" for every
@@ -97,5 +135,9 @@ export function useWorkspaceSettingsSkeletonSections(): WorkspaceSettingsPending
             googleLogin: workspaceRequires("googleLogin", currentWorkspace),
           }
         : null,
+    loginRequirementNotice: {
+      twoFactor: notice("twoFactor"),
+      googleLogin: notice("googleLogin"),
+    },
   };
 }

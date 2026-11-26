@@ -35,11 +35,15 @@ export function LoginRequirementImpactList({
   requirement,
   state,
   showWorkspace = false,
+  membersNote = null,
 }: {
   requirement: WorkspaceLoginRequirement;
   state: LoginRequirementImpactState;
   /** Name each API key's workspace (an org's list). */
   showWorkspace?: boolean;
+  /** A line under the members' sentence: a workspace's 2FA confirmation
+   *  says the reminders it will send (w1/m647). */
+  membersNote?: string | null;
 }) {
   const { t } = useTranslations();
   const setting = LOGIN_REQUIREMENT_SETTINGS[requirement];
@@ -74,6 +78,11 @@ export function LoginRequirementImpactList({
                 <p className="text-muted-foreground px-3 text-xs">
                   {t(setting.impactMembersKey)}
                 </p>
+                {membersNote ? (
+                  <p className="text-muted-foreground px-3 text-xs">
+                    {membersNote}
+                  </p>
+                ) : null}
                 <ul className="divide-y">
                   {state.members.map((member) => (
                     <li key={member.userId} className="space-y-0.5 px-3 py-2">

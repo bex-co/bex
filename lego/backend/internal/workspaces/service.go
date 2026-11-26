@@ -166,6 +166,15 @@ type Service struct {
 	// assess. Either nil answers that read with core.ErrAuthzUnavailable.
 	LoginAssessor   LoginAssessor
 	LoginImpactKeys LoginImpactKeys
+	// Mailer and Reminders send the 2FA reminders (w1/m647): the email, and
+	// the day of each workspace's last batch (*store.PGStore), which allows
+	// one batch a UTC day. Either nil (no SMTP, no store) refuses Send
+	// reminders with WORKSPACE_2FA_REMINDERS_UNAVAILABLE, and turning 2FA on
+	// then sends none. DashboardURL is the dashboard origin the reminder
+	// links to account security on; empty leaves the link out.
+	Mailer       Mailer
+	Reminders    TwoFactorReminderDays
+	DashboardURL string
 }
 
 // GoogleLoginChecker is the Google-login gate's own check for one caller,
@@ -1300,6 +1309,10 @@ func (s *Service) followRenameInStripe(ctx context.Context, workspaceID, previou
 // actor), when the deployment has no identity lookup to enforce it with, and for
 // the default workspace, which the gate never enforces (both 409
 // WORKSPACE_2FA_UNAVAILABLE); disabling is never refused for either.
+//
+// Turning it on emails the day's reminders to the members without 2FA, as
+// Render's confirmation promises (w1/m647, SendTwoFactorReminders' batch and
+// daily limit), best-effort: the setting is on whatever the mail does.
 func (s *Service) SetRequireTwoFactor(ctx context.Context, id string, enabled bool) (WorkspaceView, error) {
 	// Denials stay on the record; the allowed row waits for the write, so a
 	// no-op leaves none.
@@ -1348,6 +1361,10 @@ type loginSetting struct {
 	orgWrite    func(OrganizationStore, context.Context, string, bool) (bool, error)
 	record      func(*Service, context.Context, string, bool)
 	orgRecord   func(*Service, context.Context, string, bool)
+	// remindOnEnforce: turning it on in a workspace sends the day's
+	// reminders to the members who do not meet it (2FA only, as on Render,
+	// w1/m647).
+	remindOnEnforce bool
 }
 
 var twoFactorSetting = loginSetting{
@@ -1364,6 +1381,7 @@ var twoFactorSetting = loginSetting{
 	orgRecord: func(s *Service, ctx context.Context, orgID string, on bool) {
 		s.RecordOrganizationTwoFactorEnforcement(ctx, orgID, on)
 	},
+	remindOnEnforce: true,
 }
 
 var googleLoginSetting = loginSetting{
@@ -1414,6 +1432,9 @@ func (s *Service) setLoginRequirement(ctx context.Context, id string, enabled bo
 		s.TwoFactorChanged(id)
 	}
 	setting.record(s, ctx, id, enabled)
+	if enabled && setting.remindOnEnforce {
+		s.remindOnEnforce(ctx, t)
+	}
 	return view(t, "admin"), nil
 }
 

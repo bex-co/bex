@@ -790,6 +790,191 @@ const ptWorkspaces: Record<string, TranslationEntry> = {
     description:
       "One line under the Google login confirmation's list: who the list cannot show",
   },
+  "workspaces.loginNoticeMembers_one": {
+    message: "{count} membro",
+    description:
+      "The bold count in the notice under an enforced login requirement: how many members do not meet it (w1/m647, Render's wording)",
+  },
+  "workspaces.loginNoticeMembers_many": {
+    message: "{count} de membros",
+    description:
+      "The bold count in the notice under an enforced login requirement: how many members do not meet it (w1/m647, Render's wording)",
+  },
+  "workspaces.loginNoticeMembers_other": {
+    message: "{count} membros",
+    description:
+      "The bold count in the notice under an enforced login requirement: how many members do not meet it (w1/m647, Render's wording)",
+  },
+  "workspaces.loginNoticeTwoFactor_one": {
+    message:
+      "{members} da sua equipe ainda não ativou a autenticação em duas etapas.",
+    description:
+      "Notice under enforced 2FA when members have not enabled it; {members} is the bold count (Render's wording)",
+  },
+  "workspaces.loginNoticeTwoFactor_many": {
+    message:
+      "{members} da sua equipe ainda não ativaram a autenticação em duas etapas.",
+    description:
+      "Notice under enforced 2FA when members have not enabled it; {members} is the bold count (Render's wording)",
+  },
+  "workspaces.loginNoticeTwoFactor_other": {
+    message:
+      "{members} da sua equipe ainda não ativaram a autenticação em duas etapas.",
+    description:
+      "Notice under enforced 2FA when members have not enabled it; {members} is the bold count (Render's wording)",
+  },
+  "workspaces.loginNoticeGoogleLogin_one": {
+    message: "{members} da sua equipe ainda não fez login com o Google.",
+    description:
+      "Notice under enforced Google login when members have not signed in with Google; {members} is the bold count (Render's wording)",
+  },
+  "workspaces.loginNoticeGoogleLogin_many": {
+    message: "{members} da sua equipe ainda não fizeram login com o Google.",
+    description:
+      "Notice under enforced Google login when members have not signed in with Google; {members} is the bold count (Render's wording)",
+  },
+  "workspaces.loginNoticeGoogleLogin_other": {
+    message: "{members} da sua equipe ainda não fizeram login com o Google.",
+    description:
+      "Notice under enforced Google login when members have not signed in with Google; {members} is the bold count (Render's wording)",
+  },
+  "workspaces.loginNoticeViewMembers_one": {
+    message: "Ver membro",
+    description:
+      "Button on the notice that opens the list of members who do not meet the requirement (Render's wording)",
+  },
+  "workspaces.loginNoticeViewMembers_many": {
+    message: "Ver membros",
+    description:
+      "Button on the notice that opens the list of members who do not meet the requirement (Render's wording)",
+  },
+  "workspaces.loginNoticeViewMembers_other": {
+    message: "Ver membros",
+    description:
+      "Button on the notice that opens the list of members who do not meet the requirement (Render's wording)",
+  },
+  "workspaces.loginNoticeAllMembers": {
+    message: "Todos os membros",
+    description:
+      "The bold words of the all-compliant notice (Render's wording)",
+  },
+  "workspaces.loginNoticeAllTwoFactor": {
+    message: "{members} da sua equipe ativaram a autenticação em duas etapas!",
+    description:
+      "Notice under enforced 2FA when every member has enabled it; {members} is the bold 'All members' (Render's wording)",
+  },
+  "workspaces.loginNoticeAllGoogleLogin": {
+    message: "{members} da sua equipe fizeram login com o Google!",
+    description:
+      "Notice under enforced Google login when every member has signed in with Google; {members} is the bold 'All members' (Render's wording)",
+  },
+  "workspaces.loginMembersTitleTwoFactor": {
+    message: "Membros sem autenticação em duas etapas",
+    description:
+      "Title of the dialog listing members without 2FA (Render's wording)",
+  },
+  "workspaces.loginMembersTitleGoogleLogin": {
+    message: "Membros sem login com Google",
+    description:
+      "Title of the dialog listing members who have not signed in with Google (Render's wording)",
+  },
+  "workspaces.loginMembersDescription_one": {
+    message:
+      "Este membro está proibido no momento de acessar este workspace da equipe e os recursos nele.",
+    description:
+      "Description of the dialog listing members who do not meet the enforced requirement (Render's wording)",
+  },
+  "workspaces.loginMembersDescription_many": {
+    message:
+      "Estes membros estão proibidos no momento de acessar este workspace da equipe e os recursos nele.",
+    description:
+      "Description of the dialog listing members who do not meet the enforced requirement (Render's wording)",
+  },
+  "workspaces.loginMembersDescription_other": {
+    message:
+      "Estes membros estão proibidos no momento de acessar este workspace da equipe e os recursos nele.",
+    description:
+      "Description of the dialog listing members who do not meet the enforced requirement (Render's wording)",
+  },
+  "workspaces.twoFactorRemindTitle_one": {
+    message: "Lembrar este usuário de ativar a 2FA?",
+    description:
+      "Title of the reminder callout in the members-without-2FA dialog (Render's wording)",
+  },
+  "workspaces.twoFactorRemindTitle_many": {
+    message: "Lembrar estes usuários de ativar a 2FA?",
+    description:
+      "Title of the reminder callout in the members-without-2FA dialog (Render's wording)",
+  },
+  "workspaces.twoFactorRemindTitle_other": {
+    message: "Lembrar estes usuários de ativar a 2FA?",
+    description:
+      "Title of the reminder callout in the members-without-2FA dialog (Render's wording)",
+  },
+  "workspaces.twoFactorRemindBody_one": {
+    message: "Envie um lembrete por e-mail para este usuário.",
+    description:
+      "Body of the reminder callout in the members-without-2FA dialog (Render's wording)",
+  },
+  "workspaces.twoFactorRemindBody_many": {
+    message: "Envie lembretes por e-mail para estes usuários.",
+    description:
+      "Body of the reminder callout in the members-without-2FA dialog (Render's wording)",
+  },
+  "workspaces.twoFactorRemindBody_other": {
+    message: "Envie lembretes por e-mail para estes usuários.",
+    description:
+      "Body of the reminder callout in the members-without-2FA dialog (Render's wording)",
+  },
+  "workspaces.twoFactorRemindAction_one": {
+    message: "Enviar lembrete",
+    description: "Button that emails the 2FA reminders (Render's wording)",
+  },
+  "workspaces.twoFactorRemindAction_many": {
+    message: "Enviar lembretes",
+    description: "Button that emails the 2FA reminders (Render's wording)",
+  },
+  "workspaces.twoFactorRemindAction_other": {
+    message: "Enviar lembretes",
+    description: "Button that emails the 2FA reminders (Render's wording)",
+  },
+  "workspaces.twoFactorRemindError": {
+    message:
+      "Sentimos muito. Não conseguimos enviar lembretes para estes membros da equipe. Tentar novamente?",
+    description:
+      "Shown in the members dialog when the reminders could not be sent (Render's wording)",
+  },
+  "workspaces.twoFactorRemindSentToast": {
+    message:
+      "Lembretes enviados por e-mail aos membros sem autenticação em duas etapas!",
+    description: "Toast after the 2FA reminders are sent (Render's wording)",
+  },
+  "workspaces.twoFactorRemindLimitTitle": {
+    message: "O limite de lembretes foi atingido!",
+    description:
+      "Title of the dialog shown when reminders were already sent today (Render's wording)",
+  },
+  "workspaces.twoFactorRemindLimitBody": {
+    message:
+      "Parece que já enviamos lembretes hoje. Você pode enviar lembretes novamente amanhã.",
+    description:
+      "Body of the dialog shown when reminders were already sent today; the day is UTC (Render's wording)",
+  },
+  "workspaces.twoFactorConfirmReminder_one": {
+    message: "Um lembrete para ativar a 2FA será enviado a este membro.",
+    description:
+      "Line in the require-2FA confirmation: turning it on emails a reminder to each member listed (Render's wording)",
+  },
+  "workspaces.twoFactorConfirmReminder_many": {
+    message: "Lembretes para ativar a 2FA serão enviados a estes membros.",
+    description:
+      "Line in the require-2FA confirmation: turning it on emails a reminder to each member listed (Render's wording)",
+  },
+  "workspaces.twoFactorConfirmReminder_other": {
+    message: "Lembretes para ativar a 2FA serão enviados a estes membros.",
+    description:
+      "Line in the require-2FA confirmation: turning it on emails a reminder to each member listed (Render's wording)",
+  },
   "workspaces.overlappingDeployPolicyTitle": {
     message: "Política de deploys sobrepostos",
     description:

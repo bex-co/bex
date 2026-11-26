@@ -248,6 +248,16 @@ var loginRequirementImpactGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var nonCompliantMemberGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "NonCompliantMember",
+	Description: "A workspace member who does not meet a login requirement right now (w1/m647): Render's \"Members without two-factor authentication\" and \"Members without Google sign-on\".",
+	Fields: graphql.Fields{
+		"userId": gqlutil.ReqStrField(func(m NonCompliantMember) any { return m.UserID }),
+		"email":  gqlutil.ReqStrField(func(m NonCompliantMember) any { return m.Email }),
+		"name":   gqlutil.ReqStrField(func(m NonCompliantMember) any { return m.Name }),
+	},
+})
+
 // loginRequirementImpactField is the read on one scope: the scope's id
 // argument and the requirement being turned on.
 func loginRequirementImpactField(scopeArg, description string, read func(ctx context.Context, id, requirement string) (LoginRequirementImpact, error)) *graphql.Field {
@@ -364,6 +374,21 @@ func (s *Service) workspaceGraphQLQuery() graphql.Fields {
 		"workspaceLoginRequirementImpact": loginRequirementImpactField("workspaceId",
 			"Who turning a login requirement on in a workspace would block, with what the workspace already requires (admin only).",
 			s.LoginRequirementImpact),
+		// workspaceNonCompliantMembers is who does not meet a requirement
+		// right now (w1/m647): Workspace Settings' notice and member dialog
+		// once it is enforced. Admin only, GraphQL-only like the setters
+		// (Render's REST and MCP have no such read).
+		"workspaceNonCompliantMembers": &graphql.Field{
+			Type:        graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(nonCompliantMemberGQLType))),
+			Description: "The workspace's members who do not meet a login requirement right now, by the enforcement gate's own check (admin only).",
+			Args: graphql.FieldConfigArgument{
+				"workspaceId": gqlutil.ReqArg(graphql.String),
+				"requirement": gqlutil.ReqArg(loginRequirementGQLEnum),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.NonCompliantMembers(p.Context, p.Args["workspaceId"].(string), p.Args["requirement"].(string))
+			},
+		},
 	}
 }
 
@@ -457,6 +482,19 @@ func (s *Service) workspaceGraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetRequireGoogleLogin(p.Context, p.Args["workspaceId"].(string), p.Args["enabled"].(bool))
+			},
+		},
+		// sendWorkspaceTwoFactorReminders emails each member without 2FA a
+		// reminder (w1/m647), Render's sendReminder2FAEnforcementNotification:
+		// admin only, where the workspace requires 2FA, one batch per UTC day
+		// (429 WORKSPACE_2FA_REMINDER_LIMIT). Answers how many were sent.
+		// GraphQL-only: Render's REST and MCP have no such operation.
+		"sendWorkspaceTwoFactorReminders": &graphql.Field{
+			Type:        graphql.NewNonNull(graphql.Int),
+			Description: "Email a reminder to enable two-factor authentication to each member of a workspace that requires it who has not (admin only, once per workspace per UTC day). Returns how many reminders were sent.",
+			Args:        graphql.FieldConfigArgument{"workspaceId": gqlutil.ReqArg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SendTwoFactorReminders(p.Context, p.Args["workspaceId"].(string))
 			},
 		},
 		// setWorkspaceOverlappingDeployPolicy sets the workspace's Overlapping

@@ -2605,6 +2605,8 @@ export type Mutation = {
   runCronJob: Maybe<CronRun>;
   scaleService: Maybe<Service>;
   selectGitClaim: Maybe<GitConnection>;
+  /** Email a reminder to enable two-factor authentication to each member of a workspace that requires it who has not (admin only, once per workspace per UTC day). Returns how many reminders were sent. */
+  sendWorkspaceTwoFactorReminders: Scalars['Int']['output'];
   /** Create or replace a repository's environment (admins only). */
   setAgentRepoEnvironment: AgentRepoEnvironment;
   /** Create, rotate or rescope a workspace agent secret (admins only). The value is write-only; omit it to change only the scope of an existing secret. A new secret without a scope is workspace-wide. */
@@ -3782,6 +3784,11 @@ export type MutationSelectGitClaimArgs = {
 };
 
 
+export type MutationSendWorkspaceTwoFactorRemindersArgs = {
+  workspaceId: Scalars['String']['input'];
+};
+
+
 export type MutationSetAgentRepoEnvironmentArgs = {
   checks: Array<AgentRepoStepInput>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
@@ -4591,6 +4598,14 @@ export type NameAvailability = {
   suggestion: Maybe<Scalars['String']['output']>;
 };
 
+/** A workspace member who does not meet a login requirement right now (w1/m647): Render's "Members without two-factor authentication" and "Members without Google sign-on". */
+export type NonCompliantMember = {
+  __typename: 'NonCompliantMember';
+  email: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  userId: Scalars['String']['output'];
+};
+
 export type NotificationDeviceSubscription = {
   __typename: 'NotificationDeviceSubscription';
   createdAt: Maybe<Scalars['String']['output']>;
@@ -5119,6 +5134,8 @@ export type Query = {
   /** Who turning a login requirement on in a workspace would block, with what the workspace already requires (admin only). */
   workspaceLoginRequirementImpact: LoginRequirementImpact;
   workspaceMembers: Maybe<Array<Maybe<WorkspaceMember>>>;
+  /** The workspace's members who do not meet a login requirement right now, by the enforcement gate's own check (admin only). */
+  workspaceNonCompliantMembers: Array<NonCompliantMember>;
   workspaceSeatUsage: Maybe<WorkspaceSeatUsage>;
   workspaces: Maybe<Array<Maybe<Workspace>>>;
 };
@@ -6164,6 +6181,12 @@ export type QueryWorkspaceLoginRequirementImpactArgs = {
 
 
 export type QueryWorkspaceMembersArgs = {
+  workspaceId: Scalars['String']['input'];
+};
+
+
+export type QueryWorkspaceNonCompliantMembersArgs = {
+  requirement: LoginRequirement;
   workspaceId: Scalars['String']['input'];
 };
 
