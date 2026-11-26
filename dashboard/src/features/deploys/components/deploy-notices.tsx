@@ -13,10 +13,10 @@ import {
 import { useServiceBase } from "@/features/services/lib/service-base";
 import type { ServiceView } from "@/features/services/types";
 import {
-  IN_PROGRESS_DEPLOY_STATUSES,
   RESERVED_PORTS,
   deployNotices,
-  isSupersededDeploy,
+  inProgressDeploysVariables,
+  noticeReads,
   reservedPortWarning,
   type DeployNotice,
   type OverlapPolicy,
@@ -79,20 +79,19 @@ function useNoticeFacts(
   deploy: DeployView | null | undefined,
   ownerId: string,
 ) {
-  const queued = deploy?.status === "queued";
-  const superseded = !!deploy && isSupersededDeploy(deploy);
+  const reads = noticeReads(deploy ?? {});
   const { data: deploys } = useQuery(DeploysDocument, {
-    variables: { serviceId, status: IN_PROGRESS_DEPLOY_STATUSES, limit: 5 },
+    variables: inProgressDeploysVariables(serviceId),
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
-    skip: !queued,
+    skip: !reads.blocker,
   });
   const { data: workspace } = useQuery(
     WorkspaceOverlappingDeployPolicyDocument,
     {
       variables: { id: ownerId },
       errorPolicy: "all",
-      skip: !ownerId || !(queued || superseded),
+      skip: !ownerId || !reads.policy,
     },
   );
   // The read asks for in-progress deploys only, so the first other one is

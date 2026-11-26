@@ -43,7 +43,11 @@ const FACTS = [
  * heights, so the log viewer under it does not move when the deploy lands.
  * Skeleton-only, so the route's pending frame can import it. The Notices
  * between the header and the log (w1/m659) stand on the deploy's own facts,
- * which a plain live deploy has none of, so the frame reserves none, as
+ * so the route loader reads them before the page mounts
+ * (deploy-page-prefetch.ts) and the page mounts with them drawn. The route's
+ * frame shows only while a navigation's
+ * reads outlast the router's hold, before anything says whether the deploy
+ * has any Notices, so it reserves none, as on a plain live deploy and as
  * Render's page shows no Notices heading over an empty list.
  */
 export function DeployHeaderSkeleton() {

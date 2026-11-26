@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { DeployDetailPage } from "@/features/deploys/components/deploy-detail-page";
 import { parseLogRange, type LogRange } from "@/features/deploys/lib/log-range";
 import { DeployDetailSkeleton } from "@/common/components/route-skeletons";
+import { prefetchDeployPage } from "@/features/deploys/lib/deploy-page-prefetch";
 
 /**
  * Static-site per-deploy page under the /static base (w5/m57) — the twin of
@@ -11,6 +12,9 @@ import { DeployDetailSkeleton } from "@/common/components/route-skeletons";
 export const Route = createFileRoute("/static/$serviceId/deploys/$deployId")({
   component: RouteComponent,
   pendingComponent: DeployDetailSkeleton,
+  // The page mounts with the deploy and its Notices read (w1/m659).
+  loader: ({ context, params }) =>
+    prefetchDeployPage(context.client, params.serviceId, params.deployId),
   validateSearch: (search: Record<string, unknown>): { r?: LogRange } => ({
     r: parseLogRange(search.r),
   }),

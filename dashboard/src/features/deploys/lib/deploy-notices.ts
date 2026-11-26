@@ -33,7 +33,7 @@ export interface DeployNoticeFacts {
 }
 
 /** Render's in-progress deploy statuses, the queued deploy's blocker. */
-export const IN_PROGRESS_DEPLOY_STATUSES = [
+const IN_PROGRESS_DEPLOY_STATUSES = [
   "created",
   "build_in_progress",
   "pre_deploy_in_progress",
@@ -48,9 +48,35 @@ const SUPERSEDE_CODES = new Set([
   "superseded_by_newer_release",
 ]);
 
+/** The facts deciding which reads a deploy's Notices make beyond it. */
+type NoticeReadFacts = {
+  status?: string | null;
+  cancelReasonTemplate?: { code?: string | null } | null;
+};
+
 /** A deploy a newer deploy's start canceled. */
-export function isSupersededDeploy(deploy: DeployView): boolean {
+function isSupersededDeploy(deploy: NoticeReadFacts): boolean {
   return SUPERSEDE_CODES.has(deploy.cancelReasonTemplate?.code ?? "");
+}
+
+/**
+ * The reads a deploy's Notices make beyond the deploy itself: a queued
+ * deploy's in-progress blocker, and for it or a superseded deploy the
+ * workspace's Overlapping Deploy Policy. The page's hook and its route loader
+ * (deploy-page-prefetch.ts) both decide by this, so the loader warms exactly
+ * what the page reads.
+ */
+export function noticeReads(deploy: NoticeReadFacts): {
+  blocker: boolean;
+  policy: boolean;
+} {
+  const blocker = deploy.status === "queued";
+  return { blocker, policy: blocker || isSupersededDeploy(deploy) };
+}
+
+/** The service's in-progress deploys, where a queued deploy's blocker is. */
+export function inProgressDeploysVariables(serviceId: string) {
+  return { serviceId, status: IN_PROGRESS_DEPLOY_STATUSES, limit: 5 };
 }
 
 /**

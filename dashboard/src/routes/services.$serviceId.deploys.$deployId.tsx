@@ -2,10 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { DeployDetailPage } from "@/features/deploys/components/deploy-detail-page";
 import { parseLogRange, type LogRange } from "@/features/deploys/lib/log-range";
 import { DeployDetailSkeleton } from "@/common/components/route-skeletons";
+import { prefetchDeployPage } from "@/features/deploys/lib/deploy-page-prefetch";
 
 export const Route = createFileRoute("/services/$serviceId/deploys/$deployId")({
   component: RouteComponent,
   pendingComponent: DeployDetailSkeleton,
+  // The page mounts with the deploy and its Notices read (w1/m659).
+  loader: ({ context, params }) =>
+    prefetchDeployPage(context.client, params.serviceId, params.deployId),
   // `?r=<range>` (w9/003) is the log viewer's shareable relative time window
   // (Render's own deploy-page param): absent => the deploy's own
   // createdAt..finishedAt window. The annotated `r?` keeps it optional for

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DeployDetailPage } from "@/features/deploys/components/deploy-detail-page";
 import { DeployRollbackSkeleton } from "@/common/components/route-skeletons";
+import { prefetchDeployPage } from "@/features/deploys/lib/deploy-page-prefetch";
 
 /**
  * A deploy's Confirm Rollback page (w1/m646): Render's
@@ -14,6 +15,9 @@ export const Route = createFileRoute(
 )({
   component: RouteComponent,
   pendingComponent: DeployRollbackSkeleton,
+  // The page mounts with the deploy and its Notices read (w1/m659).
+  loader: ({ context, params }) =>
+    prefetchDeployPage(context.client, params.serviceId, params.deployId),
 });
 
 function RouteComponent() {
