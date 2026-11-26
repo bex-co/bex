@@ -631,6 +631,11 @@ func (r *AppReconciler) restoreServedTemplate(ctx context.Context, app *appv1alp
 			return false, 0, err
 		}
 	}
+	// The record may predate a label, as every one from before w6/m640
+	// predates the send-only one, so the restored template takes the plan's
+	// current network policy labels — the same convergence the
+	// cancel-over-served restores apply (w6/m640).
+	syncRestoredPolicyLabels(tmpl, app)
 	hold := r.holdDiskThroughRollout(ctx, app, app.Spec.Tier, replicas, func(d *appsv1.Deployment) *corev1.PodTemplateSpec {
 		prior := d.Spec.Template.DeepCopy()
 		d.Spec.Template = *tmpl.DeepCopy()
