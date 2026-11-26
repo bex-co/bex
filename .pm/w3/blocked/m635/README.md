@@ -1,6 +1,6 @@
 # w3 · m635 — Build toolchain pins are fresh again and #201 closes
 
-**Worker:** worker3 **Goal:** every pinned build-toolchain image equals its upstream at review time, the native Bun 1.4 and Ruby 3.3 / 3.4 / 4.0 lines carry the current patches, and the freshness monitor closes #201 on its own run. **Status:** in progress (t001–t005, t007, t008 done)
+**Worker:** worker3 **Goal:** every pinned build-toolchain image equals its upstream at review time, the native Bun 1.4 and Ruby 3.3 / 3.4 / 4.0 lines carry the current patches, and the freshness monitor closes #201 on its own run. **Status:** blocked (t001–t005, t007, t008 done; t006 and t009 wait for a production deploy carrying `bef3a32083`)
 
 ## Tasks (in order)
 
@@ -24,8 +24,8 @@
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm one render aspect for w1` (2026-11-25), each claim re-checked by an independent verifier agent the same day before filing, item 1. GitHub issue #201, open since 2026-11-19 with no board owner. Precedent: [w6/m291](../../w6/done/m291/README.md) (#105).
-- **Goal linkage:** [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first) and build supply-chain freshness ([ADR060 D7](../../../docs/ADR060-build-worker-reliability-and-performance.md)). The parity case rests on Bun: Render's `BUN_VERSION=latest` "Uses the most recent stable release of Bun for every deploy", and a lockfile-only Bun service of unknown age builds on the 1.4 line's pin (`nativeversion_test.go:1014`), which is 1.4.4 while Bun 1.4.5 is out. Render's docs say nothing about how a partial Ruby version resolves, so no Ruby parity claim is made here.
+- **Source:** `/pm-brainstorm one render aspect for w1` (2026-11-25), each claim re-checked by an independent verifier agent the same day before filing, item 1. GitHub issue #201, open since 2026-11-19 with no board owner. Precedent: [w6/m291](../../../w6/done/m291/README.md) (#105).
+- **Goal linkage:** [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first) and build supply-chain freshness ([ADR060 D7](../../../../docs/ADR060-build-worker-reliability-and-performance.md)). The parity case rests on Bun: Render's `BUN_VERSION=latest` "Uses the most recent stable release of Bun for every deploy", and a lockfile-only Bun service of unknown age builds on the 1.4 line's pin (`nativeversion_test.go:1014`), which is 1.4.4 while Bun 1.4.5 is out. Render's docs say nothing about how a partial Ruby version resolves, so no Ruby parity claim is made here.
 - **Expected outcome:** native Bun and Ruby builds use current releases, the Paketo stack carries upstream fixes, and the review issue is closed.
 - **Why now:** the issue has sat for six days with every observed digest already superseded; w9/138 deliberately left the 3.4 line on 3.4.12 until a real-build qualification, which this milestone runs.
 - **Render parity omitted:** no REST, GraphQL, MCP or dashboard change; pins only, as in m291.
@@ -69,3 +69,24 @@ Every official image above was rebuilt on the Debian root `@1795392000` (was `@1
 **All 25 move, not only #201's eight.** The monitor closes its issue only when no entry drifts (`issue_action`), so #201 can close by itself only once every entry matches, and the goal is every pinned image. The 17 entries beyond #201 are digest-only Debian rebuilds of unchanged runtimes, Elixir's OTP maintenance patches (the lines name only the OTP major) and the two bex republishes.
 
 **#201 was reopened 2026-11-26.** GitHub closed it on 2026-11-25 through the closing keyword in the filing commit's message (`39e2cea8a9`, "… close #201"), not through a review or the monitor, so the DoD's "closed by the freshness run" could not be shown. The reopen comment says so.
+
+## Parked — 2026-11-26 (the production check waits on the deploy)
+
+**Shipped:** `9874e5ea21` (every drifted pin with its patch, the line-version check in `toolchain-freshness.py`, the table-driven Bun and Ruby tests) and `bef3a32083` (the common image from families run 45839946482, the rebuilt bex run image and the Paketo builder of the same stack). Details are in [t002](done/t002.md), [t003](done/t003.md), [t004](done/t004.md), [t005](done/t005.md) and [t008](done/t008.md).
+
+**Met:**
+
+- **DoD 1 at the review:** the dispatched freshness run [45854117852](https://github.com/bex-co/bex/actions/runs/45854117852) on `bef3a32083` validated the inventory and resolved all 56 entries with no drift, its new line-version check included. Drift newer than that opens a new issue, since #201 is closed.
+- **DoD 2:** that run closed #201 at 15:57:50Z with "Upstream digests match the committed pins again." (`issue-action` close), after the reopen recorded in the review list.
+- The Ruby profile and the Bun gate passed offline locally on the new lines, and the families run passed all 39 cases on the new common image (t005).
+
+**Gate (clears by itself): a production deploy carrying `bef3a32083`.** Production's operator image carries the native pins (`native.go`, `nativebases.go`) and `BEX_CNB_BUILDER` only after the next batched deploy; Argo applies the kpack chart from main.
+
+**Check that releases it (t006, then t009):**
+
+1. A `chore(deploy): pin platform images to <sha>` on main whose `<sha>` descends from `bef3a32083`.
+2. Signed in as the QA user (`bash scripts/qa-login.sh`), in a disposable workspace: a native Node service with `BUN_VERSION=1.4` logs `==> Using Bun 1.4.5 (from BUN_VERSION=1.4)`, and a native Ruby service with `.ruby-version` `3.4` logs `==> Using Ruby version 3.4.13 via /opt/render/project/src/.ruby-version` (a service created since 2026-11-19 with no signal logs `==> Using Ruby version 3.4.13 (default)`); both answer 200 at their `onbex.co` URLs. Delete both by ID and confirm `GET` answers 404.
+3. The kpack ClusterBuilder is Ready on `builder-jammy-base@sha256:906ba1546346…` (`bex_build_clusterbuilder_ready` 1, `ClusterBuilderNotReady` not firing), with the ClusterStack on the 12:43:57Z stack and run image `bex-cnb-run@sha256:69aa695c7ce1…`.
+4. Then t009.
+
+**Follow-up for the next review (not this milestone's):** every push touching `lego/operator/internal/build/native*.go` republishes `ghcr.io/bex-co/bex-cnb-run:native-common-bookworm` (`native-base-image.yml` moves the tag after each build, whose revision label changes the digest), so `native-common-bookworm` reads as drift after almost any native change until the next families adoption, which is how it reached #201. Moving the tag only on a families run, or resolving that entry against a families-only tag, would leave the monitor reporting a newer qualified image only.
