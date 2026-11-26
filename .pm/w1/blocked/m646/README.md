@@ -1,6 +1,6 @@
 # w1 · m646 — A rollback's Confirm Rollback page lists what the rollback changes, as Render's does
 
-**Worker:** worker1 **Goal:** before a rollback, the dashboard compares the live deploy's configuration with the target deploy's, as Render's `rollbackComparison` does. It shows each changed command, health check path and instance count as live → target values, names each changed env var key, secret file and env group, warns about the plan, and never shows an env var value or a secret file's contents. **Status:** in progress (t001–t004 and t006–t008 done; t005 needs the change on production)
+**Worker:** worker1 **Goal:** before a rollback, the dashboard compares the live deploy's configuration with the target deploy's, as Render's `rollbackComparison` does. It shows each changed command, health check path and instance count as live → target values, names each changed env var key, secret file and env group, warns about the plan, and never shows an env var value or a secret file's contents. **Status:** blocked (t001–t004 and t006–t008 done, shipped in `6e614db0b0`; t005 waits for a production pin carrying it, then t009)
 
 ## Tasks (in order)
 
@@ -25,7 +25,7 @@
 
 ## Verified against Render (2026-11-26)
 
-The orchestrator re-checked Render in a headed browser, signed in to a Render Pro workspace (a rollback confirmation was opened on a web service and cancelled), and against Render's public dashboard bundle. That corrected this item's first text, and the tasks follow the corrections ([render-artifacts/rollback-comparison.md](../../../docs/render-artifacts/rollback-comparison.md)):
+The orchestrator re-checked Render in a headed browser, signed in to a Render Pro workspace (a rollback confirmation was opened on a web service and cancelled), and against Render's public dashboard bundle. That corrected this item's first text, and the tasks follow the corrections ([render-artifacts/rollback-comparison.md](../../../../docs/render-artifacts/rollback-comparison.md)):
 
 - **Not a modal.** Render's confirmation is a page section on the deploy page's `/rollback` route: "Confirm Rollback", the comparison, the notices, then "Rollback to this deploy" and Cancel. The deploy list's Rollback is a link to it.
 - **Values are shown** for the Start, Pre-Deploy and Docker Command, Health Check Path and Instances rows (live → target). Only env var values and secret file contents are hidden.
@@ -40,8 +40,8 @@ The orchestrator re-checked Render in a headed browser, signed in to a Render Pr
 | Rollback control | link to `/<type>/<srv>/deploys/<dep>/rollback` | link to `/services/<srv>/deploys/<dep>/rollback` (a static site's under `/static`); Render's `/web/…/rollback` reaches it through the alias routes | matched |
 | Page | deploy header without Rollback, then "Confirm Rollback" in place of the log; a deploy it cannot roll back to redirects to the deploy page | same | matched |
 | Rows | Start, Pre-Deploy, Docker Command, Health Check Path, Instances (`-` live, `+` target, `none`), Environment Variables table, Environment Group, Secret Files, Plan | same, in Render's order and sentences | matched |
-| Static site | env var, group and file rows in static wording | no build env record: Render's "Unable to load configuration…" sentence | partial: [w1/156](../156.md), recorded in ADR018 |
-| Cron job | its deploy page has no rollback route | bex's cron Rollback opens the same page | filed: [w1/157](../157.md) |
+| Static site | env var, group and file rows in static wording | no build env record: Render's "Unable to load configuration…" sentence | partial: [w1/156](../../156.md), recorded in ADR018 |
+| Cron job | its deploy page has no rollback route | bex's cron Rollback opens the same page | filed: [w1/157](../../157.md) |
 | States | spinner in a `min-h-[9.25rem]` frame; "No configuration changes since this deploy."; "Unable to load configuration…" for an error or either missing snapshot | same | matched |
 | Notices | static: redirects, rewrites and headers; Auto-Deploy warning when on | same | matched |
 | Buttons | "Rollback to this deploy", Cancel back to the deploy, error under the buttons | same; bex keeps its permission recheck and protected-environment phrase | matched |
@@ -67,8 +67,8 @@ ADR018's Rollback row (`docs/ADR018/deploys.md`) records the page, the read and 
     - button: "Rollback to this deploy".
   - **No feature flag:** neither chunk imports Render's `featureflags` hooks, so every Render workspace has this dialog.
   - **bex before this milestone:** checked on production on 2026-11-25, on bex's own `metrics-grafana`; the dialog was opened and cancelled. It says "Roll back to this deploy? The service will run this deploy's image (built from …) and retained configuration. Saved settings stay unchanged and apply with the next standard deploy. Auto-deploy will be turned off. Older deploys without retained configuration restore only the image." It shows no comparison (`dashboard/src/features/deploys/components/deploy-actions.tsx`, `services.eventsRollbackConfirm*` in `dashboard/src/features/services/locales/en.ts`).
-  - **The data exists:** [ADR004 § Per-release configuration snapshots (w1/m152)](../../../docs/ADR004-app-deployment.md#per-release-configuration-snapshots-w1m152) keeps a record (`ReleaseRecordName`, `<app>-podtemplate-rN`) and per-source env and file copies for 20 generations. w4/m145's `undeployedChanges` already compares saved sources with the active release's record.
-- **Goal linkage:** [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first). This extends ADR018's Rollback row (`docs/ADR018/deploys.md`).
+  - **The data exists:** [ADR004 § Per-release configuration snapshots (w1/m152)](../../../../docs/ADR004-app-deployment.md#per-release-configuration-snapshots-w1m152) keeps a record (`ReleaseRecordName`, `<app>-podtemplate-rN`) and per-source env and file copies for 20 generations. w4/m145's `undeployedChanges` already compares saved sources with the active release's record.
+- **Goal linkage:** [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first). This extends ADR018's Rollback row (`docs/ADR018/deploys.md`).
 - **Expected outcome:** someone rolling back sees what reverts before confirming, as on Render, instead of discovering it from the next deploy's behavior.
 - **Why now:** rollback restores retained configuration since w5/m107, so it does change configuration. The dialog is the only place to say what changes, and today it does not.
 - **Render parity included:** GraphQL and dashboard change. Render has no REST or MCP comparison, and the parity task confirms that REST and MCP rollback are unchanged.
