@@ -17,6 +17,7 @@ limitations under the License.
 package build
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -33,6 +34,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"go.yaml.in/yaml/v3"
 
 	"github.com/bex-co/bex/lego/types/toolchains"
@@ -618,6 +620,40 @@ func TestNativeUtilityExactDefaultSelectionKeepsLookupEvidence(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestNativeUtilityExactDefaultCaseHasAFixedNode: the exact-default
+// qualification case runs check-brotli.py, which probes every Node in its
+// generated image for the CVE-2026-111497 Brotli fix. Its creation date must
+// give Python 3.14.8 beside a companion Node at or past the 24 line's first
+// fixed release, 24.22.1 (w1/135). Render's dated 24.14.1 and 24.21.0 predate
+// it: a case created in their bands fails only the hours-long qualification
+// build (run 45874535257), and this check fails in seconds instead.
+func TestNativeUtilityExactDefaultCaseHasAFixedNode(t *testing.T) {
+	firstFixed := semver.MustParse("24.22.1")
+	cases := nativeUtilityCases()
+	i := slices.IndexFunc(cases, func(c nativeUtilityCase) bool { return c.expectedPythonVersion != "" })
+	if i < 0 {
+		t.Fatal("no exact-default qualification case")
+	}
+	tc := cases[i]
+	fake := &fakeExact{digests: map[string]string{"python:" + tc.expectedPythonVersion + "-bookworm": exactDigest}}
+	for _, step := range exactDefaults[nativeNodeRuntime] {
+		fake.digests["node:"+step.Version+"-bookworm"] = exactDigest
+	}
+	choices, _ := resolveExactAt(t, fake, tc.created, tc.runtime, nil, nil)
+	if choices[0].Exact != tc.expectedPythonVersion {
+		t.Fatalf("%s created %s resolves Python %+v, want %s", tc.name, tc.created, choices[0], tc.expectedPythonVersion)
+	}
+	j := slices.IndexFunc(choices[1:], func(c NativeChoice) bool { return c.Label == "Node" })
+	if j < 0 {
+		t.Fatalf("%s has no companion Node: %+v", tc.name, choices)
+	}
+	node := choices[1+j]
+	version := cmp.Or(node.Exact, node.lineVersion)
+	if v, err := semver.NewVersion(version); err != nil || v.LessThan(firstFixed) {
+		t.Fatalf("%s created %s gets companion Node %q (%s), older than the first Brotli-fixed %s", tc.name, tc.created, version, node.Image, firstFixed)
 	}
 }
 

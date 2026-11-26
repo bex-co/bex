@@ -29,8 +29,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/bex-co/bex/lego/types/toolchains"
 )
 
 // This opt-in gate runs the actual generator/resolver and independent utility
@@ -213,7 +211,12 @@ func nativeUtilityCases() []nativeUtilityCase {
 		nativeUtilityCase{name: "node-compute", runtime: nativeNodeRuntime, interpreter: "/usr/bin/python3", build: "utility-check.py build && /usr/bin/python3 original-cases.py build node", start: "utility-check.py runtime && /usr/bin/python3 original-cases.py runtime node", supplied: true},
 		nativeUtilityCase{name: "node-static", runtime: nativeNodeRuntime, interpreter: "/usr/bin/python3", build: "utility-check.py build", static: true, supplied: true},
 		nativeUtilityCase{name: "python313-original", runtime: nativePythonRuntime, interpreter: "/usr/local/bin/python3", build: "original-cases.py build python", start: "original-cases.py runtime python", supplied: true},
-		nativeUtilityCase{name: "python3148-default", runtime: nativePythonRuntime, interpreter: "/usr/local/bin/python3", build: "check-runtime.py build 3.14.8", start: "check-runtime.py runtime 3.14.8", expectedPythonVersion: "3.14.8", supplied: true, created: toolchains.RenderDefaults20261012.Add(time.Second)},
+		// check-runtime.py probes every Node in the image for the
+		// CVE-2026-111497 Brotli fix, so the case is created where Render's
+		// dated defaults are Python 3.14.8 and Node 24.22.1, the 24 line's
+		// first fixed release (w1/135): its 24.21.0 row before 2026-10-21
+		// predates the fix (TestNativeUtilityExactDefaultCaseHasAFixedNode).
+		nativeUtilityCase{name: "python3148-default", runtime: nativePythonRuntime, interpreter: "/usr/local/bin/python3", build: "check-runtime.py build 3.14.8", start: "check-runtime.py runtime 3.14.8", expectedPythonVersion: "3.14.8", supplied: true, created: renderNodeDefault20261021.Add(time.Second)},
 	)
 	for _, omitted := range omissions {
 		// original-cases.py's mode is the runtime name, and its Python mode
