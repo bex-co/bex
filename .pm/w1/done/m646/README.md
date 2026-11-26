@@ -1,6 +1,6 @@
 # w1 · m646 — A rollback's Confirm Rollback page lists what the rollback changes, as Render's does
 
-**Worker:** worker1 **Goal:** before a rollback, the dashboard compares the live deploy's configuration with the target deploy's, as Render's `rollbackComparison` does. It shows each changed command, health check path and instance count as live → target values, names each changed env var key, secret file and env group, warns about the plan, and never shows an env var value or a secret file's contents. **Status:** blocked (t001–t004 and t006–t008 done, shipped in `6e614db0b0`; t005's production walk on 2026-11-26 verified DoD 1–3 and found DoD 4 short at 390 px, fixed in `f0eaf57377`; t005 re-checks DoD 4 on a pin carrying it, then t009)
+**Worker:** worker1 **Goal:** before a rollback, the dashboard compares the live deploy's configuration with the target deploy's, as Render's `rollbackComparison` does. It shows each changed command, health check path and instance count as live → target values, names each changed env var key, secret file and env group, warns about the plan, and never shows an env var value or a secret file's contents. **Status:** done (t001–t004 and t006–t008 shipped in `6e614db0b0`; t005 walked DoD 1–3 on production pin `11695fb886cb` and DoD 4 on pin `410850e80281`, which carries the skeleton fix `f0eaf57377`; closed 2026-11-26)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | [GraphQL read: the live and target releases' configuration compared](done/t002.md) — **DONE** | 2h | t001 |
 | t003 | [The Confirm Rollback page in Render's words](done/t003.md) — **DONE** | 1h45m | t002 |
 | t004 | [Cron jobs, image-backed services and static sites](done/t004.md) — **DONE** | 45m | t003 |
-| t005 | [Production walk on a disposable service](t005.md) | 30m | t004 |
+| t005 | [Production walk on a disposable service](done/t005.md) — **DONE** | 30m | t004 |
 | t006 | [Render parity](done/t006.md) — **DONE** | 20m | t005 |
 | t007 | [Simplify](done/t007.md) — **DONE** | 20m | t006 |
 | t008 | [Test coverage](done/t008.md) — **DONE** | 45m | t006 |
-| t009 | [Closeout](t009.md) | 10m | t008 |
+| t009 | [Closeout](done/t009.md) — **DONE** | 10m | t008 |
 
 ## Definition of done
 
@@ -50,6 +50,20 @@ On production pin `11695fb886cb`, as the QA user. The disposable web service `qa
 - **DoD 4: the route's pending skeleton did not match at 390 px.** With the route chunk held, the skeleton's Confirm Rollback card header is 81 px at both widths. The ready one is 81 px at 1440 but 101 px at 390, because the lead wraps onto a second line, so the comparison and buttons dropped 20 px when the page landed. Fixed in `f0eaf57377`: the skeleton now lays out the ready title, lead and button labels invisibly under its bars (`ReservedText`, `ReservedButton`).
 - **Not a defect:** above the card, the deploy header skeleton reserves the fullest header (`deploy-page-skeletons.tsx`, shared with the deploy page). It has the id line and seven facts, so a header with fewer facts settles upward when the page lands: 27 px for the image deploy at 1440, 32 px at 390, and 55 px for the 2026-08 git deploy at 1440.
 
+## Unblock (2026-11-26, second)
+
+- **Affects:** t005 (DoD 4's route skeleton only), then t009.
+- **Source:** verified evidence. Production's newest pin, `chore(deploy): pin platform images to 410850e80281` (`918667a83f`), carries `f0eaf57377` (`git merge-base --is-ancestor f0eaf57377 410850e80281` exits 0), so the gate `pin must carry f0eaf57377` holds.
+- **Next:** a worker re-checks DoD 4's route skeleton at 1440 and 390 px in `bex-canary` as the QA user, on a disposable web service deleted afterwards: with the rollback route's chunk held, the Confirm Rollback card header and the buttons' top match the ready page. Then t009. No user action.
+
+## DoD 4 re-check (t005, 2026-11-26)
+
+On production pin `410850e80281`, which carries `f0eaf57377`, as the QA user in `bex-canary`, on the disposable image web service `qa-20261126-m646-sk` (disposable) with two live deploys. With the rollback route's chunk held, Rollback on the first deploy showed the pending skeleton; then the chunk was released and the ready page landed ([t005 § Re-check](done/t005.md#re-check-of-dod-4-2026-11-26-pin-410850e80281)).
+
+- **DoD 4 holds.** At 1440 px the Confirm Rollback card header is 81 px pending and ready, the card 231 px and the buttons' top 247 px below the card's top. At 390 px, where the lead wraps, the header is 101 px pending and ready, the card 251 px and the buttons' top 267 px. The buttons are 181 and 79 px wide at both widths (36 px tall at 1440, 44 px at 390) in both states, and neither width scrolls sideways.
+- The card starts 27 px (1440) and 31 px (390) lower in the skeleton, which is the deploy header skeleton's fullest-header reserve, already recorded above as not a defect.
+- Nothing was rolled back. The service was deleted afterwards and the QA session logged out.
+
 ## Render parity (t006)
 
 | Surface | Render | bex (w1/m646) | Verdict |
@@ -57,7 +71,7 @@ On production pin `11695fb886cb`, as the QA user. The disposable web service `qa
 | Rollback control | link to `/<type>/<srv>/deploys/<dep>/rollback` | link to `/services/<srv>/deploys/<dep>/rollback` (a static site's under `/static`); Render's `/web/…/rollback` reaches it through the alias routes | matched |
 | Page | deploy header without Rollback, then "Confirm Rollback" in place of the log; a deploy it cannot roll back to redirects to the deploy page | same | matched |
 | Rows | Start, Pre-Deploy, Docker Command, Health Check Path, Instances (`-` live, `+` target, `none`), Environment Variables table, Environment Group, Secret Files, Plan | same, in Render's order and sentences | matched |
-| Static site | env var, group and file rows in static wording | no build env record: Render's "Unable to load configuration…" sentence | partial: [w1/m660](../m660/README.md) (promoted from w1/156), recorded in ADR018 |
+| Static site | env var, group and file rows in static wording | no build env record: Render's "Unable to load configuration…" sentence | partial: [w1/m660](../../blocked/m660/README.md) (promoted from w1/156), recorded in ADR018 |
 | Cron job | its deploy page has no rollback route | bex's cron Rollback opens the same page | filed: [w1/157](../../157.md) |
 | States | spinner in a `min-h-[9.25rem]` frame; "No configuration changes since this deploy."; "Unable to load configuration…" for an error or either missing snapshot | same | matched |
 | Notices | static: redirects, rewrites and headers; Auto-Deploy warning when on | same | matched |
