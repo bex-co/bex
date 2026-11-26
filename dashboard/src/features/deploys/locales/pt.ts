@@ -1364,6 +1364,42 @@ const ptDeploys: Record<string, TranslationEntry> = {
     description:
       "Rollback page: shown whenever this deploy linked any environment group",
   },
+  "deploys.rollbackStaticGroupNotUse": {
+    message:
+      "O rollback não usará o grupo de ambiente {name}, que foi vinculado ao site após este build.",
+    description:
+      "Rollback page, static site: an environment group linked since this build, which the rollback's files never used; {name} is the group name",
+  },
+  "deploys.rollbackStaticGroupUse": {
+    message:
+      "O rollback usará o grupo de ambiente {name}, que foi desvinculado do site após este build.",
+    description:
+      "Rollback page, static site: an environment group unlinked since this build, whose values the rollback's files hold; {name} is the group name",
+  },
+  "deploys.rollbackStaticGroupDeleted_one": {
+    message:
+      "Este build usou {n} grupo de ambiente que foi excluído desde então. O rollback usará os valores originais dele.",
+    description:
+      "Rollback page, static site: one group this build used was deleted; {n} is the count",
+  },
+  "deploys.rollbackStaticGroupDeleted_many": {
+    message:
+      "Este build usou {n} de grupos de ambiente que foram excluídos desde então. O rollback usará os valores originais deles.",
+    description:
+      "Rollback page, static site: several groups this build used were deleted; {n} is the count",
+  },
+  "deploys.rollbackStaticGroupDeleted_other": {
+    message:
+      "Este build usou {n} grupos de ambiente que foram excluídos desde então. O rollback usará os valores originais deles.",
+    description:
+      "Rollback page, static site: several groups this build used were deleted; {n} is the count",
+  },
+  "deploys.rollbackStaticGroupOriginalValues": {
+    message:
+      "O rollback usará os valores originais dos grupos de ambiente usados por este build.",
+    description:
+      "Rollback page, static site: shown whenever this build used any environment group",
+  },
   "deploys.rollbackPlanWarning": {
     message:
       "Seu plano atual tem alocações de CPU e memória menores que as do plano usado originalmente neste deploy. Talvez seja necessário mudar para outro plano para que o rollback seja bem-sucedido.",

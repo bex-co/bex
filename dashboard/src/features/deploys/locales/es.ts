@@ -1369,6 +1369,42 @@ const esDeploys: Record<string, TranslationEntry> = {
     description:
       "Rollback page: shown whenever this deploy linked any environment group",
   },
+  "deploys.rollbackStaticGroupNotUse": {
+    message:
+      "La reversión no usará el grupo de entorno {name}, que se vinculó al sitio después de esta compilación.",
+    description:
+      "Rollback page, static site: an environment group linked since this build, which the rollback's files never used; {name} is the group name",
+  },
+  "deploys.rollbackStaticGroupUse": {
+    message:
+      "La reversión usará el grupo de entorno {name}, que se desvinculó del sitio después de esta compilación.",
+    description:
+      "Rollback page, static site: an environment group unlinked since this build, whose values the rollback's files hold; {name} is the group name",
+  },
+  "deploys.rollbackStaticGroupDeleted_one": {
+    message:
+      "Esta compilación usó {n} grupo de entorno que se ha eliminado desde entonces. La reversión usará sus valores originales.",
+    description:
+      "Rollback page, static site: one group this build used was deleted; {n} is the count",
+  },
+  "deploys.rollbackStaticGroupDeleted_many": {
+    message:
+      "Esta compilación usó {n} de grupos de entorno que se han eliminado desde entonces. La reversión usará sus valores originales.",
+    description:
+      "Rollback page, static site: several groups this build used were deleted; {n} is the count",
+  },
+  "deploys.rollbackStaticGroupDeleted_other": {
+    message:
+      "Esta compilación usó {n} grupos de entorno que se han eliminado desde entonces. La reversión usará sus valores originales.",
+    description:
+      "Rollback page, static site: several groups this build used were deleted; {n} is the count",
+  },
+  "deploys.rollbackStaticGroupOriginalValues": {
+    message:
+      "La reversión usará los valores originales de los grupos de entorno que usó esta compilación.",
+    description:
+      "Rollback page, static site: shown whenever this build used any environment group",
+  },
   "deploys.rollbackPlanWarning": {
     message:
       "Tu plan actual tiene asignaciones de CPU y memoria menores que el plan que usó originalmente este despliegue. Es posible que tengas que cambiar a otro plan para que la reversión tenga éxito.",

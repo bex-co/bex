@@ -219,6 +219,7 @@ export function DeployRollback({
           loading={comparison.loading || rollbackable === undefined}
           error={!!comparison.error}
           data={comparison.data?.rollbackComparison}
+          staticSite={staticSite}
         />
       </div>
       {staticSite || autoDeployOn ? (

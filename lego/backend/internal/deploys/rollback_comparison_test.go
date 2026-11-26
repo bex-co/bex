@@ -50,6 +50,8 @@ type comparisonRelease struct {
 	tier  string
 	env   map[string]string
 	files map[string]string
+	// adopted is the spec the release was adopted with, when the record keeps one.
+	adopted *appv1alpha1.AppSpec
 }
 
 // releaseObjects is generation's record and its own env and file copies, as
@@ -57,6 +59,9 @@ type comparisonRelease struct {
 func releaseObjects(app string, generation int64, r comparisonRelease) []client.Object {
 	spec, _ := json.Marshal(r.spec)
 	data := map[string][]byte{appv1alpha1.ReleaseRecordSpecKey: spec}
+	if r.adopted != nil {
+		data[appv1alpha1.ReleaseRecordAdoptedSpecKey], _ = json.Marshal(r.adopted)
+	}
 	if r.tier != "" {
 		cpu, mem := tierResources(r.tier)
 		tmpl, _ := json.Marshal(corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{
@@ -370,48 +375,194 @@ func TestRollbackComparisonReadsOnlyTheServicesOwnCopies(t *testing.T) {
 	}
 }
 
-// A static site's releases keep no configuration record, and a cron job runs
-// a command with no instances, health check or pre-deploy step.
+// A cron job runs a command with no instances, health check or pre-deploy step.
 func TestRollbackComparisonFollowsTheServiceType(t *testing.T) {
-	t.Run("static site", func(t *testing.T) {
-		f := newComparisonFixture(t)
-		app := getApp(t, f.svc.Client, "web")
-		app.Spec.Type = appv1alpha1.TypeStaticSite
-		if err := f.svc.Client.Update(context.Background(), app); err != nil {
-			t.Fatal(err)
+	f := newComparisonFixture(t)
+	app := getApp(t, f.svc.Client, "web")
+	app.Spec.Type = appv1alpha1.TypeCronJob
+	app.Spec.Runtime = "docker"
+	if err := f.svc.Client.Update(context.Background(), app); err != nil {
+		t.Fatal(err)
+	}
+	cron, _ := json.Marshal(appv1alpha1.ReleaseRecordSpec{Version: 1, StartCommand: "ignored", Command: new("./report --daily"),
+		HealthCheckPath: new("/old"), Replicas: new(int32(1)), EnvFromSecret: "web-env", FilesFromSecrets: []string{"web-files"},
+		Runtime: &appv1alpha1.ReleaseRuntimeSettings{PreDeployCommand: "npm run migrate"}})
+	rec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: appv1alpha1.ReleaseRecordName("web", 1)}, Data: map[string][]byte{appv1alpha1.ReleaseRecordSpecKey: cron}}
+	if err := f.svc.Client.Update(context.Background(), rec); err != nil {
+		t.Fatal(err)
+	}
+	got, err := f.svc.RollbackComparison(context.Background(), "web", f.target.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := got.Deploy.Snapshot
+	if s == nil || s.DockerCommand != "./report --daily" || s.RunCommand != "" || s.PreDeployCommand != "" || s.HealthCheckPath != "" || s.Instances != nil {
+		t.Fatalf("cron snapshot = %+v, want only dockerCommand ./report --daily", s)
+	}
+}
+
+// A static site compares the environment its builds read (w1/m660): the env
+// var, secret file and environment group lists a service's comparison has,
+// names only, and none of a service's commands, health check, instance count
+// or plan, which a static site does not have.
+func TestRollbackComparisonOfAStaticSiteComparesItsBuildEnvironment(t *testing.T) {
+	f := newComparisonFixture(t)
+	app := getApp(t, f.svc.Client, "web")
+	app.Spec.Type = appv1alpha1.TypeStaticSite
+	app.Spec.Runtime, app.Spec.Tier = "", ""
+	if err := f.svc.Client.Update(context.Background(), app); err != nil {
+		t.Fatal(err)
+	}
+	got, err := f.svc.RollbackComparison(context.Background(), "web", f.target.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.CurrentLiveDeploy == nil || got.CurrentLiveDeploy.Snapshot == nil || got.Deploy.Snapshot == nil {
+		t.Fatalf("static site compared as %+v / %+v, want both snapshots", got.CurrentLiveDeploy, got.Deploy)
+	}
+	none := []string{}
+	wantLive := ServiceConfigSnapshot{EnvGroups: []SnapshotEnvGroup{{ID: f.groupB, Name: "group-b"}},
+		EnvVarChanges: EnvVarChanges{none, none, none, none, none, none}}
+	if !reflect.DeepEqual(*got.CurrentLiveDeploy.Snapshot, wantLive) {
+		t.Errorf("live snapshot = %+v\nwant %+v", *got.CurrentLiveDeploy.Snapshot, wantLive)
+	}
+	wantOld := ServiceConfigSnapshot{EnvGroups: []SnapshotEnvGroup{{ID: f.groupA, Name: "group-a"}}, DeletedEnvGroupCount: 1,
+		EnvVarChanges: EnvVarChanges{
+			CreatedVarKeys: []string{"ADDED"}, DeletedVarKeys: []string{"GONE"}, UpdatedVarKeys: []string{"KEEP"},
+			CreatedFileKeys: []string{"new.txt"}, DeletedFileKeys: []string{"gone.txt"}, UpdatedFileKeys: []string{"a.txt"},
+		}}
+	if !reflect.DeepEqual(*got.Deploy.Snapshot, wantOld) {
+		t.Errorf("target snapshot = %+v\nwant %+v", *got.Deploy.Snapshot, wantOld)
+	}
+	if got.CurrentPlanLower {
+		t.Error("a static site has no plan to warn about")
+	}
+
+	res := graphql.Do(graphql.Params{Schema: testSchema(t, f.svc), Context: context.Background(), RequestString: `{
+		rollbackComparison(serviceId: "web", deployId: "` + f.target.ID + `") {
+			deploy { serviceConfigSnapshot {
+				runCommand preDeployCommand dockerCommand healthCheckPath instances plan deletedEnvGroupCount
+				envGroups { id name }
+				envVarChanges { createdVarKeys deletedVarKeys updatedVarKeys createdFileKeys deletedFileKeys updatedFileKeys }
+			} }
 		}
-		got, err := f.svc.RollbackComparison(context.Background(), "web", f.target.ID)
+	}`})
+	if len(res.Errors) > 0 {
+		t.Fatal(res.Errors)
+	}
+	raw, _ := json.Marshal(res.Data)
+	for _, value := range comparisonSecretValues {
+		if strings.Contains(string(raw), value) {
+			t.Errorf("response carries the value %q: %s", value, raw)
+		}
+	}
+	for _, field := range []string{"runCommand", "preDeployCommand", "dockerCommand", "healthCheckPath", "instances", "plan"} {
+		if !strings.Contains(string(raw), `"`+field+`":null`) {
+			t.Errorf("static snapshot's %s is not null: %s", field, raw)
+		}
+	}
+}
+
+// A static Rollback or Restart copies an earlier release's retained
+// publication, so it serves files that release's build produced. Its side of
+// the comparison is that build's environment, read through the copy its
+// adopted spec selected, not the sources saved when the copy was requested
+// (w1/m660). Here D1 built with old-value and D2 with new-value; D3 rolled
+// back to D1 while new-value stayed saved, and D4 restarted D3.
+func TestRollbackComparisonOfAStaticCopyReadsTheBuildItCopied(t *testing.T) {
+	ctx := context.Background()
+	newFixture := func(t *testing.T) (*Service, []store.Deploy) {
+		t.Helper()
+		ds := newFakeStore()
+		var deploys []store.Deploy
+		for gen, trigger := range []string{"create", "manual", "rollback", "restart"} {
+			d, _ := ds.CreateDeploy(ctx, "srv-1", trigger, "", int64(gen+1), store.CommitInfo{}, "")
+			if _, err := ds.CloseDeploy(ctx, d.ID, store.DeployLive, ""); err != nil {
+				t.Fatal(err)
+			}
+			deploys = append(deploys, d)
+		}
+		app := sampleApp("web", "srv-1")
+		app.Spec = appv1alpha1.AppSpec{Type: appv1alpha1.TypeStaticSite, Repo: "https://github.com/bex-co/site", PublishPath: "dist"}
+		app.Status.ActiveRevision, app.Status.ReleaseGeneration = "rev-4", 4
+		copyOf := func(gen int64, prefix string) *appv1alpha1.AppSpec {
+			spec := app.Spec
+			spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: gen, StaticPrefix: prefix}
+			return &spec
+		}
+		built := func(value string, adopted *appv1alpha1.AppSpec) comparisonRelease {
+			return comparisonRelease{spec: appv1alpha1.ReleaseRecordSpec{Version: 1, EnvFromSecret: "web-env"},
+				env: map[string]string{"KEY": value}, adopted: adopted}
+		}
+		objs := []client.Object{app}
+		objs = append(objs, releaseObjects("web", 1, built("old-value", nil))...)
+		// A selection the saved spec still carried from an earlier release is
+		// not this release's: D2 built.
+		objs = append(objs, releaseObjects("web", 2, built("new-value", copyOf(1, "web/rev-1/")))...)
+		objs = append(objs, releaseObjects("web", 3, built("new-value", copyOf(3, "web/rev-1/")))...)
+		objs = append(objs, releaseObjects("web", 4, built("new-value", copyOf(4, "tea-a/web/rev-3/")))...)
+		svc, _ := newService(ds, objs...)
+		return svc, deploys
+	}
+	updated := func(t *testing.T, svc *Service, target store.Deploy) []string {
+		t.Helper()
+		got, err := svc.RollbackComparison(ctx, "web", target.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got.CurrentLiveDeploy == nil || got.CurrentLiveDeploy.Snapshot != nil || got.Deploy.Snapshot != nil {
-			t.Fatalf("static site compared as %+v / %+v", got.CurrentLiveDeploy, got.Deploy)
+		if got.CurrentLiveDeploy == nil || got.CurrentLiveDeploy.Snapshot == nil || got.Deploy.Snapshot == nil {
+			t.Fatalf("compared %+v against %+v, want both snapshots", got.Deploy, got.CurrentLiveDeploy)
 		}
-	})
-	t.Run("cron job", func(t *testing.T) {
-		f := newComparisonFixture(t)
-		app := getApp(t, f.svc.Client, "web")
-		app.Spec.Type = appv1alpha1.TypeCronJob
-		app.Spec.Runtime = "docker"
-		if err := f.svc.Client.Update(context.Background(), app); err != nil {
+		return got.Deploy.Snapshot.EnvVarChanges.UpdatedVarKeys
+	}
+
+	svc, deploys := newFixture(t)
+	if got := updated(t, svc, deploys[0]); len(got) != 0 {
+		t.Errorf("Rollback on D1, whose build the live copy serves: updated %v, want nothing", got)
+	}
+	if got := updated(t, svc, deploys[1]); !slices.Equal(got, []string{"KEY"}) {
+		t.Errorf("Rollback on D2: updated %v, want [KEY]: live serves D1's build", got)
+	}
+	if got := updated(t, svc, deploys[2]); len(got) != 0 {
+		t.Errorf("Rollback on D3, a copy of the build live serves: updated %v, want nothing", got)
+	}
+
+	t.Run("the copied build's record reclaimed", func(t *testing.T) {
+		svc, deploys := newFixture(t)
+		if err := svc.Client.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: appv1alpha1.ReleaseRecordName("web", 1)}}); err != nil {
 			t.Fatal(err)
 		}
-		cron, _ := json.Marshal(appv1alpha1.ReleaseRecordSpec{Version: 1, StartCommand: "ignored", Command: new("./report --daily"),
-			HealthCheckPath: new("/old"), Replicas: new(int32(1)), EnvFromSecret: "web-env", FilesFromSecrets: []string{"web-files"},
-			Runtime: &appv1alpha1.ReleaseRuntimeSettings{PreDeployCommand: "npm run migrate"}})
-		rec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: appv1alpha1.ReleaseRecordName("web", 1)}, Data: map[string][]byte{appv1alpha1.ReleaseRecordSpecKey: cron}}
-		if err := f.svc.Client.Update(context.Background(), rec); err != nil {
-			t.Fatal(err)
-		}
-		got, err := f.svc.RollbackComparison(context.Background(), "web", f.target.ID)
+		got, err := svc.RollbackComparison(ctx, "web", deploys[1].ID)
 		if err != nil {
 			t.Fatal(err)
 		}
-		s := got.Deploy.Snapshot
-		if s == nil || s.DockerCommand != "./report --daily" || s.RunCommand != "" || s.PreDeployCommand != "" || s.HealthCheckPath != "" || s.Instances != nil {
-			t.Fatalf("cron snapshot = %+v, want only dockerCommand ./report --daily", s)
+		if got.CurrentLiveDeploy == nil || got.CurrentLiveDeploy.Snapshot != nil || got.Deploy.Snapshot == nil {
+			t.Fatalf("live %+v, target %+v: want the live side unavailable, not the copy's saved sources", got.CurrentLiveDeploy, got.Deploy.Snapshot)
 		}
 	})
+}
+
+// staticBuildGeneration follows a copy only to the earlier release its prefix
+// names; a prefix naming no earlier release has no build to compare.
+func TestStaticBuildGenerationRefusesAPrefixNamingNoEarlierRelease(t *testing.T) {
+	ctx := context.Background()
+	app := sampleApp("web", "srv-1")
+	app.Spec = appv1alpha1.AppSpec{Type: appv1alpha1.TypeStaticSite, Repo: "https://github.com/bex-co/site"}
+	var objs []client.Object
+	for gen, prefix := range map[int64]string{2: "web/rev-2/", 3: "web/latest/"} {
+		spec := app.Spec
+		spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: gen, StaticPrefix: prefix}
+		objs = append(objs, releaseObjects("web", gen, comparisonRelease{spec: appv1alpha1.ReleaseRecordSpec{Version: 1}, adopted: &spec})...)
+	}
+	svc, _ := newService(newFakeStore(), append(objs, app)...)
+	for _, gen := range []int64{2, 3} {
+		if got, err := svc.staticBuildGeneration(ctx, app, gen); err != nil || got != 0 {
+			t.Errorf("generation %d resolved to (%d, %v), want 0", gen, got, err)
+		}
+	}
+	if got, err := svc.staticBuildGeneration(ctx, app, 7); err != nil || got != 7 {
+		t.Errorf("a release with no record resolved to (%d, %v), want itself", got, err)
+	}
 }
 
 // The read takes the deploy's read relation and the Environment page's key access.

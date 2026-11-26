@@ -49,6 +49,8 @@ export interface RollbackComparisonBodyProps {
   loading: boolean;
   error: boolean;
   data: Comparison | null | undefined;
+  /** A static site's Environment Group row speaks of its build (w1/m660). */
+  staticSite?: boolean;
 }
 
 /**
@@ -61,6 +63,7 @@ export function RollbackComparisonBody({
   loading,
   error,
   data,
+  staticSite = false,
 }: RollbackComparisonBodyProps) {
   const { t } = useTranslations();
   if (loading && !data) {
@@ -112,7 +115,12 @@ export function RollbackComparisonBody({
       body: <EnvVarTable rows={envVars} />,
     });
   }
-  const groups = envGroupSentences(current, old, t);
+  const groups = envGroupSentences(
+    current,
+    old,
+    staticSite ? STATIC_GROUP_SENTENCES : SERVICE_GROUP_SENTENCES,
+    t,
+  );
   if (groups.length > 0) {
     rows.push({
       key: "envGroup",
@@ -271,12 +279,40 @@ const code = (value: ReactNode) => (
   </code>
 );
 
-/** Render's Environment Group sentences for a service: groups linked or
- *  unlinked since this deploy, the ones deleted since, and, when this deploy
- *  linked any, that their current values apply. */
+/** The Environment Group row's sentences: a service's speak of its deploy
+ *  and links, a static site's of its build, whose files keep the values the
+ *  build read (Render's `DeployContainer`, `isStatic`). */
+type GroupSentences = {
+  added: "deploys.rollbackGroupUnlink" | "deploys.rollbackStaticGroupNotUse";
+  removed: "deploys.rollbackGroupLink" | "deploys.rollbackStaticGroupUse";
+  deleted:
+    "deploys.rollbackGroupDeleted" | "deploys.rollbackStaticGroupDeleted";
+  values:
+    | "deploys.rollbackGroupCurrentValues"
+    | "deploys.rollbackStaticGroupOriginalValues";
+};
+
+const SERVICE_GROUP_SENTENCES: GroupSentences = {
+  added: "deploys.rollbackGroupUnlink",
+  removed: "deploys.rollbackGroupLink",
+  deleted: "deploys.rollbackGroupDeleted",
+  values: "deploys.rollbackGroupCurrentValues",
+};
+
+const STATIC_GROUP_SENTENCES: GroupSentences = {
+  added: "deploys.rollbackStaticGroupNotUse",
+  removed: "deploys.rollbackStaticGroupUse",
+  deleted: "deploys.rollbackStaticGroupDeleted",
+  values: "deploys.rollbackStaticGroupOriginalValues",
+};
+
+/** Render's Environment Group sentences: groups added or removed since this
+ *  deploy, the ones deleted since, and, when this deploy used any, which
+ *  values the rollback uses for them. */
 function envGroupSentences(
   current: Snapshot,
   old: Snapshot,
+  sentences: GroupSentences,
   t: Translate,
 ): Sentence[] {
   const oldIds = new Set(old.envGroups.map((g) => g.id));
@@ -284,9 +320,9 @@ function envGroupSentences(
   const out: Sentence[] = [];
   for (const g of current.envGroups.filter((g) => !oldIds.has(g.id))) {
     out.push({
-      key: `unlink-${g.id}`,
+      key: `added-${g.id}`,
       text: styled(
-        t("deploys.rollbackGroupUnlink", { name: PLACEHOLDER_SENTINEL }),
+        t(sentences.added, { name: PLACEHOLDER_SENTINEL }),
         g.name,
         bold,
       ),
@@ -294,9 +330,9 @@ function envGroupSentences(
   }
   for (const g of old.envGroups.filter((g) => !currentIds.has(g.id))) {
     out.push({
-      key: `link-${g.id}`,
+      key: `removed-${g.id}`,
       text: styled(
-        t("deploys.rollbackGroupLink", { name: PLACEHOLDER_SENTINEL }),
+        t(sentences.removed, { name: PLACEHOLDER_SENTINEL }),
         g.name,
         bold,
       ),
@@ -307,20 +343,14 @@ function envGroupSentences(
     out.push({
       key: "deleted",
       text: styled(
-        t("deploys.rollbackGroupDeleted", {
-          count: deleted,
-          n: PLACEHOLDER_SENTINEL,
-        }),
+        t(sentences.deleted, { count: deleted, n: PLACEHOLDER_SENTINEL }),
         deleted,
         bold,
       ),
     });
   }
   if (old.envGroups.length > 0) {
-    out.push({
-      key: "current-values",
-      text: t("deploys.rollbackGroupCurrentValues"),
-    });
+    out.push({ key: "values", text: t(sentences.values) });
   }
   return out;
 }

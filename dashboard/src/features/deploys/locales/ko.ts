@@ -1325,6 +1325,29 @@ const koDeploys: Record<string, TranslationEntry> = {
     description:
       "Rollback page: shown whenever this deploy linked any environment group",
   },
+  "deploys.rollbackStaticGroupNotUse": {
+    message:
+      "롤백하면 이 빌드 이후 사이트에 추가된 환경 그룹 {name}은(는) 사용되지 않습니다.",
+    description:
+      "Rollback page, static site: an environment group linked since this build, which the rollback's files never used; {name} is the group name",
+  },
+  "deploys.rollbackStaticGroupUse": {
+    message:
+      "롤백하면 이 빌드 이후 사이트에서 제거된 환경 그룹 {name}이(가) 사용됩니다.",
+    description:
+      "Rollback page, static site: an environment group unlinked since this build, whose values the rollback's files hold; {name} is the group name",
+  },
+  "deploys.rollbackStaticGroupDeleted_other": {
+    message:
+      "이 빌드에서 사용한 환경 그룹 {n}개가 그 후 삭제되었습니다. 롤백 시 원래 값이 사용됩니다.",
+    description:
+      "Rollback page, static site: several groups this build used were deleted; {n} is the count",
+  },
+  "deploys.rollbackStaticGroupOriginalValues": {
+    message: "롤백 시 이 빌드에서 사용한 환경 그룹의 원래 값이 사용됩니다.",
+    description:
+      "Rollback page, static site: shown whenever this build used any environment group",
+  },
   "deploys.rollbackPlanWarning": {
     message:
       "현재 요금제의 CPU 및 메모리 할당량이 이 배포에 원래 사용된 요금제보다 적습니다. 롤백이 성공하려면 다른 요금제로 변경해야 할 수 있습니다.",

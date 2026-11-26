@@ -60,9 +60,10 @@ type RollbackComparison struct {
 type ComparedDeploy struct {
 	ID string
 	// Snapshot is nil when the release's record is missing (reclaimed past the
-	// retained window, or older than the records), predates record version 1,
-	// or the service is a static site, whose releases keep no configuration
-	// record. Render shows "Unable to load configuration…" then, as bex does.
+	// retained window, or older than the records) or predates record version
+	// 1. Render shows "Unable to load configuration…" then, as bex does. A
+	// static site's side is the environment its published files were built
+	// with (staticBuildGeneration).
 	Snapshot *ServiceConfigSnapshot
 }
 
@@ -152,12 +153,18 @@ func (s *Service) RollbackComparison(ctx context.Context, service, deployID stri
 		return out, nil
 	}
 	out.CurrentLiveDeploy = &ComparedDeploy{ID: live.ID}
-	if a.Spec.Type == appv1alpha1.TypeStaticSite {
-		return out, nil
-	}
 	groups, err := s.workspaceGroupNames(ctx, a)
 	if err != nil {
 		return RollbackComparison{}, err
+	}
+	liveGeneration, targetGeneration := live.Generation, target.Generation
+	if a.Spec.Type == appv1alpha1.TypeStaticSite {
+		if liveGeneration, err = s.staticBuildGeneration(ctx, a, liveGeneration); err != nil {
+			return RollbackComparison{}, err
+		}
+		if targetGeneration, err = s.staticBuildGeneration(ctx, a, targetGeneration); err != nil {
+			return RollbackComparison{}, err
+		}
 	}
 	// The live side shows the count live runs: the record's, unless live is
 	// itself a selected release (a rollback or restart serving), which the
@@ -169,11 +176,11 @@ func (s *Service) RollbackComparison(ctx context.Context, service, deployID stri
 	if ref := a.ActiveReleaseConfig(); ref != nil && ref.SourceGeneration > 0 && ref.Generation == live.Generation {
 		liveSelected = true
 	}
-	current, err := s.recordedRelease(ctx, a, live.Generation, groups, previewInstances{selected: liveSelected, scaledRelease: live.Generation})
+	current, err := s.recordedRelease(ctx, a, liveGeneration, groups, previewInstances{selected: liveSelected, scaledRelease: live.Generation})
 	if err != nil {
 		return RollbackComparison{}, err
 	}
-	old, err := s.recordedRelease(ctx, a, target.Generation, groups, previewInstances{selected: true})
+	old, err := s.recordedRelease(ctx, a, targetGeneration, groups, previewInstances{selected: true})
 	if err != nil {
 		return RollbackComparison{}, err
 	}
@@ -188,6 +195,45 @@ func (s *Service) RollbackComparison(ctx context.Context, service, deployID stri
 		out.CurrentPlanLower = planBelow(a.Spec.Tier, old.tier)
 	}
 	return out, nil
+}
+
+// staticBuildGenerationHops bounds staticBuildGeneration's walk back through
+// copies of copies; the retained window is no deeper.
+const staticBuildGenerationHops = 20
+
+// staticBuildGeneration is the release whose build a static site's release at
+// generation serves: generation itself, unless that release is a Rollback or
+// Restart, which copied an earlier release's retained publication (w4/m197,
+// w32/049) and so serves files that release's build produced, with the
+// environment that build read. Its own record names the sources saved when
+// it was requested, which its files never used. The copy is the StaticPrefix
+// of the release selection its record's adopted spec holds, followed through
+// earlier copies. 0, which compares as unavailable, when a copy names no
+// release or the walk does not end within the retained window.
+func (s *Service) staticBuildGeneration(ctx context.Context, a *appv1alpha1.App, generation int64) (int64, error) {
+	for range staticBuildGenerationHops {
+		if generation <= 0 {
+			return 0, nil
+		}
+		rec, err := s.secretData(ctx, a, appv1alpha1.ReleaseRecordName(a.Name, generation))
+		if rec == nil || err != nil {
+			return generation, err
+		}
+		var adopted appv1alpha1.AppSpec
+		if raw := rec[appv1alpha1.ReleaseRecordAdoptedSpecKey]; len(raw) == 0 || json.Unmarshal(raw, &adopted) != nil {
+			return generation, nil
+		}
+		ref := adopted.ReleaseConfig
+		if ref == nil || ref.Generation != generation || ref.StaticPrefix == "" {
+			return generation, nil
+		}
+		copied, ok := appv1alpha1.StaticPrefixGeneration(ref.StaticPrefix)
+		if !ok || copied >= generation {
+			return 0, nil
+		}
+		generation = copied
+	}
+	return 0, nil
 }
 
 // workspaceGroupNames is a's workspace's env groups, id to name; nil when no
@@ -240,7 +286,10 @@ func (s *Service) recordedRelease(ctx context.Context, a *appv1alpha1.App, gener
 		return nil, nil
 	}
 	r := &recordedRelease{snapshot: recordedSnapshot(a, spec, preview), env: map[string]string{}, files: map[string]string{}}
-	r.tier = recordedTier(rec[appv1alpha1.ReleaseRecordPodTemplateKey])
+	// A static site runs no instances, so it has no plan to compare.
+	if a.Spec.Type != appv1alpha1.TypeStaticSite {
+		r.tier = recordedTier(rec[appv1alpha1.ReleaseRecordPodTemplateKey])
+	}
 	if t, ok := tiers.Compute.ByID(r.tier); ok {
 		r.snapshot.Plan = t.RenderPlan
 	}
@@ -313,14 +362,18 @@ func (s *Service) secretData(ctx context.Context, a *appv1alpha1.App, name strin
 
 // recordedSnapshot is the record's commands, health check path and instance
 // count, in the fields Render's snapshot names, for the rows that apply to a's
-// type: a cron job runs a command and has no instances, health check or
-// pre-deploy step, and only a web service has an HTTP health check path.
+// type: a static site has none of them, only the environment its build read;
+// a cron job runs a command and has no instances, health check or pre-deploy
+// step; and only a web service has an HTTP health check path.
 // The instance count is the one the release runs under the App's current
 // saved state (previewInstanceCount), so the page never lists a change the
 // rollback will not make.
 func recordedSnapshot(a *appv1alpha1.App, spec appv1alpha1.ReleaseRecordSpec, preview previewInstances) ServiceConfigSnapshot {
 	none := []string{}
 	snap := ServiceConfigSnapshot{EnvVarChanges: EnvVarChanges{none, none, none, none, none, none}}
+	if a.Spec.Type == appv1alpha1.TypeStaticSite {
+		return snap
+	}
 	command := spec.StartCommand
 	cron := a.Spec.Type == appv1alpha1.TypeCronJob
 	if cron && spec.Command != nil && *spec.Command != "" {

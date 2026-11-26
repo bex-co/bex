@@ -1287,6 +1287,26 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "Rollback page: shown whenever this deploy linked any environment group",
   },
+  "deploys.rollbackStaticGroupNotUse": {
+    message: "回滚将不使用环境组 {name}，该环境组是在此构建之后添加到站点的。",
+    description:
+      "Rollback page, static site: an environment group linked since this build, which the rollback's files never used; {name} is the group name",
+  },
+  "deploys.rollbackStaticGroupUse": {
+    message: "回滚将使用环境组 {name}，该环境组是在此构建之后从站点中移除的。",
+    description:
+      "Rollback page, static site: an environment group unlinked since this build, whose values the rollback's files hold; {name} is the group name",
+  },
+  "deploys.rollbackStaticGroupDeleted_other": {
+    message: "此构建使用的 {n} 个环境组已被删除，回滚将使用它们的原始值。",
+    description:
+      "Rollback page, static site: several groups this build used were deleted; {n} is the count",
+  },
+  "deploys.rollbackStaticGroupOriginalValues": {
+    message: "回滚将使用此构建所用环境组的原始值。",
+    description:
+      "Rollback page, static site: shown whenever this build used any environment group",
+  },
   "deploys.rollbackPlanWarning": {
     message:
       "当前套餐的 CPU 和内存配额低于此部署最初使用的套餐。可能需要切换到其他套餐才能成功回滚。",

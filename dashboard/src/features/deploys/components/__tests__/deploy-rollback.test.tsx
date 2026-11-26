@@ -245,6 +245,108 @@ describe("RollbackComparisonBody", () => {
     );
   });
 
+  // w1/m660: a static site's snapshot is the environment its build read, so
+  // it has no command, health check, instance or plan rows, and its
+  // Environment Group row speaks of the build, whose files keep the values
+  // the build used (Render's `DeployContainer`, `isStatic`).
+  const staticSnapshot = (over: Partial<Snapshot> = {}) =>
+    snapshot({
+      runCommand: null,
+      healthCheckPath: null,
+      instances: null,
+      plan: null,
+      ...over,
+    });
+
+  it("lists a static site's build environment in Render's static words", () => {
+    const current = staticSnapshot({
+      envGroups: [group("evg-b", "site-b")],
+    });
+    const old = staticSnapshot({
+      envGroups: [group("evg-a", "site-a")],
+      deletedEnvGroupCount: 1,
+      envVarChanges: {
+        __typename: "EnvVarChanges",
+        createdVarKeys: [],
+        deletedVarKeys: [],
+        updatedVarKeys: ["API_URL"],
+        createdFileKeys: [],
+        deletedFileKeys: [],
+        updatedFileKeys: ["robots.txt"],
+      },
+    });
+    render(
+      <RollbackComparisonBody
+        loading={false}
+        error={false}
+        data={comparison(current, old)}
+        staticSite
+      />,
+    );
+
+    const rows = screen.getAllByRole("heading", { level: 3 });
+    expect(rows.map((row) => row.textContent)).toEqual([
+      "Environment Variables",
+      "Environment Group",
+      "Secret Files",
+    ]);
+    const row = (label: string) =>
+      screen.getByRole("heading", { name: label }).parentElement!;
+    const table = within(row("Environment Variables")).getByRole("table");
+    expect(table).toHaveTextContent("API_URL");
+    expect(table).toHaveTextContent("••••••••••••");
+    expect(row("Environment Group")).toHaveTextContent(
+      "The rollback will not use environment group site-b which was added to the site after this build." +
+        "The rollback will use environment group site-a which was removed from the site after this build." +
+        "This build used 1 environment group that has since been deleted. The rollback will use its original values." +
+        "The rollback will use the original values for environment groups used for this build.",
+    );
+    expect(within(row("Environment Group")).getByText("site-a").tagName).toBe(
+      "STRONG",
+    );
+    expect(row("Environment Group")).not.toHaveTextContent(/link|deploy\./);
+    expect(row("Secret Files")).toHaveTextContent(
+      "Secret file robots.txt was changed after this deploy. The rollback will revert to the original contents.",
+    );
+  });
+
+  it("counts a static site's deleted groups in the plural", () => {
+    render(
+      <RollbackComparisonBody
+        loading={false}
+        error={false}
+        data={comparison(
+          staticSnapshot(),
+          staticSnapshot({ deletedEnvGroupCount: 3 }),
+        )}
+        staticSite
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Environment Group" }).parentElement,
+    ).toHaveTextContent(
+      "This build used 3 environment groups that have since been deleted. The rollback will use their original values.",
+    );
+    // A build that used no surviving group says nothing of their values.
+    expect(
+      screen.queryByText(/original values for environment groups/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says nothing changed when a static site's builds read the same environment", () => {
+    render(
+      <RollbackComparisonBody
+        loading={false}
+        error={false}
+        data={comparison(staticSnapshot(), staticSnapshot())}
+        staticSite
+      />,
+    );
+    expect(
+      screen.getByText("No configuration changes since this deploy."),
+    ).toBeInTheDocument();
+  });
+
   it("says nothing changed when both deploys run the same configuration", () => {
     render(
       <RollbackComparisonBody
@@ -596,6 +698,27 @@ describe("DeployRollback", () => {
     expect(what.parentElement).toHaveTextContent(
       "Changes made to redirects, rewrites, and headers will not be rolled back.",
     );
+  });
+
+  it("compares a static site's environment groups in its build's words", async () => {
+    comparisonResult = {
+      loading: false,
+      data: {
+        rollbackComparison: comparison(
+          snapshot({ envGroups: [group("evg-b", "site-b")] }),
+          snapshot(),
+        ),
+      },
+    };
+    renderPage({}, "/static");
+    expect(
+      await screen.findByText(/which was added to the site after this build/),
+    ).toHaveTextContent(
+      "The rollback will not use environment group site-b which was added to the site after this build.",
+    );
+    expect(
+      screen.queryByText(/added to the service after this deploy/),
+    ).not.toBeInTheDocument();
   });
 });
 

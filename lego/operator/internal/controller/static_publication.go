@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"path"
 	"slices"
 	"strconv"
 
@@ -111,7 +110,7 @@ func (r *AppReconciler) carryRestoredPublicationSettings(ctx context.Context, ap
 // names, as bex-api selected it. "" when that record is gone, is not this
 // App's, names another prefix, or predates w32/055.
 func (r *AppReconciler) restoredPublicationSettings(ctx context.Context, app *appv1alpha1.App, prefix string) (string, error) {
-	generation, ok := appv1alpha1.RevisionGeneration(path.Base(prefix))
+	generation, ok := appv1alpha1.StaticPrefixGeneration(prefix)
 	if !ok {
 		return "", nil
 	}

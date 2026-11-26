@@ -1335,6 +1335,30 @@ const jaDeploys: Record<string, TranslationEntry> = {
     description:
       "Rollback page: shown whenever this deploy linked any environment group",
   },
+  "deploys.rollbackStaticGroupNotUse": {
+    message:
+      "このビルドの後にサイトに追加された環境グループ {name} は、ロールバックでは使用されません。",
+    description:
+      "Rollback page, static site: an environment group linked since this build, which the rollback's files never used; {name} is the group name",
+  },
+  "deploys.rollbackStaticGroupUse": {
+    message:
+      "このビルドの後にサイトから削除された環境グループ {name} は、ロールバックで使用されます。",
+    description:
+      "Rollback page, static site: an environment group unlinked since this build, whose values the rollback's files hold; {name} is the group name",
+  },
+  "deploys.rollbackStaticGroupDeleted_other": {
+    message:
+      "このビルドで使用された {n} 個の環境グループは、その後削除されています。ロールバックでは元の値が使用されます。",
+    description:
+      "Rollback page, static site: several groups this build used were deleted; {n} is the count",
+  },
+  "deploys.rollbackStaticGroupOriginalValues": {
+    message:
+      "ロールバックでは、このビルドで使用された環境グループの元の値が使用されます。",
+    description:
+      "Rollback page, static site: shown whenever this build used any environment group",
+  },
   "deploys.rollbackPlanWarning": {
     message:
       "現在のプランは、このデプロイで当初使用されていたプランよりも CPU とメモリの割り当てが少なくなっています。ロールバックを成功させるには、別のプランに変更する必要がある場合があります。",

@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -94,7 +95,9 @@ const (
 	ReleaseRecordAppContainer = "app"
 	// ReleaseRecordAdoptedSpecKey holds the JSON-encoded AppSpec the release was
 	// adopted with (w8/m121). bex-api reads only its registry binding, for a
-	// record written before ReleaseRecordSpec.Registry (w8/m529).
+	// record written before ReleaseRecordSpec.Registry (w8/m529), and a static
+	// site's release selection: the publication a static Rollback or Restart
+	// copied, whose build's environment its rollback comparison shows (w1/m660).
 	ReleaseRecordAdoptedSpecKey = "adoptedSpec"
 )
 
@@ -279,6 +282,15 @@ var staticPublicationPrefix = regexp.MustCompile(`^(?:[a-z0-9][a-z0-9-]*/)?[a-z0
 // by the operator against the App's own identity.
 func ValidStaticPublicationPrefix(prefix string) bool {
 	return staticPublicationPrefix.MatchString(prefix)
+}
+
+// StaticPrefixGeneration is the release generation whose publication a static
+// revision prefix holds: N for "[<workspace>/]<app>/rev-N/". A static Rollback
+// or Restart (ReleaseConfigReference.StaticPrefix) names the release it copies
+// this way, which the operator reads for that release's settings and bex-api
+// for the environment its build used.
+func StaticPrefixGeneration(prefix string) (int64, bool) {
+	return RevisionGeneration(path.Base(prefix))
 }
 
 // ReleaseConfigReference selects one retained release without changing saved

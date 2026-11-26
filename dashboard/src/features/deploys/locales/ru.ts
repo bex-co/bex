@@ -1374,6 +1374,48 @@ const ruDeploys: Record<string, TranslationEntry> = {
     description:
       "Rollback page: shown whenever this deploy linked any environment group",
   },
+  "deploys.rollbackStaticGroupNotUse": {
+    message:
+      "Откат не будет использовать группу окружения {name}, которая была подключена к сайту после этой сборки.",
+    description:
+      "Rollback page, static site: an environment group linked since this build, which the rollback's files never used; {name} is the group name",
+  },
+  "deploys.rollbackStaticGroupUse": {
+    message:
+      "Откат будет использовать группу окружения {name}, которая была отвязана от сайта после этой сборки.",
+    description:
+      "Rollback page, static site: an environment group unlinked since this build, whose values the rollback's files hold; {name} is the group name",
+  },
+  "deploys.rollbackStaticGroupDeleted_one": {
+    message:
+      "Эта сборка использовала {n} группу окружения, которая с тех пор удалена. Откат будет использовать её исходные значения.",
+    description:
+      "Rollback page, static site: one group this build used was deleted; {n} is the count",
+  },
+  "deploys.rollbackStaticGroupDeleted_few": {
+    message:
+      "Эта сборка использовала {n} группы окружения, которые с тех пор удалены. Откат будет использовать их исходные значения.",
+    description:
+      "Rollback page, static site: several groups this build used were deleted; {n} is the count",
+  },
+  "deploys.rollbackStaticGroupDeleted_many": {
+    message:
+      "Эта сборка использовала {n} групп окружения, которые с тех пор удалены. Откат будет использовать их исходные значения.",
+    description:
+      "Rollback page, static site: several groups this build used were deleted; {n} is the count",
+  },
+  "deploys.rollbackStaticGroupDeleted_other": {
+    message:
+      "Эта сборка использовала {n} группы окружения, которые с тех пор удалены. Откат будет использовать их исходные значения.",
+    description:
+      "Rollback page, static site: several groups this build used were deleted; {n} is the count",
+  },
+  "deploys.rollbackStaticGroupOriginalValues": {
+    message:
+      "Откат будет использовать исходные значения групп окружения, которые использовала эта сборка.",
+    description:
+      "Rollback page, static site: shown whenever this build used any environment group",
+  },
   "deploys.rollbackPlanWarning": {
     message:
       "В вашем текущем тарифе меньше CPU и памяти, чем в тарифе, на котором изначально работал этот деплой. Чтобы откат прошёл успешно, возможно, потребуется перейти на другой тариф.",

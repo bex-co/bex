@@ -1342,6 +1342,36 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "Rollback page: shown whenever this deploy linked any environment group",
   },
+  "deploys.rollbackStaticGroupNotUse": {
+    message:
+      "The rollback will not use environment group {name} which was added to the site after this build.",
+    description:
+      "Rollback page, static site: an environment group linked since this build, which the rollback's files never used; {name} is the group name",
+  },
+  "deploys.rollbackStaticGroupUse": {
+    message:
+      "The rollback will use environment group {name} which was removed from the site after this build.",
+    description:
+      "Rollback page, static site: an environment group unlinked since this build, whose values the rollback's files hold; {name} is the group name",
+  },
+  "deploys.rollbackStaticGroupDeleted_one": {
+    message:
+      "This build used {n} environment group that has since been deleted. The rollback will use its original values.",
+    description:
+      "Rollback page, static site: one group this build used was deleted; {n} is the count",
+  },
+  "deploys.rollbackStaticGroupDeleted_other": {
+    message:
+      "This build used {n} environment groups that have since been deleted. The rollback will use their original values.",
+    description:
+      "Rollback page, static site: several groups this build used were deleted; {n} is the count",
+  },
+  "deploys.rollbackStaticGroupOriginalValues": {
+    message:
+      "The rollback will use the original values for environment groups used for this build.",
+    description:
+      "Rollback page, static site: shown whenever this build used any environment group",
+  },
   "deploys.rollbackPlanWarning": {
     message:
       "Your current plan has lower CPU and memory allocations than the plan originally used for this deploy. You may need to switch to a different plan for the rollback to succeed.",

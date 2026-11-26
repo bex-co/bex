@@ -1356,6 +1356,36 @@ const deDeploys: Record<string, TranslationEntry> = {
     description:
       "Rollback page: shown whenever this deploy linked any environment group",
   },
+  "deploys.rollbackStaticGroupNotUse": {
+    message:
+      "Das Rollback verwendet die Umgebungsgruppe {name} nicht, die nach diesem Build zur Site hinzugefügt wurde.",
+    description:
+      "Rollback page, static site: an environment group linked since this build, which the rollback's files never used; {name} is the group name",
+  },
+  "deploys.rollbackStaticGroupUse": {
+    message:
+      "Das Rollback verwendet die Umgebungsgruppe {name}, die nach diesem Build von der Site getrennt wurde.",
+    description:
+      "Rollback page, static site: an environment group unlinked since this build, whose values the rollback's files hold; {name} is the group name",
+  },
+  "deploys.rollbackStaticGroupDeleted_one": {
+    message:
+      "Dieser Build hat {n} Umgebungsgruppe verwendet, die inzwischen gelöscht wurde. Das Rollback verwendet ihre ursprünglichen Werte.",
+    description:
+      "Rollback page, static site: one group this build used was deleted; {n} is the count",
+  },
+  "deploys.rollbackStaticGroupDeleted_other": {
+    message:
+      "Dieser Build hat {n} Umgebungsgruppen verwendet, die inzwischen gelöscht wurden. Das Rollback verwendet ihre ursprünglichen Werte.",
+    description:
+      "Rollback page, static site: several groups this build used were deleted; {n} is the count",
+  },
+  "deploys.rollbackStaticGroupOriginalValues": {
+    message:
+      "Das Rollback verwendet die ursprünglichen Werte der Umgebungsgruppen, die dieser Build verwendet hat.",
+    description:
+      "Rollback page, static site: shown whenever this build used any environment group",
+  },
   "deploys.rollbackPlanWarning": {
     message:
       "Dein aktueller Tarif bietet weniger CPU und Arbeitsspeicher als der Tarif, mit dem dieses Deployment ursprünglich lief. Möglicherweise musst du zu einem anderen Tarif wechseln, damit das Rollback gelingt.",
