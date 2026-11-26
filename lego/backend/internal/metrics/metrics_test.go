@@ -657,6 +657,63 @@ func TestHostPathFiltersRouteToLogStore(t *testing.T) {
 	}
 }
 
+// TestStatusCodeFilterRefusedWithoutAStatusAxis: only http_requests and
+// http_latency have a per-request status axis (Prometheus `code` / Loki
+// `status`). A statusCode filter on any other metric must fail closed like
+// the sibling host/path filters instead of answering an unfiltered 200 —
+// an accepted filter must narrow the read.
+func TestStatusCodeFilterRefusedWithoutAStatusAxis(t *testing.T) {
+	var snapshotCalled, promCalled, lokiCalled, rangedCalled bool
+	snapshot := func(_ context.Context, _, _ string) ([]PodResourceUsage, error) {
+		snapshotCalled = true
+		return []PodResourceUsage{{Pod: webInst, CPUCores: 0.5}}, nil
+	}
+	prom := func(_ context.Context, _ RequestMetricsRequest) ([]MetricSeries, error) {
+		promCalled = true
+		return []MetricSeries{{Points: []MetricPoint{{Value: 1}}}}, nil
+	}
+	loki := func(_ context.Context, _ RequestMetricsRequest) ([]MetricSeries, error) {
+		lokiCalled = true
+		return []MetricSeries{{Points: []MetricPoint{{Value: 3}}}}, nil
+	}
+	svc := newService(snapshot, prom, sampleApp("web"), podWithLimits(webInst))
+	svc.RequestLogMetrics = loki
+	svc.ResourceMetricsRange = func(_ context.Context, _ ResourceMetricsRangeRequest) ([]MetricSeries, error) {
+		rangedCalled = true
+		return []MetricSeries{{Points: []MetricPoint{{Value: 2}}}}, nil
+	}
+
+	// A metric with no per-request status axis refuses the filter before any
+	// store, valid or not — never an unfiltered series.
+	for _, q := range []MetricQuery{
+		{App: "web", Metric: MetricCPU, StatusCodes: []string{"5xx"}},
+		{App: "web", Metric: MetricMemory, StatusCodes: []string{"2xx"}},
+		{App: "web", Metric: MetricCPULimit, StatusCodes: []string{"5xx"}},
+		{App: "web", Metric: MetricMemoryLimit, StatusCodes: []string{"500"}},
+		{App: "web", Metric: MetricInstanceCount, StatusCodes: []string{"4xx", "500"}},
+		{App: "web", Metric: MetricCPUTarget, StatusCodes: []string{"5xx"}},
+		{App: "web", Metric: MetricMemoryTarget, StatusCodes: []string{"5xx"}},
+		{App: "web", Metric: MetricBandwidth, StatusCodes: []string{"2xx"}},
+		{App: "web", Metric: MetricCPU, StatusCodes: []string{"bogus"}},
+		{App: "web", Metric: MetricBandwidth, StatusCodes: []string{"999"}},
+	} {
+		if _, err := svc.Metrics(context.Background(), q); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("%s statusCodes=%v: want ErrBadRequest, got %v", q.Metric, q.StatusCodes, err)
+		}
+	}
+	if snapshotCalled || promCalled || lokiCalled || rangedCalled {
+		t.Error("a statusCode-filtered read of a metric with no status axis must not reach any metrics backend")
+	}
+
+	// The two request metrics keep accepting the filter.
+	if _, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPRequests, StatusCodes: []string{"5xx"}}); err != nil {
+		t.Errorf("http_requests with a statusCode filter: want success, got %v", err)
+	}
+	if _, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPLatency, StatusCodes: []string{"4xx", "500"}}); err != nil {
+		t.Errorf("http_latency with statusCode filters: want success, got %v", err)
+	}
+}
+
 // TestMetricsFiltersOfferNoHostPathValues: the Prometheus filter-discovery verb
 // reports empty HOST/PATH values even when the App has live hosts — Prometheus
 // has no host/path axis. Host/Path values for the metrics UI come from the logs
@@ -900,11 +957,19 @@ func TestRESTHostPathFilters(t *testing.T) {
 	if rec := serveREST(noLoki, "/v1/metrics/http-requests?resource=web&host=web.example.com"); rec.Code != 503 {
 		t.Errorf("host filter with no Loki source: want 503, got %d (%s)", rec.Code, rec.Body.String())
 	}
-	// The same endpoints without host/path still answer from Prometheus.
-	for _, seg := range []string{"http-requests", "http-latency", "bandwidth"} {
+	// The two request metrics with a statusCode filter still answer from the
+	// narrowed read. Bandwidth has no per-request status axis, so the filter
+	// is refused with a named 400 like host/path — never a silently
+	// unfiltered 200 (only /metrics/http-requests declares the axis in
+	// Render's OpenAPI; see docs/render-artifacts/metrics-page.md).
+	for _, seg := range []string{"http-requests", "http-latency"} {
 		if rec := serveREST(svc, "/v1/metrics/"+seg+"?resource=web&statusCode=5xx"); rec.Code != 200 {
-			t.Errorf("%s unfiltered: want 200, got %d (%s)", seg, rec.Code, rec.Body.String())
+			t.Errorf("%s?statusCode=5xx: want 200, got %d (%s)", seg, rec.Code, rec.Body.String())
 		}
+	}
+	if rec := serveREST(svc, "/v1/metrics/bandwidth?resource=web&statusCode=5xx"); rec.Code != 400 ||
+		!strings.Contains(rec.Body.String(), "statusCode filters apply only") {
+		t.Errorf("bandwidth+statusCode: want a named 400, got %d (%s)", rec.Code, rec.Body.String())
 	}
 }
 

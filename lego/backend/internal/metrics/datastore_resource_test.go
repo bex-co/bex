@@ -279,6 +279,31 @@ func TestDatastoreAppMetricShapingOptions(t *testing.T) {
 		}
 	}
 
+	// No datastore metric has a per-request status axis: a statusCode filter
+	// is refused, valid or not, before any store — never an unfiltered 200.
+	// (Invalid values must fail here too: datastoreAppMetric drops StatusCodes
+	// when building its DatastoreMetricQuery, so without its own validation
+	// even garbage would read as unfiltered.)
+	innerStore := svc.DatastoreResource
+	storeCalls := 0
+	svc.DatastoreResource = func(ctx context.Context, req DatastoreResourceRequest) ([]MetricSeries, error) {
+		storeCalls++
+		return innerStore(ctx, req)
+	}
+	for _, q := range []MetricQuery{
+		{Metric: MetricCPU, StatusCodes: []string{"5xx"}},
+		{Metric: MetricMemory, StatusCodes: []string{"2xx"}},
+		{Metric: MetricCPU, StatusCodes: []string{"bogus"}},
+	} {
+		if _, err := svc.datastoreAppMetric(ctx, q, pgID); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("%+v = %v, want ErrBadRequest", q, err)
+		}
+	}
+	if storeCalls != 0 {
+		t.Errorf("a statusCode-filtered datastore read reached the store %d times", storeCalls)
+	}
+	svc.DatastoreResource = innerStore
+
 	// Key Value memory percentage without DatastoreResource reports ErrMetricsUnavailable.
 	svc.DatastoreResource = nil
 	if _, err := svc.datastoreAppMetric(ctx, MetricQuery{Metric: MetricMemory, Percentage: true}, kvID); !errors.Is(err, core.ErrMetricsUnavailable) {

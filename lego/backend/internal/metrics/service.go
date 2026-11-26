@@ -609,6 +609,12 @@ func (s *Service) metricsInWindow(ctx context.Context, q MetricQuery) ([]MetricS
 		return nil, err
 	}
 	q.StatusCodes = statusCodes
+	// Only the two request metrics have a per-request status axis
+	// (Prometheus `code` / Loki `status`). Any other metric must refuse the
+	// filter like the sibling host/path filters — never answer unfiltered.
+	if len(statusCodes) > 0 && q.Metric != MetricHTTPRequests && q.Metric != MetricHTTPLatency {
+		return nil, fmt.Errorf("%w: statusCode filters apply only to http_requests and http_latency", core.ErrBadRequest)
+	}
 	if len(q.Hosts) > 0 || len(q.Paths) > 0 {
 		// host/path narrow request traffic only — they have no meaning for a
 		// resource metric, and bandwidth (egress L3/L7) carries no per-request
