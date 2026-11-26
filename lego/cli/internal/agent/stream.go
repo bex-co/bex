@@ -67,7 +67,11 @@ type attachTicket struct {
 
 // attachTicket mints a read ticket for id's stream.
 func (a *api) attachTicket(ctx context.Context, id string) (attachTicket, error) {
-	raw, err := a.post(ctx, request{path: []string{"agent-sessions", id, "attach-ticket"}, query: url.Values{"action": {"read"}}}, nil)
+	raw, err := a.post(ctx, request{
+		path: []string{"agent-sessions", id, "attach-ticket"}, query: url.Values{"action": {"read"}},
+		// A second ticket costs nothing: each is single-use and short-lived.
+		repeatable: true,
+	}, nil)
 	var apiErr *apiError
 	switch {
 	case errors.As(err, &apiErr) && apiErr.Code == codeSessionNotAttachable:

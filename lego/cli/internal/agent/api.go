@@ -33,18 +33,21 @@ import (
 	"time"
 
 	"github.com/render-oss/cli/pkg/client"
+	"github.com/render-oss/cli/pkg/config"
 )
 
 // maxResponseBytes bounds one API answer; a transcript page is the largest.
 const maxResponseBytes = 32 << 20
 
 // api is bex-api as the upstream client reaches it: the same base URL, the
-// same auth and control-plane headers (request editors), and the same token
-// refresh, so `bex agent` authenticates exactly like every other command.
+// same control-plane headers and the same login, refreshed when the command
+// starts as every command's is. login then keeps that bearer valid for the
+// rest of the run (auth.go).
 type api struct {
 	server string // the API base, ending in /v1/
 	http   *http.Client
-	edit   []client.RequestEditorFn
+	// login is the bearer every request carries; nil sends none.
+	login *login
 	// download fetches signed storage URLs: a plain client, because those URLs
 	// carry their own authority and must never see the bex bearer.
 	download *http.Client
@@ -63,10 +66,15 @@ func defaultAPI() (*api, error) {
 	if !ok {
 		return nil, errors.New("unexpected API client")
 	}
+	// The login the client was built with, which its refresh left on file.
+	cur, err := config.DefaultAPIConfig()
+	if err != nil {
+		return nil, err
+	}
 	return &api{
 		server:   raw.Server,
 		http:     httpClient(raw.Client),
-		edit:     raw.RequestEditors,
+		login:    newLogin(cur),
 		download: &http.Client{Timeout: 10 * time.Minute},
 		sleep:    sleepCtx,
 	}, nil
@@ -162,6 +170,10 @@ type request struct {
 	// stream marks an upload, bounded only by the caller's context rather
 	// than by requestTimeout.
 	stream bool
+	// repeatable marks a request without a body that is as safe to send
+	// twice as a GET. Both are sent again once after a 401 renewed the login;
+	// any other request reports the 401.
+	repeatable bool
 }
 
 // requestTimeout bounds one JSON exchange. The upstream client sets none, and
@@ -185,9 +197,37 @@ func (a *api) do(ctx context.Context, r request) ([]byte, error) {
 	if len(r.query) > 0 {
 		endpoint += "?" + r.query.Encode()
 	}
+	for attempt := 1; ; attempt++ {
+		bearer, err := a.login.bearer(ctx)
+		if err != nil {
+			return nil, err
+		}
+		resp, body, err := a.exchange(ctx, r, endpoint, bearer)
+		if err != nil {
+			return nil, err
+		}
+		if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
+			return body, nil
+		}
+		apiErr := responseError(resp, body)
+		if resp.StatusCode != http.StatusUnauthorized || attempt > 1 {
+			return nil, apiErr
+		}
+		retry, err := a.login.rejected(ctx, bearer)
+		switch {
+		case err != nil:
+			return nil, err
+		case !retry || r.method != http.MethodGet && !r.repeatable:
+			return nil, apiErr
+		}
+	}
+}
+
+// exchange sends r to endpoint with bearer and reads the answer.
+func (a *api) exchange(ctx context.Context, r request, endpoint, bearer string) (*http.Response, []byte, error) {
 	req, err := http.NewRequestWithContext(ctx, r.method, endpoint, r.body)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if r.length > 0 {
 		req.ContentLength = r.length
@@ -199,27 +239,22 @@ func (a *api) do(ctx context.Context, r request) ([]byte, error) {
 	for key, values := range r.header {
 		req.Header[key] = values
 	}
-	for _, edit := range a.edit {
-		if err := edit(ctx, req); err != nil {
-			return nil, err
-		}
+	if bearer != "" {
+		req.Header = client.AddHeaders(req.Header, bearer)
 	}
 	resp, err := a.http.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if len(body) > maxResponseBytes {
-		return nil, errResponseTooLarge
+		return nil, nil, errResponseTooLarge
 	}
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, responseError(resp, body)
-	}
-	return body, nil
+	return resp, body, nil
 }
 
 // responseError is a non-2xx answer as an *apiError, with its Retry-After.

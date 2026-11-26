@@ -46,7 +46,7 @@ bex logout
 
 `bex login` starts the existing Bex-compatible device flow and opens the dashboard verification page. By default, the imported CLI writes its upstream YAML schema to `~/.bex/cli.yaml`, with the upstream CLI's restrictive `0600` file mode, and keeps persistent state (telemetry `installation_id`, the one-time analytics notice marker) under `~/.bex/state`. It does not read or write `~/.render/` unless you explicitly override it with a `RENDER_*` environment variable. Existing machines that previously shared `~/.render/state/installation-id.txt` with a `render` binary mint a **new** bex `installation_id` on first run after this change — that id was never bex's, so it is not copied.
 
-The browser login stores a short-lived access token and a refresh token. The CLI refreshes automatically and `bex logout` revokes the stored OAuth credential then removes the local Bex config. Do not copy either token into source code, shell history, or logs.
+The browser login stores an access token that lasts seven days and a refresh token. The CLI refreshes automatically: in the token's last day every command refreshes it, which ends the access token before it, and a long-running `bex agent` command (`chat`, `--follow`, `--wait`, `wait`) picks up the login another command wrote instead of failing with `401` (w3/m404). `bex logout` revokes the stored OAuth credential then removes the local Bex config. Do not copy either token into source code, shell history, or logs.
 
 ## Configuration
 
