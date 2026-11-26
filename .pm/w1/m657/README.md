@@ -1,21 +1,21 @@
 # w1 · m657 — An Org Owner mints audit-log API keys, and the org Members page shows each member's login methods and 2FA, as on Render
 
-**Worker:** worker1 **Goal:** an Org Owner creates, lists and revokes organization API keys that read the audit logs of the org and of every workspace in it, and nothing else; and the org Members page's **View details** shows a member's workspaces, the login methods they have signed in with and whether 2FA is on, as Render's does. **Status:** todo
+**Worker:** worker1 **Goal:** an Org Owner creates, lists and revokes organization API keys that read the audit logs of the org and of every workspace in it, and nothing else; and the org Members page's **View details** shows a member's workspaces, the login methods they have signed in with and whether 2FA is on, as Render's does. **Status:** todo (t001–t006 and t008–t010 done; t007 walked on dev-1, its production walk waits for a pin carrying the milestone, then t011)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Record Render's two surfaces in `organizations.md` and settle the details the bundle leaves open | 30m | — |
-| [t002](t002.md) | Organization audit-log keys: store, mint, list and revoke on GraphQL, for Org Owners | 1h30m | t001 |
-| [t003](t003.md) | An organization audit-log key reads the org's and its workspaces' audit logs, and is refused everywhere else | 1h30m | t002 |
-| [t004](t004.md) | org Settings → Audit Logs gets Render's **Audit Log API Keys** section | 1h15m | t002 |
-| [t005](t005.md) | GraphQL `orgUserAuthStatus`: a member's login methods and 2FA, for Org Owners | 1h | t001 |
-| [t006](t006.md) | org Members: **View details** with Workspaces and **Login & Authentication Status** | 1h | t005 |
+| [t001](done/t001.md) | Record Render's two surfaces in `organizations.md` and settle the details the bundle leaves open — **DONE** | 30m | — |
+| [t002](done/t002.md) | Organization audit-log keys: store, mint, list and revoke on GraphQL, for Org Owners — **DONE** | 1h30m | t001 |
+| [t003](done/t003.md) | An organization audit-log key reads the org's and its workspaces' audit logs, and is refused everywhere else — **DONE** | 1h30m | t002 |
+| [t004](done/t004.md) | org Settings → Audit Logs gets Render's **Audit Log API Keys** section — **DONE** | 1h15m | t002 |
+| [t005](done/t005.md) | GraphQL `orgUserAuthStatus`: a member's login methods and 2FA, for Org Owners — **DONE** | 1h | t001 |
+| [t006](done/t006.md) | org Members: **View details** with Workspaces and **Login & Authentication Status** — **DONE** | 1h | t005 |
 | [t007](t007.md) | Verify in a real browser and over the API, on dev-1 and on production | 45m | t003, t004, t006 |
-| [t008](t008.md) | Render parity | 30m | t007 |
-| [t009](t009.md) | Simplify | 15m | t008 |
-| [t010](t010.md) | Test coverage | 45m | t008 |
+| [t008](done/t008.md) | Render parity — **DONE** | 30m | t007 |
+| [t009](done/t009.md) | Simplify — **DONE** | 15m | t008 |
+| [t010](done/t010.md) | Test coverage — **DONE** | 45m | t008 |
 | [t011](t011.md) | Closeout | 10m | t009, t010 |
 
 Total: **11 tasks, about 9h10m**.

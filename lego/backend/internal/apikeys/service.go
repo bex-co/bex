@@ -269,7 +269,10 @@ type Service struct {
 	// ordinary request limiter; the composition root wires the production value.
 	MaxActiveKeys   int
 	CreationLimiter *core.KeyedRateLimiter[string]
-	createMu        sync.Mutex
+	// Organizations, when set (the store is on), holds an org's audit-log
+	// keys (organizations.go, w1/m657). nil => org keys are unavailable.
+	Organizations OrganizationKeyStore
+	createMu      sync.Mutex
 	// touch throttle: earliest next last-used write per key id. Guards against a
 	// chatty caller turning every introspection into a Hydra write (w4/m13).
 	touchMu   sync.Mutex

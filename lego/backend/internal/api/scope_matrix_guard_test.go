@@ -169,6 +169,8 @@ func heuristicRequiredClass(op string) (want string, ok bool) {
 		return core.OpClassMint, true
 	case strings.Contains(op, "createRouterKey") || strings.Contains(op, "create_router_key"):
 		return core.OpClassMint, true
+	case strings.Contains(op, "provisionOrganizationAuditLogToken"): // an org's audit-log key (w1/m657)
+		return core.OpClassMint, true
 	case strings.Contains(op, "createSSHKey") || op == "MCP add_ssh_key" || op == "REST POST /v1/ssh-keys":
 		return core.OpClassMint, true
 	case strings.Contains(op, "createDatabaseUser") || strings.Contains(op, "create_postgres_user") ||

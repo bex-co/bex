@@ -495,6 +495,229 @@ const ruOrganizations: Record<string, TranslationEntry> = {
     description:
       "Refusal for code WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN on the org setting: the acting Owner is not signed in with Google",
   },
+  "organizations.auditNoPermission": {
+    message: "У вас нет прав на это действие.",
+    description:
+      "Org Settings → Audit Logs: what a Member or Guest reads in place of the CSV export (Render's text)",
+  },
+  "organizations.auditKeysTitle": {
+    message: "API-ключи журналов аудита",
+    description:
+      "Org Settings → Audit Logs: the API keys section heading (Render's)",
+  },
+  "organizations.auditKeysDescription": {
+    message:
+      "Создавайте API-ключи с доступом только на чтение ко всем журналам аудита этой организации и её рабочих пространств.",
+    description:
+      "Org Settings → Audit Logs: the API keys section description (Render's)",
+  },
+  "organizations.auditKeysCreate": {
+    message: "Создать API-ключ",
+    description:
+      "Org Settings → Audit Logs: the button that opens the create dialog",
+  },
+  "organizations.auditKeysNoPermission": {
+    message: "У вас нет прав на управление API-ключами этой организации.",
+    description:
+      "Org Settings → Audit Logs: what a Member or Guest reads under the disabled Create API key button (Render's text)",
+  },
+  "organizations.auditKeysLoading": {
+    message: "Загрузка API-ключей…",
+    description: "Org Settings → Audit Logs: while the org's API keys load",
+  },
+  "organizations.auditKeysLoadFailed": {
+    message: "Не удалось загрузить API-ключи вашей организации.",
+    description:
+      "Org Settings → Audit Logs: the org's API keys could not be read",
+  },
+  "organizations.auditKeysRetry": {
+    message: "Повторить",
+    description:
+      "Org Settings → Audit Logs: reload the org's API keys after a failure",
+  },
+  "organizations.auditKeysEmpty": {
+    message: "Выпущенных API-ключей нет.",
+    description: "Org Settings → Audit Logs: the org has no API keys",
+  },
+  "organizations.auditKeysColName": {
+    message: "Имя",
+    description: "Org API keys table: the key's name column",
+  },
+  "organizations.auditKeysColKey": {
+    message: "Ключ",
+    description:
+      "Org API keys table: the key's id column, shown truncated as Render's key prefix",
+  },
+  "organizations.auditKeysColCreated": {
+    message: "Создан",
+    description: "Org API keys table: when the key was created",
+  },
+  "organizations.auditKeysColLastUsed": {
+    message: "Последнее использование",
+    description: "Org API keys table: when the key was last used",
+  },
+  "organizations.auditKeysNeverUsed": {
+    message: "Никогда",
+    description: "Org API keys table: a key that has not been used",
+  },
+  "organizations.auditKeysActions": {
+    message: "Действия для {label}",
+    description: "Accessible name of an org API key row's actions menu",
+  },
+  "organizations.auditKeysRevoke": {
+    message: "Отозвать",
+    description: "Org API key row menu: revoke the key",
+  },
+  "organizations.auditKeysRevokeTitle": {
+    message: "Отозвать API-ключ",
+    description: "Org API key revoke confirmation: title",
+  },
+  "organizations.auditKeysRevokeBody": {
+    message:
+      "«{label}» больше не сможет получать доступ к журналам аудита вашей организации.",
+    description:
+      "Org API key revoke confirmation: what revoking does (Render's text)",
+  },
+  "organizations.auditKeysRevokeCancel": {
+    message: "Отмена",
+    description: "Org API key revoke confirmation: cancel",
+  },
+  "organizations.auditKeysRevokeConfirm": {
+    message: "Отозвать API-ключ",
+    description: "Org API key revoke confirmation: confirm",
+  },
+  "organizations.auditKeysRevokeFailed": {
+    message: "Не удалось отозвать API-ключ. Попробуйте ещё раз.",
+    description: "Org API key revoke failed",
+  },
+  "organizations.auditKeysCreateTitle": {
+    message: "Создать API-ключ",
+    description: "Org API key create dialog: title before the key exists",
+  },
+  "organizations.auditKeysCreatedTitle": {
+    message: "API-ключ создан",
+    description: "Org API key create dialog: title once the key exists",
+  },
+  "organizations.auditKeysCreateHint": {
+    message: "Дайте API-ключу уникальное имя, например «agent» или «laptop».",
+    description: "Org API key create dialog: the name hint (Render's text)",
+  },
+  "organizations.auditKeysNameLabel": {
+    message: "Имя API-ключа",
+    description: "Org API key create dialog: the name field's label",
+  },
+  "organizations.auditKeysNamePlaceholder": {
+    message: "имя",
+    description: "Org API key create dialog: the name field's placeholder",
+  },
+  "organizations.auditKeysGenerate": {
+    message: "Сгенерировать API-ключ",
+    description: "Org API key create dialog: submit",
+  },
+  "organizations.auditKeysClose": {
+    message: "Закрыть",
+    description: "Org API key create dialog: close before a key exists",
+  },
+  "organizations.auditKeysDone": {
+    message: "Готово",
+    description: "Org API key create dialog: close once the key is shown",
+  },
+  "organizations.auditKeysSaveNow": {
+    message: "Сохраните этот API-ключ сейчас. Больше вы его не увидите.",
+    description:
+      "Org API key create dialog: the key is shown only once (Render's text)",
+  },
+  "organizations.auditKeysKeyLabel": {
+    message: "API-ключ",
+    description: "Org API key create dialog: the label of the new key's field",
+  },
+  "organizations.auditKeysCopy": {
+    message: "Скопировать API-ключ",
+    description: "Org API key create dialog: copy the new key",
+  },
+  "organizations.auditKeysCopied": {
+    message: "Скопировано",
+    description: "Org API key create dialog: the key was copied",
+  },
+  "organizations.auditKeysCopyFailed": {
+    message: "Не удалось скопировать ключ.",
+    description: "Org API key create dialog: copying the key failed",
+  },
+  "organizations.auditKeysCreateFailed": {
+    message: "Не удалось создать API-ключ. Попробуйте ещё раз.",
+    description: "Org API key create failed",
+  },
+  "organizations.auditKeysTooMany": {
+    message: "Вы создали слишком много ключей. Попробуйте позже.",
+    description: "Org API key create refused: too many keys (Render's text)",
+  },
+  "organizations.memberActions": {
+    message: "Действия для {identity}",
+    description: "Accessible name of an org member row's actions menu",
+  },
+  "organizations.viewDetails": {
+    message: "Подробнее",
+    description: "Org member row menu: open the member's details",
+  },
+  "organizations.removeMemberItem": {
+    message: "Удалить участника",
+    description: "Org member row menu: remove the member from the org",
+  },
+  "organizations.detailsOwner": {
+    message: "Владелец",
+    description: "Org member details: shown under an Org Owner's name",
+  },
+  "organizations.detailsWorkspaces": {
+    message: "Рабочие пространства",
+    description: "Org member details: the member's workspaces section heading",
+  },
+  "organizations.detailsNoWorkspaces": {
+    message: "Нет рабочих пространств",
+    description: "Org member details: the member belongs to no workspace",
+  },
+  "organizations.detailsNoWorkspacesBody": {
+    message: "Этот участник ещё не приглашён ни в одно рабочее пространство.",
+    description: "Org member details: the member belongs to no workspace",
+  },
+  "organizations.detailsLoginStatus": {
+    message: "Вход и аутентификация",
+    description:
+      "Org member details: the login methods and 2FA section heading (Render's)",
+  },
+  "organizations.detailsLoginStatusLoading": {
+    message: "Загрузка статуса входа…",
+    description: "Org member details: while the member's login status loads",
+  },
+  "organizations.loginMethodPassword": {
+    message: "Пароль",
+    description: "Org member details: the password login method",
+  },
+  "organizations.loginSignedIn": {
+    message: "Входил",
+    description:
+      "Org member details: the member has signed in with this method",
+  },
+  "organizations.loginNotSignedIn": {
+    message: "Не входил",
+    description:
+      "Org member details: the member has not signed in with this method",
+  },
+  "organizations.loginTwoFactor": {
+    message: "Двухфакторная аутентификация",
+    description: "Org member details: the 2FA row",
+  },
+  "organizations.loginTwoFactorEnabled": {
+    message: "Включена",
+    description: "Org member details: the member has 2FA",
+  },
+  "organizations.loginTwoFactorNotEnabled": {
+    message: "Не включена",
+    description: "Org member details: the member has no 2FA",
+  },
+  "organizations.detailsClose": {
+    message: "Закрыть",
+    description: "Org member details: close the dialog",
+  },
 };
 
 export default ruOrganizations;

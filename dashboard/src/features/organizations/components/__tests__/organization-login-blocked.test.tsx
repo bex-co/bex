@@ -133,9 +133,12 @@ describe("an org page the org's login setting refuses (w7/m466)", () => {
     expect(
       screen.queryByRole("button", { name: "Leave workspace" }),
     ).toBeNull();
-    expect(sent.map((op) => op.name)).toEqual([
+    // An Owner's page also asked for the org's audit-log keys (w1/m657)
+    // before the wall went up; the server refuses that read the same way.
+    expect(sent.map((op) => op.name).sort()).toEqual([
       "Organization",
       "OrganizationMembers",
+      "organizationAPITokens",
     ]);
   });
 
@@ -225,7 +228,11 @@ describe("an org page the org's login setting refuses (w7/m466)", () => {
     });
 
     expect(await screen.findByText("Organization name")).toBeInTheDocument();
-    expect(sent.map((op) => op.name)).toEqual(["Organization"]);
+    // The org, and an Owner's audit-log keys (w1/m657); no members check.
+    expect(sent.map((op) => op.name).sort()).toEqual([
+      "Organization",
+      "organizationAPITokens",
+    ]);
     expect(screen.queryByTestId("organization-login-blocked")).toBeNull();
   });
 

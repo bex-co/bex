@@ -67,6 +67,45 @@ Captured for w7/m464 t001 from Render's own pages, fetched as markdown (`curl ht
 - audit-logs, IdP management: `CreateOrgDomainEvent`, `VerifyOrgDomainEvent`, `DeleteOrgDomainEvent`, `CreateSSOConnectionEvent`, `UpdateSSOConnectionEvent`, `DeleteSSOConnectionEvent`, `ProvisionOrganizationSCIMToken`, `RevokeOrganizationSCIMToken`.
 - Pinned OpenAPI: `GET /organizations/{orgId}/audit-logs` (`list-organization-audit-logs`) takes `startTime`, `endTime`, `direction`, `cursor` and `limit` (`auditLogLimitParam`), and answers an array of `auditLogWithCursor`. Its event enum also carries `ChangeOrgNameEvent` and `UpdateOrgPaymentMethodEvent`, which the docs page does not list.
 
+## Audit log API keys
+
+Read 2026-11-26 for w1/m657 from Render's public dashboard bundle (the `Settings`, `ApiTokenHeader` and `frontendFlag` chunks, found by the strings below; Rollup renames chunk hashes every deploy) and from render.com/docs/api-keys. Not walked signed in.
+
+- docs, api-keys: "Org Owners can create an audit log API key" from the org's _Settings_ → _Audit Logs_ → _Audit Log API Keys_ → _Create API key_. "Audit log API keys have read-only access to audit logs for your organization and all of its workspaces." "It's shown in full only once." No beta wording and no expiry.
+- Bundle: the section sits in the org Settings page's _Audit Logs_ section ("Render logs material actions taken by members of your organization."), under _Export CSV_ ("Download Audit Logs for a selected date range."), and renders only while the frontend flag `scoped_access_tokens` is on (the hook reads `allFrontendFlags`), the flag of Render's scoped account keys. The docs describe the feature, so the flag is a staged rollout, as `artifact_reuse` is for Build Sources.
+- Heading "Audit Log API Keys", then "Create API keys with read-only access to all Audit Logs across this organization and its workspaces." and a secondary **Create API key** button. Without the org's `manageOrganization` permission the button is disabled and the section reads `permissions.manageOrganization.message`, else "You do not have permission to manage this organization's API keys.", and the list is not asked for. A non-manager still sees the whole _Audit Logs_ section, whose export reads "You do not have permission to perform this action." without `readOrgAuditLogs`.
+- The list: "Loading API keys…" while it loads; "Unable to load your organization's API keys." with **Retry** when it fails; the account keys' table without its workspace and permission columns (Name, Key as the id's first characters then "…", Created, Last used, "Never" for an unused key, an overflow menu with **Revoke**), sorted by last use; "No provisioned API keys." when empty.
+- Create dialog: the title "Create an API key" with the org's avatar and name above it, "Give your API key a unique name, like “agent” or “laptop”.", a name field (label "API key name", placeholder "name", at most 32 characters with an `n/32` counter), **Close** and **Generate API key**. Created: "API key created" with a success icon, the key in a copyable field, "Save this API key now. You won’t be able to see it again." and **Done**. Errors: "You have created too many keys. Please try again later." for a rate-limited create, else the server's message or "Unable to create your API key. Please try again.".
+- Revoke dialog: "Revoke API key", "“<label>” will no longer be able to access your organization's Audit Logs.", **Cancel** and **Revoke API key**; a failure reads "Unable to revoke your API key. Please try again.".
+- Operations: `query organizationAPITokens($organizationId) { organization(organizationId: $organizationId) { id organizationAPITokens { id createdAt label lastUsedAt expiresAt type } } }`, `mutation provisionOrganizationAuditLogToken($organizationId, $label) { provisionOrganizationAuditLogToken(organizationId, label) { token } }` and `mutation revokeOrganizationAPIToken($organizationId, $tokenId) { revokeOrganizationAPIToken(organizationId, tokenId) }`, a Boolean. The list's type is `APIToken` with an `APITokenType` enum; the bundle names no value for these keys.
+- The keys read Render's public API: `GET /organizations/{orgId}/audit-logs` and `GET /owners/{ownerId}/audit-logs`. The public API has no route that manages org keys, and Render's MCP has neither the keys nor audit logs.
+
+## A member's login status
+
+- Bundle (the `Members` and `user` chunks): org Members → a member row's overflow menu → **View details**, the first item, before **Promote to owner** or **Demote from owner** and **Remove member**; the member's email in the row opens it too. Not behind any flag.
+- The dialog's header is the member's avatar and name (or email), with "Owner" under it for an Org Owner. A **Workspaces** section lists the member's workspaces (avatar, name, an "Invite-only" lock, their role), or "No workspaces" and "This member has not been invited to a workspace.". When the viewer holds the org permission `viewOrgUserAuthStatus`, a **Login & Authentication Status** section follows: one row per login method with "Signed in" (success) or "Not signed in" (warning), then "Two-factor Authentication" with "Enabled" or "Not enabled". Then **Close**.
+- Method labels: `pwd` is "Password", `saml-sso-…` "SAML SSO", anything else its name capitalized (`google` is "Google", `github` "Github"). Render's login method list, in its order: `pwd`, `google`, `saml-sso`, `github`, `gitlab`, `bitbucket`.
+- Operation: `query orgUserAuthStatus($userId, $organizationId) { orgUserAuthStatus(userID: $userId, orgID: $organizationId) { loginMethodStatuses { method signedIn } is2FAEnabled } }`, with the row's `user.id`.
+- Docs: render.com/docs has no page for this dialog (login-settings, saml-sso, organizations and team-members read 2026-11-26). The nearest is saml-sso's enforcement dialog, "a report of your org members who have yet to log in via SSO", which is what "Not signed in" means.
+
+### What the bundle and docs leave open, and bex's choice (w1/m657 t001)
+
+| Open | bex's choice | Basis |
+| --- | --- | --- |
+| Which login methods a member's status lists | `pwd`, `google`, `github`, in Render's order, whether or not the org's login requirements allow them. No SAML (`.pm/DO_NOT_DO.md`), GitLab or Bitbucket row: bex has no such login. | Every method bex offers; the dialog is how an Owner sees who is ready before turning a requirement on. |
+| What `signedIn` means | The member's Kratos identity holds that credential: a password set, the provider linked. Signing in with a method the first time creates it. `is2FAEnabled` is the 2FA gate's rule, a TOTP credential or a WebAuthn key. | The nearest observable fact; Render's saml-sso dialog reports who "ha[s] yet to log in". |
+| Who holds `viewOrgUserAuthStatus` | Org Owners. | Every other org setting is an Owner's, and `manageOrganization`, which gates the keys, is. |
+| What `userID` takes | The member's `userId` (`usr-…`, Render's `user.id`) or their subject. | The dashboard holds both for a member. |
+| Who manages the keys | Org Owners, Render's `manageOrganization`. | The docs: "Org Owners can create an audit log API key". |
+| Whether a key outlives its creator's demotion or departure | Yes: the key is the org's, and any Owner revokes it. | Render's list names no creator. |
+| The creator's account deletion | Revokes the key, as every key a person made ([ADR086](../ADR086-account-deletion.md)); the list stops showing it. | The login requirements hold a key by its creator, which a deleted account no longer answers for. |
+| The org's login requirements | Hold the key by its creator's second factor and the sign-in it was minted in, as every key ([ADR012 §9a–9c](../ADR012-auth.md#9a-workspace-enforced-two-factor-authentication-w22m402)). | The nearest bex rule. |
+| The org's end (a downgrade or its primary deleted) | Its keys read nothing at once and are revoked. | The milestone's definition of done. |
+| `expiresAt` | Always null. | The docs give the keys no expiry. |
+| `type` | `AUDIT_LOG`. | The bundle names no value. |
+| The quota, and the "too many keys" error | At most 20 live keys per org (the workspace quota) and the workspace keys' creation rate per org; either is `ORGANIZATION_API_KEY_LIMIT`, which the dashboard shows as Render's rate-limit text. | bex's workspace key limits; Render's one sentence for a refused create. |
+| Audit rows for minting and revoking | None. A refused attempt is still recorded. | Render's org event list (render.com/docs/audit-logs) has no event for them, and the org log answers only Render's events. |
+
 ## What Render does not say, and bex's choice
 
 | Unsaid | bex's choice (ADR115) |

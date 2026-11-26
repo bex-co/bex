@@ -489,6 +489,228 @@ const koOrganizations: Record<string, TranslationEntry> = {
     description:
       "Refusal for code WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN on the org setting: the acting Owner is not signed in with Google",
   },
+  "organizations.auditNoPermission": {
+    message: "이 작업을 수행할 권한이 없습니다.",
+    description:
+      "Org Settings → Audit Logs: what a Member or Guest reads in place of the CSV export (Render's text)",
+  },
+  "organizations.auditKeysTitle": {
+    message: "감사 로그 API 키",
+    description:
+      "Org Settings → Audit Logs: the API keys section heading (Render's)",
+  },
+  "organizations.auditKeysDescription": {
+    message:
+      "이 조직과 모든 워크스페이스의 감사 로그를 읽기 전용으로 볼 수 있는 API 키를 만드세요.",
+    description:
+      "Org Settings → Audit Logs: the API keys section description (Render's)",
+  },
+  "organizations.auditKeysCreate": {
+    message: "API 키 만들기",
+    description:
+      "Org Settings → Audit Logs: the button that opens the create dialog",
+  },
+  "organizations.auditKeysNoPermission": {
+    message: "이 조직의 API 키를 관리할 권한이 없습니다.",
+    description:
+      "Org Settings → Audit Logs: what a Member or Guest reads under the disabled Create API key button (Render's text)",
+  },
+  "organizations.auditKeysLoading": {
+    message: "API 키를 불러오는 중…",
+    description: "Org Settings → Audit Logs: while the org's API keys load",
+  },
+  "organizations.auditKeysLoadFailed": {
+    message: "조직의 API 키를 불러올 수 없습니다.",
+    description:
+      "Org Settings → Audit Logs: the org's API keys could not be read",
+  },
+  "organizations.auditKeysRetry": {
+    message: "다시 시도",
+    description:
+      "Org Settings → Audit Logs: reload the org's API keys after a failure",
+  },
+  "organizations.auditKeysEmpty": {
+    message: "발급된 API 키가 없습니다.",
+    description: "Org Settings → Audit Logs: the org has no API keys",
+  },
+  "organizations.auditKeysColName": {
+    message: "이름",
+    description: "Org API keys table: the key's name column",
+  },
+  "organizations.auditKeysColKey": {
+    message: "키",
+    description:
+      "Org API keys table: the key's id column, shown truncated as Render's key prefix",
+  },
+  "organizations.auditKeysColCreated": {
+    message: "생성일",
+    description: "Org API keys table: when the key was created",
+  },
+  "organizations.auditKeysColLastUsed": {
+    message: "마지막 사용",
+    description: "Org API keys table: when the key was last used",
+  },
+  "organizations.auditKeysNeverUsed": {
+    message: "사용 안 함",
+    description: "Org API keys table: a key that has not been used",
+  },
+  "organizations.auditKeysActions": {
+    message: "{label} 작업",
+    description: "Accessible name of an org API key row's actions menu",
+  },
+  "organizations.auditKeysRevoke": {
+    message: "취소",
+    description: "Org API key row menu: revoke the key",
+  },
+  "organizations.auditKeysRevokeTitle": {
+    message: "API 키 취소",
+    description: "Org API key revoke confirmation: title",
+  },
+  "organizations.auditKeysRevokeBody": {
+    message: "“{label}” 키는 더 이상 조직의 감사 로그에 접근할 수 없습니다.",
+    description:
+      "Org API key revoke confirmation: what revoking does (Render's text)",
+  },
+  "organizations.auditKeysRevokeCancel": {
+    message: "닫기",
+    description: "Org API key revoke confirmation: cancel",
+  },
+  "organizations.auditKeysRevokeConfirm": {
+    message: "API 키 취소",
+    description: "Org API key revoke confirmation: confirm",
+  },
+  "organizations.auditKeysRevokeFailed": {
+    message: "API 키를 취소할 수 없습니다. 다시 시도하세요.",
+    description: "Org API key revoke failed",
+  },
+  "organizations.auditKeysCreateTitle": {
+    message: "API 키 만들기",
+    description: "Org API key create dialog: title before the key exists",
+  },
+  "organizations.auditKeysCreatedTitle": {
+    message: "API 키가 만들어졌습니다",
+    description: "Org API key create dialog: title once the key exists",
+  },
+  "organizations.auditKeysCreateHint": {
+    message: "API 키에 “agent”나 “laptop”처럼 고유한 이름을 지정하세요.",
+    description: "Org API key create dialog: the name hint (Render's text)",
+  },
+  "organizations.auditKeysNameLabel": {
+    message: "API 키 이름",
+    description: "Org API key create dialog: the name field's label",
+  },
+  "organizations.auditKeysNamePlaceholder": {
+    message: "이름",
+    description: "Org API key create dialog: the name field's placeholder",
+  },
+  "organizations.auditKeysGenerate": {
+    message: "API 키 생성",
+    description: "Org API key create dialog: submit",
+  },
+  "organizations.auditKeysClose": {
+    message: "닫기",
+    description: "Org API key create dialog: close before a key exists",
+  },
+  "organizations.auditKeysDone": {
+    message: "완료",
+    description: "Org API key create dialog: close once the key is shown",
+  },
+  "organizations.auditKeysSaveNow": {
+    message: "지금 이 API 키를 저장하세요. 다시 볼 수 없습니다.",
+    description:
+      "Org API key create dialog: the key is shown only once (Render's text)",
+  },
+  "organizations.auditKeysKeyLabel": {
+    message: "API 키",
+    description: "Org API key create dialog: the label of the new key's field",
+  },
+  "organizations.auditKeysCopy": {
+    message: "API 키 복사",
+    description: "Org API key create dialog: copy the new key",
+  },
+  "organizations.auditKeysCopied": {
+    message: "복사했습니다",
+    description: "Org API key create dialog: the key was copied",
+  },
+  "organizations.auditKeysCopyFailed": {
+    message: "키를 복사할 수 없습니다.",
+    description: "Org API key create dialog: copying the key failed",
+  },
+  "organizations.auditKeysCreateFailed": {
+    message: "API 키를 만들 수 없습니다. 다시 시도하세요.",
+    description: "Org API key create failed",
+  },
+  "organizations.auditKeysTooMany": {
+    message: "키를 너무 많이 만들었습니다. 나중에 다시 시도하세요.",
+    description: "Org API key create refused: too many keys (Render's text)",
+  },
+  "organizations.memberActions": {
+    message: "{identity} 작업",
+    description: "Accessible name of an org member row's actions menu",
+  },
+  "organizations.viewDetails": {
+    message: "세부 정보 보기",
+    description: "Org member row menu: open the member's details",
+  },
+  "organizations.removeMemberItem": {
+    message: "멤버 제거",
+    description: "Org member row menu: remove the member from the org",
+  },
+  "organizations.detailsOwner": {
+    message: "소유자",
+    description: "Org member details: shown under an Org Owner's name",
+  },
+  "organizations.detailsWorkspaces": {
+    message: "워크스페이스",
+    description: "Org member details: the member's workspaces section heading",
+  },
+  "organizations.detailsNoWorkspaces": {
+    message: "워크스페이스 없음",
+    description: "Org member details: the member belongs to no workspace",
+  },
+  "organizations.detailsNoWorkspacesBody": {
+    message: "이 멤버는 아직 워크스페이스에 초대되지 않았습니다.",
+    description: "Org member details: the member belongs to no workspace",
+  },
+  "organizations.detailsLoginStatus": {
+    message: "로그인 및 인증 상태",
+    description:
+      "Org member details: the login methods and 2FA section heading (Render's)",
+  },
+  "organizations.detailsLoginStatusLoading": {
+    message: "로그인 상태를 불러오는 중…",
+    description: "Org member details: while the member's login status loads",
+  },
+  "organizations.loginMethodPassword": {
+    message: "비밀번호",
+    description: "Org member details: the password login method",
+  },
+  "organizations.loginSignedIn": {
+    message: "로그인함",
+    description:
+      "Org member details: the member has signed in with this method",
+  },
+  "organizations.loginNotSignedIn": {
+    message: "로그인 안 함",
+    description:
+      "Org member details: the member has not signed in with this method",
+  },
+  "organizations.loginTwoFactor": {
+    message: "2단계 인증",
+    description: "Org member details: the 2FA row",
+  },
+  "organizations.loginTwoFactorEnabled": {
+    message: "사용",
+    description: "Org member details: the member has 2FA",
+  },
+  "organizations.loginTwoFactorNotEnabled": {
+    message: "사용 안 함",
+    description: "Org member details: the member has no 2FA",
+  },
+  "organizations.detailsClose": {
+    message: "닫기",
+    description: "Org member details: close the dialog",
+  },
 };
 
 export default koOrganizations;

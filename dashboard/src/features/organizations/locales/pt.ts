@@ -494,6 +494,230 @@ const ptOrganizations: Record<string, TranslationEntry> = {
     description:
       "Refusal for code WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN on the org setting: the acting Owner is not signed in with Google",
   },
+  "organizations.auditNoPermission": {
+    message: "Você não tem permissão para realizar esta ação.",
+    description:
+      "Org Settings → Audit Logs: what a Member or Guest reads in place of the CSV export (Render's text)",
+  },
+  "organizations.auditKeysTitle": {
+    message: "Chaves de API dos logs de auditoria",
+    description:
+      "Org Settings → Audit Logs: the API keys section heading (Render's)",
+  },
+  "organizations.auditKeysDescription": {
+    message:
+      "Crie chaves de API com acesso somente leitura a todos os logs de auditoria desta organização e de seus workspaces.",
+    description:
+      "Org Settings → Audit Logs: the API keys section description (Render's)",
+  },
+  "organizations.auditKeysCreate": {
+    message: "Criar chave de API",
+    description:
+      "Org Settings → Audit Logs: the button that opens the create dialog",
+  },
+  "organizations.auditKeysNoPermission": {
+    message:
+      "Você não tem permissão para gerenciar as chaves de API desta organização.",
+    description:
+      "Org Settings → Audit Logs: what a Member or Guest reads under the disabled Create API key button (Render's text)",
+  },
+  "organizations.auditKeysLoading": {
+    message: "Carregando chaves de API…",
+    description: "Org Settings → Audit Logs: while the org's API keys load",
+  },
+  "organizations.auditKeysLoadFailed": {
+    message: "Não foi possível carregar as chaves de API da sua organização.",
+    description:
+      "Org Settings → Audit Logs: the org's API keys could not be read",
+  },
+  "organizations.auditKeysRetry": {
+    message: "Tentar novamente",
+    description:
+      "Org Settings → Audit Logs: reload the org's API keys after a failure",
+  },
+  "organizations.auditKeysEmpty": {
+    message: "Nenhuma chave de API emitida.",
+    description: "Org Settings → Audit Logs: the org has no API keys",
+  },
+  "organizations.auditKeysColName": {
+    message: "Nome",
+    description: "Org API keys table: the key's name column",
+  },
+  "organizations.auditKeysColKey": {
+    message: "Chave",
+    description:
+      "Org API keys table: the key's id column, shown truncated as Render's key prefix",
+  },
+  "organizations.auditKeysColCreated": {
+    message: "Criada",
+    description: "Org API keys table: when the key was created",
+  },
+  "organizations.auditKeysColLastUsed": {
+    message: "Último uso",
+    description: "Org API keys table: when the key was last used",
+  },
+  "organizations.auditKeysNeverUsed": {
+    message: "Nunca",
+    description: "Org API keys table: a key that has not been used",
+  },
+  "organizations.auditKeysActions": {
+    message: "Ações de {label}",
+    description: "Accessible name of an org API key row's actions menu",
+  },
+  "organizations.auditKeysRevoke": {
+    message: "Revogar",
+    description: "Org API key row menu: revoke the key",
+  },
+  "organizations.auditKeysRevokeTitle": {
+    message: "Revogar chave de API",
+    description: "Org API key revoke confirmation: title",
+  },
+  "organizations.auditKeysRevokeBody": {
+    message:
+      "“{label}” não poderá mais acessar os logs de auditoria da sua organização.",
+    description:
+      "Org API key revoke confirmation: what revoking does (Render's text)",
+  },
+  "organizations.auditKeysRevokeCancel": {
+    message: "Cancelar",
+    description: "Org API key revoke confirmation: cancel",
+  },
+  "organizations.auditKeysRevokeConfirm": {
+    message: "Revogar chave de API",
+    description: "Org API key revoke confirmation: confirm",
+  },
+  "organizations.auditKeysRevokeFailed": {
+    message: "Não foi possível revogar sua chave de API. Tente novamente.",
+    description: "Org API key revoke failed",
+  },
+  "organizations.auditKeysCreateTitle": {
+    message: "Criar uma chave de API",
+    description: "Org API key create dialog: title before the key exists",
+  },
+  "organizations.auditKeysCreatedTitle": {
+    message: "Chave de API criada",
+    description: "Org API key create dialog: title once the key exists",
+  },
+  "organizations.auditKeysCreateHint": {
+    message: "Dê à sua chave de API um nome único, como “agent” ou “laptop”.",
+    description: "Org API key create dialog: the name hint (Render's text)",
+  },
+  "organizations.auditKeysNameLabel": {
+    message: "Nome da chave de API",
+    description: "Org API key create dialog: the name field's label",
+  },
+  "organizations.auditKeysNamePlaceholder": {
+    message: "nome",
+    description: "Org API key create dialog: the name field's placeholder",
+  },
+  "organizations.auditKeysGenerate": {
+    message: "Gerar chave de API",
+    description: "Org API key create dialog: submit",
+  },
+  "organizations.auditKeysClose": {
+    message: "Fechar",
+    description: "Org API key create dialog: close before a key exists",
+  },
+  "organizations.auditKeysDone": {
+    message: "Concluir",
+    description: "Org API key create dialog: close once the key is shown",
+  },
+  "organizations.auditKeysSaveNow": {
+    message: "Salve esta chave de API agora. Você não poderá vê-la novamente.",
+    description:
+      "Org API key create dialog: the key is shown only once (Render's text)",
+  },
+  "organizations.auditKeysKeyLabel": {
+    message: "Chave de API",
+    description: "Org API key create dialog: the label of the new key's field",
+  },
+  "organizations.auditKeysCopy": {
+    message: "Copiar chave de API",
+    description: "Org API key create dialog: copy the new key",
+  },
+  "organizations.auditKeysCopied": {
+    message: "Copiada",
+    description: "Org API key create dialog: the key was copied",
+  },
+  "organizations.auditKeysCopyFailed": {
+    message: "Não foi possível copiar a chave.",
+    description: "Org API key create dialog: copying the key failed",
+  },
+  "organizations.auditKeysCreateFailed": {
+    message: "Não foi possível criar sua chave de API. Tente novamente.",
+    description: "Org API key create failed",
+  },
+  "organizations.auditKeysTooMany": {
+    message: "Você criou chaves demais. Tente novamente mais tarde.",
+    description: "Org API key create refused: too many keys (Render's text)",
+  },
+  "organizations.memberActions": {
+    message: "Ações de {identity}",
+    description: "Accessible name of an org member row's actions menu",
+  },
+  "organizations.viewDetails": {
+    message: "Ver detalhes",
+    description: "Org member row menu: open the member's details",
+  },
+  "organizations.removeMemberItem": {
+    message: "Remover membro",
+    description: "Org member row menu: remove the member from the org",
+  },
+  "organizations.detailsOwner": {
+    message: "Proprietário",
+    description: "Org member details: shown under an Org Owner's name",
+  },
+  "organizations.detailsWorkspaces": {
+    message: "Workspaces",
+    description: "Org member details: the member's workspaces section heading",
+  },
+  "organizations.detailsNoWorkspaces": {
+    message: "Nenhum workspace",
+    description: "Org member details: the member belongs to no workspace",
+  },
+  "organizations.detailsNoWorkspacesBody": {
+    message: "Este membro ainda não foi convidado para nenhum workspace.",
+    description: "Org member details: the member belongs to no workspace",
+  },
+  "organizations.detailsLoginStatus": {
+    message: "Status de login e autenticação",
+    description:
+      "Org member details: the login methods and 2FA section heading (Render's)",
+  },
+  "organizations.detailsLoginStatusLoading": {
+    message: "Carregando o status de login…",
+    description: "Org member details: while the member's login status loads",
+  },
+  "organizations.loginMethodPassword": {
+    message: "Senha",
+    description: "Org member details: the password login method",
+  },
+  "organizations.loginSignedIn": {
+    message: "Fez login",
+    description:
+      "Org member details: the member has signed in with this method",
+  },
+  "organizations.loginNotSignedIn": {
+    message: "Não fez login",
+    description:
+      "Org member details: the member has not signed in with this method",
+  },
+  "organizations.loginTwoFactor": {
+    message: "Autenticação de dois fatores",
+    description: "Org member details: the 2FA row",
+  },
+  "organizations.loginTwoFactorEnabled": {
+    message: "Ativada",
+    description: "Org member details: the member has 2FA",
+  },
+  "organizations.loginTwoFactorNotEnabled": {
+    message: "Não ativada",
+    description: "Org member details: the member has no 2FA",
+  },
+  "organizations.detailsClose": {
+    message: "Fechar",
+    description: "Org member details: close the dialog",
+  },
 };
 
 export default ptOrganizations;

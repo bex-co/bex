@@ -10,6 +10,16 @@ export type Scalars = {
   JSONObject: { input: Record<string, unknown>; output: Record<string, unknown>; }
 };
 
+export type ApiToken = {
+  __typename: 'APIToken';
+  createdAt: Scalars['String']['output'];
+  expiresAt: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  label: Scalars['String']['output'];
+  lastUsedAt: Maybe<Scalars['String']['output']>;
+  type: Scalars['String']['output'];
+};
+
 export type AcceptedOrganizationInvite = {
   __typename: 'AcceptedOrganizationInvite';
   joined: Scalars['Boolean']['output'];
@@ -2287,6 +2297,12 @@ export enum LogThemeSetting {
   MatchApp = 'MATCH_APP'
 }
 
+export type LoginMethodStatus = {
+  __typename: 'LoginMethodStatus';
+  method: Scalars['String']['output'];
+  signedIn: Scalars['Boolean']['output'];
+};
+
 /** A login requirement a workspace or an organization can turn on: two-factor authentication, or signing in with Google. */
 export enum LoginRequirement {
   GoogleLogin = 'GOOGLE_LOGIN',
@@ -2577,6 +2593,8 @@ export type Mutation = {
   pauseAgentAutomation: AgentAutomation;
   planBlueprintSync: Maybe<BlueprintPlanResult>;
   prepareWorkspaceCreation: Maybe<WorkspaceCreationAttempt>;
+  /** Create an organization API key with read-only access to the audit logs of the organization and all of its workspaces (Org Owners). token, the key's bearer form, is shown only here. */
+  provisionOrganizationAuditLogToken: ProvisionedOrganizationApiToken;
   purgeServiceCache: Maybe<Service>;
   recoverDatabase: Maybe<Database>;
   regenerateDeployHook: Maybe<DeployHook>;
@@ -2606,6 +2624,8 @@ export type Mutation = {
   revokeApiKey: Maybe<Scalars['Boolean']['output']>;
   revokeNotificationDeviceSubscriptions: Maybe<Scalars['Int']['output']>;
   revokeObjectAccessKey: Scalars['Boolean']['output'];
+  /** Revoke one of an organization's API keys (Org Owners); it stops at once. */
+  revokeOrganizationAPIToken: Maybe<Scalars['Boolean']['output']>;
   revokeOrganizationInvite: Maybe<Scalars['Boolean']['output']>;
   revokeWorkspaceInvite: Maybe<Scalars['String']['output']>;
   rollbackService: Maybe<Deploy>;
@@ -3575,6 +3595,12 @@ export type MutationPrepareWorkspaceCreationArgs = {
 };
 
 
+export type MutationProvisionOrganizationAuditLogTokenArgs = {
+  label: Scalars['String']['input'];
+  organizationId: Scalars['String']['input'];
+};
+
+
 export type MutationPurgeServiceCacheArgs = {
   confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
@@ -3754,6 +3780,12 @@ export type MutationRevokeNotificationDeviceSubscriptionsArgs = {
 export type MutationRevokeObjectAccessKeyArgs = {
   id: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationRevokeOrganizationApiTokenArgs = {
+  organizationId: Scalars['String']['input'];
+  tokenId: Scalars['String']['input'];
 };
 
 
@@ -4686,12 +4718,20 @@ export type OomKilled = {
   memoryLimit: Maybe<Scalars['String']['output']>;
 };
 
+export type OrgUserAuthStatus = {
+  __typename: 'OrgUserAuthStatus';
+  is2FAEnabled: Scalars['Boolean']['output'];
+  loginMethodStatuses: Array<LoginMethodStatus>;
+};
+
 /** A Render organization (ADR115): a Scale or Enterprise primary workspace and the workspaces it holds under its plan. */
 export type Organization = {
   __typename: 'Organization';
   createdAt: Scalars['String']['output'];
   id: Scalars['String']['output'];
   name: Scalars['String']['output'];
+  /** The organization's audit-log API keys, oldest first (Org Owners). */
+  organizationAPITokens: Array<ApiToken>;
   plan: Scalars['String']['output'];
   primaryWorkspaceId: Scalars['String']['output'];
   requireGoogleLogin: Scalars['Boolean']['output'];
@@ -4728,7 +4768,14 @@ export type OrganizationMember = {
   role: Scalars['String']['output'];
   subject: Scalars['String']['output'];
   userId: Maybe<Scalars['String']['output']>;
+  workspaceRoles: Array<OrganizationMemberWorkspace>;
   workspaces: Array<Scalars['String']['output']>;
+};
+
+export type OrganizationMemberWorkspace = {
+  __typename: 'OrganizationMemberWorkspace';
+  role: Scalars['String']['output'];
+  workspaceId: Scalars['String']['output'];
 };
 
 export type OrganizationWorkspace = {
@@ -4859,6 +4906,11 @@ export type ProjectMetricsQueryInput = {
   project: Scalars['String']['input'];
   resolution?: InputMaybe<Scalars['Int']['input']>;
   start?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type ProvisionedOrganizationApiToken = {
+  __typename: 'ProvisionedOrganizationAPIToken';
+  token: Scalars['String']['output'];
 };
 
 export type PushEventUrgency = {
@@ -5093,6 +5145,9 @@ export type Query = {
   notificationWebPushSubscriptions: Maybe<Array<Maybe<NotificationWebPushSubscription>>>;
   objectAccessKeys: Maybe<Array<Maybe<ObjectAccessKey>>>;
   objectBucket: Maybe<ObjectBucket>;
+  /** An organization member's login methods (pwd, google, github), whether they have signed in with each, and whether they have two-factor authentication (Org Owners). userID is the member's userId, usr-…, or their subject. */
+  orgUserAuthStatus: OrgUserAuthStatus;
+  /** One organization the caller belongs to, by id (or organizationId, Render's name for it). */
   organization: Maybe<Organization>;
   organizationAuditLogs: Maybe<Array<Maybe<AuditLog>>>;
   organizationInvitePreview: Maybe<OrganizationInvitePreview>;
@@ -5825,8 +5880,15 @@ export type QueryObjectBucketArgs = {
 };
 
 
+export type QueryOrgUserAuthStatusArgs = {
+  orgID: Scalars['String']['input'];
+  userID: Scalars['String']['input'];
+};
+
+
 export type QueryOrganizationArgs = {
-  id: Scalars['String']['input'];
+  id?: InputMaybe<Scalars['String']['input']>;
+  organizationId?: InputMaybe<Scalars['String']['input']>;
 };
 
 

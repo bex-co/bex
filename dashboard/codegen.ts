@@ -42,6 +42,14 @@ const typeConfig = {
   useTypeImports: true,
 } as const;
 
+const operationsConfig = {
+  ...typeConfig,
+  importSchemaTypesFrom: "./src/graphql/schema-types.ts",
+  namespacedImportName: "Types",
+};
+
+const ORGANIZATIONS_DOCUMENTS = "src/features/organizations/**/*.graphql";
+
 const config: CodegenConfig = {
   overwrite: true,
   // The `typescript` (full-schema) plugin currently throws inside the
@@ -59,8 +67,8 @@ const config: CodegenConfig = {
     : sessionToken
       ? [{ [apiUrl]: { headers: { "X-Session-Token": sessionToken } } }]
       : apiUrl,
-  // This assumes that all your source files are in a top-level `src/` directory - you might need to adjust this to your file structure
-  documents: ["src/**/*.graphql"],
+  // Each operations output names its own documents (below): a top-level list
+  // would add every document to every output.
   // Don't exit with non-zero status when there are no documents
   ignoreNoDocuments: true,
   generates: {
@@ -73,21 +81,30 @@ const config: CodegenConfig = {
     // GraphQL Codegen v6's operations plugin owns its utility/input types. Keep
     // it separate from the full schema output, then re-export the schema types
     // so existing dashboard imports continue to have one stable entry point.
+    // A feature's documents can be generated into a file of their own, which
+    // definitions.ts re-exports, so that no generated file reaches the 1 MiB
+    // blob limit (scripts/repo-artifact-guard.sh, w1/m657): the organizations
+    // documents (and their OrganizationFields fragment) are the first.
     "./src/graphql/definitions.ts": {
+      documents: ["src/**/*.graphql", `!${ORGANIZATIONS_DOCUMENTS}`],
       plugins: [
         {
           add: {
-            content: 'export * from "./schema-types";',
+            content: [
+              'export * from "./schema-types";',
+              'export * from "./definitions-organizations";',
+            ].join("\n"),
           },
         },
         "typescript-operations",
         "typed-document-node",
       ],
-      config: {
-        ...typeConfig,
-        importSchemaTypesFrom: "./src/graphql/schema-types.ts",
-        namespacedImportName: "Types",
-      },
+      config: operationsConfig,
+    },
+    "./src/graphql/definitions-organizations.ts": {
+      documents: [ORGANIZATIONS_DOCUMENTS],
+      plugins: ["typescript-operations", "typed-document-node"],
+      config: operationsConfig,
     },
   },
 };

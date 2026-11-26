@@ -1738,6 +1738,7 @@ var readVerbs = map[string]bool{
 	"members.ListOrganizationInvites":    true,
 	"members.ListInvites":                true,
 	"apikeys.ListAPIKeys":                true,
+	"apikeys.ListOrganizationAPITokens":  true, // w1/m657: an Owner's read on can_manage
 	"apikeys.PermissionCatalog":          true,
 	"sshkeys.List":                       true,
 	"workspaces.WorkspaceCreationPolicy": true,

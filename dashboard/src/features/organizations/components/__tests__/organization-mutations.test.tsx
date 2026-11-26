@@ -204,6 +204,13 @@ const MEMBERS = {
       role: "OWNER",
       createdAt: null,
       workspaces: ["tea-hq"],
+      workspaceRoles: [
+        {
+          __typename: "OrganizationMemberWorkspace",
+          workspaceId: "tea-hq",
+          role: "ADMIN",
+        },
+      ],
       isSelf: true,
     },
     {
@@ -214,6 +221,13 @@ const MEMBERS = {
       role: "MEMBER",
       createdAt: null,
       workspaces: ["tea-web"],
+      workspaceRoles: [
+        {
+          __typename: "OrganizationMemberWorkspace",
+          workspaceId: "tea-web",
+          role: "DEVELOPER",
+        },
+      ],
       isSelf: false,
     },
   ],
@@ -233,6 +247,7 @@ describe("OrganizationMembersCard (Owner)", () => {
         organizationId="org-1"
         role="OWNER"
         workspaceName={(id) => (id === "tea-web" ? "acme-web" : undefined)}
+        workspace={() => undefined}
       />,
       { wrapper: script.wrapper },
     );
@@ -297,9 +312,10 @@ describe("OrganizationMembersCard (Owner)", () => {
     });
     await user.click(
       await screen.findByRole("button", {
-        name: "Remove bob@example.com from the organization",
+        name: "Actions for bob@example.com",
       }),
     );
+    await user.click(screen.getByRole("menuitem", { name: "Remove member" }));
     await user.click(screen.getByRole("button", { name: "Remove" }));
 
     await waitFor(() =>

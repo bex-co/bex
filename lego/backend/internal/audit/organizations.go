@@ -37,28 +37,57 @@ type organizationAuditStore interface {
 	OrganizationRole(ctx context.Context, orgID, subject string) (store.Organization, string, error)
 }
 
+// organizationGetter reads an org with no caller role, for the org's own
+// audit-log key (w1/m657); *store.PGStore satisfies it.
+type organizationGetter interface {
+	GetOrganization(ctx context.Context, id string) (store.Organization, error)
+}
+
 // ListOrganization returns an org's audit trail, newest first unless
-// filter.Direction is forward. Only its Owners read it; an org that does not
-// exist, and one the caller is not in, answer the same 403
-// ORGANIZATION_NOT_FOUND, so an org id reveals nothing. History starts when
-// the org was created.
+// filter.Direction is forward. Only its Owners read it, and the org's
+// audit-log keys (w1/m657, ADR115 D11); an org that does not exist, and one
+// the caller is not in, answer the same 403 ORGANIZATION_NOT_FOUND, so an org
+// id reveals nothing. History starts when the org was created.
 func (s *Service) ListOrganization(ctx context.Context, orgID string, filter Filter) ([]Event, error) {
-	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.OrganizationObject(orgID)); err != nil {
+	orgKey, err := s.AuthorizeOrganizationAuditLog(ctx, orgID)
+	if err != nil {
 		return nil, err
 	}
 	orgs, ok := s.Store.(organizationAuditStore)
 	if !ok {
 		return nil, core.ErrAuditUnavailable
 	}
+	o, err := s.organizationReader(ctx, orgs, orgID, orgKey)
+	if err != nil {
+		return nil, err
+	}
+	return s.list(ctx, orgID, o.AuditVisibleFrom, filter)
+}
+
+// organizationReader reads the org whose log the caller was just allowed to
+// read, holding a person to its Owners in the source of truth. The org's own
+// key was decided by the org it belongs to, so it has no role to read.
+func (s *Service) organizationReader(ctx context.Context, orgs organizationAuditStore, orgID string, orgKey bool) (store.Organization, error) {
+	if orgKey {
+		getter, ok := orgs.(organizationGetter)
+		if !ok {
+			return store.Organization{}, core.ErrAuditUnavailable
+		}
+		o, err := getter.GetOrganization(ctx, orgID)
+		if errors.Is(err, store.ErrNotFound) {
+			return store.Organization{}, core.NewOrganizationNotFoundError(orgID)
+		}
+		return o, err
+	}
 	id, _ := core.IdentityFrom(ctx)
 	o, role, err := orgs.OrganizationRole(ctx, orgID, id.Subject)
 	switch {
 	case errors.Is(err, store.ErrNotFound):
-		return nil, core.NewOrganizationNotFoundError(orgID)
+		return store.Organization{}, core.NewOrganizationNotFoundError(orgID)
 	case err != nil:
-		return nil, err
+		return store.Organization{}, err
 	case role != core.OrgRoleOwner:
-		return nil, core.ErrForbidden
+		return store.Organization{}, core.ErrForbidden
 	}
-	return s.list(ctx, orgID, o.AuditVisibleFrom, filter)
+	return o, nil
 }

@@ -191,3 +191,14 @@ type PlatformClientResolver interface {
 	IsPlatformClient(ctx context.Context, clientID string) (bool, error)
 	IsPlatformClientFresh(ctx context.Context, clientID string) (bool, error)
 }
+
+// LoginStatus is what a person's account holds to sign in with (w1/m657,
+// Render's orgUserAuthStatus): a password, a linked Google account, a linked
+// GitHub account, and an enrolled second factor (TOTP or a WebAuthn key, the
+// rule the workspace two-factor requirement reads).
+type LoginStatus struct {
+	Password  bool
+	Google    bool
+	GitHub    bool
+	TwoFactor bool
+}

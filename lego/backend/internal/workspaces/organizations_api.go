@@ -19,6 +19,7 @@ package workspaces
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 
 	"github.com/graphql-go/graphql"
@@ -64,23 +65,67 @@ var organizationWorkspaceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-var organizationGQLType = graphql.NewObject(graphql.ObjectConfig{
-	Name:        "Organization",
-	Description: "A Render organization (ADR115): a Scale or Enterprise primary workspace and the workspaces it holds under its plan.",
+// OrganizationKeys is the apikeys side of an org's audit-log keys (w1/m657):
+// *apikeys.Service lists them for the org's Owners, and an
+// apikeys.OrganizationPurger revokes them when the org ends.
+type OrganizationKeys interface {
+	ListOrganizationAPITokens(ctx context.Context, orgID string) ([]core.OrganizationAPIToken, error)
+	PurgeOrganization(ctx context.Context, orgID string) error
+}
+
+// apiTokenGQLType is one of an org's audit-log keys, Render's APIToken as
+// organizationAPITokens selects it. expiresAt is always null: the keys do not
+// expire.
+var apiTokenGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "APIToken",
 	Fields: graphql.Fields{
-		"id":                 gqlutil.ReqStrField(func(o OrganizationView) any { return o.ID }),
-		"name":               gqlutil.ReqStrField(func(o OrganizationView) any { return o.Name }),
-		"plan":               gqlutil.ReqStrField(func(o OrganizationView) any { return o.Plan }),
-		"primaryWorkspaceId": gqlutil.ReqStrField(func(o OrganizationView) any { return o.PrimaryWorkspaceID }),
-		"viewerRole":         gqlutil.ReqStrField(func(o OrganizationView) any { return o.ViewerRole }),
-		"createdAt":          gqlutil.ReqStrField(func(o OrganizationView) any { return o.CreatedAt }),
-		// The org's login settings (w7/m466), every org member's to read.
-		"requireTwoFactor":   gqlutil.ReqBoolField(func(o OrganizationView) any { return o.RequireTwoFactor }),
-		"requireGoogleLogin": gqlutil.ReqBoolField(func(o OrganizationView) any { return o.RequireGoogleLogin }),
-		"workspaces": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(organizationWorkspaceGQLType))),
-			func(o OrganizationView) any { return o.Workspaces }),
+		"id":         gqlutil.ReqStrField(func(t core.OrganizationAPIToken) any { return t.ID }),
+		"label":      gqlutil.ReqStrField(func(t core.OrganizationAPIToken) any { return t.Label }),
+		"createdAt":  gqlutil.ReqStrField(func(t core.OrganizationAPIToken) any { return t.CreatedAt }),
+		"lastUsedAt": gqlutil.OptionalStrField(func(t core.OrganizationAPIToken) any { return t.LastUsedAt }),
+		"expiresAt":  gqlutil.OptionalStrField(func(t core.OrganizationAPIToken) any { return t.ExpiresAt }),
+		"type":       gqlutil.ReqStrField(func(t core.OrganizationAPIToken) any { return t.Type }),
 	},
 })
+
+// organizationType is the Organization object, built once per service so
+// organizationAPITokens can reach s.OrganizationKeys.
+func (s *Service) organizationType() *graphql.Object {
+	s.gqlOrganizationOnce.Do(func() {
+		s.gqlOrganization = graphql.NewObject(graphql.ObjectConfig{
+			Name:        "Organization",
+			Description: "A Render organization (ADR115): a Scale or Enterprise primary workspace and the workspaces it holds under its plan.",
+			Fields: graphql.Fields{
+				"id":                 gqlutil.ReqStrField(func(o OrganizationView) any { return o.ID }),
+				"name":               gqlutil.ReqStrField(func(o OrganizationView) any { return o.Name }),
+				"plan":               gqlutil.ReqStrField(func(o OrganizationView) any { return o.Plan }),
+				"primaryWorkspaceId": gqlutil.ReqStrField(func(o OrganizationView) any { return o.PrimaryWorkspaceID }),
+				"viewerRole":         gqlutil.ReqStrField(func(o OrganizationView) any { return o.ViewerRole }),
+				"createdAt":          gqlutil.ReqStrField(func(o OrganizationView) any { return o.CreatedAt }),
+				// The org's login settings (w7/m466), every org member's to read.
+				"requireTwoFactor":   gqlutil.ReqBoolField(func(o OrganizationView) any { return o.RequireTwoFactor }),
+				"requireGoogleLogin": gqlutil.ReqBoolField(func(o OrganizationView) any { return o.RequireGoogleLogin }),
+				"workspaces": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(organizationWorkspaceGQLType))),
+					func(o OrganizationView) any { return o.Workspaces }),
+				// Render's organizationAPITokens (w1/m657): the org's
+				// audit-log keys, for its Owners only. Read only when
+				// selected.
+				"organizationAPITokens": &graphql.Field{
+					Type:        graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(apiTokenGQLType))),
+					Description: "The organization's audit-log API keys, oldest first (Org Owners).",
+					Resolve: func(p graphql.ResolveParams) (any, error) {
+						if s.OrganizationKeys == nil {
+							return nil, core.ErrAPIKeysUnavailable
+						}
+						o, _ := p.Source.(OrganizationView)
+						return s.OrganizationKeys.ListOrganizationAPITokens(p.Context, o.ID)
+					},
+				},
+			},
+		})
+	})
+	return s.gqlOrganization
+}
 
 // workspaceOrganization reads the org a workspace belongs to, nil for a
 // standalone one. The caller already read the workspace, and every person in
@@ -128,14 +173,27 @@ func (s *Service) withOrganizations(ctx context.Context, subject string, ws []Wo
 func (s *Service) organizationGraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"organizations": &graphql.Field{
-			Type:    graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(organizationGQLType))),
+			Type:    graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(s.organizationType()))),
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.ListOrganizations(p.Context) },
 		},
+		// organization takes the org's id as id, or as organizationId, the
+		// name Render's dashboard documents pass it under (w1/m657).
 		"organization": &graphql.Field{
-			Type: organizationGQLType,
-			Args: graphql.FieldConfigArgument{"id": gqlutil.ReqArg(graphql.String)},
+			Type:        s.organizationType(),
+			Description: "One organization the caller belongs to, by id (or organizationId, Render's name for it).",
+			Args: graphql.FieldConfigArgument{
+				"id":             gqlutil.Arg(graphql.String),
+				"organizationId": gqlutil.Arg(graphql.String),
+			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.GetOrganization(p.Context, p.Args["id"].(string))
+				orgID := gqlutil.Str(p.Args, "id")
+				if orgID == "" {
+					orgID = gqlutil.Str(p.Args, "organizationId")
+				}
+				if orgID == "" {
+					return nil, fmt.Errorf("%w: id or organizationId is required", core.ErrBadRequest)
+				}
+				return s.GetOrganization(p.Context, orgID)
 			},
 		},
 		// organizationLoginRequirementImpact is the org Security card's
@@ -174,7 +232,7 @@ func (s *Service) organizationGraphQLMutation() graphql.Fields {
 			},
 		},
 		"setOrganizationRequireTwoFactor": &graphql.Field{
-			Type:        organizationGQLType,
+			Type:        s.organizationType(),
 			Description: "Require two-factor authentication in every workspace of an organization, and on the org itself, or stop requiring it (Owner only; Render's ChangeOrg2FAEnforcementEvent). Turning it on is refused while the acting Owner has no second factor (WORKSPACE_2FA_ADMIN_NOT_ENROLLED).",
 			Args: graphql.FieldConfigArgument{
 				"organizationId": gqlutil.ReqArg(graphql.String),
@@ -185,7 +243,7 @@ func (s *Service) organizationGraphQLMutation() graphql.Fields {
 			},
 		},
 		"setOrganizationRequireGoogleLogin": &graphql.Field{
-			Type:        organizationGQLType,
+			Type:        s.organizationType(),
 			Description: "Require signing in with Google in every workspace of an organization, and on the org itself, or stop requiring it (Owner only; Render's ChangeOrgAllowedLoginMethodsEvent). Turning it on is refused while the acting Owner is not signed in with Google (WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN).",
 			Args: graphql.FieldConfigArgument{
 				"organizationId": gqlutil.ReqArg(graphql.String),
@@ -196,7 +254,7 @@ func (s *Service) organizationGraphQLMutation() graphql.Fields {
 			},
 		},
 		"renameOrganization": &graphql.Field{
-			Type: organizationGQLType,
+			Type: s.organizationType(),
 			Args: graphql.FieldConfigArgument{
 				"organizationId": gqlutil.ReqArg(graphql.String),
 				"name":           gqlutil.ReqArg(graphql.String),

@@ -1035,6 +1035,10 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	if cfg.HydraAdminURL != "" {
 		deps.OAuthAccess = &oauthgrant.Access{HydraAdminURL: cfg.HydraAdminURL, Workspaces: st, Audit: st}
 	}
+	// An organization's audit-log keys (w1/m657): their rows, and what the
+	// audit-log reads decide such a key by.
+	deps.OrganizationKeys = st
+	base.OrganizationKeys = st
 	// A member's sign-ins and sign-outs, audited in each of their workspaces
 	// (w9/m452).
 	deps.SignIns = &signins.Recorder{Workspaces: st, Audit: st}

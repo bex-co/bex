@@ -140,6 +140,10 @@ type Service struct {
 	// Nil (BEX_KRATOS_ADMIN_URL unset) => Email/MFAEnabled omitted (honest
 	// subset); List still succeeds.
 	Identities IdentityLookup
+	// LoginStatuses reads a member's login methods and second factor for an
+	// Org Owner (w1/m657, OrgUserAuthStatus). Nil => that read answers
+	// unavailable.
+	LoginStatuses LoginStatusReader
 	// Keys disposes of the machine credentials a departing member created in
 	// this workspace (w2/m163). Ending a membership while leaving that member's
 	// API keys live means the removal only APPEARS to have happened: a key

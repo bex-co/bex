@@ -469,17 +469,32 @@ type KeyGrantEntry struct {
 // allows, a key minted before scoped keys or with no permissions named), or
 // exactly Grants. An empty Grants with All false is Render's "Clear all": the
 // key may only identify itself and its workspace.
+//
+// Organization, when set, makes it an organization's audit-log key (w1/m657,
+// docs/ADR115-organizations.md D11): it covers no catalog action, not even
+// KeyAnyGrant, and the dispatch gate lets it through only to the two
+// audit-log reads, which authorizeAuditLog decides by its org (orgkey.go).
 type KeyGrant struct {
-	All    bool            `json:"all"`
-	Grants []KeyGrantEntry `json:"grants"`
+	All          bool            `json:"all"`
+	Grants       []KeyGrantEntry `json:"grants"`
+	Organization string          `json:"organization,omitempty"`
 }
 
 // AllKeyGrant is the grant of every key with no recorded permissions.
 func AllKeyGrant() KeyGrant { return KeyGrant{All: true, Grants: []KeyGrantEntry{}} }
 
+// OrganizationKeyGrant is the grant of orgID's audit-log keys.
+func OrganizationKeyGrant(orgID string) KeyGrant {
+	return KeyGrant{Grants: []KeyGrantEntry{}, Organization: orgID}
+}
+
 // Allows reports whether the grant covers every action. KeyAnyGrant is
-// covered by every grant, KeyNoGrant only by All, an unknown action by none.
+// covered by every grant but an organization's, KeyNoGrant only by All, an
+// unknown action by none.
 func (g KeyGrant) Allows(actions ...KeyAction) bool {
+	if g.Organization != "" {
+		return false
+	}
 	if g.All {
 		return true
 	}

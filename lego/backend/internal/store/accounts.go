@@ -437,6 +437,10 @@ func (s *PGStore) CleanupAccountSubject(ctx context.Context, subject, marker str
 			`UPDATE tenant_invites SET invited_by = $2 WHERE invited_by = $1`,
 			`UPDATE organization_invites SET invited_by = $2 WHERE invited_by = $1`,
 			`UPDATE registry_credentials SET created_by = $2 WHERE created_by = $1`,
+			// An org's audit-log key the person made is revoked with their
+			// account (its Hydra client goes with every key they made) and
+			// stays as a tombstone (w1/m657, ADR115 D11).
+			`UPDATE organization_api_keys SET created_by = $2, revoked_at = coalesce(revoked_at, now()) WHERE created_by = $1`,
 			`UPDATE webhook_endpoints SET created_by = $2 WHERE created_by = $1`,
 			`UPDATE agent_session_attachments SET created_by = $2 WHERE created_by = $1`,
 			`UPDATE agent_skills SET updated_by = $2 WHERE updated_by = $1`,

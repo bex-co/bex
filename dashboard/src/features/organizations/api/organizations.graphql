@@ -159,6 +159,11 @@ query OrganizationMembers($organizationId: String!) {
     role
     createdAt
     workspaces
+    # Their role in each of those workspaces, for View details (w1/m657).
+    workspaceRoles {
+      workspaceId
+      role
+    }
     isSelf
     # The member's uploaded avatar (w1/m648), as Render's org members list.
     avatarDownload {
@@ -242,5 +247,53 @@ mutation AcceptOrganizationInvite($token: String!) {
     organizationName
     role
     joined
+  }
+}
+
+# An organization's audit-log API keys (w1/m657): Render's three operations,
+# its argument names and selections. Org Owners only; the key itself is in
+# provisionOrganizationAuditLogToken's answer and nowhere else.
+query organizationAPITokens($organizationId: String!) {
+  organization(organizationId: $organizationId) {
+    id
+    organizationAPITokens {
+      id
+      createdAt
+      label
+      lastUsedAt
+      expiresAt
+      type
+    }
+  }
+}
+
+mutation provisionOrganizationAuditLogToken(
+  $organizationId: String!
+  $label: String!
+) {
+  provisionOrganizationAuditLogToken(
+    organizationId: $organizationId
+    label: $label
+  ) {
+    token
+  }
+}
+
+mutation revokeOrganizationAPIToken(
+  $organizationId: String!
+  $tokenId: String!
+) {
+  revokeOrganizationAPIToken(organizationId: $organizationId, tokenId: $tokenId)
+}
+
+# An org member's login methods and 2FA (w1/m657), Render's View details;
+# Org Owners only. userId is the member's usr- id, or their subject.
+query orgUserAuthStatus($userId: String!, $organizationId: String!) {
+  orgUserAuthStatus(userID: $userId, orgID: $organizationId) {
+    loginMethodStatuses {
+      method
+      signedIn
+    }
+    is2FAEnabled
   }
 }

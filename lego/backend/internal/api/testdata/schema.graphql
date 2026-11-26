@@ -3,6 +3,15 @@ schema {
   mutation: Mutation
 }
 
+type APIToken {
+  createdAt: String!
+  expiresAt: String
+  id: String!
+  label: String!
+  lastUsedAt: String
+  type: String!
+}
+
 type AcceptedOrganizationInvite {
   joined: Boolean!
   organizationId: String!
@@ -1917,6 +1926,11 @@ enum LogThemeSetting {
   MATCH_APP
 }
 
+type LoginMethodStatus {
+  method: String!
+  signedIn: Boolean!
+}
+
 enum LoginRequirement {
   GOOGLE_LOGIN
   TWO_FACTOR
@@ -2169,6 +2183,7 @@ type Mutation {
   pauseAgentAutomation(id: String!, ownerId: String): AgentAutomation!
   planBlueprintSync(id: String!, ownerId: String): BlueprintPlanResult
   prepareWorkspaceCreation(attemptId: String, billingEmail: String!, collectPaymentMethod: Boolean, name: String!, plan: String!): WorkspaceCreationAttempt
+  provisionOrganizationAuditLogToken(label: String!, organizationId: String!): ProvisionedOrganizationAPIToken!
   purgeServiceCache(confirm: String, id: String!): Service
   recoverDatabase(environmentId: String, id: String!, name: String!, plan: String, targetTime: String, version: String): Database
   regenerateDeployHook(serviceId: String!): DeployHook
@@ -2197,6 +2212,7 @@ type Mutation {
   revokeApiKey(id: String!, ownerId: String): Boolean
   revokeNotificationDeviceSubscriptions(ownerId: String): Int
   revokeObjectAccessKey(id: String!, ownerId: String): Boolean!
+  revokeOrganizationAPIToken(organizationId: String!, tokenId: String!): Boolean
   revokeOrganizationInvite(inviteId: String!, organizationId: String!): Boolean
   revokeWorkspaceInvite(inviteId: String!, workspaceId: String!): String
   rollbackService(confirm: String, deployId: String!, disableAutoDeploy: Boolean = false, serviceId: String!): Deploy
@@ -2386,10 +2402,16 @@ type OomKilled {
   memoryLimit: String
 }
 
+type OrgUserAuthStatus {
+  is2FAEnabled: Boolean!
+  loginMethodStatuses: [LoginMethodStatus!]!
+}
+
 type Organization {
   createdAt: String!
   id: String!
   name: String!
+  organizationAPITokens: [APIToken!]!
   plan: String!
   primaryWorkspaceId: String!
   requireGoogleLogin: Boolean!
@@ -2422,7 +2444,13 @@ type OrganizationMember {
   role: String!
   subject: String!
   userId: String
+  workspaceRoles: [OrganizationMemberWorkspace!]!
   workspaces: [String!]!
+}
+
+type OrganizationMemberWorkspace {
+  role: String!
+  workspaceId: String!
 }
 
 type OrganizationWorkspace {
@@ -2535,6 +2563,10 @@ input ProjectMetricsQueryInput {
   project: String!
   resolution: Int
   start: String
+}
+
+type ProvisionedOrganizationAPIToken {
+  token: String!
 }
 
 type PushEventUrgency {
@@ -2746,7 +2778,8 @@ type Query {
   notificationWebPushSubscriptions: [NotificationWebPushSubscription]
   objectAccessKeys(ownerId: String): [ObjectAccessKey]
   objectBucket(name: String!, ownerId: String): ObjectBucket
-  organization(id: String!): Organization
+  orgUserAuthStatus(orgID: String!, userID: String!): OrgUserAuthStatus!
+  organization(id: String, organizationId: String): Organization
   organizationAuditLogs(cursor: String, direction: String, endTime: String, limit: Int, organizationId: String!, startTime: String): [AuditLog]
   organizationInvitePreview(token: String!): OrganizationInvitePreview
   organizationInvites(organizationId: String!): [OrganizationInvite!]!

@@ -498,6 +498,9 @@ type Base struct {
 	// w9/m496): the dispatch gate refuses an operation outside them. nil =>
 	// every key acts with All, the store-off mode, where no key can be scoped.
 	KeyGrants KeyGrantResolver
+	// OrganizationKeys decides what an organization's audit-log key reads
+	// (orgkey.go, w1/m657). nil => no such key reads anything.
+	OrganizationKeys OrganizationKeyAuthority
 }
 
 // NamespaceEnsurer provisions one workspace's per-tenant namespaces

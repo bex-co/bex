@@ -509,7 +509,21 @@ func (s *Service) changeOrganizationPlan(ctx context.Context, orgs OrganizationS
 		}
 		return WorkspaceView{}, mapStoreErr(err)
 	}
+	s.purgeOrganizationKeys(ctx, o.ID)
 	return view(nt, "admin"), nil
+}
+
+// purgeOrganizationKeys revokes the audit-log keys of an org that just ended
+// (w1/m657, ADR115 D11). They already read nothing: their reads need the org.
+// So a failure is logged, not returned over a downgrade or delete that
+// happened.
+func (s *Service) purgeOrganizationKeys(ctx context.Context, orgID string) {
+	if s.OrganizationKeys == nil {
+		return
+	}
+	if err := s.OrganizationKeys.PurgeOrganization(ctx, orgID); err != nil {
+		log.Printf("workspaces: revoking the API keys of ended organization %s: %v", orgID, err)
+	}
 }
 
 // downgradePreconditions lists Render's preconditions for downgrading the
@@ -824,4 +838,7 @@ func (s *Service) recordOrganizationDelete(ctx context.Context, d organizationDe
 	}
 	s.RecordOrganizationEvent(ctx, core.AuditVerbOrgWorkspaceDeleted, d.org.ID, core.OrganizationAudit{Target: core.WorkspaceObject(t.ID), TargetName: t.Label()})
 	s.writeOrgTuples(ctx, nil, d.deletes)
+	if t.ID == d.org.PrimaryWorkspaceID {
+		s.purgeOrganizationKeys(ctx, d.org.ID) // the org's rows cascaded with its primary
+	}
 }

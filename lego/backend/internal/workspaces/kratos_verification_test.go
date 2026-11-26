@@ -23,6 +23,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 func TestKratosEmailVerification(t *testing.T) {
@@ -232,5 +234,60 @@ func TestKratosSettingsFacts(t *testing.T) {
 	}
 	if _, _, found, err := k.SettingsFacts(context.Background(), "33333333-3333-4333-8333-333333333333"); err != nil || found {
 		t.Fatalf("missing = (found %v, %v), want not found", found, err)
+	}
+}
+
+// TestKratosLoginStatus pins what an Org Owner's View details reads for a
+// member (w1/m657, Render's orgUserAuthStatus): a password credential with an
+// identifier, each linked oidc provider from its "<provider>:<subject>"
+// identifier, and a second factor by the 2FA gate's rule, from one admin read
+// that loads no TOTP secret. A Kratos 404 is "not human" and an upstream
+// failure an error, never an account with nothing to sign in with.
+func TestKratosLoginStatus(t *testing.T) {
+	const (
+		everything = "11111111-1111-4111-8111-111111111111"
+		oauthOnly  = "22222222-2222-4222-8222-222222222222"
+		missing    = "33333333-3333-4333-8333-333333333333"
+		broken     = "44444444-4444-4444-8444-444444444444"
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query()["include_credential"]; len(got) != 1 || got[0] != "webauthn" {
+			t.Errorf("%s includes %v, want only webauthn", r.URL, got)
+		}
+		switch r.URL.Path {
+		case "/admin/identities/" + everything:
+			_, _ = w.Write([]byte(`{"credentials":{
+				"password":{"type":"password","identifiers":["ada@example.com"]},
+				"oidc":{"type":"oidc","identifiers":["google:1093","github:4242"]},
+				"totp":{"type":"totp"}}}`))
+		case "/admin/identities/" + oauthOnly:
+			// A webauthn stub with no key is not a second factor, and a
+			// password credential with no identifier is no password.
+			_, _ = w.Write([]byte(`{"credentials":{
+				"password":{"type":"password","identifiers":[]},
+				"oidc":{"type":"oidc","identifiers":["github:7"]},
+				"webauthn":{"type":"webauthn","config":{"credentials":[]}}}}`))
+		case "/admin/identities/" + broken:
+			http.Error(w, "boom", http.StatusBadGateway)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	k := NewKratosIdentities(srv.URL)
+	for subject, want := range map[string]struct {
+		status     core.LoginStatus
+		human, err bool
+	}{
+		everything:      {status: core.LoginStatus{Password: true, Google: true, GitHub: true, TwoFactor: true}, human: true},
+		oauthOnly:       {status: core.LoginStatus{GitHub: true}, human: true},
+		missing:         {},
+		"bex-bootstrap": {},
+		broken:          {err: true},
+	} {
+		status, human, err := k.LoginStatus(context.Background(), subject)
+		if status != want.status || human != want.human || (err != nil) != want.err {
+			t.Errorf("%s: %+v human=%v err=%v, want %+v", subject, status, human, err, want)
+		}
 	}
 }

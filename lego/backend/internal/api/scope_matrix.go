@@ -141,6 +141,9 @@ func (s *Server) requireKeyGrant(ctx context.Context, ops ...string) error {
 		return nil
 	}
 	for _, op := range ops {
+		if grant.Organization != "" && organizationKeyOps[op] {
+			continue
+		}
 		need, mapped := keyPermissionOps[op]
 		if !mapped {
 			if need, mapped = keyGrantPseudoOps[op]; !mapped {
@@ -153,6 +156,18 @@ func (s *Server) requireKeyGrant(ctx context.Context, ops ...string) error {
 		}
 	}
 	return nil
+}
+
+// organizationKeyOps is every operation an organization's audit-log key may
+// call (w1/m657, ADR115 D11): Render's two audit-log reads, "read-only access
+// to audit logs for your organization and all of its workspaces". It is the
+// whole list, not a grant: the key's grant covers no catalog action, so every
+// other operation, a new one included, refuses it as an out-of-grant call,
+// and the two verbs decide it by its org (core.Base.AuthorizeOrganizationAuditLog,
+// AuthorizeWorkspaceAuditLog).
+var organizationKeyOps = map[string]bool{
+	"REST GET /v1/organizations/{orgId}/audit-logs": true,
+	"REST GET /v1/owners/{ownerId}/audit-logs":      true,
 }
 
 func (s *Server) recordScopeClassDenial(ctx context.Context, op, class string) {

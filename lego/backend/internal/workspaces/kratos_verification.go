@@ -26,6 +26,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // EmailVerification answers the SSH gateway's verification question (w2/m168)
@@ -56,6 +58,39 @@ func (k *KratosIdentities) MFAEnrolled(ctx context.Context, subject string) (enr
 	return human && id.attrs().MFAEnabled, human, err
 }
 
+// LoginStatus reads what subject's account holds to sign in with, for an Org
+// Owner's View details on a member (w1/m657, Render's orgUserAuthStatus): a
+// password credential, a linked Google or GitHub account (an oidc identifier
+// "<provider>:<subject>"), and an enrolled second factor (attrs' rule). One
+// admin read, with only the webauthn credential's config included, as
+// MFAEnrolled. human=false for a subject that is not a Kratos identity; an
+// error when Kratos could not answer, which the caller must not read as "not
+// signed in".
+func (k *KratosIdentities) LoginStatus(ctx context.Context, subject string) (status core.LoginStatus, human bool, err error) {
+	id, human, err := k.humanIdentity(ctx, subject, "?include_credential=webauthn")
+	if err != nil || !human {
+		return core.LoginStatus{}, human, err
+	}
+	attrs := id.attrs()
+	return core.LoginStatus{
+		Password:  len(id.Credentials["password"].Identifiers) > 0,
+		Google:    id.oidcLinked(googleOIDCProvider),
+		GitHub:    attrs.GitHubUserID != "",
+		TwoFactor: attrs.MFAEnabled,
+	}, true, nil
+}
+
+// oidcLinked reports whether the identity has linked provider: an oidc
+// identifier "<provider>:<subject>" (Kratos' OIDCUniqueID).
+func (id kratosIdentity) oidcLinked(provider string) bool {
+	for _, identifier := range id.Credentials["oidc"].Identifiers {
+		if strings.HasPrefix(identifier, provider+":") {
+			return true
+		}
+	}
+	return false
+}
+
 // GoogleAccountMatches answers the workspace Google-login gate's account
 // question (w7/m465, docs/ADR012-auth.md §9b): has this Kratos identity linked
 // a Google account whose email is its own email trait? Render: "Team members
@@ -80,12 +115,7 @@ func (k *KratosIdentities) SettingsFacts(ctx context.Context, subject string) (e
 	if !found {
 		return "", false, false, err
 	}
-	for _, identifier := range id.Credentials["oidc"].Identifiers {
-		if strings.HasPrefix(identifier, googleOIDCProvider+":") {
-			googleLinked = true
-		}
-	}
-	return id.Traits.Email, googleLinked, true, nil
+	return id.Traits.Email, id.oidcLinked(googleOIDCProvider), true, nil
 }
 
 // googleAccountMatches reports whether one of the identity's linked Google

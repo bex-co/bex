@@ -242,22 +242,30 @@ func (s *PGStore) SubjectOrganizationWorkspaces(ctx context.Context, orgID, subj
 	return pgx.CollectRows(rows, pgx.RowTo[string])
 }
 
+// OrganizationMemberWorkspace is one org workspace a person belongs to, and
+// their role in it.
+type OrganizationMemberWorkspace struct {
+	WorkspaceID string
+	Role        string
+}
+
 // OrganizationMemberWorkspaces maps each person in the org's workspaces to
-// the ids of the org workspaces they belong to, in one read.
-func (s *PGStore) OrganizationMemberWorkspaces(ctx context.Context, orgID string) (map[string][]string, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT m.subject, t.id FROM tenant_members m JOIN tenants t ON t.id = m.tenant_id
+// the org workspaces they belong to, with their role in each, in one read.
+func (s *PGStore) OrganizationMemberWorkspaces(ctx context.Context, orgID string) (map[string][]OrganizationMemberWorkspace, error) {
+	rows, err := s.Pool.Query(ctx, `SELECT m.subject, t.id, m.role FROM tenant_members m JOIN tenants t ON t.id = m.tenant_id
 		WHERE t.organization_id = $1 AND m.kind = 'user' ORDER BY t.created_at, t.id`, orgID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	out := map[string][]string{}
+	out := map[string][]OrganizationMemberWorkspace{}
 	for rows.Next() {
-		var subject, id string
-		if err := rows.Scan(&subject, &id); err != nil {
+		var subject string
+		var w OrganizationMemberWorkspace
+		if err := rows.Scan(&subject, &w.WorkspaceID, &w.Role); err != nil {
 			return nil, err
 		}
-		out[subject] = append(out[subject], id)
+		out[subject] = append(out[subject], w)
 	}
 	return out, rows.Err()
 }

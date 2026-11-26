@@ -29,8 +29,8 @@ export function ReservedButton({
   children,
   ...props
 }: Omit<React.ComponentProps<"span">, "className" | "children"> & {
-  variant: "outline" | "destructive" | "default";
-  size?: "sm";
+  variant: "outline" | "destructive" | "default" | "ghost";
+  size?: "sm" | "icon";
   /** The ready button's own size classes, beyond its variant's. */
   className?: string;
   children: React.ReactNode;

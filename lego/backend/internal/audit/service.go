@@ -415,8 +415,10 @@ func FilterOf(startTime, endTime, direction, cursor string, limit int) (Filter, 
 // what to it. ownerID must be the caller's own workspace — AuthorizeOn checks
 // the named object directly, so a caller from another workspace naming this
 // one by id gets ErrForbidden, never a leak of its trail through a guessed id.
+// An organization's audit-log key reads the log of every workspace its org
+// holds when it asks (w1/m657, ADR115 D11).
 func (s *Service) List(ctx context.Context, ownerID string, filter Filter) ([]Event, error) {
-	ownerID, err := s.AuthorizeWorkspace(ctx, core.RelCanManage, ownerID)
+	ownerID, err := s.AuthorizeWorkspaceAuditLog(ctx, ownerID)
 	if err != nil {
 		return nil, err
 	}

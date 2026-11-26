@@ -86,6 +86,11 @@ const member = (
   role,
   createdAt: null,
   workspaces,
+  workspaceRoles: workspaces.map((workspaceId) => ({
+    __typename: "OrganizationMemberWorkspace" as const,
+    workspaceId,
+    role: "DEVELOPER",
+  })),
   isSelf,
   avatarDownload: null,
 });
@@ -165,11 +170,19 @@ describe("OrganizationMembersPage (w7/m464)", () => {
     await renderPage("OWNER");
     expect(membersHook).toHaveBeenCalledWith("org-1", true);
 
+    const user = userEvent.setup();
     const self = row("me@example.com");
     expect(within(self).getByText("You")).toBeInTheDocument();
     expect(within(self).getByText("Owner")).toBeInTheDocument();
     expect(within(self).queryByRole("combobox")).toBeNull();
-    expect(within(self).queryByRole("button")).toBeNull();
+    // Their own row's menu only opens their details.
+    await user.click(
+      within(self).getByRole("button", { name: "Actions for me@example.com" }),
+    );
+    expect(
+      screen.getAllByRole("menuitem").map((item) => item.textContent),
+    ).toEqual(["View details"]);
+    await user.keyboard("{Escape}");
 
     for (const [email, role] of [
       ["ada@example.com", "Owner"],
@@ -181,11 +194,15 @@ describe("OrganizationMembersPage (w7/m464)", () => {
           name: `Organization role for ${email}`,
         }),
       ).toHaveTextContent(role);
-      expect(
+      await user.click(
         within(row(email)).getByRole("button", {
-          name: `Remove ${email} from the organization`,
+          name: `Actions for ${email}`,
         }),
-      ).toBeInTheDocument();
+      );
+      expect(
+        screen.getAllByRole("menuitem").map((item) => item.textContent),
+      ).toEqual(["View details", "Remove member"]);
+      await user.keyboard("{Escape}");
     }
     // A Guest's one workspace, by name; nobody else's list is shown.
     expect(
@@ -195,7 +212,6 @@ describe("OrganizationMembersPage (w7/m464)", () => {
 
     expect(screen.getByRole("button", { name: "Invite" })).toBeInTheDocument();
     expect(screen.getByText("Pending invites")).toBeInTheDocument();
-    const user = userEvent.setup();
     await user.click(
       screen.getByRole("button", {
         name: "Revoke",
@@ -210,10 +226,9 @@ describe("OrganizationMembersPage (w7/m464)", () => {
     await renderPage("OWNER");
     const user = userEvent.setup();
     await user.click(
-      screen.getByRole("button", {
-        name: "Remove bob@example.com from the organization",
-      }),
+      screen.getByRole("button", { name: "Actions for bob@example.com" }),
     );
+    await user.click(screen.getByRole("menuitem", { name: "Remove member" }));
     expect(
       await screen.findByRole("alertdialog", {
         name: "Remove from the organization?",
@@ -231,6 +246,14 @@ describe("OrganizationMembersPage (w7/m464)", () => {
     expect(membersHook).toHaveBeenCalledWith("org-1", false);
     expect(screen.queryByRole("combobox")).toBeNull();
     expect(screen.queryByRole("button", { name: /Remove/ })).toBeNull();
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", { name: "Actions for ada@example.com" }),
+    );
+    expect(
+      screen.getAllByRole("menuitem").map((item) => item.textContent),
+    ).toEqual(["View details"]);
+    await user.keyboard("{Escape}");
     expect(screen.queryByRole("button", { name: "Invite" })).toBeNull();
     expect(
       within(row("ada@example.com")).getByText("Owner"),

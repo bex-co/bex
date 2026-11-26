@@ -748,6 +748,9 @@ type Deps struct {
 	// KeyBinder, when set (the control-plane store is wired), ties each minted
 	// API key to the caller's tenant (w1/m9). nil => keys mint unbound (store off).
 	KeyBinder apikeys.KeyBinder
+	// OrganizationKeys holds an organization's audit-log keys (w1/m657); nil
+	// (store off) => those verbs answer unavailable.
+	OrganizationKeys apikeys.OrganizationKeyStore
 	// Onboard, when set (the control-plane store is wired), mints a personal
 	// tenant for a human identity on first login (w1/m9). nil => store off: no mint.
 	Onboard          tenancy.Onboarding
@@ -1295,7 +1298,11 @@ func NewServer(base *core.Base, d Deps) *Server {
 		}
 		deferNewCommit = deploysSvc.DeferNewCommit
 	}
-	apiKeysSvc := &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder, CreationLimiter: apikeys.NewCreationRateLimiter()}
+	apiKeysSvc := &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder, CreationLimiter: apikeys.NewCreationRateLimiter(), Organizations: d.OrganizationKeys}
+	if d.OrganizationKeys != nil && d.APIKeys != nil {
+		workspaceSvc.OrganizationKeys = organizationKeys{list: apiKeysSvc,
+			OrganizationPurger: apikeys.OrganizationPurger{Store: d.APIKeys, Keys: d.OrganizationKeys}}
+	}
 	// One machine-credential teardown adapter, shared by the account worker and
 	// the membership-exit path (w2/m163) so the fail-closed unbind-before-delete
 	// order cannot drift between them. Nil when no key registry is wired.
@@ -1307,6 +1314,9 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Base: base, Store: d.MembersStore, Granter: d.MembersGranter,
 		Revoker: d.MembersRevoker, Mailer: d.Mailer, InviteBaseURL: d.InviteBaseURL,
 		Identities: identityEmailLookup{d.Identities}, OrgTuples: d.OrgTuples,
+	}
+	if statuses, ok := d.Identities.(members.LoginStatusReader); ok {
+		membersSvc.LoginStatuses = statuses
 	}
 	// The S3 access keys a person made are disposed of with their API keys
 	// (ADR112 D3): one teardown, so neither can outlive the membership.
@@ -1521,6 +1531,18 @@ func preCascadePurgers(d Deps) []workspaces.WorkspacePurger {
 		purgers = append(purgers, d.WorkspaceBillingPurger)
 	}
 	return purgers
+}
+
+// organizationKeys composes the workspaces side of an org's audit-log keys
+// (w1/m657): apikeys' Owner list behind Organization.organizationAPITokens,
+// and its purger for an org that ended.
+type organizationKeys struct {
+	list *apikeys.Service
+	apikeys.OrganizationPurger
+}
+
+func (k organizationKeys) ListOrganizationAPITokens(ctx context.Context, orgID string) ([]core.OrganizationAPIToken, error) {
+	return k.list.ListOrganizationAPITokens(ctx, orgID)
 }
 
 // identityEmailLookup adapts workspaces.IdentityReader to

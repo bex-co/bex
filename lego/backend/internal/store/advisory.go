@@ -60,6 +60,12 @@ func lockAgentSkills(ctx context.Context, tx pgx.Tx, workspaceID string) error {
 // custom domains that can overlap through a wildcard: each takes the lock of
 // host's overlap domain (domainOverlapDomain), which a wildcard shares with
 // every name under it.
+func lockOrganizationAPIKeys(ctx context.Context, tx pgx.Tx, orgID string) error {
+	_, err := tx.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "organization-api-keys:"+orgID)
+	return err
+}
+
 func lockDomainOverlap(ctx context.Context, tx pgx.Tx, host string) error {
 	_, err := tx.Exec(ctx,
 		`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "domain-overlap:"+domainOverlapDomain(host))

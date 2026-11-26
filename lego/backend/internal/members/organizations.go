@@ -45,7 +45,7 @@ type OrganizationStore interface {
 	GetOrganizationMember(ctx context.Context, orgID, subject string) (store.OrganizationMember, error)
 	ListOrganizationMembers(ctx context.Context, orgID string) ([]store.OrganizationMember, error)
 	SubjectOrganizationWorkspaces(ctx context.Context, orgID, subject string) ([]string, error)
-	OrganizationMemberWorkspaces(ctx context.Context, orgID string) (map[string][]string, error)
+	OrganizationMemberWorkspaces(ctx context.Context, orgID string) (map[string][]store.OrganizationMemberWorkspace, error)
 	SetOrganizationMemberRole(ctx context.Context, orgID, subject, role string) (string, error)
 	RemoveOrganizationMember(ctx context.Context, orgID, subject string) error
 	GetOrganization(ctx context.Context, id string) (store.Organization, error)
@@ -73,7 +73,17 @@ type OrganizationMemberView struct {
 	// Workspaces are the ids of the org workspaces the person belongs to: a
 	// Guest's one workspace, and what removing them from the org ends.
 	Workspaces []string `json:"workspaces"`
-	IsSelf     bool     `json:"isSelf"`
+	// WorkspaceRoles are the same workspaces with the person's role in each,
+	// which an Owner's View details lists (w1/m657, Render's dialog).
+	WorkspaceRoles []OrganizationMemberWorkspaceView `json:"workspaceRoles"`
+	IsSelf         bool                              `json:"isSelf"`
+}
+
+// OrganizationMemberWorkspaceView is one org workspace a person belongs to,
+// with their role in it in the wire form (ADMIN, DEVELOPER, …).
+type OrganizationMemberWorkspaceView struct {
+	WorkspaceID string `json:"workspaceId"`
+	Role        string `json:"role"`
 }
 
 // OrganizationInviteView is a pending org invite.
@@ -212,14 +222,16 @@ func (s *Service) ListOrganizationMembers(ctx context.Context, orgID string) ([]
 	caller, _ := core.IdentityFrom(ctx)
 	out := make([]OrganizationMemberView, 0, len(members))
 	for _, m := range members {
-		workspaces := memberOf[m.Subject]
-		if workspaces == nil {
-			workspaces = []string{}
+		workspaces := []string{}
+		roles := []OrganizationMemberWorkspaceView{}
+		for _, w := range memberOf[m.Subject] {
+			workspaces = append(workspaces, w.WorkspaceID)
+			roles = append(roles, OrganizationMemberWorkspaceView{WorkspaceID: w.WorkspaceID, Role: wireRole(w.Role)})
 		}
 		out = append(out, OrganizationMemberView{
 			Subject: m.Subject, UserID: ids.UserPublicID(ownIDs[m.Subject]), Email: emails[m.Subject],
 			Role: wireRole(m.Role), CreatedAt: rfc3339(m.CreatedAt), Workspaces: workspaces,
-			IsSelf: m.Subject == caller.Subject,
+			WorkspaceRoles: roles, IsSelf: m.Subject == caller.Subject,
 		})
 	}
 	return out, nil
@@ -785,4 +797,111 @@ func (s *Service) joinedOrganization(ctx context.Context, inv store.Invite, id c
 		return
 	}
 	core.JoinedOrganization(ctx, s.OrgTuples, s.Base.Audit, s.Now(), inv.JoinedOrganizationID, id.Subject, id.CallerMethod())
+}
+
+// LoginStatusReader reads what a person's account holds to sign in with
+// (w1/m657); *workspaces.KratosIdentities implements it. human=false is a
+// subject the identity provider does not know.
+type LoginStatusReader interface {
+	LoginStatus(ctx context.Context, subject string) (status core.LoginStatus, human bool, err error)
+}
+
+// Login method names as Render's orgUserAuthStatus spells them, in the order
+// Render's dashboard lists its login methods. bex offers these three: no
+// SAML (.pm/DO_NOT_DO.md), GitLab or Bitbucket login.
+const (
+	LoginMethodPassword = "pwd"
+	LoginMethodGoogle   = "google"
+	LoginMethodGitHub   = "github"
+)
+
+// LoginMethodStatus is one login method and whether the member has signed in
+// with it: the account holds that credential (a password set, the provider
+// linked), which signing in with it the first time creates.
+type LoginMethodStatus struct {
+	Method   string `json:"method"`
+	SignedIn bool   `json:"signedIn"`
+}
+
+// OrgUserAuthStatusView is Render's orgUserAuthStatus: every login method bex
+// offers, whether or not the org's login requirements allow it, and whether
+// the member has a second factor.
+type OrgUserAuthStatusView struct {
+	LoginMethodStatuses []LoginMethodStatus `json:"loginMethodStatuses"`
+	Is2FAEnabled        bool                `json:"is2FAEnabled"`
+}
+
+// OrgUserAuthStatus answers an Org Owner's View details on a member (Render's
+// orgUserAuthStatus, gated by its viewOrgUserAuthStatus permission, which bex
+// gives the org's Owners as it gives them every other org setting). userID is
+// the member's userId (usr-…, Render's user.id) or their subject. A caller
+// outside the org is told the org was not found; a Member or Guest asking, and
+// an Owner asking about someone the org does not hold, get the same 403, so
+// the answer says nothing about people outside the org. A status the identity
+// provider cannot read is an error, never a member who reads as signed in
+// with nothing.
+func (s *Service) OrgUserAuthStatus(ctx context.Context, userID, orgID string) (OrgUserAuthStatusView, error) {
+	if err := s.AuthorizeOn(ctx, core.RelCanView, core.OrganizationObject(orgID)); err != nil {
+		return OrgUserAuthStatusView{}, organizationNotFound(orgID, err)
+	}
+	orgs, ok := s.organizations()
+	if !ok || s.LoginStatuses == nil {
+		return OrgUserAuthStatusView{}, ErrMembersUnavailable
+	}
+	if _, err := s.requireOrgOwner(ctx, orgs, orgID); err != nil {
+		return OrgUserAuthStatusView{}, err
+	}
+	subject, err := s.organizationMemberSubject(ctx, orgs, orgID, userID)
+	if err != nil {
+		return OrgUserAuthStatusView{}, err
+	}
+	status, human, err := s.LoginStatuses.LoginStatus(ctx, subject)
+	if err != nil || !human {
+		if err != nil {
+			log.Printf("members: login status of %s: %v", subject, err)
+		}
+		return OrgUserAuthStatusView{}, core.ErrIdentityLookupFailed
+	}
+	return OrgUserAuthStatusView{
+		LoginMethodStatuses: []LoginMethodStatus{
+			{Method: LoginMethodPassword, SignedIn: status.Password},
+			{Method: LoginMethodGoogle, SignedIn: status.Google},
+			{Method: LoginMethodGitHub, SignedIn: status.GitHub},
+		},
+		Is2FAEnabled: status.TwoFactor,
+	}, nil
+}
+
+// organizationMemberSubject resolves userID, a member's subject or their
+// usr- id, to the subject of a person orgID holds; anyone else, and an id
+// this store cannot resolve, is ErrForbidden.
+func (s *Service) organizationMemberSubject(ctx context.Context, orgs OrganizationStore, orgID, userID string) (string, error) {
+	subject := userID
+	if strings.HasPrefix(userID, ids.UserPublicPrefix+"-") {
+		owners, ok := s.Store.(ownerSubjects)
+		if !ok {
+			return "", core.ErrForbidden
+		}
+		resolved, err := owners.SubjectForOwnerID(ctx, ids.UserStorageID(userID))
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			return "", core.ErrForbidden
+		case err != nil:
+			return "", err
+		}
+		subject = resolved
+	}
+	if _, err := orgs.GetOrganizationMember(ctx, orgID, subject); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return "", core.ErrForbidden
+		}
+		return "", err
+	}
+	return subject, nil
+}
+
+// ownerSubjects resolves an own- id to its subject; *store.PGStore
+// implements it.
+type ownerSubjects interface {
+	SubjectForOwnerID(ctx context.Context, ownID string) (string, error)
 }

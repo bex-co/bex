@@ -20,11 +20,12 @@ export function OrganizationMembersPage({
         <OrganizationMembersCardSkeleton organizationId={organizationId} />
       }
     >
-      {({ role, workspaceName }) => (
+      {({ organization, role, workspaceName }) => (
         <OrganizationMembersCard
           organizationId={organizationId}
           role={role}
           workspaceName={workspaceName}
+          workspace={(id) => organization.workspaces.find((w) => w.id === id)}
         />
       )}
     </OrganizationPageShell>

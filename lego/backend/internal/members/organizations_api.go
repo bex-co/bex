@@ -34,14 +34,43 @@ import (
 var organizationMemberGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "OrganizationMember",
 	Fields: graphql.Fields{
-		"subject":        gqlutil.ReqStrField(func(m OrganizationMemberView) any { return m.Subject }),
-		"userId":         gqlutil.StrField(func(m OrganizationMemberView) any { return m.UserID }),
-		"email":          gqlutil.StrField(func(m OrganizationMemberView) any { return m.Email }),
-		"role":           gqlutil.ReqStrField(func(m OrganizationMemberView) any { return m.Role }),
-		"createdAt":      gqlutil.StrField(func(m OrganizationMemberView) any { return m.CreatedAt }),
-		"workspaces":     gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(m OrganizationMemberView) any { return m.Workspaces }),
-		"isSelf":         gqlutil.ReqBoolField(func(m OrganizationMemberView) any { return m.IsSelf }),
+		"subject":    gqlutil.ReqStrField(func(m OrganizationMemberView) any { return m.Subject }),
+		"userId":     gqlutil.StrField(func(m OrganizationMemberView) any { return m.UserID }),
+		"email":      gqlutil.StrField(func(m OrganizationMemberView) any { return m.Email }),
+		"role":       gqlutil.ReqStrField(func(m OrganizationMemberView) any { return m.Role }),
+		"createdAt":  gqlutil.StrField(func(m OrganizationMemberView) any { return m.CreatedAt }),
+		"workspaces": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(m OrganizationMemberView) any { return m.Workspaces }),
+		"isSelf":     gqlutil.ReqBoolField(func(m OrganizationMemberView) any { return m.IsSelf }),
+		// The person's role in each of those workspaces (w1/m657), for
+		// View details.
+		"workspaceRoles": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(organizationMemberWorkspaceGQLType))),
+			func(m OrganizationMemberView) any { return m.WorkspaceRoles }),
 		"avatarDownload": gqlutil.AvatarDownloadField(func(m OrganizationMemberView) core.AvatarOwner { return core.AccountAvatar(m.UserID) }),
+	},
+})
+
+var organizationMemberWorkspaceGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "OrganizationMemberWorkspace",
+	Fields: graphql.Fields{
+		"workspaceId": gqlutil.ReqStrField(func(w OrganizationMemberWorkspaceView) any { return w.WorkspaceID }),
+		"role":        gqlutil.ReqStrField(func(w OrganizationMemberWorkspaceView) any { return w.Role }),
+	},
+})
+
+var loginMethodStatusGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "LoginMethodStatus",
+	Fields: graphql.Fields{
+		"method":   gqlutil.ReqStrField(func(m LoginMethodStatus) any { return m.Method }),
+		"signedIn": gqlutil.ReqBoolField(func(m LoginMethodStatus) any { return m.SignedIn }),
+	},
+})
+
+var orgUserAuthStatusGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "OrgUserAuthStatus",
+	Fields: graphql.Fields{
+		"loginMethodStatuses": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(loginMethodStatusGQLType))),
+			func(v OrgUserAuthStatusView) any { return v.LoginMethodStatuses }),
+		"is2FAEnabled": gqlutil.ReqBoolField(func(v OrgUserAuthStatusView) any { return v.Is2FAEnabled }),
 	},
 })
 
@@ -100,6 +129,19 @@ func (s *Service) organizationGraphQLQuery() graphql.Fields {
 			Args: gqlutil.KeyArg("organizationId"),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ListOrganizationInvites(p.Context, p.Args["organizationId"].(string))
+			},
+		},
+		// Render's orgUserAuthStatus (w1/m657): an org member's login
+		// methods and second factor, for the org's Owners.
+		"orgUserAuthStatus": &graphql.Field{
+			Type:        graphql.NewNonNull(orgUserAuthStatusGQLType),
+			Description: "An organization member's login methods (pwd, google, github), whether they have signed in with each, and whether they have two-factor authentication (Org Owners). userID is the member's userId, usr-…, or their subject.",
+			Args: graphql.FieldConfigArgument{
+				"userID": gqlutil.ReqArg(graphql.String),
+				"orgID":  gqlutil.ReqArg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.OrgUserAuthStatus(p.Context, p.Args["userID"].(string), p.Args["orgID"].(string))
 			},
 		},
 		"organizationInvitePreview": &graphql.Field{

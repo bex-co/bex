@@ -4,6 +4,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/common/components/ui/table";
 import type { WorkspaceLoginRequirement } from "@/common/apollo/auth-error-link";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { MAX_EXPORT_DAYS } from "@/features/audit/lib/audit-csv";
@@ -94,3 +101,96 @@ export function OrganizationSecurityOwnerOnly() {
 
 /** The name row: the field and, for an Owner, Save beside it. */
 export const NAME_ROW_CLASS = "flex flex-col gap-3 sm:flex-row sm:items-end";
+
+/** The org API keys table's columns (Render's Name, Key, Created, Last used). */
+const ORGANIZATION_KEY_COLUMNS = [
+  "organizations.auditKeysColName",
+  "organizations.auditKeysColKey",
+  "organizations.auditKeysColCreated",
+  "organizations.auditKeysColLastUsed",
+] as const;
+
+/**
+ * Audit Logs → Audit Log API Keys (w1/m657), in the card and its skeleton
+ * alike: Render's heading and description with the Create API key button
+ * (`action`) beside them, then `children` (the keys, or why there are none).
+ */
+export function OrganizationAuditLogKeysSection({
+  action,
+  children,
+}: {
+  action: ReactNode;
+  children: ReactNode;
+}) {
+  const { t } = useTranslations();
+  return (
+    <section
+      className="space-y-4 border-t pt-6"
+      data-testid="organization-audit-log-keys"
+    >
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-1">
+          <h3 className="text-sm font-medium">
+            {t("organizations.auditKeysTitle")}
+          </h3>
+          <p className="text-muted-foreground text-sm">
+            {t("organizations.auditKeysDescription")}
+          </p>
+        </div>
+        <div className="shrink-0 self-start">{action}</div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * The org API keys table with the rows passed as children; the skeleton
+ * draws it with none. Name takes what the other columns leave, and below the
+ * card's width the table scrolls in its card.
+ */
+export function OrganizationApiKeysTable({
+  children,
+  ...props
+}: ComponentProps<"table">) {
+  const { t } = useTranslations();
+  return (
+    <Table className="min-w-120" {...props}>
+      <TableHeader>
+        <TableRow>
+          {ORGANIZATION_KEY_COLUMNS.map((label) => (
+            <TableHead key={label}>{t(label)}</TableHead>
+          ))}
+          <TableHead className="w-12">
+            <span className="sr-only">{t("common.colActions")}</span>
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>{children}</TableBody>
+    </Table>
+  );
+}
+
+/** The line under the table when the org has no keys (Render's). */
+export const ORGANIZATION_KEYS_EMPTY_CLASS =
+  "bg-muted/40 text-muted-foreground rounded-lg p-4 text-center text-sm";
+
+/** Audit Logs' export, for anyone but an Owner (Render's text). */
+export function OrganizationAuditNoPermission() {
+  const { t } = useTranslations();
+  return (
+    <p className="text-muted-foreground text-sm">
+      {t("organizations.auditNoPermission")}
+    </p>
+  );
+}
+
+/** Audit Log API Keys, for anyone but an Owner (Render's text). */
+export function OrganizationKeysNoPermission() {
+  const { t } = useTranslations();
+  return (
+    <p className="text-muted-foreground text-sm">
+      {t("organizations.auditKeysNoPermission")}
+    </p>
+  );
+}

@@ -293,6 +293,8 @@ var accountDeletionDispositions = map[string]string{
 	"membership_role_reconciliations.subject":      "cascade: membership deletion removes pending role reconciliation",
 	"notification_settings.subject":                "delete: CleanupAccountSubject removes personal preferences",
 	"oauth_revocations.client_id":                  "retain: client identifier preserves revoked machine credentials and OAuth application correlation; never a bearer secret",
+	"organization_api_keys.client_id":              "retain: an org audit-log key's Hydra client id, a credential identifier and not a person; the row is the key's tombstone (ADR115 D11)",
+	"organization_api_keys.created_by":             "anonymize: CleanupAccountSubject replaces the creator and revokes the key's row; account credential cleanup deletes its Hydra client with every key the person made (w1/m657)",
 	"oauth_revocations.subject":                    "anonymize: CleanupAccountSubject replaces human subject; machine revocation tombstones remain terminal",
 	"owner_ids.subject":                            "anonymize: CleanupAccountSubject replaces subject while retaining the public owner mapping",
 	"product_activity_events.actor_id":             "anonymize: CleanupAccountSubject clears the identifier",

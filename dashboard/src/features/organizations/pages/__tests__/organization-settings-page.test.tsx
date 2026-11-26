@@ -79,12 +79,26 @@ vi.mock(
   }),
 );
 
+// The Audit Log API Keys section (w1/m657) reads through Apollo; it is
+// exercised against a real client in organization-audit-log-keys.test.tsx.
+const tokensHook = vi.fn();
+vi.mock("@/features/organizations/hooks/use-organization-api-tokens", () => ({
+  useOrganizationApiTokens: (...args: unknown[]) => {
+    tokensHook(...args);
+    return { tokens: [], loading: false, failed: false, refetch: vi.fn() };
+  },
+  useProvisionOrganizationApiToken: () => ({ provision: vi.fn(), busy: false }),
+  useRevokeOrganizationApiToken: () => ({ revoke: vi.fn(), busy: false }),
+  isKeyLimitRefusal: () => false,
+}));
+
 const createObjectURL = vi.fn(() => "blob:audit");
 const click = vi
   .spyOn(HTMLAnchorElement.prototype, "click")
   .mockImplementation(() => {});
 
 beforeEach(() => {
+  tokensHook.mockClear();
   rename.mockClear();
   setRequired.mockClear();
   createObjectURL.mockClear();
@@ -137,15 +151,29 @@ describe("OrganizationSettingsPage (w7/m464)", () => {
   });
 
   // Render: "Only org members with the Org Owner role can export these audit
-  // logs", hidden as the workspace card is for non-admins.
+  // logs". Render's section still shows, with its no-permission texts and
+  // Create API key disabled (w1/m657); nothing asks for the org's keys.
   it.each(["MEMBER", "GUEST"] as const)(
-    "hides Audit Logs and the rename from a %s",
+    "shows a %s Audit Logs without the export or the keys, and no rename",
     async (role) => {
       await renderPage(role);
-      expect(screen.queryByText("Audit Logs")).toBeNull();
+      expect(screen.getByText("Audit Logs")).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: /export as csv/i }),
       ).toBeNull();
+      expect(
+        screen.getByText("You do not have permission to perform this action."),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Audit Log API Keys")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Create API key" }),
+      ).toBeDisabled();
+      expect(
+        screen.getByText(
+          "You do not have permission to manage this organization's API keys.",
+        ),
+      ).toBeInTheDocument();
+      expect(tokensHook).toHaveBeenLastCalledWith("org-1", false);
       expect(screen.getByLabelText("Name")).toBeDisabled();
       expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
       expect(
@@ -282,7 +310,8 @@ describe("OrganizationSettingsPage (w7/m464)", () => {
   // The route's pending frame is the ready page's structure: the name card
   // (Save for an Owner, the Owners-only note otherwise), Security (each
   // setting's label, description and control box; the Owners-only note for
-  // a Member or Guest) and, for an Owner, Audit Logs with its export row.
+  // a Member or Guest) and Audit Logs: an Owner's export row and API keys
+  // table, anyone else's no-permission texts (w1/m657).
   it.each(
     (["OWNER", "MEMBER", "GUEST"] as const).flatMap((role) =>
       KNOWN_FROM.map((knownFrom) => [role, knownFrom] as const),
@@ -308,7 +337,7 @@ describe("OrganizationSettingsPage (w7/m464)", () => {
         ).not.toBeNull(),
       );
       expect(pageStructure(pending.container)).toEqual(readyStructure);
-      expect(readyStructure.cards).toBe(role === "OWNER" ? 3 : 2);
+      expect(readyStructure.cards).toBe(3);
       expect(readyStructure.loginRequirements.map((row) => row.name)).toEqual([
         "two-factor",
         "google-login",

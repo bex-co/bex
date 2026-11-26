@@ -59,6 +59,7 @@ var scopeClassOverrides = map[string]string{
 	"REST GET /v1/services/{id}/deploy-hook":                    core.OpClassMint,
 	"REST POST /v1/services/{id}/deploy-hook/regenerate":        core.OpClassMint,
 	"GQL Mutation.createApiKey":                                 core.OpClassMint,
+	"GQL Mutation.provisionOrganizationAuditLogToken":           core.OpClassMint, // w1/m657
 	"GQL Mutation.createRouterKey":                              core.OpClassMint,
 	"GQL Query.routerOverview":                                  core.OpClassSensitive,
 	"GQL Mutation.createSSHKey":                                 core.OpClassMint,

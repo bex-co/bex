@@ -1207,7 +1207,8 @@ func (s *PGStore) SetAPIKeyGrant(ctx context.Context, clientID string, g core.Ke
 // APIKeyGrant implements core.KeyGrantResolver: the grant on the key's machine
 // row, uncached. A key with no row (unbound, or a client that is not a key)
 // and a NULL grant are both All; the dispatch gate decides everything else
-// from the key's own tuples and its creator.
+// from the key's own tuples and its creator. An organization's audit-log key
+// (w1/m657) has no machine row and answers its org's grant, revoked or not.
 func (s *PGStore) APIKeyGrant(ctx context.Context, clientID string) (core.KeyGrant, error) {
 	g, _, err := s.BoundAPIKeyGrant(ctx, clientID)
 	return g, err
@@ -1215,20 +1216,29 @@ func (s *PGStore) APIKeyGrant(ctx context.Context, clientID string) (core.KeyGra
 
 // BoundAPIKeyGrant is APIKeyGrant with whether clientID has a machine row at
 // all, which the SSH gateway's grant verb answers too (w9/125): a subject
-// without one is not a bound key, so its streams have no grant to narrow.
+// without one is not a bound key, so its streams have no grant to narrow. An
+// organization's audit-log key counts as bound, with a grant that covers no
+// stream.
 func (s *PGStore) BoundAPIKeyGrant(ctx context.Context, clientID string) (core.KeyGrant, bool, error) {
-	var all bool
+	var machine, all bool
 	var entries []string
+	var orgID *string
 	err := s.Pool.QueryRow(ctx, `
-		SELECT key_permissions IS NULL, coalesce(key_permissions, '{}'::text[])
-		FROM tenant_members WHERE subject = $1 AND kind = 'machine'`, clientID).Scan(&all, &entries)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return core.AllKeyGrant(), false, nil
-	}
-	if err != nil {
+		SELECT m.subject IS NOT NULL, m.key_permissions IS NULL, coalesce(m.key_permissions, '{}'::text[]), k.organization_id
+		FROM (SELECT $1::text AS id) c
+		LEFT JOIN LATERAL (
+			SELECT subject, key_permissions FROM tenant_members
+			WHERE subject = c.id AND kind = 'machine' LIMIT 1) m ON true
+		LEFT JOIN organization_api_keys k ON k.client_id = c.id`, clientID).Scan(&machine, &all, &entries, &orgID)
+	switch {
+	case err != nil:
 		return core.KeyGrant{}, false, err
+	case machine:
+		return keyGrantOf(all, entries), true, nil
+	case orgID != nil:
+		return core.OrganizationKeyGrant(*orgID), true, nil
 	}
-	return keyGrantOf(all, entries), true, nil
+	return core.AllKeyGrant(), false, nil
 }
 
 // APIKeyGrantsOfTenant is APIKeyGrant for every key bound to tenantID, in one

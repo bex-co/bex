@@ -7,9 +7,10 @@ import { OrganizationSettingsSkeleton } from "@/features/organizations/component
 /**
  * `/org/$orgId/settings` (w7/m464): the org's name; Security (w7/m466), the
  * org's login requirements, which everyone in the org reads and Owners
- * change; and Render's Audit Logs section, which only Owners see ("Only org
- * members with the Org Owner role can export these audit logs"), as a
- * workspace's is hidden from non-admins.
+ * change; and Render's Audit Logs section, where only Owners export the log
+ * ("Only org members with the Org Owner role can export these audit logs")
+ * and manage its audit-log API keys (w1/m657), and everyone else reads
+ * Render's no-permission texts.
  */
 export function OrganizationSettingsPage({
   organizationId,
@@ -35,9 +36,10 @@ export function OrganizationSettingsPage({
             organization={organization}
             canChange={role === "OWNER"}
           />
-          {role === "OWNER" ? (
-            <OrganizationAuditLogsCard organizationId={organizationId} />
-          ) : null}
+          <OrganizationAuditLogsCard
+            organizationId={organizationId}
+            isOwner={role === "OWNER"}
+          />
         </>
       )}
     </OrganizationPageShell>

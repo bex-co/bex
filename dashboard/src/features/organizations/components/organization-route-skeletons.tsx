@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useParams } from "@tanstack/react-router";
-import { Plus, UserPlus } from "lucide-react";
+import { MoreHorizontal, Plus, UserPlus } from "lucide-react";
 import { PageFrame } from "@/common/components/page-frame";
 import { Region } from "@/common/components/route-skeletons";
 import { Card, CardContent } from "@/common/components/ui/card";
@@ -44,7 +44,12 @@ import {
 } from "@/features/organizations/components/organization-members-frame";
 import {
   NAME_ROW_CLASS,
+  ORGANIZATION_KEYS_EMPTY_CLASS,
+  OrganizationApiKeysTable,
+  OrganizationAuditLogKeysSection,
   OrganizationAuditLogsCardHeader,
+  OrganizationAuditNoPermission,
+  OrganizationKeysNoPermission,
   OrganizationLoginRequirementSection,
   OrganizationNameCardHeader,
   OrganizationSecurityCardHeader,
@@ -175,7 +180,8 @@ export function OrganizationWorkspacesCardSkeleton({
 /**
  * The member table while it loads: its header and the one row every org's
  * list holds for the caller, their own (the "You" badge, the role as text,
- * no controls, since nobody changes their own role or removes themselves).
+ * and the row menu's box: its View details is the only item, since nobody
+ * changes their own role or removes themselves).
  */
 export function OrganizationMembersTableFrame() {
   const { t } = useTranslations();
@@ -196,7 +202,11 @@ export function OrganizationMembersTableFrame() {
             <ReservedText>{t("organizations.roleMember")}</ReservedText>
           </span>
         </TableCell>
-        <TableCell className="text-right" />
+        <TableCell className="text-right">
+          <ReservedButton variant="ghost" size="icon">
+            <MoreHorizontal />
+          </ReservedButton>
+        </TableCell>
       </TableRow>
     </PanelTableFrame>
   );
@@ -238,8 +248,9 @@ export function OrganizationMembersCardSkeleton({
 /**
  * The Settings cards while the org loads: the name card (Save for an Owner,
  * the Owners-only note otherwise), Security (w7/m466) with each setting's
- * label and description as themselves and the control's box, and, for an
- * Owner, Audit Logs with the export row's frame. The control is the switch's
+ * label and description as themselves and the control's box, and Audit
+ * Logs: for an Owner the export row's frame and the API keys table's
+ * (w1/m657), for anyone else Render's no-permission texts. The control is the switch's
  * box for an Owner or a role not yet known; for a Member or Guest it is the
  * state badge's ("Required" or "Not required", from the cached org), which
  * is wider than a switch and at phone width wraps under the label (w7/089).
@@ -296,16 +307,41 @@ export function OrganizationSettingsSkeleton({
           </CardContent>
         </Card>
       </Region>
-      {role === "OWNER" ? (
-        <Region name="audit-logs">
-          <Card aria-hidden="true" data-testid="organization-audit-skeleton">
-            <OrganizationAuditLogsCardHeader />
-            <CardContent>
+      <Region name="audit-logs">
+        <Card aria-hidden="true" data-testid="organization-audit-skeleton">
+          <OrganizationAuditLogsCardHeader />
+          <CardContent className="space-y-6">
+            {readOnly ? (
+              <OrganizationAuditNoPermission />
+            ) : (
               <AuditLogExportFrame />
-            </CardContent>
-          </Card>
-        </Region>
-      ) : null}
+            )}
+            <OrganizationAuditLogKeysSection
+              action={
+                <ReservedButton variant="outline" size="sm">
+                  <Plus />
+                  {t("organizations.auditKeysCreate")}
+                </ReservedButton>
+              }
+            >
+              {readOnly ? (
+                <OrganizationKeysNoPermission />
+              ) : (
+                <div className="space-y-2 overflow-x-auto">
+                  <OrganizationApiKeysTable />
+                  <p className={ORGANIZATION_KEYS_EMPTY_CLASS}>
+                    <span className="relative inline-block">
+                      <ReservedText>
+                        {t("organizations.auditKeysEmpty")}
+                      </ReservedText>
+                    </span>
+                  </p>
+                </div>
+              )}
+            </OrganizationAuditLogKeysSection>
+          </CardContent>
+        </Card>
+      </Region>
     </>
   );
 }

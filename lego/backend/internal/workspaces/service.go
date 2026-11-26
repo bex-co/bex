@@ -146,8 +146,15 @@ type Service struct {
 	// datastores untouched (test fakes).
 	IPLayerTargets []IPLayerTarget
 
-	gqlWorkspaceOnce sync.Once
-	gqlWorkspace     *graphql.Object
+	// OrganizationKeys is an org's audit-log keys (w1/m657, ADR115 D11):
+	// Organization.organizationAPITokens lists them and the org's end revokes
+	// them. Nil => the field answers unavailable and nothing is revoked.
+	OrganizationKeys OrganizationKeys
+
+	gqlWorkspaceOnce    sync.Once
+	gqlWorkspace        *graphql.Object
+	gqlOrganizationOnce sync.Once
+	gqlOrganization     *graphql.Object
 	// TwoFactorChanged is told which workspace's "require two-factor" setting
 	// just changed, so the enforcement point (internal/twofactor) drops this
 	// replica's cached copy at once instead of within its TTL. Nil when nothing
