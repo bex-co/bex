@@ -1,6 +1,6 @@
 # w4 · m650 — A native build reads the whole repository, as Render's native runtimes do
 
-**Worker:** worker4 **Goal:** a native-runtime service with a Root Directory builds and runs with the rest of its repository in reach, so a Go module rooted above the Root Directory or a pnpm/npm workspace builds on bex as it does on Render, while Docker builds keep seeing only their Root Directory or Docker context. **Status:** todo (t001–t004, t007 and t008 done; t005, t006 and t009 wait for the production walk)
+**Worker:** worker4 **Goal:** a native-runtime service with a Root Directory builds and runs with the rest of its repository in reach, so a Go module rooted above the Root Directory or a pnpm/npm workspace builds on bex as it does on Render, while Docker builds keep seeing only their Root Directory or Docker context. **Status:** blocked (t001–t004, t007 and t008 done; t005, t006 and t009 wait for the production walk)
 
 ## Tasks (in order)
 
@@ -49,3 +49,5 @@ On production (moved from dev-4 on 2026-11-25, § Record), a native Go service w
   The wall times include each run's fresh image pulls and Docker Desktop's macOS file sharing, which the transfer column shows is slow (9.4 s for 20 MB); a Linux build node reads its checkout from a local `emptyDir`. Source text compresses, so a real repository adds less than the incompressible case.
 - **What production's monorepo services gain.** `bex-co/block-eden-mono`, workspace `bex`, whose two native services set a Root Directory (w6/m558's production read, 2026-11-21), is 2,702 files and 19.8 MiB at `main` (GitHub tree API, 2026-11-25). `projects/eden-dash-v3` is 7.9 MiB and `projects/reverse-proxy-poc` 1.5 MiB, so their images grow by at most 11.9 MiB and 18.3 MiB of source before compression.
 - **Next (t005, t006, t009).** Once production's pin carries the code commit: in `bex-canary` as the QA user, the Go and pnpm fixtures from a public repository build and serve, and the Docker control fails; then t006's two pushes in workspace `bex` with a temporary bex-co repository, as w7/m428 t004 did (`bex-canary` has no Git connection). Then t009.
+
+**Parked 2026-11-25 (release gate, clears by itself).** The code shipped in `3624550656`. t005 starts once `git merge-base --is-ancestor 3624550656 <newest "pin platform images to" sha on main>` succeeds; then t006 and t009, as § Record's Next says.
