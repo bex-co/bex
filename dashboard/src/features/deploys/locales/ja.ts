@@ -558,9 +558,21 @@ const jaDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.reason.image_registry_unreachable": {
     message:
-      "レジストリ {host} が {minutes} 分間イメージ {image} の読み取りに応答しませんでした。レジストリに到達できることを確認してから、もう一度デプロイしてください",
+      "レジストリ {host} が {minutes} 分間イメージ {image} の読み取りに応答しませんでした。しばらく待ってからもう一度デプロイするか、レジストリ提供元のステータスページを確認してください",
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unreachable, w4/692); params are the sentence's values",
+  },
+  "deploys.reason.image_registry_unavailable": {
+    message:
+      "レジストリ {host} が利用できず、イメージ {image} を提供できませんでした。しばらく待ってからもう一度デプロイするか、レジストリ提供元のステータスページを確認してください",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unavailable, w4/m669): Render's Registry unavailable cause; params are the sentence's values",
+  },
+  "deploys.reason.image_registry_rate_limited": {
+    message:
+      "レジストリ {host} がレート制限によりイメージ {image} の pull を拒否しました (HTTP 429)。レート制限がリセットされるまで待つか、レート制限の高いアカウントのレジストリ認証情報を使うか、イメージを別のレジストリにミラーしてください",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_rate_limited, w4/m669): Render's Rate limited (429 error) cause with its three remedies; params are the sentence's values",
   },
   "deploys.reason.build_timed_out": {
     message:

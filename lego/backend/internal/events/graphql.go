@@ -252,6 +252,10 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 			return reason
 		}),
 		"message": gqlutil.StrField(func(d Details) any { return d.render.Message }),
+		// image_pull_failed's message by code (w4/m669): its cause is a deploy
+		// reason sentence, which the dashboard words in its own language, as
+		// failureReasonTemplate is for the deploy.
+		"messageTemplate": gqlutil.DeployReasonField(func(d Details) string { return d.render.Message }),
 		// service_disk_usage_high / _recovered (w2/m255): Render's disk details.
 		"diskId":           gqlutil.StrField(func(d Details) any { return d.DiskID }),
 		"diskName":         gqlutil.StrField(func(d Details) any { return d.DiskName }),

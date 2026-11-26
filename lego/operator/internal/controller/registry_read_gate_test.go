@@ -429,12 +429,56 @@ func TestRegistryWaitExpiresAtTheRolloutBudget(t *testing.T) {
 			t.Errorf("%s: expired = %v, want %v", tc.name, got, tc.want)
 		}
 	}
-	err := registryUnreachableError("ghcr.io/acme/web:v1")
+	err := registryUnreachableError(app(3), "ghcr.io/acme/web:v1", transient)
 	if imageMetadataFailureReason(err) != appv1alpha1.ReasonImagePullFailed {
 		t.Errorf("reason = %q, want %q", imageMetadataFailureReason(err), appv1alpha1.ReasonImagePullFailed)
 	}
 	if want := "the registry ghcr.io did not answer the read of the image ghcr.io/acme/web:v1 for 15 minutes"; !strings.HasPrefix(err.Error(), want) {
 		t.Errorf("message = %q, want it to open %q", err.Error(), want)
+	}
+}
+
+// A registry wait that expires on a 429 fails as Render's "Rate limited (429
+// error)" with its remedies, whether the last read was the 429 itself or one
+// the gate turned away after it; any other wait still fails as unreachable,
+// and both fail under ImagePullFailed (w4/m669).
+func TestAnExpiredRegistryWaitNamesARateLimit(t *testing.T) {
+	const image = "docker.io/library/nginx:1.27"
+	throttled := registry.NewTransientError(errors.New("rate limited"), 0)
+	throttled.Status = http.StatusTooManyRequests
+	refused := registry.NewTransientError(errors.New("connection refused"), 0)
+	busy := &registryBusyError{host: "docker.io", retryAfter: time.Minute}
+	waiting := func(reason string) *appv1alpha1.App {
+		a := webImageApp(1)
+		a.Status.Phase = appv1alpha1.PhaseDeploying
+		a.Status.Conditions = []metav1.Condition{{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason}}
+		return a
+	}
+	const rateLimited = "the registry docker.io rate-limited the pull of the image " + image + " (HTTP 429). Wait for the rate limit to reset, " +
+		"use a registry credential for an account with a higher rate limit, or mirror the image to another registry"
+	const unreachable = "the registry docker.io did not answer the read of the image " + image + " for 15 minutes. " +
+		"Wait and deploy again, or check the registry provider's status page"
+	for _, tc := range []struct {
+		name string
+		app  *appv1alpha1.App
+		err  error
+		want string
+	}{
+		{"the last read answered 429", waiting(reasonImageRegistryUnavailable), throttled, rateLimited},
+		{"a read turned away after a 429", waiting(reasonImageRegistryRateLimited), busy, rateLimited},
+		{"the last read was refused a connection after a 429", waiting(reasonImageRegistryRateLimited), refused, unreachable},
+		{"a read turned away after an unanswered one", waiting(reasonImageRegistryUnavailable), busy, unreachable},
+	} {
+		err := registryUnreachableError(tc.app, image, tc.err)
+		if err.Error() != tc.want {
+			t.Errorf("%s: message = %q, want %q", tc.name, err.Error(), tc.want)
+		}
+		if got := imageMetadataFailureReason(err); got != appv1alpha1.ReasonImagePullFailed {
+			t.Errorf("%s: reason = %q, want %q", tc.name, got, appv1alpha1.ReasonImagePullFailed)
+		}
+		if code, _, ok := appv1alpha1.ParseDeployReason(err.Error()); !ok {
+			t.Errorf("%s: %q parses as no deploy reason, so the dashboard cannot word it (code %q)", tc.name, err.Error(), code)
+		}
 	}
 }
 

@@ -546,9 +546,21 @@ const zhDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.reason.image_registry_unreachable": {
     message:
-      "镜像仓库 {host} 在 {minutes} 分钟内未响应镜像 {image} 的读取。请确认镜像仓库可访问，然后重新部署",
+      "镜像仓库 {host} 在 {minutes} 分钟内未响应镜像 {image} 的读取。请稍候重新部署，或查看镜像仓库服务商的状态页面",
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unreachable, w4/692); params are the sentence's values",
+  },
+  "deploys.reason.image_registry_unavailable": {
+    message:
+      "镜像仓库 {host} 不可用，无法提供镜像 {image}。请稍候重新部署，或查看镜像仓库服务商的状态页面",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unavailable, w4/m669): Render's Registry unavailable cause; params are the sentence's values",
+  },
+  "deploys.reason.image_registry_rate_limited": {
+    message:
+      "镜像仓库 {host} 因速率限制拒绝了镜像 {image} 的拉取（HTTP 429）。请等待速率限制重置，使用速率限制更高的账号的镜像仓库凭据，或将镜像镜像到其他镜像仓库",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_rate_limited, w4/m669): Render's Rate limited (429 error) cause with its three remedies; params are the sentence's values",
   },
   "deploys.reason.build_timed_out": {
     message: "构建未在构建时限内完成；请查看构建日志",

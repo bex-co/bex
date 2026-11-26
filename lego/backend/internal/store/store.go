@@ -3947,7 +3947,8 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status string, ran R
 			// A deploy that shipped a build-source build records Render's
 			// artifact_fetch_failed (instead of image_pull_failed), with the
 			// same source key observedImagePullFailure writes so the fact lands
-			// at most once (w4/m510).
+			// at most once (w4/m510). Either keeps the deploy's failure reason as
+			// its message: the cause of an image pull failure (w4/m669).
 			if _, err := tx.Exec(ctx,
 				`INSERT INTO service_event_facts (
 				     source_key, app_id, fact_type, at, deploy_id, image, reason_code, build_id, message
@@ -3961,7 +3962,7 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status string, ran R
 				        CASE WHEN COALESCE(build_id, '') <> '' THEN '' ELSE image END,
 				        $4,
 				        COALESCE(build_id, ''),
-				        CASE WHEN COALESCE(build_id, '') <> '' THEN COALESCE(NULLIF(BTRIM(failure_reason), ''), $5) ELSE '' END
+				        CASE WHEN COALESCE(build_id, '') <> '' THEN COALESCE(NULLIF(BTRIM(failure_reason), ''), $5) ELSE COALESCE(BTRIM(failure_reason), '') END
 				 FROM deploys WHERE id = $1
 				 ON CONFLICT (source_key) DO NOTHING`,
 				id, EventFactArtifactFetchFailed, EventFactImagePullFailed, EventReasonImagePullBackoff, DefaultArtifactFetchFailedMessage); err != nil {

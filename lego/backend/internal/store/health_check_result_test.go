@@ -146,7 +146,10 @@ func TestPGServerFailedKeepsItsHealthCheckResult(t *testing.T) {
 	if byID.Event.HealthCheckResult != result {
 		t.Errorf("by id = %+v, want %q", byID.Event, result)
 	}
-	results, err := st.HealthCheckResults(ctx, []string{rows[0].Key, rows[1].Key, "fact:unknown"})
+	feed := func(key string) WebhookEventRow {
+		return WebhookEventRow{Key: key, Source: EventSourceFact, FactType: string(EventFactServerFailed)}
+	}
+	results, err := st.AlertFactMessages(ctx, []WebhookEventRow{feed(rows[0].Key), feed(rows[1].Key), feed("fact:unknown")})
 	if err != nil {
 		t.Fatal(err)
 	}

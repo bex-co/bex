@@ -584,9 +584,21 @@ const ruDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.reason.image_registry_unreachable": {
     message:
-      "реестр {host} не отвечал на чтение образа {image} в течение {minutes} минут. Проверьте, что реестр доступен, и выполните деплой снова",
+      "реестр {host} не отвечал на чтение образа {image} в течение {minutes} минут. Подождите и выполните деплой снова или проверьте страницу статуса провайдера реестра",
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unreachable, w4/692); params are the sentence's values",
+  },
+  "deploys.reason.image_registry_unavailable": {
+    message:
+      "реестр {host} недоступен и не смог отдать образ {image}. Подождите и выполните деплой снова или проверьте страницу статуса провайдера реестра",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unavailable, w4/m669): Render's Registry unavailable cause; params are the sentence's values",
+  },
+  "deploys.reason.image_registry_rate_limited": {
+    message:
+      "реестр {host} отклонил загрузку образа {image} из-за лимита запросов (HTTP 429). Подождите, пока лимит сбросится, используйте учётные данные реестра от аккаунта с более высоким лимитом или скопируйте образ в другой реестр",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_rate_limited, w4/m669): Render's Rate limited (429 error) cause with its three remedies; params are the sentence's values",
   },
   "deploys.reason.build_timed_out": {
     message: "сборка не завершилась в отведённое время; проверьте логи сборки",

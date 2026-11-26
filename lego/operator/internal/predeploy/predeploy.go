@@ -46,6 +46,7 @@ package predeploy
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"regexp"
 	"slices"
 	"strconv"
@@ -447,7 +448,7 @@ func failureMessage(ctx context.Context, cl client.Reader, j *batchv1.Job, build
 	// A pod that never got its image never ran the command: no log to point
 	// at, and the deadline only measured the pull retries (w8/m44).
 	if w, image, _ := pullFailure(ctx, cl, j); w != nil {
-		return pullFailureMessage(w, image, builds)
+		return pullFailureMessage(w, image, builds, pullsWithCredential(j))
 	}
 	if execution.JobFailedReason(j) == batchv1.JobReasonDeadlineExceeded {
 		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployWindowExceeded,
@@ -510,7 +511,14 @@ func PullFailure(ctx context.Context, cl client.Reader, j *batchv1.Job, now time
 	if !PermanentPullFailure(w, created, now) {
 		return ""
 	}
-	return wordedFor(j, pullFailureMessage(w, image, builds))
+	return wordedFor(j, pullFailureMessage(w, image, builds, pullsWithCredential(j)))
+}
+
+// pullsWithCredential reports a Job that pulls its image with a registry
+// credential, as the app pod does (imagePullSecrets): a build's pull secret
+// is the platform's, so only an image the user supplied reads it.
+func pullsWithCredential(j *batchv1.Job) bool {
+	return len(j.Spec.Template.Spec.ImagePullSecrets) > 0
 }
 
 // PermanentPullFailure is shared by pre-deploy Jobs and rollout pods. Malformed
@@ -534,12 +542,9 @@ func PermanentPullFailure(w *corev1.ContainerStateWaiting, created, now time.Tim
 		created.IsZero() || now.Sub(created) < imagePullGrace {
 		return false
 	}
-	message := strings.ToLower(w.Message)
-	for _, answer := range []string{"code = notfound", "manifest unknown", "manifest_unknown", ": not found", "404 not found", "unauthorized",
-		"authentication required", "pull access denied", "repository does not exist", "insufficient_scope", "403 forbidden", "denied:"} {
-		if strings.Contains(message, answer) {
-			return true
-		}
+	switch kubeletPullStatus(w.Message) {
+	case http.StatusNotFound, http.StatusUnauthorized, http.StatusForbidden:
+		return true
 	}
 	return false
 }
@@ -569,9 +574,12 @@ func BuildPullCause(build, kubelet string) (cause, advice string) {
 
 // Image failures cannot be diagnosed from command logs: the command never ran.
 // A build's pull failure reads as the rollout's does; an image the user
-// supplied keeps naming itself and the registry's answer, which are the
-// user's to fix. The tail keeps "the pre-deploy command" for hookWording.
-func pullFailureMessage(w *corev1.ContainerStateWaiting, image string, builds BuildImage) string {
+// supplied is worded as the Render cause the registry's answer names, as the
+// rollout's is (UserPullFailure), or keeps naming itself and the kubelet's
+// line when it names none. credentialed says the Job pulls with the service's
+// registry credential. The tail keeps "the pre-deploy command" for
+// hookWording.
+func pullFailureMessage(w *corev1.ContainerStateWaiting, image string, builds BuildImage, credentialed bool) string {
 	const neverRan = "; the pre-deploy command never ran"
 	if w.Reason == "InvalidImageName" {
 		return "image reference is invalid: " + w.Message + neverRan
@@ -585,7 +593,10 @@ func pullFailureMessage(w *corev1.ContainerStateWaiting, image string, builds Bu
 			return cause + neverRan + advice
 		}
 	}
-	return "image pull is failing: " + w.Message + neverRan
+	if cause, ok := UserPullFailure(image, w.Message, credentialed); ok {
+		return cause + neverRan
+	}
+	return appv1alpha1.ImagePullStallWaiting + ": " + w.Message + neverRan
 }
 
 // pullFailure is the pre-deploy container's image-pull wait on the Job's pod,

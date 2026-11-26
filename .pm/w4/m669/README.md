@@ -1,18 +1,18 @@
 # w4 · m669 — An image pull failure says which of Render's four causes stopped it, in the event, its email and the deploy
 
-**Worker:** worker4 **Goal:** a failed image pull's `image_pull_failed` event (REST, GraphQL, MCP and webhooks), its Image Pull Failed email and the deploy's failure reason name one of Render's four causes (image not found, authentication error, registry unavailable, rate limited) with Render's remedy, so a person or an agent can tell a wrong tag from an expired credential or a throttled registry. **Status:** todo
+**Worker:** worker4 **Goal:** a failed image pull's `image_pull_failed` event (REST, GraphQL, MCP and webhooks), its Image Pull Failed email and the deploy's failure reason name one of Render's four causes (image not found, authentication error, registry unavailable, rate limited) with Render's remedy, so a person or an agent can tell a wrong tag from an expired credential or a throttled registry. **Status:** todo (t001–t003, t005–t007 done; t004 dev-4 half done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | A pull the node's kubelet fails is worded as one of the four causes, as the pre-pull refusal already is | 1h | — |
-| [t002](t002.md) | A registry that answered only 429 for the rollout budget fails as rate limited, with Render's three remedies | 40m | — |
-| [t003](t003.md) | `image_pull_failed` and its email carry the deploy's cause instead of "The image could not be pulled" | 1h | t001, t002 |
+| [t001](done/t001.md) | A pull the node's kubelet fails is worded as one of the four causes, as the pre-pull refusal already is — **DONE** | 1h | — |
+| [t002](done/t002.md) | A registry that answered only 429 for the rollout budget fails as rate limited, with Render's three remedies — **DONE** | 40m | — |
+| [t003](done/t003.md) | `image_pull_failed` and its email carry the deploy's cause instead of "The image could not be pulled" — **DONE** | 1h | t001, t002 |
 | [t004](t004.md) | dev-4 and production: a missing tag and a refused credential each read their cause on every surface | 40m | t003 |
-| [t005](t005.md) | Render parity | 25m | t004 |
-| [t006](t006.md) | Simplify | 15m | t005 |
-| [t007](t007.md) | Test coverage | 30m | t005, t006 |
+| [t005](done/t005.md) | Render parity — **DONE** | 25m | t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005, t006 |
 | [t008](t008.md) | Closeout | 10m | t007 |
 
 Total: **8 tasks, about 4h40m**.
@@ -38,3 +38,29 @@ Total: **8 tasks, about 4h40m**.
 - **Expected outcome:** the event, the webhook and the email say what went wrong and what to do, in Render's terms, instead of one sentence for every failure.
 - **Why now:** Docker Hub throttling of bex's shared egress is real (w4/blocked/429), and today it reads exactly like a wrong tag in the event. w4/m671 reuses these causes for its availability check, so this goes first.
 - **Render parity:** included: REST, GraphQL, MCP, webhooks, the email and the dashboard Events feed all change.
+
+## Record — 2026-11-26
+
+**Triage: work.** Every `bex today` pointer above held at `origin/main` `23283eef17`: the kubelet sites wrote `image pull is failing: <image>: <kubelet message>`, an expired registry wait failed as `image_registry_unreachable` even when every read was a 429, the `image_pull_failed` fact kept no message, and REST answered the constant "The image could not be pulled".
+
+**Render's reference, re-read 2026-11-26** ([deploying-an-image](https://render.com/docs/deploying-an-image)): "Image not found (`404` error)" (verify the image URL), "Authentication error" (update the credential), "Registry unavailable" ("Wait and retry, or check your registry provider's status page") and "Rate limited (`429` error)" ("Wait for the rate limit to reset." / "Use a credential for a registry account with a higher rate limit." / "Mirror the image to another registry or choose a different image source."). Render's webhook payload carries only `data.id`, `serviceId` and `serviceName`, so a receiver reads the cause from `GET /v1/events/{id}`; bex's payload stays Render's shape.
+
+**What shipped.**
+
+- **t001, the kubelet path.** `predeploy.UserPullFailure` reads the registry answer a kubelet's pull error carries (`kubeletPullAnswers`: 429 first, then 404, 403, 401, then 5xx and network failures as 503) and words it from the same templates as a refused metadata read (`predeploy.RegistryRefusal`, which `imageRefusalError` now calls too). A pod with a pull secret pulls with the service's credential, so a 401/403 there is `image_credential_refused`, else `image_access_refused`. A 5xx or network failure is the new `image_registry_unavailable`. Both rollout sites (`stuckPodMessage`, `permanentRolloutPullFailure`) go through `pullFailureMessage`, and pre-deploy's pull failure names the same cause before "; the pre-deploy command never ran". A message that names no answer keeps the kubelet's text, and the reason stays `ImagePullBackOff`. `PermanentPullFailure` now reads the same families, so "permanent" means exactly a refusal.
+- **t002, the rate limit.** A registry wait whose last read answered 429 (or that the gate turned away after one, `registryWaitRateLimited`) fails past the 15-minute budget with the new `image_registry_rate_limited` and Render's three remedies, still under `ImagePullFailed`. `image_registry_unreachable` now ends with Render's "Registry unavailable" remedy ("Wait and deploy again, or check the registry provider's status page"). All three sentences are worded in the 8 dashboard languages.
+- **t003, every surface.** The `image_pull_failed` fact keeps the cause: the Ready (or served release's Rollout) condition's message, restated as an outcome, when the reconciler first sees it, or the deploy's failure reason when `TransitionDeploy` closes it. REST, by-id, MCP and GraphQL `message` answer it (falling back to "The image could not be pulled" for an older fact), GraphQL adds `messageTemplate` by code, the Image Pull Failed email puts it under its lead as a sentence, and the dashboard's Events row shows it worded in its own language in place of the generic line.
+
+**dev-4 (t004, first half).** bex-api rebuilt from this tree (`dev-env.sh 4 up`) against the shared cluster's operator, a disposable verified Kratos identity and its workspace (disposable). Both cases go through bex's image metadata read, whose wording that operator already had, so they exercise the new fact, surfaces and email end to end:
+
+- **A missing tag.** Web service `missing-tag` (disposable) from `docker.io/library/nginx:does-not-exist-0df274`. Its deploy failed `update_failed` with "the image docker.io/library/nginx:does-not-exist-0df274 was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists". The `image_pull_failed` event answered that sentence as `details.message` beside `imageURL` on REST list, `GET /v1/events/{id}` (what a webhook receiver reads by `data.id`), MCP `list_events` and `get_service_event`, and GraphQL `message` with `messageTemplate.code` `image_not_found`. Mailpit's "Image pull failed: missing-tag" read the lead, then "The image docker.io/library/nginx:does-not-exist-0df274 was not found in its registry: … or deploy a digest that exists."
+- **An authentication error.** Web service `private-image` (disposable) from `ghcr.io/bex-co/m669-private:v1` with no credential: "the registry refused access to the image ghcr.io/bex-co/m669-private:v1. If the image is private, add a registry credential for ghcr.io to this service" on the deploy, REST, by id, MCP, GraphQL (`image_access_refused`) and the email. A refused credential could not be walked here: creating a registry credential needs OpenBao, which only `dev-env.sh 4 agent-up` brings, and that leg is exclusive across the shared cluster. `image_credential_refused` takes the same backend path; its wording is pinned by `TestUserPullFailureNamesRendersCause`, `TestAKubeletPullFailureNamesRendersCause` and `TestAPreDeployJobWithACredentialNamesItRefused`.
+- **The kubelet's real line.** A background worker (disposable; workers skip the metadata read) from the missing tag showed what the Kubernetes 1.34 kubelet writes: `Back-off pulling image "docker.io/library/nginx:does-not-exist-0df274": ErrImagePull: rpc error: code = NotFound desc = failed to pull and unpack image …: not found`. The back-off line carries the pull error, which is what `UserPullFailure` reads; the controller test uses that shape. The shared operator was not rolled from this tree, so the worker's own failure still read the old text on dev-4; production checks it once deployed.
+- Removed afterwards: the three services (`DELETE` 204 each), then the identity (the admin read answers 404).
+- A rate-limited registry cannot be produced on demand: the envtest `fails a deploy whose registry rate-limits it past the rollout budget as rate limited` and `TestAnExpiredRegistryWaitNamesARateLimit` cover it.
+
+**Render parity (t005).** REST, by-id, MCP and GraphQL answer the same `message` from one projection (`toRenderEvent`); the webhook payload keeps Render's `{id, serviceId, serviceName}` and its event reads the cause by id, as on Render. The email and the Events row show the same sentence. ADR018's Service events row (`services-lifecycle.md`), its notifications row (`platform-events-integrations.md`), `docs/render-artifacts/service-events.md` and ADR004's registry-wait paragraph record what shipped. No drift found beyond Render's unpublished exact wording (`w10/blocked/002`).
+
+**Simplify (t006).** `/simplify` merged the image metadata read's refusal wording and the kubelet's into `predeploy.RegistryRefusal`, made `PermanentPullFailure` read the same answer families (so a pull is permanent exactly when it was refused), shared the rate-limited check between the wait and its verdict (`registryWaitRateLimited`), and kept one filter for the alert email's fact messages.
+
+**Test coverage (t007).** Reverting each guarded line failed its test: the controller's use of `UserPullFailure` and its credential flag, the 429 family, the empty-image guard, pre-deploy's cause and its Job credential, the 403 permanence, the rate-limited expiry (unit and envtest), the fact's message at both sites and its outcome restatement, REST's message and fallback, the events view mapping, GraphQL's `messageTemplate`, the email's sentence and its fact filter, and the dashboard row's template and its generic-line suppression.

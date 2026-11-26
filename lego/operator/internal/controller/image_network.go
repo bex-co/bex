@@ -674,8 +674,7 @@ func (r *AppReconciler) imageRegistryWait(ctx context.Context, app *appv1alpha1.
 		// It learns nothing about the registry either, so a wait whose last
 		// read was rate-limited keeps saying so, as a save's pass restamps it.
 		reason, msg := reasonImageRegistryUnavailable, imageRegistryWaitMessage
-		ready := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
-		if app.Status.Phase == appv1alpha1.PhaseDeploying && ready != nil && ready.Reason == reasonImageRegistryRateLimited {
+		if registryWaitRateLimited(app, err) {
 			reason, msg = reasonImageRegistryRateLimited, imageRegistryRateLimitedMessage
 		}
 		r.setPhaseWith(ctx, app, appv1alpha1.PhaseDeploying, reason, msg, startRegistryWait(app, now))
@@ -749,13 +748,30 @@ func registryWaitExpired(app *appv1alpha1.App, err error, now time.Time) bool {
 // registryUnreachableError is the failure of a deploy whose registry wait
 // expired (registryWaitExpired), naming the image and its registry. The image
 // could not be pulled, so it fails under ReasonImagePullFailed
-// (imageMetadataFailureReason), as a refused read does.
-func registryUnreachableError(image string) error {
+// (imageMetadataFailureReason), as a refused read does. A wait whose last read
+// the registry rate-limited fails as Render's "Rate limited (429 error)", with
+// its remedies, rather than as a registry that did not answer (w4/m669).
+func registryUnreachableError(app *appv1alpha1.App, image string, err error) error {
+	if registryWaitRateLimited(app, err) {
+		return &unreachableRegistryError{msg: predeploy.RegistryRefusal(image, http.StatusTooManyRequests, false)}
+	}
 	return &unreachableRegistryError{msg: appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageRegistryUnreachable,
-		appv1alpha1.DeployReasonParam{Name: "host", Value: imageRegistryHost(image)},
+		appv1alpha1.DeployReasonParam{Name: "host", Value: predeploy.RegistryHost(image)},
 		appv1alpha1.DeployReasonParam{Name: "image", Value: image},
 		appv1alpha1.DeployReasonParam{Name: "minutes", Value: strconv.Itoa(int(registryWaitBound / time.Minute))},
 	)}
+}
+
+// registryWaitRateLimited reports a registry wait whose last read the registry
+// answered with 429: err is that read's, or a read the gate turned away, which
+// learns nothing new, so the wait's own rate-limited Ready reason still stands
+// for it (imageRegistryWait).
+func registryWaitRateLimited(app *appv1alpha1.App, err error) bool {
+	if transient, ok := errors.AsType[*registry.TransientError](err); ok {
+		return transient.Status == http.StatusTooManyRequests
+	}
+	ready := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
+	return app.Status.Phase == appv1alpha1.PhaseDeploying && ready != nil && ready.Reason == reasonImageRegistryRateLimited
 }
 
 type unreachableRegistryError struct{ msg string }
@@ -819,38 +835,13 @@ func imageReadFailureRecorded(app *appv1alpha1.App) bool {
 // startup diagnosis (w4/534); the raw "image metadata request returned status
 // 404" named neither. Registry bodies and tokens never reach it. Any other
 // error is returned unchanged. credentialed says the read carried the
-// service's selected registry credential: a 401 or 403 then means the
-// registry refused that credential, which is what the owner must fix (Docker
-// Hub answers 401, GHCR 403, even for a public image; w4/m301).
+// service's selected registry credential (predeploy.RegistryRefusal).
 func imageRefusalError(image string, err error, credentialed bool) error {
 	var refused *registry.RefusedError
 	if !errors.As(err, &refused) {
 		return err
 	}
-	// Worded from the shared templates, which the dashboard words in its own
-	// language (w4/566).
-	imageParam := appv1alpha1.DeployReasonParam{Name: "image", Value: image}
-	hostParam := appv1alpha1.DeployReasonParam{Name: "host", Value: imageRegistryHost(image)}
-	statusParam := appv1alpha1.DeployReasonParam{Name: "status", Value: strconv.Itoa(refused.Status)}
-	switch refused.Status {
-	case http.StatusNotFound:
-		return errors.New(appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageNotFound, imageParam))
-	case http.StatusUnauthorized, http.StatusForbidden:
-		if credentialed {
-			return errors.New(appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageCredential, hostParam, imageParam, statusParam))
-		}
-		return errors.New(appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageAccess, imageParam, hostParam))
-	}
-	return errors.New(appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageRead, imageParam, statusParam))
-}
-
-// imageRegistryHost is the registry an image reference names: its first path
-// segment when that looks like a host, else Docker Hub.
-func imageRegistryHost(image string) string {
-	if host, _, ok := strings.Cut(image, "/"); ok && (strings.ContainsAny(host, ".:") || host == "localhost") {
-		return host
-	}
-	return "docker.io"
+	return errors.New(predeploy.RegistryRefusal(image, refused.Status, credentialed))
 }
 
 // platformPullFailure is the stall text for a pull failure of an image in the

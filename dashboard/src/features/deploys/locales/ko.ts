@@ -556,9 +556,21 @@ const koDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.reason.image_registry_unreachable": {
     message:
-      "레지스트리 {host}가 {minutes}분 동안 {image} 이미지 읽기에 응답하지 않았습니다. 레지스트리에 연결할 수 있는지 확인한 후 다시 배포하세요",
+      "레지스트리 {host}가 {minutes}분 동안 {image} 이미지 읽기에 응답하지 않았습니다. 잠시 기다렸다가 다시 배포하거나 레지스트리 제공업체의 상태 페이지를 확인하세요",
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unreachable, w4/692); params are the sentence's values",
+  },
+  "deploys.reason.image_registry_unavailable": {
+    message:
+      "레지스트리 {host}를 사용할 수 없어 {image} 이미지를 제공하지 못했습니다. 잠시 기다렸다가 다시 배포하거나 레지스트리 제공업체의 상태 페이지를 확인하세요",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unavailable, w4/m669): Render's Registry unavailable cause; params are the sentence's values",
+  },
+  "deploys.reason.image_registry_rate_limited": {
+    message:
+      "레지스트리 {host}가 요청 한도 때문에 {image} 이미지 pull을 거부했습니다(HTTP 429). 요청 한도가 초기화될 때까지 기다리거나, 한도가 더 높은 계정의 레지스트리 자격 증명을 사용하거나, 이미지를 다른 레지스트리로 미러링하세요",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_rate_limited, w4/m669): Render's Rate limited (429 error) cause with its three remedies; params are the sentence's values",
   },
   "deploys.reason.build_timed_out": {
     message: "빌드가 허용 시간 내에 끝나지 않았습니다. 빌드 로그를 확인하세요",

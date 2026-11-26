@@ -1074,3 +1074,93 @@ func TestArtifactEventsSurfaceParity(t *testing.T) {
 		t.Errorf("MCP get_service_event = %+v, want match REST %+v", mcpOne, rest[2].Event)
 	}
 }
+
+// TestImagePullFailedSurfaceParity pins w4/m669: image_pull_failed answers the
+// cause its deploy failed with, one of Render's four, as details.message
+// beside imageURL (Render's schema requires both), identically on REST list
+// and retrieve, GraphQL (with the sentence by code for the dashboard) and MCP
+// list_events / get_service_event. A fact recorded before the cause was kept
+// still answers the old sentence.
+func TestImagePullFailedSurfaceParity(t *testing.T) {
+	at := time.Date(2026, 11, 26, 2, 0, 0, 0, time.UTC)
+	const (
+		image = "docker.io/library/nginx:does-not-exist-7f3a"
+		cause = "the image " + image + " was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists"
+	)
+	named := store.ServiceEventRow{
+		Key: "fact:deploy:dep-new:image_pull_failed", At: at,
+		Source: store.EventSourceFact, FactType: string(store.EventFactImagePullFailed),
+		DeployID: "dep-new", Image: image, ImagePullMessage: cause, ReasonCode: store.EventReasonImagePullBackoff,
+	}
+	older := store.ServiceEventRow{
+		Key: "fact:deploy:dep-old:image_pull_failed", At: at.Add(-time.Hour),
+		Source: store.EventSourceFact, FactType: string(store.EventFactImagePullFailed),
+		DeployID: "dep-old", Image: image, ReasonCode: store.EventReasonImagePullBackoff,
+	}
+	fake := &fakeEventStore{rows: []store.ServiceEventRow{named, older}}
+	base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
+	h, srv := serverWith(t, base, Deps{EventStore: fake})
+	want := []string{cause, "The image could not be pulled"}
+
+	res := do(t, h, "GET", "/v1/services/web/events?type=image_pull_failed&startTime=2026-11-01T00:00:00Z", testToken, "")
+	if res.Code != http.StatusOK {
+		t.Fatalf("REST list: %d %s", res.Code, res.Body.String())
+	}
+	var rest []restEvent
+	if err := json.Unmarshal(res.Body.Bytes(), &rest); err != nil {
+		t.Fatalf("decode REST list: %v", err)
+	}
+	if len(rest) != 2 {
+		t.Fatalf("REST list = %d events, want 2", len(rest))
+	}
+	for i, r := range rest {
+		if r.Event.Type != events.TypeImagePullFailed || r.Event.Details["imageURL"] != image || r.Event.Details["message"] != want[i] {
+			t.Errorf("REST image_pull_failed %d = %+v, want imageURL %q and message %q", i, r.Event, image, want[i])
+		}
+		got := do(t, h, "GET", "/v1/events/"+r.Event.ID, testToken, "")
+		var one wireEvent
+		if err := json.Unmarshal(got.Body.Bytes(), &one); err != nil || got.Code != http.StatusOK {
+			t.Fatalf("REST get %s: %d %s", r.Event.ID, got.Code, got.Body.String())
+		}
+		if fmt.Sprint(one.Details) != fmt.Sprint(r.Event.Details) {
+			t.Errorf("REST retrieve = %+v, want %+v", one.Details, r.Event.Details)
+		}
+	}
+
+	gqlList := gql(t, h, `{ serviceEvents(serviceId: "web", type: "image_pull_failed", startTime: "2026-11-01T00:00:00Z") { id details { message messageTemplate { code params { name value } } } } }`)["serviceEvents"].([]any)
+	if len(gqlList) != 2 {
+		t.Fatalf("GraphQL list = %d, want 2", len(gqlList))
+	}
+	first := gqlList[0].(map[string]any)["details"].(map[string]any)
+	template, _ := first["messageTemplate"].(map[string]any)
+	if first["message"] != cause || template == nil || template["code"] != appv1alpha1.DeployReasonImageNotFound {
+		t.Errorf("GraphQL image_pull_failed = %v, want message %q worded by code %q", first, cause, appv1alpha1.DeployReasonImageNotFound)
+	}
+	second := gqlList[1].(map[string]any)["details"].(map[string]any)
+	if second["message"] != want[1] || second["messageTemplate"] != nil {
+		t.Errorf("GraphQL older image_pull_failed = %v, want the old sentence and no template", second)
+	}
+
+	mcpRes, err := mcpSessionAs(t, srv, "user-x").CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "list_events",
+		Arguments: map[string]any{
+			"serviceId":  "web",
+			"eventTypes": []string{events.TypeImagePullFailed},
+			"startTime":  "2026-11-01T00:00:00Z",
+		},
+	})
+	if err != nil || mcpRes.IsError || len(mcpRes.Content) == 0 {
+		t.Fatalf("MCP list_events: res=%+v err=%v", mcpRes, err)
+	}
+	arrayPart, _, _ := strings.Cut(mcpRes.Content[0].(*mcp.TextContent).Text, "\n\n")
+	var mcpList []wireEvent
+	if err := json.Unmarshal([]byte(arrayPart), &mcpList); err != nil {
+		t.Fatalf("decode MCP list_events %q: %v", arrayPart, err)
+	}
+	if len(mcpList) != 2 || mcpList[0].Details["message"] != cause || mcpList[1].Details["message"] != want[1] {
+		t.Errorf("MCP list_events = %+v, want match REST %+v", mcpList, rest)
+	}
+	if one := callGetServiceEvent(t, srv, rest[0].Event.ID); one.Details["message"] != cause || one.Details["imageURL"] != image {
+		t.Errorf("MCP get_service_event = %+v, want message %q", one, cause)
+	}
+}

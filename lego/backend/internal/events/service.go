@@ -1602,6 +1602,8 @@ func view(r store.ServiceEventRow, service string) Event {
 			ev.Details.Message = r.ArtifactMessage
 		case TypeServerFailed:
 			ev.Details.HealthCheckResult = r.HealthCheckResult
+		case TypeImagePullFailed:
+			ev.Details.Message = r.ImagePullMessage
 		}
 	}
 	return ev

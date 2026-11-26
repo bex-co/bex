@@ -70,6 +70,47 @@ func TestObservedImagePullFailureSplitsBuildSourceDeploys(t *testing.T) {
 	}
 }
 
+// An image_pull_failed fact keeps the cause the operator named, one of
+// Render's four, restated as the outcome it is, so the event, its webhook's
+// event and its email say what stopped the pull; a condition that named
+// nothing keeps no message, and the surfaces answer their generic sentence
+// (w4/m669).
+func TestImagePullFailedFactKeepsItsCause(t *testing.T) {
+	const notFound = "the image docker.io/library/nginx:missing was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists"
+	deploy := Deploy{ID: "dep-img", AppID: "srv-1", Generation: 4, Image: "docker.io/library/nginx:missing"}
+	at := time.Date(2026, 11, 26, 2, 0, 0, 0, time.UTC)
+	for _, tc := range []struct{ name, condition, want string }{
+		{"a cause", notFound, notFound},
+		{"the kubelet's line, in flight", "image pull is failing: docker.io/library/nginx:missing: Back-off pulling image", "image pull failed: docker.io/library/nginx:missing: Back-off pulling image"},
+		{"nothing named", "  ", ""},
+	} {
+		ready := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "web", Generation: 4},
+			Status: appv1alpha1.AppStatus{Conditions: []metav1.Condition{{
+				Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "ImagePullBackOff",
+				Message: tc.condition, ObservedGeneration: 4,
+			}}},
+		}
+		if fact, ok := observedImagePullFailure(deploy, ready); !ok || fact.Type != EventFactImagePullFailed || fact.Message != tc.want {
+			t.Errorf("%s: deploy fact = %+v (%v), want message %q", tc.name, fact, ok, tc.want)
+		}
+		served := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "web", Generation: 3},
+			Status: appv1alpha1.AppStatus{
+				Image:       deploy.Image,
+				ImageDigest: &appv1alpha1.ImageDigestStatus{Generation: 3},
+				Conditions: []metav1.Condition{{
+					Type: appv1alpha1.ConditionRollout, Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonImagePullFailed,
+					Message: tc.condition, ObservedGeneration: 3, LastTransitionTime: metav1.NewTime(at),
+				}},
+			},
+		}
+		if fact, ok := servedReleasePullFailure("srv-1", served); !ok || fact.Message != tc.want {
+			t.Errorf("%s: served release fact = %+v (%v), want message %q", tc.name, fact, ok, tc.want)
+		}
+	}
+}
+
 func TestServedReleasePullFailureSplitsBuildSource(t *testing.T) {
 	at := time.Date(2026, 11, 19, 2, 0, 0, 0, time.UTC)
 	app := &appv1alpha1.App{

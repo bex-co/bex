@@ -577,9 +577,21 @@ const esDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.reason.image_registry_unreachable": {
     message:
-      "el registro {host} no respondió a la lectura de la imagen {image} durante {minutes} minutos. Comprueba que el registro sea accesible y vuelve a desplegar",
+      "el registro {host} no respondió a la lectura de la imagen {image} durante {minutes} minutos. Espera y vuelve a desplegar, o consulta la página de estado del proveedor del registro",
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unreachable, w4/692); params are the sentence's values",
+  },
+  "deploys.reason.image_registry_unavailable": {
+    message:
+      "el registro {host} no está disponible y no pudo servir la imagen {image}. Espera y vuelve a desplegar, o consulta la página de estado del proveedor del registro",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unavailable, w4/m669): Render's Registry unavailable cause; params are the sentence's values",
+  },
+  "deploys.reason.image_registry_rate_limited": {
+    message:
+      "el registro {host} limitó la descarga de la imagen {image} por su límite de solicitudes (HTTP 429). Espera a que se restablezca el límite, usa una credencial de registro de una cuenta con un límite más alto o replica la imagen en otro registro",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_rate_limited, w4/m669): Render's Rate limited (429 error) cause with its three remedies; params are the sentence's values",
   },
   "deploys.reason.build_timed_out": {
     message:

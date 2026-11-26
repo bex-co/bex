@@ -51,6 +51,9 @@ type movableTagRegistry struct {
 	// unreachable fails every manifest read as a request, as a registry that
 	// does not answer.
 	unreachable bool
+	// rateLimited answers every manifest read 429, as Docker Hub answers an
+	// anonymous puller past its rate limit.
+	rateLimited bool
 }
 
 func newMovableTagRegistry() *movableTagRegistry {
@@ -83,6 +86,12 @@ func (m *movableTagRegistry) setUnreachable(unreachable bool) {
 	m.unreachable = unreachable
 }
 
+func (m *movableTagRegistry) setRateLimited(rateLimited bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.rateLimited = rateLimited
+}
+
 func (m *movableTagRegistry) client() *http.Client {
 	return &http.Client{Transport: imageNetworkTransport(func(request *http.Request) (*http.Response, error) {
 		m.mu.Lock()
@@ -92,6 +101,8 @@ func (m *movableTagRegistry) client() *http.Client {
 		switch {
 		case isManifest && m.unreachable:
 			return nil, errors.New("connection refused")
+		case isManifest && m.rateLimited:
+			status, body = http.StatusTooManyRequests, `{"errors":[{"code":"TOOMANYREQUESTS","message":"You have reached your pull rate limit."}]}`
 		case strings.HasSuffix(request.URL.Path, "/blobs/"+m.configSum):
 			body = m.config
 		case m.manifests[reference] != "":
@@ -299,5 +310,30 @@ var _ = Describe("Rolling back to a registry image's reference (w4/m432)", func(
 		pass()
 		Expect(envtestApp(nn).Status.ActiveRevision).To(Equal("rev-2"))
 		Expect(equality.Semantic.DeepEqual(*served, envtestDeployment(nn).Spec.Template)).To(BeTrue())
+	})
+
+	// A registry that answered only 429 for the whole budget fails the deploy
+	// as Render's "Rate limited (429 error)", with its three remedies, not as
+	// a registry that did not answer; it still fails under ImagePullFailed, so
+	// bex-api records image_pull_failed (w4/m669).
+	It("fails a deploy whose registry rate-limits it past the rollout budget as rate limited", func() {
+		clock := &fakeClock{now: time.Now()}
+		r.registryReads().now = clock.Now
+		registry.setRateLimited(true)
+		gen := rollback(v1)
+		app := envtestApp(nn)
+		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseDeploying))
+		Expect(meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady).Reason).To(Equal(reasonImageRegistryRateLimited))
+
+		clock.Advance(time.Duration(rolloutBudgetSeconds)*time.Second + time.Second)
+		pass()
+		rollout := meta.FindStatusCondition(envtestApp(nn).Status.Conditions, appv1alpha1.ConditionRollout)
+		Expect(rollout).NotTo(BeNil())
+		Expect(rollout.Reason).To(Equal(appv1alpha1.ReasonImagePullFailed))
+		Expect(rollout.ObservedGeneration).To(Equal(gen))
+		Expect(rollout.Message).To(Equal(appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageRegistryRateLimited,
+			appv1alpha1.DeployReasonParam{Name: "host", Value: "docker.io"}, appv1alpha1.DeployReasonParam{Name: "image", Value: v1})))
+		Expect(rollout.Message).To(ContainSubstring("Wait for the rate limit to reset"))
+		Expect(envtestApp(nn).Status.ActiveRevision).To(Equal("rev-2"))
 	})
 })

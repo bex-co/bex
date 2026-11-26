@@ -6816,6 +6816,7 @@ export type ServiceEventDetails = {
   maintenanceEnabled: Maybe<Scalars['Boolean']['output']>;
   memoryLimit: Maybe<Scalars['String']['output']>;
   message: Maybe<Scalars['String']['output']>;
+  messageTemplate: Maybe<DeployReason>;
   mountPath: Maybe<Scalars['String']['output']>;
   planFrom: Maybe<Scalars['String']['output']>;
   planTo: Maybe<Scalars['String']['output']>;

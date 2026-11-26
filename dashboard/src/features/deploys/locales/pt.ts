@@ -576,9 +576,21 @@ const ptDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.reason.image_registry_unreachable": {
     message:
-      "o registry {host} não respondeu à leitura da imagem {image} por {minutes} minutos. Verifique se o registry está acessível e faça o deploy novamente",
+      "o registry {host} não respondeu à leitura da imagem {image} por {minutes} minutos. Aguarde e faça o deploy novamente, ou verifique a página de status do provedor do registry",
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unreachable, w4/692); params are the sentence's values",
+  },
+  "deploys.reason.image_registry_unavailable": {
+    message:
+      "o registry {host} está indisponível e não conseguiu servir a imagem {image}. Aguarde e faça o deploy novamente, ou verifique a página de status do provedor do registry",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_unavailable, w4/m669): Render's Registry unavailable cause; params are the sentence's values",
+  },
+  "deploys.reason.image_registry_rate_limited": {
+    message:
+      "o registry {host} limitou o pull da imagem {image} pelo limite de requisições (HTTP 429). Aguarde o limite ser redefinido, use uma credencial de registry de uma conta com limite maior ou espelhe a imagem em outro registry",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_rate_limited, w4/m669): Render's Rate limited (429 error) cause with its three remedies; params are the sentence's values",
   },
   "deploys.reason.build_timed_out": {
     message:

@@ -852,7 +852,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		requested := image
 		image, port, err = r.resolveImageNetwork(ctx, &app, image)
 		if registryWaitExpired(&app, err, r.registryReads().now()) {
-			err = registryUnreachableError(requested)
+			err = registryUnreachableError(&app, requested, err)
 		}
 		if wait, waiting := r.imageRegistryWait(ctx, &app, err); waiting {
 			return r.holdRegistryWait(ctx, &app, wait), nil
@@ -4543,14 +4543,33 @@ func (r *AppReconciler) permanentRolloutPullFailure(ctx context.Context, dep *ap
 				if cs.State.Waiting.Reason == reasonInvalidImageName {
 					return reasonInvalidImageName, fmt.Sprintf("image reference is invalid: %s: %s", cs.Image, cs.State.Waiting.Message)
 				}
-				if msg, own := r.platformPullFailure(cs.Image, cs.State.Waiting.Message); own {
-					return imagePullBackOff, msg
-				}
-				return imagePullBackOff, fmt.Sprintf("%s: %s: %s", appv1alpha1.ImagePullStallWaiting, cs.Image, cs.State.Waiting.Message)
+				return imagePullBackOff, r.pullFailureMessage(&pod, cs)
 			}
 		}
 	}
 	return "", ""
+}
+
+// pullFailureMessage is the stall text of a container whose image pull is
+// failing: a build's in product terms (platformPullFailure), an image the user
+// supplied as the Render cause the kubelet's message names (w4/m669), as its
+// metadata read words a refusal; the pod pulls with the service's registry
+// credential when it has any pull secret, since a build's is the only other
+// kind. A message that names no cause keeps the image, when the pod reports
+// one, and the kubelet's line. The reason stays ImagePullBackOff, so bex-api
+// records image_pull_failed.
+func (r *AppReconciler) pullFailureMessage(pod *corev1.Pod, cs corev1.ContainerStatus) string {
+	kubelet := cs.State.Waiting.Message
+	if msg, own := r.platformPullFailure(cs.Image, kubelet); own {
+		return msg
+	}
+	if msg, ok := predeploy.UserPullFailure(cs.Image, kubelet, len(pod.Spec.ImagePullSecrets) > 0); ok {
+		return msg
+	}
+	if cs.Image == "" {
+		return appv1alpha1.ImagePullStallWaiting + ": " + kubelet
+	}
+	return fmt.Sprintf("%s: %s: %s", appv1alpha1.ImagePullStallWaiting, cs.Image, kubelet)
 }
 
 // crashSettleRestarts is the restart floor before a startup crash is final:
@@ -6887,10 +6906,7 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 			case crashLoopBackOff:
 				return crashLoopBackOff, crashLoopMessage(p, cs, port)
 			case imagePullBackOff, "ErrImagePull":
-				if msg, own := r.platformPullFailure(cs.Image, w.Message); own {
-					return imagePullBackOff, msg
-				}
-				return imagePullBackOff, appv1alpha1.ImagePullStallWaiting + ": " + w.Message
+				return imagePullBackOff, r.pullFailureMessage(p, cs)
 			case reasonInvalidImageName:
 				if cs.Name != appContainerName || p.DeletionTimestamp != nil || dep.Spec.Template.Labels[labelRevision] == "" ||
 					p.Labels[labelRevision] != dep.Spec.Template.Labels[labelRevision] {

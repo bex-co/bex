@@ -812,6 +812,65 @@ describe("ServiceEventsPage — env-group link titles (w4/563)", () => {
 // w4/m337: a rename names both names, and a custom-domain row its hostname;
 // rows recorded before either keep their bare titles.
 describe("ServiceEventsPage — rename and custom-domain details (w4/m337)", () => {
+  // w4/m669: an image pull failure names its cause, one of Render's four,
+  // with what to do, worded by code in the dashboard's language; a failure
+  // recorded before the cause was kept reads the API's own sentence.
+  it("names an image pull failure's cause, in en and zh", async () => {
+    const image = "docker.io/library/nginx:nope";
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          row("evt-pull-limited", "image_pull_failed", 9, {
+            reasonCode: "image_pull_backoff",
+            message: `the registry docker.io rate-limited the pull of the image ${image} (HTTP 429). Wait for the rate limit to reset, use a registry credential for an account with a higher rate limit, or mirror the image to another registry`,
+            messageTemplate: {
+              code: "image_registry_rate_limited",
+              params: [
+                { name: "host", value: "docker.io" },
+                { name: "image", value: image },
+              ],
+              remainder: "",
+              parts: [],
+            },
+          }),
+          row("evt-pull-older", "image_pull_failed", 8, {
+            reasonCode: "image_pull_backoff",
+            message: "The image could not be pulled",
+            messageTemplate: null,
+          }),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(
+      await screen.findByText(
+        `the registry docker.io rate-limited the pull of the image ${image} (HTTP 429). Wait for the rate limit to reset, use a registry credential for an account with a higher rate limit, or mirror the image to another registry`,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("The image could not be pulled"),
+    ).toBeInTheDocument();
+    // The cause replaces the generic reason line.
+    expect(
+      screen.queryByText("The runtime could not pull the configured image."),
+    ).not.toBeInTheDocument();
+
+    await act(() => i18n.changeLanguage("zh"));
+    try {
+      expect(
+        await screen.findByText(
+          `镜像仓库 docker.io 因速率限制拒绝了镜像 ${image} 的拉取（HTTP 429）。请等待速率限制重置，使用速率限制更高的账号的镜像仓库凭据，或将镜像镜像到其他镜像仓库`,
+        ),
+      ).toBeInTheDocument();
+    } finally {
+      await act(() => i18n.changeLanguage("en"));
+    }
+  });
+
   it("names the service's names and the domain, in en and zh", async () => {
     mockUseQuery.mockReturnValue({
       data: {

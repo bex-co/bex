@@ -26,6 +26,8 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // A pre-deploy plane Job runs the release's image, which for a Git-built
@@ -133,11 +135,12 @@ func TestBuildPullFailureReadsInProductTerms(t *testing.T) {
 	}
 }
 
-// An image the user supplied keeps naming itself and the registry's answer,
-// byte for byte, with the build recognizer in place.
-func TestUserImagePullFailureKeepsTheRegistryAnswer(t *testing.T) {
+// An image the user supplied names itself and the cause the registry's answer
+// names, as the rollout's does (w4/m669), with the build recognizer in place.
+func TestUserImagePullFailureNamesTheRegistrysAnswer(t *testing.T) {
 	waiting := pullWaiting("ErrImagePull")
-	want := "image pull is failing: " + waiting.Waiting.Message + "; the pre-deploy command never ran"
+	want := appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageNotFound,
+		appv1alpha1.DeployReasonParam{Name: "image", Value: "docker.io/x/y:nope"}) + "; the pre-deploy command never ran"
 
 	failed := failedJob(batchv1.JobReasonDeadlineExceeded)
 	if got := FailureMessage(context.Background(), fakeClient(failed, userImagePod(waiting)), failed, testBuilds); got != want {

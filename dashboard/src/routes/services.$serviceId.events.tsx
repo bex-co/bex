@@ -549,6 +549,10 @@ function EventRow({
     type === "artifact_fetch_failed" ? details?.buildId || null : null;
   const artifactMessage =
     type === "artifact_fetch_failed" ? details?.message || null : null;
+  // image_pull_failed's cause, one of Render's four with what to do, worded
+  // by code in the dashboard's language when known (w4/m669).
+  const pullCause =
+    type === "image_pull_failed" ? details?.message || null : null;
   // service_moved placement pair (w6/m134). A dimension renders only when it
   // actually changed; an absent side reads as the placement-none placeholder.
   const projectFrom = details?.projectFrom ?? null;
@@ -639,6 +643,10 @@ function EventRow({
           template={toDeployReasonTemplate(details?.stallReasonTemplate)}
           tone="neutral"
         />
+        <DeployFailureReason
+          reason={pullCause}
+          template={toDeployReasonTemplate(details?.messageTemplate)}
+        />
         <SeparatedMeta>
           {trigger ? (
             <span>{t(trigger as Parameters<typeof t>[0])}</span>
@@ -686,7 +694,7 @@ function EventRow({
         {artifactMessage ? (
           <p className="text-destructive">{artifactMessage}</p>
         ) : null}
-        {reasonCode && !artifactMessage ? (
+        {reasonCode && !artifactMessage && !pullCause ? (
           <p>
             {t(eventReasonKey(type, reasonCode, memoryLimit, checkResult), {
               exitCode: exitCode ?? "",

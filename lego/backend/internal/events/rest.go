@@ -270,8 +270,8 @@ func keyValueConfigRestartMessage(persistenceMode *string) string {
 	return "Persistence mode changed to " + *persistenceMode + "; the instance restarted to apply it."
 }
 
-// imagePullFailedMessage is image_pull_failed's message; the event records no
-// registry text, so the message is the one cause the fact can carry.
+// imagePullFailedMessage is the message of an image_pull_failed fact recorded
+// before the fact kept its cause (w4/m669), and of one whose deploy named none.
 const imagePullFailedMessage = "The image could not be pulled"
 
 // autoscalingState is one side of autoscaling_config_changed: Render's
@@ -448,7 +448,8 @@ func toRenderEvent(e Event) renderEvent {
 		}
 		d.ReasonCode = ""
 	case TypeImagePullFailed:
-		d.ImageURL, d.Message = e.Details.Image, imagePullFailedMessage
+		// The cause the deploy failed with, one of Render's four (w4/m669).
+		d.ImageURL, d.Message = e.Details.Image, cmp.Or(e.Details.Message, imagePullFailedMessage)
 		d.Image, d.ReasonCode = "", ""
 	case TypeArtifactSourceChanged:
 		d.FromBuildSourceID = e.Details.FromBuildSourceID

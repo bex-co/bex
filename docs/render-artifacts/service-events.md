@@ -23,7 +23,7 @@ The result supports **19 of the 31 supplied labels** truthfully: 10 existing sou
 | --- | --- | --- | --- |
 | Deploy | Deploy Started | `deploy_started` | Existing: deploy row `created_at` |
 | Deploy | Deploy Ended | `deploy_ended` | Existing: deploy row terminal `finished_at` |
-| Deploy | Image Pull Failed | `image_pull_failed` | Added: current-release `ImagePullBackOff` observation with bounded reason, deploy id, and image; emitted immediately while deploy retry/timeout policy remains unchanged |
+| Deploy | Image Pull Failed | `image_pull_failed` | Added: current-release `ImagePullBackOff` observation with bounded reason, deploy id, and image; emitted immediately while deploy retry/timeout policy remains unchanged. Its `message` names one of Render's four causes since w4/m669 (below) |
 | Deploy | Initial Deploy Hook Started | — | Omitted: Render preview-initialization mechanism; preview environments are a rejected product anti-goal |
 | Deploy | Initial Deploy Hook Ended | — | Omitted: same preview-only source boundary |
 | Deploy | Pipeline Minutes Exhausted | `pipeline_minutes_exhausted` | Added (w9/m345): a deploy whose build the operator refused because the workspace used its plan's pipeline minutes (w6/m308), one fact per refused deploy beside its failed `deploy_ended`; details `buildId` (the deploy) and the deploy's `trigger` |
@@ -129,6 +129,19 @@ When drain-guard (`w1/m186`, `w1/m187`) hands a single-instance App off a node a
 
 - `artifact_source_changed`: every service build-source link change — attach (`toBuildSourceId` only), switch (`fromBuildSourceId` and `toBuildSourceId`), or detach (`fromBuildSourceId` only) via `PATCH /v1/services/{id}`, `POST /v1/build-sources` `serviceIds`, `SetSourceAndRegistryCredential` unlink, or Blueprint sync — writes one `apps.LinkBuildSource` audit row with `build_source_from`/`build_source_to` (migration 0306), surfaced as Render's `artifact_source_changed` on REST, GraphQL, MCP, webhooks and the dashboard, and never as `source_changed`. Pre-migration `apps.LinkBuildSource` rows with both columns NULL remain excluded from the service feed so their sibling `source_changed` rows are not duplicated. Repository, image, branch and credential changes on unlinked services keep `source_changed`.
 - `artifact_fetch_failed`: when a deploy (or served release) of a build-source build fails to pull its image (`ImagePullBackOff` or `ImagePullFailed`), the control-plane reconciler and `TransitionDeploy` write one idempotent `service_event_facts` row (`deploy:<id>:artifact_fetch_failed` or `release:<app>:<gen>:artifact_fetch_failed:<ts>`) carrying Render's required `buildId` and `message`, surfaced across REST, GraphQL, MCP, webhooks and the dashboard. Image-backed services keep `image_pull_failed`. **Unverified against Render (`w10/blocked/002`):** bex emits `artifact_fetch_failed` in place of, not beside, `image_pull_failed` for a build-source deploy.
+
+### Image pull failure causes (`w4/m669`, 2026-11-26)
+
+Render's Image Pull Failed details require `imageURL` and `message` (`render-public-api-1.json`), and its [deploying-an-image](https://render.com/docs/deploying-an-image) page lists four causes, each with a remedy. bex's `image_pull_failed` fact keeps its deploy's cause as `message`, from the operator's Ready condition when the reconciler first sees the failure, or from the deploy's failure reason when `TransitionDeploy` closes it. Every surface answers it: REST `details.message`, GraphQL `message` and `messageTemplate`, MCP, the Image Pull Failed email and the Events row.
+
+| Render cause | bex deploy reason | When |
+| --- | --- | --- |
+| Image not found (`404` error) | `image_not_found` | the metadata read or the kubelet's pull answered 404, `manifest unknown` or `not found` |
+| Authentication error | `image_credential_refused` / `image_access_refused` | a 401 or 403 with or without the service's registry credential (Docker Hub's "pull access denied … insufficient_scope" included, as its metadata read answers 401) |
+| Registry unavailable | `image_registry_unavailable` / `image_registry_unreachable` | the kubelet's pull met a 5xx or a network error; the metadata read failed for the whole 15-minute registry wait |
+| Rate limited (`429` error) | `image_registry_rate_limited` | the kubelet's pull or the registry wait's last read answered 429 |
+
+A kubelet message that names no registry answer (a back-off line from a kubelet older than 1.30, an unpacking error) keeps the kubelet's text, and a fact with no stored cause answers "The image could not be pulled". Render's own event wording is not public (`w10/blocked/002`); the doc's headings and remedies are the reference. Render's webhook payload carries only `data.id`, `serviceId` and `serviceName`, so a receiver reads the cause from `GET /v1/events/{id}`, as on Render.
 
 ### Still non-goals (honest, not faked)
 

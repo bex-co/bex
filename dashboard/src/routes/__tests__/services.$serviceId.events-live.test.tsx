@@ -107,6 +107,7 @@ function event(id: string, type: string, offset: number, status = "") {
       toBuildSourceId: null,
       buildId: null,
       message: null,
+      messageTemplate: null,
       failureReasonTemplate: null,
       stallReasonTemplate: null,
       cancelReasonTemplate: null,

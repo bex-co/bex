@@ -151,8 +151,10 @@ type fakeAlertStore struct {
 	resultKeys []string
 }
 
-func (f *fakeAlertStore) HealthCheckResults(_ context.Context, keys []string) (map[string]string, error) {
-	f.resultKeys = append(f.resultKeys, keys...)
+func (f *fakeAlertStore) AlertFactMessages(_ context.Context, rows []store.WebhookEventRow) (map[string]string, error) {
+	for _, r := range rows {
+		f.resultKeys = append(f.resultKeys, r.Key)
+	}
 	return f.results, nil
 }
 
@@ -414,5 +416,38 @@ func TestAlertEmailLinksCronFailuresToRuns(t *testing.T) {
 		if got := w.dashboardURL(store.AlertEmailStream{ResourceID: "srv-1", Event: event}); got != want {
 			t.Errorf("%s link = %q, want %q", event, got, want)
 		}
+	}
+}
+
+// An Image Pull Failed email names the cause the deploy failed with, one of
+// Render's four, and what to do, under its lead, as a sentence; a fact
+// recorded before the cause was kept mails the lead alone (w4/m669).
+func TestImagePullFailedEmailNamesTheCause(t *testing.T) {
+	const cause = "the image docker.io/acme/web:nope was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists"
+	byTenant := map[string][]store.AlertEmailRecipient{"tea-a": {{TenantID: "tea-a", Subject: "alice", DeployFailed: true}}}
+	facts := &fakeAlertStore{results: map[string]string{"fact:named": cause}}
+	w := &AlertEmailWorker{Store: facts}
+	row := func(key string) store.WebhookEventRow {
+		return store.WebhookEventRow{TenantID: "tea-a", ServiceID: "tea-a-web", AppID: "srv-web", ServiceName: "web",
+			Key: key, Source: store.EventSourceFact, FactType: string(store.EventFactImagePullFailed)}
+	}
+	items, err := w.projectFeed(t.Context(), []store.WebhookEventRow{row("fact:named"), row("fact:older")}, byTenant)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 2 || items[0].Event != store.AlertEmailImagePullFailed {
+		t.Fatalf("items = %+v, want two image pull alerts", items)
+	}
+	want := "The image docker.io/acme/web:nope was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists."
+	if items[0].Detail != want || items[1].Detail != "" {
+		t.Errorf("details = %q / %q, want %q / none", items[0].Detail, items[1].Detail, want)
+	}
+	subject, msg := alertEmail(store.AlertEmailStream{Event: items[0].Event, ResourceName: "web", Detail: items[0].Detail,
+		Occurrences: []time.Time{time.Now()}, PendingCount: 1}, "")
+	text := msg.Text()
+	lead := `"web" could not pull its Docker image, so the new version did not start.`
+	if subject != "Image pull failed: web" || !strings.Contains(text, lead) || !strings.Contains(text, want) ||
+		strings.Index(text, want) < strings.Index(text, lead) {
+		t.Errorf("mail = %q / %q, want the cause under the lead", subject, text)
 	}
 }

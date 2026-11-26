@@ -49,6 +49,13 @@ const (
 	// w4/692: the registry failed every read (a network error, 5xx or 429)
 	// for the deploy's whole rollout budget of {minutes} minutes.
 	DeployReasonImageRegistryUnreachable = "image_registry_unreachable"
+	// w4/m669: Render's other two Image Pull Failed causes, "Rate limited
+	// (429 error)" and "Registry unavailable", each with Render's remedies
+	// (render.com/docs/deploying-an-image). The rate limit is the metadata
+	// read's and the node's alike; unavailable is a node's pull that a 5xx or
+	// a network error stopped.
+	DeployReasonImageRegistryRateLimited = "image_registry_rate_limited"
+	DeployReasonImageRegistryUnavailable = "image_registry_unavailable"
 	DeployReasonBuildTimedOut            = "build_timed_out"
 	DeployReasonPreDeployTimedOut        = "pre_deploy_timed_out"
 	DeployReasonHealthTimedOut           = "health_timed_out"
@@ -223,7 +230,9 @@ var deployReasonTemplates = map[string]string{
 	DeployReasonImageCredential:          "{host} refused this service's registry credential for the image {image} (HTTP {status}). Check the credential's username and token, or remove the credential from this service to pull a public image anonymously",
 	DeployReasonImageAccess:              "the registry refused access to the image {image}. If the image is private, add a registry credential for {host} to this service",
 	DeployReasonImageRead:                "the registry refused to read the image {image} (HTTP {status}). Check the image URL and tag",
-	DeployReasonImageRegistryUnreachable: "the registry {host} did not answer the read of the image {image} for {minutes} minutes. Check that the registry is reachable, then deploy again",
+	DeployReasonImageRegistryUnreachable: "the registry {host} did not answer the read of the image {image} for {minutes} minutes. " + registryUnavailableRemedy,
+	DeployReasonImageRegistryUnavailable: "the registry {host} is unavailable and could not serve the image {image}. " + registryUnavailableRemedy,
+	DeployReasonImageRegistryRateLimited: "the registry {host} rate-limited the pull of the image {image} (HTTP 429). Wait for the rate limit to reset, use a registry credential for an account with a higher rate limit, or mirror the image to another registry",
 	DeployReasonBuildTimedOut:            "the build did not finish within the build window; check the build logs",
 	DeployReasonPreDeployTimedOut:        "the pre-deploy command did not finish within its window; check the pre-deploy logs",
 	DeployReasonHealthTimedOut:           "the deploy did not become healthy within the health-gate window; check the service logs",
@@ -274,6 +283,10 @@ var deployReasonTemplates = map[string]string{
 	DeployReasonRestartWaitTimedOut: "the deploy this restart waited for did not finish within {wait}",
 	DeployReasonDeployWaitTimedOut:  "the deploy this one waited for did not finish within {wait}",
 }
+
+// registryUnavailableRemedy is Render's "Wait and retry, or check your
+// registry provider's status page" (render.com/docs/deploying-an-image).
+const registryUnavailableRemedy = "Wait and deploy again, or check the registry provider's status page"
 
 // The parts' shared wording.
 const (

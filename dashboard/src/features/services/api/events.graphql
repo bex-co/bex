@@ -166,11 +166,28 @@ query ServiceEvents(
       # zero_downtime_redeploy_started (w4/m504): node_replacement | node_consolidation.
       redeployTrigger
       # artifact_source_changed / artifact_fetch_failed (w4/m510): build source link
-      # sides, build id and pull failure message.
+      # sides, build id and pull failure message. image_pull_failed's message is
+      # its cause, one of Render's four, by code as messageTemplate (w4/m669).
       fromBuildSourceId
       toBuildSourceId
       buildId
       message
+      messageTemplate {
+        code
+        params {
+          name
+          value
+        }
+        remainder
+        parts {
+          code
+          text
+          params {
+            name
+            value
+          }
+        }
+      }
       trigger {
         firstBuild
         envUpdated

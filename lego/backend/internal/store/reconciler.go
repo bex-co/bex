@@ -1744,10 +1744,20 @@ func observedImagePullFailure(open Deploy, app *appv1alpha1.App) (ServiceEventFa
 			At:         time.Now().UTC(),
 			DeployID:   open.ID,
 			Image:      image,
+			Message:    imagePullFailedCause(condition.Message),
 			ReasonCode: EventReasonImagePullBackoff,
 		}, true
 	}
 	return ServiceEventFact{}, false
+}
+
+// imagePullFailedCause is an image_pull_failed fact's message: the cause the
+// operator named, one of Render's four (image not found, authentication
+// error, registry unavailable, rate limited; w4/m669), restated as the
+// outcome it is, as the deploy's failure reason is. "" when the condition
+// named none; the events surfaces answer their generic sentence for it.
+func imagePullFailedCause(msg string) string {
+	return strings.TrimSpace(appv1alpha1.TerminalStallText(msg))
 }
 
 func artifactFetchFailedMessage(msg string) string {
@@ -1887,6 +1897,7 @@ func buildServedReleasePullFact(appID, image string, gen int64, c *metav1.Condit
 		Type:       EventFactImagePullFailed,
 		At:         time.Now().UTC(),
 		Image:      image,
+		Message:    imagePullFailedCause(c.Message),
 		ReasonCode: EventReasonImagePullBackoff,
 	}
 }

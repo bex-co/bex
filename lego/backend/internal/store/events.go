@@ -17,6 +17,7 @@ limitations under the License.
 package store
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"maps"
@@ -206,6 +207,10 @@ type ServiceEventRow struct {
 	// check last got back, in Render's words (w6/m634); empty when none was
 	// recorded. Attached like ArtifactMessage, from the same column.
 	HealthCheckResult string
+	// ImagePullMessage is an image_pull_failed fact's cause, one of Render's
+	// four (w4/m669); empty on a fact recorded before it was kept. Attached
+	// like ArtifactMessage, from the same column.
+	ImagePullMessage string
 }
 
 // ServiceEventLookup is one globally-addressed event plus the resource identity
@@ -968,22 +973,23 @@ func (s *PGStore) GetServiceEvent(ctx context.Context, workspaceID, eventID stri
 	return out, nil
 }
 
-// HealthCheckResults returns what the failing health check of each
-// server_failed fact whose feed key ("fact:<source_key>") is in keys last got
-// back (w6/m634), for the alert email the feed row alone cannot word. A fact
-// that recorded no result is left out.
-func (s *PGStore) HealthCheckResults(ctx context.Context, keys []string) (map[string]string, error) {
-	rows := make([]ServiceEventRow, len(keys))
-	for i, key := range keys {
-		rows[i] = ServiceEventRow{Key: key, Source: EventSourceFact, FactType: string(EventFactServerFailed)}
+// AlertFactMessages returns, by feed key, the message each fact row of the
+// feed keeps beyond it, for the alert email the row alone cannot word: what a
+// server_failed instance's failing health check last got back (w6/m634) and
+// an image_pull_failed fact's cause (w4/m669). Rows of any other kind, and
+// facts that recorded no message, are left out.
+func (s *PGStore) AlertFactMessages(ctx context.Context, feed []WebhookEventRow) (map[string]string, error) {
+	rows := make([]ServiceEventRow, len(feed))
+	for i, r := range feed {
+		rows[i] = ServiceEventRow{Key: r.Key, Source: r.Source, FactType: r.FactType}
 	}
 	if err := s.attachFactMessages(ctx, rows); err != nil {
 		return nil, err
 	}
 	out := map[string]string{}
 	for _, r := range rows {
-		if r.HealthCheckResult != "" {
-			out[r.Key] = r.HealthCheckResult
+		if msg := cmp.Or(r.HealthCheckResult, r.ImagePullMessage); msg != "" {
+			out[r.Key] = msg
 		}
 	}
 	return out, nil
@@ -991,12 +997,13 @@ func (s *PGStore) HealthCheckResults(ctx context.Context, keys []string) (map[st
 
 // attachFactMessages fills the details fact rows keep beyond the feed's
 // UNION, in one read: an artifact_fetch_failed fact's ArtifactBuildID and
-// ArtifactMessage (w4/m510), and a server_failed fact's HealthCheckResult
-// (w6/m634), matching attachDiskUsage so the UNION stays unchanged.
+// ArtifactMessage (w4/m510), a server_failed fact's HealthCheckResult
+// (w6/m634) and an image_pull_failed fact's ImagePullMessage (w4/m669),
+// matching attachDiskUsage so the UNION stays unchanged.
 func (s *PGStore) attachFactMessages(ctx context.Context, rows []ServiceEventRow) error {
 	at := map[string][]int{}
 	for i, r := range rows {
-		if r.Source == EventSourceFact && (r.FactType == string(EventFactArtifactFetchFailed) || r.FactType == string(EventFactServerFailed)) {
+		if r.Source == EventSourceFact && slices.Contains(factMessageTypes, ServiceEventFactType(r.FactType)) {
 			key := factSourceKey(r.Key)
 			at[key] = append(at[key], i)
 		}
@@ -1017,16 +1024,22 @@ func (s *PGStore) attachFactMessages(ctx context.Context, rows []ServiceEventRow
 			return fmt.Errorf("read fact details: %w", err)
 		}
 		for _, i := range at[key] {
-			if rows[i].FactType == string(EventFactServerFailed) {
+			switch ServiceEventFactType(rows[i].FactType) {
+			case EventFactServerFailed:
 				rows[i].HealthCheckResult = message
-				continue
+			case EventFactImagePullFailed:
+				rows[i].ImagePullMessage = message
+			default:
+				rows[i].ArtifactBuildID = buildID
+				rows[i].ArtifactMessage = message
 			}
-			rows[i].ArtifactBuildID = buildID
-			rows[i].ArtifactMessage = message
 		}
 	}
 	return found.Err()
 }
+
+// factMessageTypes are the facts whose message attachFactMessages reads.
+var factMessageTypes = []ServiceEventFactType{EventFactArtifactFetchFailed, EventFactServerFailed, EventFactImagePullFailed}
 
 // ServiceEventWorkspaces returns every workspace that indexes an evt-… id,
 // ordered by workspace id; none for an unknown id. A routing read only (w4/m172): the

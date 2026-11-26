@@ -1377,6 +1377,14 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 	if failureFact.DeployID != failedDeploy.ID || failureFact.Image != failureApp.Image || failureFact.ReasonCode != EventReasonImagePullBackoff {
 		t.Fatalf("image-pull fact = %+v, want deploy/image/bounded reason", failureFact)
 	}
+	// The fact keeps the deploy's failure reason as its cause (w4/m669), on
+	// the list and by id.
+	if failureFact.ImagePullMessage != "bounded operator diagnosis" {
+		t.Fatalf("image-pull fact message = %q, want the deploy's failure reason", failureFact.ImagePullMessage)
+	}
+	if byID, err := s.GetServiceEvent(ctx, failureApp.TenantID, ids.Derive(ids.Event, failureFact.Key)); err != nil || byID.Event.ImagePullMessage != "bounded operator diagnosis" {
+		t.Fatalf("image-pull fact by id = %+v (err %v), want its cause", byID.Event, err)
+	}
 	if won, err := s.TransitionDeploy(ctx, failedDeploy.ID, DeployUpdateFailed, RanImage{}, "retry", EventReasonImagePullBackoff, "", nil); err != nil || won {
 		t.Fatalf("image-pull retry = (%v, %v), want terminal no-op", won, err)
 	}

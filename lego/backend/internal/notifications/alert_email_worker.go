@@ -27,6 +27,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/email"
@@ -71,7 +73,7 @@ type AlertEmailStore interface {
 	RetryAlertEmailStream(context.Context, store.AlertEmailStream, time.Time) (bool, error)
 	ListFailedBlueprintSyncs(context.Context, time.Time, string, time.Time, int) ([]store.FailedBlueprintSync, error)
 	SweepAlertEmails(context.Context, time.Time) error
-	HealthCheckResults(context.Context, []string) (map[string]string, error)
+	AlertFactMessages(context.Context, []store.WebhookEventRow) (map[string]string, error)
 }
 
 // ServiceNotificationPolicy resolves a service's notificationsToSend for a
@@ -191,7 +193,7 @@ func (w *AlertEmailWorker) projectFeed(ctx context.Context, rows []store.Webhook
 	var items []store.AlertEmailItem
 	policies := map[string]string{}
 	owners := ownerPolicyCache{lookup: w.Owners}
-	results, err := w.healthCheckResults(ctx, rows, byTenant)
+	messages, err := w.factMessages(ctx, rows, byTenant)
 	if err != nil {
 		return nil, err
 	}
@@ -200,8 +202,9 @@ func (w *AlertEmailWorker) projectFeed(ctx context.Context, rows []store.Webhook
 		if !ok || len(byTenant[row.TenantID]) == 0 {
 			continue
 		}
-		// A failed health check names what it got back (w6/m634).
-		detail = cmp.Or(detail, results[row.Key])
+		// A failed health check names what it got back (w6/m634), a failed
+		// image pull its cause and what to do (w4/m669).
+		detail = cmp.Or(detail, alertDetail(row, messages[row.Key]))
 		// The service is its srv- id (row.AppID, the App CR's app-id label),
 		// not the feed's tenant-name composite, which no App carries: keyed on
 		// that, every override read as "default" and the email's Events link
@@ -242,19 +245,37 @@ func (w *AlertEmailWorker) projectFeed(ctx context.Context, rows []store.Webhook
 	return items, nil
 }
 
-// healthCheckResults reads what the failing health check of each server_failed
-// row that someone is to be emailed about last got back, by feed key.
-func (w *AlertEmailWorker) healthCheckResults(ctx context.Context, rows []store.WebhookEventRow, byTenant map[string][]store.AlertEmailRecipient) (map[string]string, error) {
-	var keys []string
+// factMessages reads the message each fact row that someone is to be emailed
+// about keeps beyond the feed (store.AlertFactMessages), by feed key.
+func (w *AlertEmailWorker) factMessages(ctx context.Context, rows []store.WebhookEventRow, byTenant map[string][]store.AlertEmailRecipient) (map[string]string, error) {
+	var wanted []store.WebhookEventRow
 	for _, row := range rows {
-		if row.Source == store.EventSourceFact && row.FactType == string(store.EventFactServerFailed) && len(byTenant[row.TenantID]) > 0 {
-			keys = append(keys, row.Key)
+		if row.Source == store.EventSourceFact && len(byTenant[row.TenantID]) > 0 &&
+			(row.FactType == string(store.EventFactServerFailed) || row.FactType == string(store.EventFactImagePullFailed)) {
+			wanted = append(wanted, row)
 		}
 	}
-	if len(keys) == 0 {
+	if len(wanted) == 0 {
 		return nil, nil
 	}
-	return w.Store.HealthCheckResults(ctx, keys)
+	return w.Store.AlertFactMessages(ctx, wanted)
+}
+
+// alertDetail is row's fact message as an email paragraph. An image pull
+// failure's cause is a deploy reason sentence, written lower-case and
+// unpunctuated to follow "failed: " on every API, so it gains a capital and a
+// period (w4/m669); a health check's result is a sentence already.
+func alertDetail(row store.WebhookEventRow, msg string) string {
+	msg = strings.TrimSpace(msg)
+	if msg == "" || row.FactType != string(store.EventFactImagePullFailed) {
+		return msg
+	}
+	first, size := utf8.DecodeRuneInString(msg)
+	msg = string(unicode.ToUpper(first)) + msg[size:]
+	if !strings.HasSuffix(msg, ".") {
+		msg += "."
+	}
+	return msg
 }
 
 // classifyAlertEmail maps a feed row onto Render's emailed failure events.
