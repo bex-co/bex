@@ -239,3 +239,28 @@ func TestDeployScopeKeepsItsOwnHookPodAndDropsOtherDeploys(t *testing.T) {
 		t.Fatalf("second deploy's pre-deploy read = %q, want its own step's output only", got)
 	}
 }
+
+// The operator stamps a hook pod with the shared pre-deploy-step spelling and
+// bex-api attributes its logs to the hook. The stamp lives in lego/types so
+// both sides spell it once; this test pins the recognition to that spelling.
+func TestIsInitialDeployHookPodFollowsSharedStamp(t *testing.T) {
+	stamped := func(labels map[string]string, name string) *corev1.Pod {
+		return &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Labels: labels}}
+	}
+	for _, tc := range []struct {
+		name string
+		pod  *corev1.Pod
+		want bool
+	}{
+		{"hook step label", stamped(map[string]string{appv1alpha1.LabelPreDeployStep: appv1alpha1.PreDeployStepInitialDeployHook}, "predeploy-web-gen-1-x7k2p"), true},
+		{"hook name fallback", stamped(map[string]string{core.PodLabelPreDeploy: "web"}, "predeploy-web-gen-1-hook-ab12c"), true},
+		{"plain step pod", stamped(map[string]string{core.PodLabelPreDeploy: "web"}, "predeploy-web-gen-1-x7k2p"), false},
+		{"unlabeled pod", stamped(nil, "web-6f9c4b7d4c-x7k2p"), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isInitialDeployHookPod(tc.pod); got != tc.want {
+				t.Fatalf("isInitialDeployHookPod(%q) = %v, want %v", tc.pod.Name, got, tc.want)
+			}
+		})
+	}
+}

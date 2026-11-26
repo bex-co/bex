@@ -1962,7 +1962,7 @@ func (s *Service) findPreDeployPod(ctx context.Context, q LogQuery, selectors []
 }
 
 func isInitialDeployHookPod(pod *corev1.Pod) bool {
-	return pod.Labels["app.bex.co/predeploy-step"] == "initial-deploy-hook" || strings.Contains(pod.Name, "-hook-")
+	return pod.Labels[appv1alpha1.LabelPreDeployStep] == appv1alpha1.PreDeployStepInitialDeployHook || strings.Contains(pod.Name, "-hook-")
 }
 
 // streamPreDeployPod follows one pre-deploy pod's `predeploy` container onto

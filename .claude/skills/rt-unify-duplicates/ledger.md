@@ -8,6 +8,7 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Skipped
 
+- 2026-11-26 backend `namespaceFor` vs operator `canonicalNamespace` re-verified — both files changed since 2026-11-23 but the split stands (desired-state projection vs live-object membership check, different signatures and purposes)
 - 2026-11-23 postgres/keyvalue `CheckFreeLimit`/`FreeSlots`/`refuseSecondFree*` thin per-kind adapters — shared rules already live in `core.FreeSlot*`; merging the typed projections further is below the bar
 - 2026-11-23 backend `core.DecodeJSON` vs operator `httpclient.DecodeJSON` — different signatures (`*http.Request` vs `io.Reader`), different layers, not copies
 - 2026-11-23 backend `objectgw.NewCachedResolver` vs operator `staticserver.NewCachedResolver` — different domains (S3 upstream vs k8s-reader base domain), not copies
