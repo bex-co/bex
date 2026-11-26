@@ -400,6 +400,7 @@ const SERVICE_DEFAULTS = {
   __typename: "Service",
   displayName: null,
   suspended: null,
+  suspenders: [],
   sshAddress: null,
   schedule: null,
   command: null,

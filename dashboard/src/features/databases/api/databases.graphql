@@ -558,6 +558,7 @@ query PostgresAdminApps($databaseId: String!) {
       displayName
       type
       suspended
+      suspenders
       dashboardUrl
       url
       createdAt

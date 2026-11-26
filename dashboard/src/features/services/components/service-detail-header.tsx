@@ -42,13 +42,14 @@ import { useEnvironments } from "@/features/environments/hooks/use-environments"
 import { useProjects } from "@/features/projects/hooks/use-projects";
 import { AddSshKeyCta } from "@/features/ssh-keys/components/add-ssh-key-cta";
 import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key";
-import { ResumeServiceButton } from "@/features/services/components/resume-service-button";
 import {
-  CRON_SUSPENDED_NOTICE_CLASS,
-  CronSuspendedNotice,
   CronTriggerRunButton,
   SLOT,
 } from "@/features/services/components/cron-header-actions";
+import {
+  SUSPENDED_NOTICE_CLASS,
+  ServiceSuspendedNotice,
+} from "@/features/services/components/service-suspended-notice";
 import type { ProtectedActionResult } from "@/features/services/lib/protected-confirmation";
 import { ManualDeployButton } from "@/features/services/components/manual-deploy-button";
 import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
@@ -117,9 +118,10 @@ export interface ServiceDetailHeaderProps {
  *
  * The action controls are Connect (SSH) and Manual Deploy (deploy/restart); the
  * header carries no "•••" lifecycle menu — restart lives in the Manual Deploy
- * dropdown (w2/m30) and Suspend/Resume moved to the Settings page. A
- * suspended service also gets Resume Service here, since every other action on
- * its pages is disabled until it resumes (w4/643).
+ * dropdown (w2/m30) and Suspend/Resume moved to the Settings page. As on
+ * Render, a header has actions only while the service runs: a suspended one
+ * of any type has none, and Render's notice under its facts offers Resume
+ * service instead (w3/m555, w3/107).
  */
 export function ServiceDetailHeader({
   service,
@@ -241,17 +243,15 @@ export function ServiceDetailHeader({
               ) : null}
             </div>
           </div>
-          {/* Hidden while empty (a suspended cron job's): wrapped onto a line
+          {/* Hidden while empty (a suspended service's): wrapped onto a line
               of its own, an empty slot still adds the row gap (w3/m555). */}
           <div className="flex shrink-0 items-center gap-2 empty:hidden max-md:[&_button]:min-h-11 md:max-lg:col-start-2 md:max-lg:row-start-1">
-            {isCron(service) ? (
-              // Render's cron header: Trigger Run while it runs and nothing
-              // while suspended, where the notice below offers Resume. Its
-              // build is Manual Build on the Deploys page, and it has no SSH
-              // (w3/m555).
-              service.suspended ? null : (
-                <CronTriggerRunButton service={service} />
-              )
+            {/* Render passes the header's actions only while the service
+                runs; the notice below offers Resume (w3/107). */}
+            {service.suspended ? null : isCron(service) ? (
+              // Render's cron header: Trigger Run. Its build is Manual Build
+              // on the Deploys page, and it has no SSH (w3/m555).
+              <CronTriggerRunButton service={service} />
             ) : (
               <>
                 {/* A static_site has no running instance to SSH into —
@@ -263,14 +263,6 @@ export function ServiceDetailHeader({
                     openPorts={openPorts}
                   />
                 )}
-                {service.suspended && onRun ? (
-                  <ResumeServiceButton
-                    service={service}
-                    pending={pending}
-                    onRun={onRun}
-                    size="sm"
-                  />
-                ) : null}
                 <ManualDeployButton
                   service={service}
                   pending={pending !== null}
@@ -415,8 +407,8 @@ export function ServiceDetailHeader({
 
         <HeaderFacts service={service} id={factsId} open={factsOpen} />
 
-        {isCron(service) && service.suspended ? (
-          <CronSuspendedNotice
+        {service.suspended ? (
+          <ServiceSuspendedNotice
             service={service}
             pending={pending}
             onRun={onRun}
@@ -1037,7 +1029,7 @@ const GIT_SOURCE: CachedServiceSource = {
   repository: true,
   registryCredential: false,
   cron: false,
-  suspended: false,
+  suspendedNotice: null,
 };
 
 /**
@@ -1052,10 +1044,10 @@ const GIT_SOURCE: CachedServiceSource = {
  * URL fit on one line where a Git service's take two (w3/094). `source` comes
  * from the cache; without it the frame is a Git service's.
  *
- * A cron job's frame is its own (w3/m555): one action, Trigger Run, while it
- * runs and none while suspended, its two "Runs …" items in the URL's place,
- * and a suspended one's notice under the facts, its words laid out invisibly
- * so it wraps where the ready notice does.
+ * A cron job's frame is its own (w3/m555): one action, Trigger Run, and its
+ * two "Runs …" items in the URL's place. A suspended service of any type has
+ * no action and its notice under the facts, its words laid out invisibly so
+ * it wraps where the ready notice does (w3/107).
  */
 export function ServiceDetailHeaderSkeleton({
   source,
@@ -1066,7 +1058,7 @@ export function ServiceDetailHeaderSkeleton({
   name?: string | null;
 }) {
   const { t } = useTranslations();
-  const { repository, registryCredential, cron, suspended } =
+  const { repository, registryCredential, cron, suspendedNotice } =
     source ?? GIT_SOURCE;
   return (
     <div
@@ -1109,14 +1101,12 @@ export function ServiceDetailHeaderSkeleton({
             </div>
           </div>
           <div className="flex items-center gap-2 empty:hidden md:max-lg:col-start-2 md:max-lg:row-start-1">
-            {cron ? (
-              suspended ? null : (
-                <Skeleton
-                  data-touch-spacer=""
-                  data-skeleton-item="trigger-run"
-                  className="h-8 w-[101px]"
-                />
-              )
+            {suspendedNotice ? null : cron ? (
+              <Skeleton
+                data-touch-spacer=""
+                data-skeleton-item="trigger-run"
+                className="h-8 w-[101px]"
+              />
             ) : (
               <>
                 <Skeleton data-touch-spacer="" className="h-8 w-24" />
@@ -1190,14 +1180,14 @@ export function ServiceDetailHeaderSkeleton({
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-4 w-16" />
         </div>
-        {cron && suspended ? (
+        {suspendedNotice ? (
           <div
-            data-skeleton-item="cron-suspended-notice"
-            className={CRON_SUSPENDED_NOTICE_CLASS}
+            data-skeleton-item="suspended-notice"
+            className={SUSPENDED_NOTICE_CLASS}
           >
             <Skeleton className="size-4 shrink-0 rounded-full" />
             <span className="relative font-medium">
-              <ReservedText>{t("services.suspendedNoticeManual")}</ReservedText>
+              <ReservedText>{t(suspendedNotice)}</ReservedText>
             </span>{" "}
             <span className="relative">
               <ReservedText>{t("services.suspendedNoticeBody")}</ReservedText>

@@ -129,19 +129,20 @@ describe("useCachedServiceSource (w3/094)", () => {
       repository: false,
       registryCredential: false,
       cron: false,
-      suspended: false,
+      suspendedNotice: null,
     });
     expect(read("srv-git")).toEqual({
       repository: true,
       registryCredential: false,
       cron: false,
-      suspended: false,
+      suspendedNotice: null,
     });
   });
 
-  // w3/m555: a cron job's header frame has its own action and facts, and a
-  // suspended one's none and its notice.
-  it("says which services are cron jobs and which are suspended", () => {
+  // w3/m555: a cron job's header frame has its own action and facts. w3/107:
+  // a suspended service's of any type has none and the notice, titled for
+  // who suspended it, which the list now says too.
+  it("says which services are cron jobs and which are suspended, by whom", () => {
     const read = setup(
       (cache) =>
         writeServices(cache, [
@@ -150,13 +151,47 @@ describe("useCachedServiceSource (w3/094)", () => {
             type: "cron_job",
             repo: "",
             suspended: "not_suspended",
+            suspenders: [],
           },
-          { id: "srv-off", type: "cron_job", repo: "", suspended: "suspended" },
+          {
+            id: "srv-off",
+            type: "cron_job",
+            repo: "",
+            suspended: "suspended",
+            suspenders: ["user"],
+          },
+          {
+            id: "srv-crash",
+            type: "web_service",
+            repo: "",
+            suspended: "suspended",
+            suspenders: ["stuck_crashlooping"],
+          },
+          {
+            id: "srv-billing",
+            type: "static_site",
+            repo: "",
+            suspended: "suspended",
+            suspenders: ["billing"],
+          },
         ]),
       useCachedServiceSource,
     );
-    expect(read("srv-run")).toMatchObject({ cron: true, suspended: false });
-    expect(read("srv-off")).toMatchObject({ cron: true, suspended: true });
+    expect(read("srv-run")).toMatchObject({
+      cron: true,
+      suspendedNotice: null,
+    });
+    expect(read("srv-off")).toMatchObject({
+      cron: true,
+      suspendedNotice: "services.suspendedNoticeManual",
+    });
+    expect(read("srv-crash")).toMatchObject({
+      cron: false,
+      suspendedNotice: "services.suspendedNoticeCrashLoop",
+    });
+    expect(read("srv-billing")).toMatchObject({
+      suspendedNotice: "services.suspendedNoticeByPlatform",
+    });
   });
 
   it("says an image pulled with a registry credential names it", () => {
@@ -176,7 +211,7 @@ describe("useCachedServiceSource (w3/094)", () => {
       repository: false,
       registryCredential: true,
       cron: false,
-      suspended: false,
+      suspendedNotice: null,
     });
   });
 
@@ -199,7 +234,7 @@ describe("useCachedServiceSource (w3/094)", () => {
       repository: true,
       registryCredential: true,
       cron: false,
-      suspended: false,
+      suspendedNotice: null,
     });
   });
 

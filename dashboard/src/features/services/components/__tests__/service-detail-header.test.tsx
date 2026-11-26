@@ -447,8 +447,9 @@ describe("ServiceDetailHeader", () => {
   });
 
   // w4/643: every other action is disabled while suspended, so the header
-  // itself offers Resume, through the same gated verb as the Settings card.
-  it("offers Resume Service in a suspended service's header, and resumes", async () => {
+  // offers Resume, through the same gated verb as the Settings card; since
+  // w3/107 it is the notice's Resume service, as on Render.
+  it("offers Resume service in a suspended service's notice, and resumes", async () => {
     const user = userEvent.setup();
     const onRun = vi.fn().mockResolvedValue({ status: "success" });
     permissionQuery.mockResolvedValue({
@@ -466,7 +467,9 @@ describe("ServiceDetailHeader", () => {
     const service = svc({ suspended: true, plan: "starter" });
     renderHeader(service, { onRun });
 
-    await user.click(await screen.findByRole("button", { name: "Resume" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Resume service" }),
+    );
 
     await waitFor(() => expect(onRun).toHaveBeenCalledWith("resume", service));
   });
@@ -478,52 +481,15 @@ describe("ServiceDetailHeader", () => {
       await screen.findByRole("button", { name: "Connect" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Resume" }),
+      screen.queryByRole("button", { name: "Resume service" }),
     ).not.toBeInTheDocument();
-  });
-
-  it("points a suspended service's SSH section at Resume", async () => {
-    const user = userEvent.setup();
-    renderHeader(svc({ sshAddress: null, suspended: true, plan: "starter" }));
-
-    await user.click(await screen.findByRole("button", { name: "Connect" }));
-
-    expect(
-      screen.getByText(
-        "This service is suspended. Resume it to connect over SSH.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Resume service" }),
-    ).toHaveAttribute("href", "/services/app/settings#suspend");
-  });
-
-  // w4/m183: a suspended Free service has both blockers, and resuming one
-  // does not grant SSH, so the copy must not say it does.
-  it("names both blockers on a suspended Free service without promising SSH after Resume", async () => {
-    const user = userEvent.setup();
-    renderHeader(svc({ sshAddress: null, suspended: true, plan: "free" }));
-
-    await user.click(await screen.findByRole("button", { name: "Connect" }));
-
-    expect(
-      screen.getByText(
-        "This service is suspended, and SSH needs a paid compute plan. Resuming restores traffic; Free services still don't include shell access.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/Resume it to connect over SSH/)).toBeNull();
-    expect(
-      screen.getByRole("link", { name: "Resume service" }),
-    ).toHaveAttribute("href", "/services/app/settings#suspend");
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   // w4/m183: the service layout keeps this header mounted across its tabs, so
   // a remedy link used to leave the modal menu (and its body pointer lock)
   // open over the page it recommended.
-  it.each([
-    [{ plan: "free" }, "Change compute plan", "compute page"],
-    [{ plan: "starter", suspended: true }, "Resume service", "settings page"],
-  ])(
+  it.each([[{ plan: "free" }, "Change compute plan", "compute page"]])(
     "closes Connect when its %o remedy navigates",
     async (overrides, linkName, destination) => {
       const user = userEvent.setup();
@@ -548,7 +514,6 @@ describe("ServiceDetailHeader", () => {
         routeTree: rootRoute.addChildren([
           page("/", "overview page"),
           page("/services/$serviceId/compute", "compute page"),
-          page("/services/$serviceId/settings", "settings page"),
         ]),
         history: createMemoryHistory({ initialEntries: ["/"] }),
         context: { client: {} as never, session: null },
@@ -1018,72 +983,104 @@ describe("ServiceDetailHeader", () => {
     expect(await screen.findByRole("tooltip")).toHaveTextContent(text);
   });
 
-  // w3/m555: Render's suspended cron header has no action; its notice says so
-  // and offers Resume service.
-  it("gives a suspended cron job no header action, and Render's notice with Resume service", async () => {
-    const user = userEvent.setup();
-    const onRun = vi.fn().mockResolvedValue({ status: "success" });
-    // Resume rechecks its decision before it dispatches (w4/m159).
-    permissionQuery.mockResolvedValue({
-      data: {
-        serverActions: [
-          {
-            action: "resume",
-            outcome: "allowed",
-            reason: null,
-            precondition: null,
-          },
-        ],
-      },
-    });
-    const service = svc({
-      type: "cron_job",
-      url: null,
-      schedule: "* * * * *",
-      suspended: true,
-      manuallySuspended: true,
-    });
-    renderHeader(service, { onRun });
-
-    const notice = await screen.findByText("Manually suspended");
-    expect(notice.closest('[role="status"]')).toHaveTextContent(
-      "Manually suspended You are not billed for suspended services. Resume service",
-    );
-    for (const name of ["Trigger Run", "Connect", "Manual Deploy", "Resume"]) {
-      expect(screen.queryByRole("button", { name })).toBeNull();
-    }
-
-    await user.click(screen.getByRole("button", { name: "Resume service" }));
-    await waitFor(() => expect(onRun).toHaveBeenCalledWith("resume", service));
-  });
-
-  it("titles a suspension the platform made Suspended", async () => {
+  // w3/107: Render's banner titles a suspension by who made it (`Lr`).
+  it.each([
+    [{ manuallySuspended: true }, "Manually suspended"],
+    [
+      { crashLoopSuspended: true },
+      "This service has been suspended in response to repeated crashes",
+    ],
+    [{ billingSuspended: true }, "Suspended by bex"],
+    [{}, "Suspended"],
+  ])("titles the notice of a suspension by %o %j", async (by, title) => {
     renderHeader(
       svc({
         type: "cron_job",
         url: null,
         schedule: "* * * * *",
         suspended: true,
-        manuallySuspended: false,
+        ...by,
       }),
       { onRun: vi.fn() },
     );
     const notice = await screen.findByRole("status");
     expect(notice).toHaveTextContent(
-      "Suspended You are not billed for suspended services. Resume service",
+      `${title} You are not billed for suspended services. Resume service`,
     );
-    expect(screen.queryByText("Manually suspended")).toBeNull();
   });
 
-  it("keeps a suspended web service's header as it was", async () => {
-    renderHeader(svc({ suspended: true, manuallySuspended: true }), {
-      onRun: vi.fn(),
-    });
-    expect(
-      await screen.findByRole("button", { name: "Resume" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Manual Deploy" })).toBeVisible();
-    expect(screen.queryByText("Manually suspended")).toBeNull();
+  // w3/107: Render's Server page passes its header actions only while the
+  // service runs (`state === "Running"`), the same rule as a cron job's, and
+  // puts the same banner under the facts: no Connect, Resume or Manual Deploy
+  // on any type while suspended.
+  it.each([
+    ["web_service", {}],
+    ["private_service", { url: null, internalAddress: "app-x1y2:10000" }],
+    ["background_worker", { url: null }],
+    ["static_site", { plan: null }],
+    ["cron_job", { url: null, schedule: "* * * * *" }],
+  ])(
+    "gives a suspended %s no header action and the notice",
+    async (type, overrides) => {
+      const user = userEvent.setup();
+      const onRun = vi.fn().mockResolvedValue({ status: "success" });
+      permissionQuery.mockResolvedValue({
+        data: {
+          serverActions: [
+            {
+              action: "resume",
+              outcome: "allowed",
+              reason: null,
+              precondition: null,
+            },
+          ],
+        },
+      });
+      const service = svc({
+        type,
+        ...overrides,
+        suspended: true,
+        manuallySuspended: true,
+      });
+      renderHeader(service, { onRun });
+
+      const notice = await screen.findByRole("status");
+      expect(notice).toHaveTextContent(
+        "Manually suspended You are not billed for suspended services. Resume service",
+      );
+      // The action slot is empty, so `empty:hidden` drops it from the row.
+      expect(
+        document.querySelector(".md\\:max-lg\\:col-start-2.empty\\:hidden"),
+      ).toBeEmptyDOMElement();
+      for (const name of [
+        "Connect",
+        "Manual Deploy",
+        "Trigger Run",
+        "Resume",
+      ]) {
+        expect(screen.queryByRole("button", { name })).toBeNull();
+      }
+
+      await user.click(
+        within(notice).getByRole("button", { name: "Resume service" }),
+      );
+      await waitFor(() =>
+        expect(onRun).toHaveBeenCalledWith("resume", service),
+      );
+    },
+  );
+
+  // While it runs, each type keeps its actions and has no notice.
+  it.each([
+    ["web_service", {}, ["Connect", "Manual Deploy"]],
+    ["static_site", { plan: null }, ["Manual Deploy"]],
+    ["cron_job", { url: null, schedule: "* * * * *" }, ["Trigger Run"]],
+  ])("keeps a running %s's actions", async (type, overrides, actions) => {
+    renderHeader(svc({ type, ...overrides }), { onRun: vi.fn() });
+    for (const name of actions) {
+      expect(await screen.findByRole("button", { name })).toBeVisible();
+    }
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("deploys the latest commit directly from the Manual Deploy dropdown", async () => {
@@ -1447,7 +1444,7 @@ describe("ServiceDetailHeaderSkeleton source items", () => {
         repository: true,
         registryCredential: false,
         cron: false,
-        suspended: false,
+        suspendedNotice: null,
       },
       ["repository"],
     ],
@@ -1458,7 +1455,7 @@ describe("ServiceDetailHeaderSkeleton source items", () => {
         repository: false,
         registryCredential: false,
         cron: false,
-        suspended: false,
+        suspendedNotice: null,
       },
       [],
     ],
@@ -1469,7 +1466,7 @@ describe("ServiceDetailHeaderSkeleton source items", () => {
         repository: false,
         registryCredential: true,
         cron: false,
-        suspended: false,
+        suspendedNotice: null,
       },
       ["registry-credential"],
     ],
@@ -1480,7 +1477,7 @@ describe("ServiceDetailHeaderSkeleton source items", () => {
         repository: true,
         registryCredential: true,
         cron: false,
-        suspended: false,
+        suspendedNotice: null,
       },
       ["repository", "registry-credential"],
     ],
@@ -1523,7 +1520,7 @@ describe("ServiceDetailHeaderSkeleton source items", () => {
           repository: false,
           registryCredential: true,
           cron: false,
-          suspended: false,
+          suspendedNotice: null,
         }}
       />,
     );
@@ -1563,7 +1560,9 @@ describe("ServiceDetailHeaderSkeleton for a cron job", () => {
     const items = ["cron-runs", "cron-last-run"];
 
     const { container } = render(
-      <ServiceDetailHeaderSkeleton source={{ ...CRON, suspended: false }} />,
+      <ServiceDetailHeaderSkeleton
+        source={{ ...CRON, suspendedNotice: null }}
+      />,
     );
     expect(actionSlots(container)).toBe(1);
     expect(
@@ -1583,29 +1582,61 @@ describe("ServiceDetailHeaderSkeleton for a cron job", () => {
       container.querySelector('[data-skeleton-item="service-url"]'),
     ).toBeNull();
     expect(
-      container.querySelector('[data-skeleton-item="cron-suspended-notice"]'),
+      container.querySelector('[data-skeleton-item="suspended-notice"]'),
     ).toBeNull();
-  });
-
-  it("reserves no action and the notice while it is suspended", () => {
-    const { container } = render(
-      <ServiceDetailHeaderSkeleton source={{ ...CRON, suspended: true }} />,
-    );
-    expect(actionSlots(container)).toBe(0);
-    const notice = container.querySelector(
-      '[data-skeleton-item="cron-suspended-notice"]',
-    )!;
-    expect(notice).toHaveTextContent(
-      "Manually suspended You are not billed for suspended services. Resume service",
-    );
-    // The resume link's slot grows with the touch rule, as the ready one does.
-    expect(notice.lastElementChild).toHaveAttribute("data-touch-spacer");
   });
 
   it("keeps every other type's two action slots", () => {
     const { container } = render(<ServiceDetailHeaderSkeleton />);
     expect(actionSlots(container)).toBe(2);
   });
+});
+
+// w3/107: a suspended service of any type has no header action and Render's
+// notice under its facts; its frame reserves no action slot and the notice in
+// the ready one's words, the title for who suspended it included, so it wraps
+// where the ready notice does.
+describe("ServiceDetailHeaderSkeleton for a suspended service", () => {
+  const actionSlots = (container: Element) =>
+    container.querySelectorAll(
+      ".md\\:max-lg\\:col-start-2 > [data-touch-spacer]",
+    ).length;
+
+  it.each([
+    ["web_service", false, {}],
+    ["private_service", false, { url: null, internalAddress: "app-x1y2:1" }],
+    ["background_worker", false, { url: null }],
+    ["static_site", false, { plan: null }],
+    ["cron_job", true, { url: null, schedule: "* * * * *" }],
+  ] as const)(
+    "reserves a suspended %s's notice and no action",
+    async (type, cron, overrides) => {
+      renderHeader(
+        svc({ type, ...overrides, suspended: true, crashLoopSuspended: true }),
+        { onRun: vi.fn() },
+      );
+      const ready = await screen.findByRole("status");
+
+      const { container } = render(
+        <ServiceDetailHeaderSkeleton
+          source={{
+            repository: true,
+            registryCredential: false,
+            cron,
+            suspendedNotice: "services.suspendedNoticeCrashLoop",
+          }}
+        />,
+      );
+      expect(actionSlots(container)).toBe(0);
+      const notice = container.querySelector(
+        '[data-skeleton-item="suspended-notice"]',
+      )!;
+      expect(notice).toHaveTextContent(ready.textContent!);
+      expect(notice).toHaveClass(...ready.classList);
+      // The resume link's slot grows with the touch rule, as the ready one does.
+      expect(notice.lastElementChild).toHaveAttribute("data-touch-spacer");
+    },
+  );
 });
 
 // w3/m555 production walk: at 390 a service's ready name row ("Service", its

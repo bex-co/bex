@@ -540,22 +540,32 @@ const koServices: Record<string, TranslationEntry> = {
   "services.suspendedNoticeManual": {
     message: "수동으로 일시 중지됨",
     description:
-      "Title of the notice under a suspended cron job's header when its owner suspended it (Render's \"Manually suspended\", w3/m555)",
+      "Title of the notice under a suspended service's header when its owner suspended it (Render's \"Manually suspended\", w3/m555, w3/107)",
   },
   "services.suspendedNoticeTitle": {
     message: "일시 중지됨",
     description:
-      "Title of the notice under a suspended cron job's header when the platform suspended it (Render's fallback \"Suspended\", w3/m555)",
+      "Title of the notice under a suspended service's header when no suspender is known (Render's fallback \"Suspended\", w3/m555, w3/107)",
+  },
+  "services.suspendedNoticeByPlatform": {
+    message: "bex에서 일시 중지함",
+    description:
+      "Title of the notice under a suspended service's header when the platform suspended it for spent Free instance hours or bandwidth (the billing suspender; Render's \"Suspended by Render\", w3/107)",
+  },
+  "services.suspendedNoticeCrashLoop": {
+    message: "반복된 충돌로 인해 이 서비스가 일시 중지되었습니다",
+    description:
+      "Title of the notice under a suspended service's header when the platform suspended it for a crash loop (stuck_crashlooping; Render's title, w3/107)",
   },
   "services.suspendedNoticeBody": {
     message: "일시 중지된 서비스에는 요금이 청구되지 않습니다.",
     description:
-      "Body of the notice under a suspended cron job's header (Render's text, w3/m555)",
+      "Body of the notice under a suspended service's header (Render's text, w3/m555, w3/107)",
   },
   "services.suspendedNoticeResume": {
     message: "서비스 재개",
     description:
-      "The notice's inline action that resumes a suspended cron job (Render's \"Resume service\", w3/m555)",
+      "The notice's inline action that resumes a suspended service (Render's \"Resume service\", w3/m555, w3/107)",
   },
   "services.headerCopyServiceId": {
     message: "서비스 ID 복사",

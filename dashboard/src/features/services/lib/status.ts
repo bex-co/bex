@@ -26,6 +26,58 @@ export function isSuspended(suspended: string | null): boolean {
   return suspended === SUSPENDED;
 }
 
+type Suspenders = readonly (string | null)[] | null | undefined;
+
+/** Who suspended it, from Render's `suspenders`: bex reports "user",
+ *  "billing" or "stuck_crashlooping" (`core.SuspendersFor`). */
+function suspendedBy(
+  suspenders: Suspenders,
+): Pick<
+  ServiceView,
+  "manuallySuspended" | "billingSuspended" | "crashLoopSuspended"
+> {
+  const by = suspenders ?? [];
+  return {
+    manuallySuspended: by.includes("user"),
+    billingSuspended: by.includes("billing"),
+    crashLoopSuspended: by.includes("stuck_crashlooping"),
+  };
+}
+
+/** A suspended service's notice title, one per suspender (w3/107). */
+export type SuspendedNoticeTitleKey =
+  | "services.suspendedNoticeByPlatform"
+  | "services.suspendedNoticeCrashLoop"
+  | "services.suspendedNoticeManual"
+  | "services.suspendedNoticeTitle";
+
+/**
+ * Render's title for the notice under a suspended service's header, by who
+ * suspended it, checked in the order Render's banner checks them (`Lr`,
+ * w3/107). bex's "billing" (spent Free instance hours, or included bandwidth
+ * with no payment method) is one of the suspensions Render titles "Suspended
+ * by Render"; its crash-loop suspension has Render's own title; an owner's is
+ * "Manually suspended"; anything else is "Suspended".
+ */
+export function suspendedNoticeTitleKey(
+  s: Pick<
+    ServiceView,
+    "manuallySuspended" | "billingSuspended" | "crashLoopSuspended"
+  >,
+): SuspendedNoticeTitleKey {
+  if (s.billingSuspended) return "services.suspendedNoticeByPlatform";
+  if (s.crashLoopSuspended) return "services.suspendedNoticeCrashLoop";
+  if (s.manuallySuspended) return "services.suspendedNoticeManual";
+  return "services.suspendedNoticeTitle";
+}
+
+/** The notice's title from a cached read's raw `suspenders`. */
+export function suspendedNoticeTitleKeyFor(
+  suspenders: Suspenders,
+): SuspendedNoticeTitleKey {
+  return suspendedNoticeTitleKey(suspendedBy(suspenders));
+}
+
 /**
  * Map a wire `Service` onto the normalized ServiceView the UI renders. Accepts
  * either the list node or the detail (`server`) node — only the latter selects
@@ -42,12 +94,7 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     displayName,
     type: s.type ?? "web_service",
     suspended: isSuspended(s.suspended),
-    crashLoopSuspended:
-      "suspenders" in s
-        ? (s.suspenders ?? []).includes("stuck_crashlooping")
-        : false,
-    manuallySuspended:
-      "suspenders" in s ? (s.suspenders ?? []).includes("user") : false,
+    ...suspendedBy(s.suspenders),
     phase: s.phase ?? "",
     url: s.url ?? null,
     internalAddress: "internalAddress" in s ? s.internalAddress || null : null,

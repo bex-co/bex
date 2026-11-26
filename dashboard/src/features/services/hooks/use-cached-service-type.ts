@@ -2,7 +2,11 @@ import { useApolloClient } from "@apollo/client/react";
 import { ServerDocument, ServicesDocument } from "@/graphql/definitions";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { isCronType } from "@/features/services/lib/service-type";
-import { isSuspended } from "@/features/services/lib/status";
+import {
+  isSuspended,
+  suspendedNoticeTitleKeyFor,
+  type SuspendedNoticeTitleKey,
+} from "@/features/services/lib/status";
 
 /**
  * The service as already held in Apollo's cache — its own `server(id)` read,
@@ -60,8 +64,9 @@ export interface CachedServiceSource {
   /** A cron job: its header's action is Trigger Run and its facts are the
    *  two "Runs …" lines (w3/m555). */
   cron: boolean;
-  /** Suspended: a cron job's header then has no action, and its notice. */
-  suspended: boolean;
+  /** While it is suspended, the title of the notice its header then has in
+   *  place of any action (w3/107); null while it runs. */
+  suspendedNotice: SuspendedNoticeTitleKey | null;
 }
 
 /**
@@ -79,6 +84,8 @@ export function useCachedServiceSource(
     repository: Boolean(service.repo),
     registryCredential: Boolean(service.registryCredentialId),
     cron: service.type != null && isCronType(service.type),
-    suspended: isSuspended(service.suspended ?? null),
+    suspendedNotice: isSuspended(service.suspended ?? null)
+      ? suspendedNoticeTitleKeyFor(service.suspenders)
+      : null,
   };
 }

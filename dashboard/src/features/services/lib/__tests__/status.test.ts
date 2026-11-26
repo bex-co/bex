@@ -7,6 +7,8 @@ import {
   isSleeping,
   isConvergingPhase,
   runsInstances,
+  suspendedNoticeTitleKey,
+  suspendedNoticeTitleKeyFor,
 } from "@/features/services/lib/status";
 import type { ServicesQuery, ServerQuery } from "@/graphql/definitions";
 import type { ServiceView } from "@/features/services/types";
@@ -24,6 +26,7 @@ function node(overrides: Partial<ServiceNode> = {}): ServiceNode {
     displayName: null,
     type: "web_service",
     suspended: "not_suspended",
+    suspenders: [],
     dashboardUrl: "https://app.onbex.co",
     url: "https://app.onbex.co",
     createdAt: "2026-01-01T00:00:00Z",
@@ -174,6 +177,37 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
   };
 }
 
+// w3/107: Render's suspension banner (`Lr`) titles a suspension by who made
+// it, checking the platform's suspensions before the owner's.
+describe("suspendedNoticeTitleKey", () => {
+  it.each([
+    [["user"], "services.suspendedNoticeManual"],
+    [["stuck_crashlooping"], "services.suspendedNoticeCrashLoop"],
+    [["billing"], "services.suspendedNoticeByPlatform"],
+    [["billing", "user"], "services.suspendedNoticeByPlatform"],
+    [["stuck_crashlooping", "user"], "services.suspendedNoticeCrashLoop"],
+    [["admin"], "services.suspendedNoticeTitle"],
+    [[], "services.suspendedNoticeTitle"],
+    [null, "services.suspendedNoticeTitle"],
+    [undefined, "services.suspendedNoticeTitle"],
+  ] as const)("titles suspenders %j %s", (suspenders, key) => {
+    expect(suspendedNoticeTitleKeyFor(suspenders)).toBe(key);
+  });
+
+  it("titles a service view the same way", () => {
+    expect(suspendedNoticeTitleKey({ manuallySuspended: true })).toBe(
+      "services.suspendedNoticeManual",
+    );
+    expect(
+      suspendedNoticeTitleKey({
+        manuallySuspended: true,
+        billingSuspended: true,
+      }),
+    ).toBe("services.suspendedNoticeByPlatform");
+    expect(suspendedNoticeTitleKey({})).toBe("services.suspendedNoticeTitle");
+  });
+});
+
 describe("isSuspended", () => {
   it("reads Render's string enum, not a boolean", () => {
     expect(isSuspended("suspended")).toBe(true);
@@ -198,6 +232,7 @@ describe("toServiceView", () => {
       suspended: true,
       crashLoopSuspended: false,
       manuallySuspended: false,
+      billingSuspended: false,
       phase: "Hibernated",
       url: "https://app.onbex.co",
       internalAddress: null,
@@ -279,35 +314,49 @@ describe("toServiceView", () => {
     expect(toServiceView(node({ region: "" })).region).toBeNull();
   });
 
-  // w2/m253: only Render's stuck_crashlooping suspender marks a crash-loop
-  // suspension; a user or billing suspension keeps the ordinary copy.
-  it("flags a crash-loop suspension from the detail query's suspenders", () => {
+  // w2/m253, w3/m555, w3/107: each of the suspenders bex reports sets its
+  // own flag, from the detail read and from a list row alike.
+  it.each([
+    [["stuck_crashlooping"], "crashLoopSuspended"],
+    [["user"], "manuallySuspended"],
+    [["billing"], "billingSuspended"],
+  ] as const)("reads suspenders %j as %s", (suspenders, flag) => {
+    const flags = (view: ServiceView) => ({
+      crashLoopSuspended: view.crashLoopSuspended,
+      manuallySuspended: view.manuallySuspended,
+      billingSuspended: view.billingSuspended,
+    });
+    const expected = {
+      crashLoopSuspended: false,
+      manuallySuspended: false,
+      billingSuspended: false,
+      [flag]: true,
+    };
     expect(
-      toServiceView(
-        server({ suspended: "suspended", suspenders: ["stuck_crashlooping"] }),
-      ).crashLoopSuspended,
-    ).toBe(true);
+      flags(
+        toServiceView(
+          server({ suspended: "suspended", suspenders: [...suspenders] }),
+        ),
+      ),
+    ).toEqual(expected);
     expect(
-      toServiceView(server({ suspended: "suspended", suspenders: ["user"] }))
-        .crashLoopSuspended,
-    ).toBe(false);
-    expect(
-      toServiceView(node({ suspended: "suspended" })).crashLoopSuspended,
-    ).toBe(false);
+      flags(
+        toServiceView(
+          node({ suspended: "suspended", suspenders: [...suspenders] }),
+        ),
+      ),
+    ).toEqual(expected);
   });
 
-  // w3/m555: a suspended cron job's notice reads "Manually suspended" only
-  // for Render's user suspender.
-  it("flags a suspension its owner made from the detail query's suspenders", () => {
-    const by = (suspenders: string[]) =>
-      toServiceView(server({ suspended: "suspended", suspenders }))
-        .manuallySuspended;
-    expect(by(["user"])).toBe(true);
-    expect(by(["billing"])).toBe(false);
-    expect(by(["stuck_crashlooping"])).toBe(false);
-    expect(
-      toServiceView(node({ suspended: "suspended" })).manuallySuspended,
-    ).toBe(false);
+  it("reads no suspender from a missing or empty list", () => {
+    for (const suspenders of [null, []]) {
+      const view = toServiceView(node({ suspended: "suspended", suspenders }));
+      expect([
+        view.crashLoopSuspended,
+        view.manuallySuspended,
+        view.billingSuspended,
+      ]).toEqual([false, false, false]);
+    }
   });
 
   it("carries a copy-ready SSH address only when the detail query selected it", () => {

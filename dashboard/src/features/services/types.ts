@@ -30,15 +30,19 @@ export interface ServiceView {
   /**
    * The platform suspended the service after it failed to start and become
    * healthy for 24 hours (Render's `stuck_crashlooping` suspender, w2/m253).
-   * Only the detail `server` query selects suspenders, so a list row reads false.
    */
   crashLoopSuspended?: boolean;
   /**
-   * Its owner suspended it (Render's `user` suspender), which a cron job's
-   * suspension notice titles "Manually suspended" (w3/m555). Only the detail
-   * `server` query selects suspenders, so a list row reads false.
+   * Its owner suspended it (Render's `user` suspender), which the header's
+   * suspension notice titles "Manually suspended" (w3/m555, w3/107).
    */
   manuallySuspended?: boolean;
+  /**
+   * The platform suspended it for spent Free instance hours or for included
+   * bandwidth used with no payment method (the `billing` suspender, w8/m139,
+   * w6/m319), which the notice titles "Suspended by bex" (w3/107).
+   */
+  billingSuspended?: boolean;
   /** Operator phase, verbatim (Pending/Building/Deploying/Running/Hibernated/Failed). */
   phase: string;
   /** Live URL, or null when the App has none yet. */

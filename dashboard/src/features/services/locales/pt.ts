@@ -544,22 +544,32 @@ const ptServices: Record<string, TranslationEntry> = {
   "services.suspendedNoticeManual": {
     message: "Suspenso manualmente",
     description:
-      "Title of the notice under a suspended cron job's header when its owner suspended it (Render's \"Manually suspended\", w3/m555)",
+      "Title of the notice under a suspended service's header when its owner suspended it (Render's \"Manually suspended\", w3/m555, w3/107)",
   },
   "services.suspendedNoticeTitle": {
     message: "Suspenso",
     description:
-      "Title of the notice under a suspended cron job's header when the platform suspended it (Render's fallback \"Suspended\", w3/m555)",
+      "Title of the notice under a suspended service's header when no suspender is known (Render's fallback \"Suspended\", w3/m555, w3/107)",
+  },
+  "services.suspendedNoticeByPlatform": {
+    message: "Suspenso pelo bex",
+    description:
+      "Title of the notice under a suspended service's header when the platform suspended it for spent Free instance hours or bandwidth (the billing suspender; Render's \"Suspended by Render\", w3/107)",
+  },
+  "services.suspendedNoticeCrashLoop": {
+    message: "Este serviço foi suspenso por falhas repetidas",
+    description:
+      "Title of the notice under a suspended service's header when the platform suspended it for a crash loop (stuck_crashlooping; Render's title, w3/107)",
   },
   "services.suspendedNoticeBody": {
     message: "Você não é cobrado por serviços suspensos.",
     description:
-      "Body of the notice under a suspended cron job's header (Render's text, w3/m555)",
+      "Body of the notice under a suspended service's header (Render's text, w3/m555, w3/107)",
   },
   "services.suspendedNoticeResume": {
     message: "Retomar serviço",
     description:
-      "The notice's inline action that resumes a suspended cron job (Render's \"Resume service\", w3/m555)",
+      "The notice's inline action that resumes a suspended service (Render's \"Resume service\", w3/m555, w3/107)",
   },
   "services.headerCopyServiceId": {
     message: "Copiar ID do serviço",

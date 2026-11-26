@@ -21,6 +21,9 @@ query Services($ownerId: String) {
     displayName
     type
     suspended
+    # Who suspended it, which titles the header's suspension notice, so a
+    # service page's loading frame reserves the notice it will draw (w3/107).
+    suspenders
     dashboardUrl
     url
     createdAt
@@ -39,10 +42,13 @@ query Services($ownerId: String) {
   }
 }
 
+# `suspenders` keeps the header's suspension notice titled for who suspended
+# it from the moment the answer lands (w3/107).
 mutation SuspendService($id: String!, $confirm: String) {
   suspendService(id: $id, confirm: $confirm) {
     id
     suspended
+    suspenders
     phase
   }
 }
@@ -51,6 +57,7 @@ mutation ResumeService($id: String!) {
   resumeService(id: $id) {
     id
     suspended
+    suspenders
     phase
   }
 }
