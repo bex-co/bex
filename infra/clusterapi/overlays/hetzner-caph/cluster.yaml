@@ -835,7 +835,7 @@ spec:
         # docs/ADR053) — this repoint is what rolls the pool onto the new shape.
         name: bex-tenant-0-k134-cx33
       version: v1.34.9
-  rolloutAfter: "2026-11-21T10:11:59Z" # w6/m547 t005: roll onto the 2 s kubelet node-status sync (t010)
+  rolloutAfter: "2026-11-26T14:25:51Z" # w6/m624 t003: roll onto the ImageVolume kubelet gate (the API server carries it since 30588c6353)
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
