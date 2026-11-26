@@ -7,18 +7,47 @@ import { cn } from "@/common/lib/utils/utils.ts";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Dialog, DialogContent } from "@/common/components/ui/dialog.tsx";
 
+// Focus stays in the search field while the arrows move cmdk's selection
+// (aria-activedescendant), so the field's ring does not move with them: the
+// active option draws its own indicator, a 2px outline inset in the focus
+// colour as Render's list rows do (w3/114). The tint alone measured 1.2:1 on
+// the list. cmdk also selects the option under a moving pointer, and a ring
+// there would follow the mouse, so an option the pointer chose keeps the tint
+// alone until a key is pressed.
+const SelectedByPointer = React.createContext(false);
+
 function Command({
   className,
+  onKeyDown,
+  onPointerMove,
   ...props
 }: React.ComponentPropsWithoutRef<typeof CommandPrimitive>) {
+  const [selectedByPointer, setSelectedByPointer] = React.useState(false);
   return (
-    <CommandPrimitive
-      className={cn(
-        "flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground",
-        className,
-      )}
-      {...props}
-    />
+    <SelectedByPointer.Provider value={selectedByPointer}>
+      <CommandPrimitive
+        className={cn(
+          "flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground",
+          className,
+        )}
+        onKeyDown={(event) => {
+          setSelectedByPointer(false);
+          onKeyDown?.(event);
+        }}
+        onPointerMove={(event) => {
+          // Where cmdk's own item handler moves the selection to the pointer.
+          if (
+            !selectedByPointer &&
+            !props.disablePointerSelection &&
+            event.target instanceof Element &&
+            event.target.closest('[cmdk-item]:not([aria-disabled="true"])')
+          )
+            setSelectedByPointer(true);
+          onPointerMove?.(event);
+        }}
+        {...props}
+      />
+    </SelectedByPointer.Provider>
   );
 }
 
@@ -134,12 +163,34 @@ function CommandSeparator({
 
 function CommandItem({
   className,
+  active,
   ...props
-}: React.ComponentPropsWithoutRef<typeof CommandPrimitive.Item>) {
+}: React.ComponentPropsWithoutRef<typeof CommandPrimitive.Item> & {
+  /**
+   * For a list that tracks its active option itself, as the combobox does
+   * (its field sits outside cmdk): how this option became the active one, or
+   * false. Set, it replaces cmdk's selection as what the option marks.
+   */
+  active?: "keyboard" | "pointer" | false;
+}) {
+  const selectedByPointer = React.useContext(SelectedByPointer);
   return (
     <CommandPrimitive.Item
       className={cn(
-        "relative flex cursor-pointer gap-2 select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled=true]:pointer-events-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+        // No `outline-none`: the option never takes focus, and it would void
+        // the indicator's width (Tailwind 4 draws `var(--tw-outline-style)`).
+        "relative flex cursor-pointer gap-2 select-none items-center rounded-sm px-2 py-1.5 text-sm data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+        active === undefined
+          ? [
+              "data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground",
+              !selectedByPointer &&
+                "data-[selected=true]:outline-2 data-[selected=true]:-outline-offset-2 data-[selected=true]:outline-ring",
+            ]
+          : [
+              active && "bg-accent text-accent-foreground",
+              active === "keyboard" &&
+                "outline-2 -outline-offset-2 outline-ring",
+            ],
         className,
       )}
       {...props}

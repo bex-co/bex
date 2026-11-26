@@ -654,6 +654,7 @@ describe("the focus ring at the strength the components apply (w3/m642)", () => 
       "badge",
       "scroll-area",
       "dropdown-menu",
+      "command",
     ])
       expect(
         applied(`src/common/components/ui/${control}.tsx`).length,

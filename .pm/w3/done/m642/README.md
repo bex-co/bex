@@ -72,7 +72,7 @@ Shipped 2026-11-25 (t001, t002).
   | Manual Deploy menu (5) | 4.88 | 8.82 | 8.27 | 8.82 |
   | sign-in form (9) | 4.88 | 8.57 | 8.27 | 5.91 |
 
-  Every stop has an indicator; none is under 3:1 in light or dark or under 4.5:1 in a twin. At 390×844 (home, Settings, Update Source and sign-in) the lowest are 4.88, 4.33, 4.27 and 4.88 in light and 9.19, 7.85, 6.31 and 8.57 in dark. Sampled pixels agree with the computed colours: a focused project card's outline and the New button's ring paint `rgb(48, 125, 3)` on `rgb(248, 248, 250)`, 4.88:1. One thing the sweep showed that no colour fixes: Tab scrolls a control to the edge of the page's scroll container, which cuts the 2 px of ring on that side until the page scrolls on; it is in [w3/114](../../114.md).
+  Every stop has an indicator; none is under 3:1 in light or dark or under 4.5:1 in a twin. At 390×844 (home, Settings, Update Source and sign-in) the lowest are 4.88, 4.33, 4.27 and 4.88 in light and 9.19, 7.85, 6.31 and 8.57 in dark. Sampled pixels agree with the computed colours: a focused project card's outline and the New button's ring paint `rgb(48, 125, 3)` on `rgb(248, 248, 250)`, 4.88:1. One thing the sweep showed that no colour fixes: Tab scrolls a control to the edge of the page's scroll container, which cuts the 2 px of ring on that side until the page scrolls on; it is in [w3/114](../114.md).
 
 ## What Render does
 

@@ -57,6 +57,8 @@ export function Combobox({
     undefined,
   );
   const [highlightedIndex, setHighlightedIndex] = React.useState(-1);
+  // The arrows' highlight draws the focus ring, the pointer's the tint alone.
+  const [highlightByPointer, setHighlightByPointer] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
   // Unique ID per instance to scope querySelector and avoid cross-instance conflicts
@@ -174,6 +176,7 @@ export function Combobox({
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
 
     e.preventDefault();
+    setHighlightByPointer(false);
     const movingDown = e.key === "ArrowDown";
     if (!open) {
       setOpen(true);
@@ -286,19 +289,20 @@ export function Combobox({
                     key={option.value}
                     value={option.value}
                     onSelect={handleSelect}
-                    onMouseEnter={() => setHighlightedIndex(index)}
+                    // A move, not an enter: the list scrolling under a still
+                    // pointer must not take the arrows' highlight.
+                    onMouseMove={() => {
+                      setHighlightedIndex(index);
+                      setHighlightByPointer(true);
+                    }}
                     data-combobox-item-index={`${instanceId}-${index}`}
-                    className={cn(
-                      // Cursor pointer for clickable items
-                      "cursor-pointer",
-                      // Override cmdk's default selected styling for non-highlighted items
-                      highlightedIndex >= 0 &&
-                        highlightedIndex !== index &&
-                        "data-[selected=true]:bg-transparent data-[selected=true]:text-current",
-                      // Apply our keyboard highlight styling
+                    // The field, not cmdk, owns the highlight: cmdk's own
+                    // selection (its first option, until the pointer moves)
+                    // is not what Enter picks.
+                    active={
                       highlightedIndex === index &&
-                        "bg-accent text-accent-foreground",
-                    )}
+                      (highlightByPointer ? "pointer" : "keyboard")
+                    }
                   >
                     {option.label}
                   </CommandItem>
