@@ -16,7 +16,7 @@ Each row has one disposition, and its pointer says why:
 - `partial`: bex has part of it. The pointer names the board item that owns the rest, or the ADR018 row that records the divergence.
 - `gap`: bex lacks it. The pointer names the open or parked board item that owns it (`wN/mN` or `wN/NNN`); a gap with no owner is filed with `/pm add` before its row lands.
 - `non-goal`: bex declines it. The pointer cites the [`DO_NOT_DO.md`](../../.pm/DO_NOT_DO.md) line or the [ADR018](../ADR018-render-parity.md) `—` row.
-- `n/a`: there is nothing for bex to match: Render's own staff tools, support vendors, legal paperwork or growth experiments. The pointer gives the reason.
+- `n/a`: there is nothing for bex to match: Render's own staff tools, support vendors, legal paperwork or growth experiments, or a feature Render retired whose code is still in the bundle but which no customer can start any more. The pointer gives the reason.
 - `flagged`: the operation serves a feature behind a flag gate. The pointer names the flag from a table below.
 
 A disposition is about the capability an operation serves, as in the changelog ledger. Many operations are one feature's reads and writes, so they share one pointer.
@@ -687,7 +687,7 @@ Grouped by product area, then sorted by name.
 
 | Operation | Kind | Disposition | Pointer |
 | --- | --- | --- | --- |
-| `agenticTokenSignIn` | mutation | gap | `w1/150` (Render's Stripe integrations: the Stripe account connection and Stripe's agentic account link) |
+| `agenticTokenSignIn` | mutation | gap | `w1/150` (Render as a Stripe Projects provider: Stripe links an existing Render account and signs its user in, to provision Render resources from the Stripe CLI. Building it needs Stripe to accept bex as a provider, so it is the user's decision) |
 | `ApiKeyWorkspace` | query | matched | ADR018 § Identity, workspaces & account: API-key management (create · list · revoke · metadata); fine-grained keys (`w9/m496`) |
 | `apiTokens` | query | matched | ADR018 § Identity, workspaces & account: API-key management (create · list · revoke · metadata); fine-grained keys (`w9/m496`) |
 | `avatarPresignedUpload` | query | matched | ADR018 § Identity, workspaces & account: Avatars: an account's and a workspace's (upload image · change monogram · reset to default) (`w1/m648`) |
@@ -695,7 +695,7 @@ Grouped by product area, then sorted by name.
 | `bitbucketAuthMutation` | mutation | matched | ADR018 § Identity, workspaces & account: Sign-in providers: Google, GitHub, GitLab, Bitbucket |
 | `bitbucketSignUpMutation` | mutation | matched | ADR018 § Identity, workspaces & account: Sign-in providers: Google, GitHub, GitLab, Bitbucket |
 | `canChangeEmail` | query | matched | ADR018 § Identity, workspaces & account: Email recovery / verification |
-| `confirmAgenticAccountLink` | mutation | gap | `w1/150` (Render's Stripe integrations: the Stripe account connection and Stripe's agentic account link) |
+| `confirmAgenticAccountLink` | mutation | gap | `w1/150` (Render as a Stripe Projects provider: Stripe links an existing Render account and signs its user in, to provision Render resources from the Stripe CLI. Building it needs Stripe to accept bex as a provider, so it is the user's decision) |
 | `createPassword` | mutation | matched | ADR018 § Identity, workspaces & account: Login · sessions · account settings (password set and change in `/settings`) |
 | `createSSHPublicKey` | mutation | matched | ADR018 § Identity, workspaces & account: SSH public keys |
 | `deleteAvatar` | mutation | matched | ADR018 § Identity, workspaces & account: Avatars: an account's and a workspace's (upload image · change monogram · reset to default) (`w1/m648`) |
@@ -827,13 +827,13 @@ Grouped by product area, then sorted by name.
 | --- | --- | --- | --- |
 | `addPromotion` | mutation | non-goal | DO_NOT_DO: ADR071 tenant billing credits (Stripe admin issues credits by hand) |
 | `chargeAndRemoveCard` | mutation | matched | ADR018 § Billing & invoicing: Billing page: plan, payment method, accrued charges, included usage |
-| `connectStripeAccountMutation` | mutation | gap | `w1/150` (Render's Stripe integrations: the Stripe account connection and Stripe's agentic account link) |
+| `connectStripeAccountMutation` | mutation | n/a | Render's SQL Insights Stripe App, which synced a Stripe account's data into a Render Postgres database. Render retired it: render.com/docs/stripe redirects to the docs index (by 2026-01-28), its Stripe App Marketplace page sends visitors to the Marketplace home, and Render's listing there is now its Stripe Projects app, which has no access to Stripe data. The connect page only completes a connection that app started, so a new customer cannot reach it (`w1/150`) |
 | `customerInfo` | query | matched | ADR018 § Billing & invoicing: Billing page: plan, payment method, accrued charges, included usage |
-| `disconnectStripeAccountMutation` | mutation | gap | `w1/150` (Render's Stripe integrations: the Stripe account connection and Stripe's agentic account link) |
+| `disconnectStripeAccountMutation` | mutation | n/a | Render's SQL Insights Stripe App, which synced a Stripe account's data into a Render Postgres database. Render retired it: render.com/docs/stripe redirects to the docs index (by 2026-01-28), its Stripe App Marketplace page sends visitors to the Marketplace home, and Render's listing there is now its Stripe Projects app, which has no access to Stripe data. The connect page only completes a connection that app started, so a new customer cannot reach it (`w1/150`) |
 | `EnableHIPAA` | mutation | gap | Render's HIPAA-enabled workspaces have no bex disposition yet: `w7/071` (parked on the user's build-or-non-goal decision) |
 | `enablePricingFY2027` | mutation | n/a | Render's own FY2027 price-list migration opt-in; bex prices are ADR030's |
 | `GetBAALink` | mutation | gap | Render's HIPAA-enabled workspaces have no bex disposition yet: `w7/071` (parked on the user's build-or-non-goal decision) |
-| `hasStripeConnection` | query | gap | `w1/150` (Render's Stripe integrations: the Stripe account connection and Stripe's agentic account link) |
+| `hasStripeConnection` | query | n/a | Render's SQL Insights Stripe App, which synced a Stripe account's data into a Render Postgres database. Render retired it: render.com/docs/stripe redirects to the docs index (by 2026-01-28), its Stripe App Marketplace page sends visitors to the Marketplace home, and Render's listing there is now its Stripe Projects app, which has no access to Stripe data. The connect page only completes a connection that app started, so a new customer cannot reach it (`w1/150`) |
 | `HIPAAStartBAAFlow` | mutation | gap | Render's HIPAA-enabled workspaces have no bex disposition yet: `w7/071` (parked on the user's build-or-non-goal decision) |
 | `includedUsageOwner` | query | matched | ADR018 § Billing & invoicing: Billing page: plan, payment method, accrued charges, included usage |
 | `invoice` | query | matched | ADR018 § Billing & invoicing: Invoices for past months: list, PDF, Pay Now |
