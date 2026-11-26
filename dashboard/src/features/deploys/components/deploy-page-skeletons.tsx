@@ -1,4 +1,9 @@
 import { Skeleton } from "@/common/components/ui/skeleton";
+import {
+  ReservedButton,
+  ReservedText,
+} from "@/common/components/reserved-skeleton";
+import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils";
 import {
   DEPLOY_FACT_CLASS,
@@ -137,31 +142,43 @@ export function DeployBackLinkSkeleton() {
 
 // The rollback page's buttons grow to the 44px touch target wherever the
 // touch-region rule does (below 64rem, or a coarse pointer).
-const ROLLBACK_BUTTON = "h-9 max-lg:h-11 pointer-coarse:h-11";
+const ROLLBACK_BUTTON = "max-lg:h-11 pointer-coarse:h-11";
 
 /**
  * The Confirm Rollback section while the page loads (w1/m646): the block's
  * title and lead over the comparison's 9.25rem frame, then the two buttons
- * and the gate status line, at the ready section's spacing. The notices
- * depend on the service, so none is reserved.
+ * and the gate status line, at the ready section's spacing. The title, lead
+ * and buttons are the ready page's own copy laid out invisibly, so the lead
+ * wraps onto a second line on a phone exactly where the ready one does. The
+ * notices depend on the service, so none is reserved.
  */
 export function DeployRollbackSectionSkeleton() {
+  const { t } = useTranslations();
   return (
     <div className="space-y-4">
       <div className="rounded-md border bg-card">
         <div className="space-y-1 border-b px-5 py-4">
-          <div className="flex h-6 items-center">
-            <Skeleton className="h-4 w-36" />
-          </div>
-          <div className="flex h-5 items-center">
-            <Skeleton className="h-3.5 w-full max-w-sm" />
-          </div>
+          <p className="relative text-base font-semibold">
+            <ReservedText>{t("deploys.rollbackTitle")}</ReservedText>
+          </p>
+          <p className="relative text-sm">
+            <ReservedText>
+              {t("deploys.rollbackLead")}{" "}
+              <span className="font-medium">
+                {t("deploys.rollbackLearnMore")}
+              </span>
+            </ReservedText>
+          </p>
         </div>
         <div className="min-h-[9.25rem]" />
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <Skeleton className={`w-44 ${ROLLBACK_BUTTON}`} />
-        <Skeleton className={`w-20 ${ROLLBACK_BUTTON}`} />
+        <ReservedButton variant="default" className={ROLLBACK_BUTTON}>
+          {t("deploys.rollbackConfirm")}
+        </ReservedButton>
+        <ReservedButton variant="outline" className={ROLLBACK_BUTTON}>
+          {t("deploys.rollbackCancel")}
+        </ReservedButton>
       </div>
       <div className="min-h-5" />
     </div>

@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { DeployRollback } from "../deploy-rollback";
 import { RollbackComparisonBody } from "../rollback-comparison";
+import { DeployRollbackSectionSkeleton } from "../deploy-page-skeletons";
 import { toResourceSnapshot } from "@/features/capabilities/lib/resource-actions";
 import { ServiceBaseProvider } from "@/features/services/lib/service-base";
 import { codedGraphQLError } from "@/test/mocks/apollo";
@@ -595,5 +596,51 @@ describe("DeployRollback", () => {
     expect(what.parentElement).toHaveTextContent(
       "Changes made to redirects, rewrites, and headers will not be rolled back.",
     );
+  });
+});
+
+describe("DeployRollbackSectionSkeleton", () => {
+  // w1/m646 t005: on a 390 px phone the ready lead wraps onto a second line,
+  // which the skeleton's one-line bar did not reserve, so the comparison and
+  // the buttons dropped 20 px when the page landed. The skeleton lays out the
+  // ready section's own copy, at the ready type, under its bars.
+  it("reserves the ready section's own title, lead and buttons", async () => {
+    renderPage();
+    const section = await screen.findByRole("region", {
+      name: "Confirm Rollback",
+    });
+    const readyTitle = within(section).getByRole("heading", { level: 2 });
+    const readyLead = readyTitle.nextElementSibling!;
+    const readyLink = within(section).getByRole("link", {
+      name: "Learn more.",
+    });
+    const readyButtons = within(section).getAllByRole("button");
+
+    const { container } = render(<DeployRollbackSectionSkeleton />);
+    const [title, lead] = container.querySelectorAll(".border-b > p");
+    const copy = (el: Element) => el.querySelector(":scope > .invisible");
+
+    expect(copy(title)?.textContent).toBe(readyTitle.textContent);
+    expect(title).toHaveClass("relative", "text-base", "font-semibold");
+    expect(readyTitle).toHaveClass("text-base", "font-semibold");
+
+    expect(copy(lead)?.textContent).toBe(readyLead.textContent);
+    expect(lead).toHaveClass("relative", "text-sm");
+    expect(readyLead).toHaveClass("text-sm");
+    expect(readyLink).toHaveClass("font-medium");
+    expect(
+      within(copy(lead) as HTMLElement).getByText("Learn more."),
+    ).toHaveClass("font-medium");
+
+    const boxes = container.querySelectorAll(".flex-wrap > span > .invisible");
+    expect([...boxes].map((box) => box.textContent)).toEqual(
+      readyButtons.map((button) => button.textContent),
+    );
+    readyButtons.forEach((button, i) => {
+      for (const name of button.classList) {
+        expect(boxes[i]).toHaveClass(name);
+      }
+      expect(boxes[i]).toHaveClass("max-lg:h-11", "pointer-coarse:h-11");
+    });
   });
 });
