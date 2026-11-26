@@ -497,6 +497,8 @@ On 2026-11-16 the corpus held 181 files. 166 were valid. 6 were refused for prev
 
 Nothing had been running the opt-in test, which is why the refusal went unseen. Since w33/001, the `render-examples` job in `.github/workflows/render-schema-drift.yml` fetches the corpus and runs the test every Monday, beside the schema drift check. During the fetch, only a 404 means a repository has no Blueprint. Any other fetch failure fails the job, so a partial corpus never passes.
 
+**Validation is not deployment (w6/m644, 2026-11-26).** The guard validates with a fake client, so it does not apply the App CRD's schema: it reads `pg_pinecone_render` as valid (170 of 185 files on 2026-11-25), while production's server-side dry run refuses its 4,717-byte `dockerCommand` against the 4096-byte cap (w6/183). Whether a template runs is measured on demand, not weekly: `scripts/render-examples-live.sh <repo>` creates the Blueprint from the repository in a workspace, waits for every first deploy, runs the template's documented check and deletes what it created. Its first run, of 20 templates on production pin `2bd6e1f415d3`, is [render-examples-live.md](render-artifacts/render-examples-live.md): 12 went live, four fail on Render too, and four are filed as w6/183, w6/184 and w6/186.
+
 Through dev-5's REST `POST /v1/blueprints/validate`, the unmodified `retool` and `redash` templates validate. `langfuse4-template`, `hasura-graphql` and `zulip` now fail only on the reserved `PORT`, and `saleor` only on a `RENDER_*` `fromService` reference.
 
 ### Preview opt-outs (w8/203, 2026-10-28)

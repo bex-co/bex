@@ -359,6 +359,10 @@ jobs:
         run: bash scripts/render-skills-drift.test.sh
       - name: Render examples corpus fetch unit tests
         run: bash scripts/render-examples-corpus.test.sh
+      # w6/m644: outcome and stage reporting, the plan guard that never approves a
+      # plan touching an existing resource, and cleanup after every failure.
+      - name: Render examples live run unit tests
+        run: bash scripts/render-examples-live.test.sh
       - name: Verified CI download fallback unit tests
         run: bash scripts/ci-fetch-verified.test.sh
       - name: dev-N harness derivation + isolation unit tests
@@ -389,6 +393,7 @@ jobs:
           scripts/render-changelog-drift.sh scripts/render-changelog-drift.test.sh
           scripts/render-skills-drift.sh scripts/render-skills-drift.test.sh
           scripts/render-examples-corpus.sh scripts/render-examples-corpus.test.sh
+          scripts/render-examples-live.sh scripts/render-examples-live.test.sh
           scripts/dev-env.sh scripts/dev-env.test.sh
           scripts/sandbox-docker-spike.sh scripts/sandbox-docker-spike.test.sh
           scripts/fetch-app-kubeconfig.test.sh
