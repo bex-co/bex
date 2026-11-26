@@ -1,6 +1,6 @@
 # w1 · m657 — An Org Owner mints audit-log API keys, and the org Members page shows each member's login methods and 2FA, as on Render
 
-**Worker:** worker1 **Goal:** an Org Owner creates, lists and revokes organization API keys that read the audit logs of the org and of every workspace in it, and nothing else; and the org Members page's **View details** shows a member's workspaces, the login methods they have signed in with and whether 2FA is on, as Render's does. **Status:** todo (t001–t006 and t008–t010 done, shipped in `3926ec646c`; t007 walked on dev-1 and on production, where two loading frames and a refusal code were fixed; their production check next, then t011)
+**Worker:** worker1 **Goal:** an Org Owner creates, lists and revokes organization API keys that read the audit logs of the org and of every workspace in it, and nothing else; and the org Members page's **View details** shows a member's workspaces, the login methods they have signed in with and whether 2FA is on, as Render's does. **Status:** blocked (t001–t006 and t008–t010 done, shipped in `3926ec646c`; t007 walked on dev-1 and on production, where two loading frames and a refusal code were fixed in `68b0560927`; t007's check of those frames waits for a production pin carrying `68b0560927`, then t011)
 
 ## Tasks (in order)
 
@@ -78,4 +78,4 @@ Walked as the QA user on a Scale fixture org (disposable) with a second identity
 
 - **DoD 1–4 hold**: minting, listing, using and revoking keys over GraphQL and in the browser, the quota and rate refusals with Render's text, the Member's disabled section, the key's reads and refusals on REST, GraphQL and MCP, the org's end revoking its keys, and View details against each identity's credentials, TOTP included.
 - **Fixed here**: the Audit Log API Keys section and View details each showed a one-line loading text while their own read was in flight, so the card and the dialog grew when the answer landed (DoD 5); both now draw the ready state's frame. A Member was told the org was not found on the key operations; they now get 403 `FORBIDDEN`, as ADR115 D11 says.
-- **Filed**: [w1/169](../169.md), the "needs: none" wording of an org key's refusal on a route that needs no permission.
+- **Filed**: [w1/169](../../169.md), the "needs: none" wording of an org key's refusal on a route that needs no permission.
