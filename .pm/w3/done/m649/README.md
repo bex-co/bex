@@ -1,6 +1,6 @@
 # w3 · m649 — A Key Value instance's sidebar and pages are Render's: Info, Logs, Metrics, each at its own URL
 
-**Worker:** worker3 **Goal:** a Key Value instance's pages swap the workspace nav for a resource sidebar reading Info / Monitor: Logs, Metrics, as Render's does; each entry is its own URL under `/keyvalue/<id>`, so Render's `/r/<id>/<page>` links open the page they name; the Overview/Metrics/Logs tab bar and the Overview's section rail are gone. **Status:** blocked (t001–t005 and t007–t009 done; t006 walked locally, its production walk waits for a pin carrying `b0bec0ccb3`)
+**Worker:** worker3 **Goal:** a Key Value instance's pages swap the workspace nav for a resource sidebar reading Info / Monitor: Logs, Metrics, as Render's does; each entry is its own URL under `/keyvalue/<id>`, so Render's `/r/<id>/<page>` links open the page they name; the Overview/Metrics/Logs tab bar and the Overview's section rail are gone. **Status:** done (every task done; t006 walked locally and on production pin `11695fb886cb`)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | Each page is its own route under one layout: Info at the bare URL and `/info`, then `/logs` and `/metrics` — **DONE** | 1h | t001 |
 | [t004](done/t004.md) | Old URLs and in-app links open the page they name: `?tab=logs`, `?tab=metrics`, the Overview's anchors, Render's `/plan` and `#compute` — **DONE** | 40m | t003 |
 | [t005](done/t005.md) | Each page's pending frame equals its ready page at 1440 and 390 — **DONE** | 30m | t002, t003 |
-| [t006](t006.md) | Verify in a real browser at 1440 and 390, locally and on production | 45m | t004, t005 |
+| [t006](done/t006.md) | Verify in a real browser at 1440 and 390, locally and on production — **DONE** | 45m | t004, t005 |
 | [t007](done/t007.md) | Render parity — **DONE** | 25m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 40m | t007 |
-| [t010](t010.md) | Closeout | 10m | t008, t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t008, t009 |
 
 Total: **10 tasks, about 5h35m**.
 
@@ -72,6 +72,21 @@ The dashboard ran from this tree under Vite on `:5649` against `local-bex` on `:
 
 The browser logged no page error.
 
+### Production (2026-11-26, t006 step 2, pin `11695fb886cb`)
+
+Pin `11695fb886cb` (`ec6211f2ca`, carries `b0bec0ccb3`): the `dashboard` pod ran `bex-dashboard@sha256:6c65a6a43b12…` and both `bex-api` pods `bex-operator@sha256:f031439853c2…`, the pin's digests. Walked 16:35–16:47 UTC as the QA user (`scripts/qa-login.sh`) in Google Chrome headless through `playwright-core` 1.65.1, `en-US`, at 1440×900 and 390×900 (the 390 sidebar in its drawer). In `bex-canary`, created over REST: the Key Value `qa-20261126-m649-kv` (disposable, `red-dc45vh9ks65s73c5cgcg`, Starter, `oregon`, private), whose `dashboardUrl` REST answered as `https://dashboard.bex.co/r/red-dc45vh9ks65s73c5cgcg`.
+
+| Point | Seen at 1440 and 390 | Verdict |
+| --- | --- | --- |
+| Sidebar | back link Dashboard (`/`), `qa-20261126-m649-kv`, Info / Monitor: Logs, Metrics; exactly the open page highlighted on the bare URL, `/info`, `/logs` and `/metrics`. The workspace's sidebar on `/` and `/new/redis` is unchanged | holds |
+| Pages | the bare URL and `/info` on Info, its seven cards in t001's order (Details, Maxmemory policy, Persistence mode, plan, Connections, Networking, danger zone); `/logs` and `/metrics`; each with its `h2` and its title ("Info ・ qa-20261126-m649-kv ・ Key Value ・ bex Dashboard", likewise Logs and Metrics); no tab bar, no section rail, no sideways scroll at 390 | holds |
+| Old links | `?tab=logs&range=24h&text=ready` on `/logs?range=24h&text=ready`; `?tab=metrics&range=7d` on `/metrics?range=7d`; each of the seven anchors stayed on Info with its hash, the card 24 px under the top of the scroll area, or the page at its end for the lower cards (Networking and the danger zone, Connections too at 1440) | holds |
+| Render's URLs and `dashboardUrl` | `/r/<id>` (the `dashboardUrl`) and `/r/<id>/info` on Info; `/r/<id>/logs?range=24h` and `/metrics?range=7d` on their pages, query kept; `/r/<id>/plan` on `/keyvalue/<id>#plan` and `/r/<id>/info#compute` on Info, both with the plan card 24 px under the top; `/metrics/7d` on `/metrics`; an unknown sub-path on Info | holds |
+| In-app links | global search's result for the instance opens `/keyvalue/<id>`. On `/logs?range=24h&text=Ready`, the menu of Valkey's "Ready to accept connections tcp" line offers View in context at `/keyvalue/<id>/logs?range=custom&rangeStart=…&rangeEnd=…&contextLine=…` (the line's 20 minutes) in a new tab, as every log page's row menu does; it opens Logs over that window with exactly that line marked, in view at 1440. At 390 the marked line is the window's last, so the log box scrolls to its end, and the box ends 37 px under the fold: the custom range's row makes the toolbar taller and the page scrolls 53 px, as a Postgres's Logs page at 390 does | holds |
+| Pending against ready | the `KeyValue` read held after a client navigation from `/`: the header 61/61 px and the `h2` at the same place on every page at both widths; Details 351/351 (534/534 at 390), Maxmemory policy 188/188 (268/268), Persistence mode 208/208 (288/288), Connections 182/182 (250/250), the danger zone 36/36 (84/84). Data decided the rest, as locally: the plan card 665/743 (871/1287), the reason lines under tiers the instance cannot move to; Networking 222/206 (414/382), the hint following the store's access; the Logs toolbar block 596/572 (740/716), the status line the frame reserves for a read with no lines; Metrics 1390/1410 (1090/1110), Disk Activity's read/write legend once it has data, as w3/m641 measured for Postgres's two-series charts | holds where data does not decide |
+
+The browser logged no page error and no console error. Not walked on production: a member denied `can_view_logs` or `can_view_activity`, which `bex-canary` has none of; t002's sidebar tests cover both denials. The instance was deleted after the walk (REST `DELETE` 204, then 404) and the QA session revoked (`qa-login.sh --logout`, then REST 401).
+
 ## Definition of done
 
 1. A Key Value instance's pages show a resource sidebar, at 1440 and in the 390 drawer: the back link, the instance's name, then Info / Monitor: Logs, Metrics, with the open page highlighted. Logs is left out for a member denied `can_view_logs` and Metrics for one denied `can_view_activity`, and a group left empty is dropped. Every other page's sidebar is unchanged.
@@ -84,7 +99,7 @@ The browser logged no page error.
 
 ## Source + Goal linkage
 
-- **Source:** promoted from [w3/115](../../done/115.md) on 2026-11-25 by `/loopx w3`; the note was filed by w3/m641 t007, which gave Postgres the same sidebar and pages ([done/m641](../../done/m641/README.md)) and left Key Value out of scope. The note's ~3h estimate already spanned a nav model, a sidebar, a layout with child routes, redirects, pending frames and docs, more than one sitting.
+- **Source:** promoted from [w3/115](../115.md) on 2026-11-25 by `/loopx w3`; the note was filed by w3/m641 t007, which gave Postgres the same sidebar and pages ([done/m641](../m641/README.md)) and left Key Value out of scope. The note's ~3h estimate already spanned a nav model, a sidebar, a layout with child routes, redirects, pending frames and docs, more than one sitting.
 - **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). A Key Value instance's pages and URLs are customer-facing behavior, and Render-shaped `/r/<id>/…` links are a contract bex already accepts through its alias routes and emits as `dashboardUrl`.
 - **Expected outcome:** someone who knows Render's Key Value pages finds the same sidebar, the same pages and the same URLs; a pasted `/r/<id>/logs` opens Logs; the two datastores' pages share one shape.
 - **Why now:** Postgres just moved to Render's pages (w3/m641, walked on production pin `cdaa0a248615`), so the two datastore detail pages now disagree with each other as well as with Render, and the Postgres code is fresh to copy. `dashboard-routes.md` names the Key Value page as the one consolidated page left.
@@ -93,3 +108,8 @@ The browser logged no page error.
 ## Parked (2026-11-25)
 
 Shipped in `b0bec0ccb3`. Everything but the production walk is done: t006 steps 2–3 walk production as the QA user in `bex-canary` with a Key Value instance created for it (disposable) at 1440 and 390 once the newest `chore(deploy): pin platform images to <sha>` carries `b0bec0ccb3`, then t010 closes the milestone if every point holds. Nothing is needed from the user.
+
+## Unblock record
+
+- **2026-11-26, `/loopx w3` (verified evidence, no user decision):** the gate, pin must carry `b0bec0ccb3`, holds. The newest pin on `origin/main` is `ec6211f2ca` `chore(deploy): pin platform images to 11695fb886cb`, and `git merge-base --is-ancestor b0bec0ccb3 11695fb886cb` exits 0. Affects t006 (steps 2–3) and t010. Next: t006 walks every point of definition of done items 1–5 on production as the QA user in `bex-canary` with a Key Value instance created for it (disposable) at 1440 and 390 and records it under § Live walk; t010 closes the milestone if every point holds. No gate remains.
+- **2026-11-26, `/loopx w3`, closed:** t006 step 2 held every point of definition of done items 1–5 on production pin `11695fb886cb` at 1440 and 390 (§ Live walk › Production), with the instance deleted and the QA session revoked. Every point of the definition of done holds; t010 moved the milestone to `done/`.
