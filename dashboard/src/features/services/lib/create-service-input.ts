@@ -5,6 +5,7 @@ import { isValidCron } from "@/features/services/lib/cron";
 import type { en } from "@/i18n";
 import {
   buildFilterPatternError,
+  healthCheckPathError,
   relativePathError,
   rootDirError,
 } from "@/features/services/lib/build-settings-validation";
@@ -17,7 +18,10 @@ import {
   secretFilesOverLimit,
 } from "@/features/services/lib/environment-draft";
 import type { ServiceType } from "@/features/services/lib/create-context";
-import { servesHttp } from "@/features/services/lib/service-type";
+import {
+  isWebServiceType,
+  servesHttp,
+} from "@/features/services/lib/service-type";
 import { DEFAULT_SERVICE_PORT, parsePort } from "@/features/services/lib/port";
 import type { GitRuntime } from "@/features/services/lib/runtime";
 import type { SourceTab } from "@/features/services/components/service-source-picker";
@@ -54,6 +58,8 @@ export interface NewServiceForm {
   buildCommand: string;
   startCommand: string;
   dockerfilePath: string;
+  /** Docker Build Context Directory, relative to the Root Directory (Docker builds). */
+  dockerContext: string;
   staticBuildCommand: string;
   publishPath: string;
   buildFilterPaths: string[];
@@ -68,6 +74,10 @@ export interface NewServiceForm {
   autoDeploy: boolean;
   schedule: string;
   command: string;
+  /** Health Check Path draft (web services). */
+  healthCheckPath: string;
+  /** Pre-Deploy Command draft (paid web, private and worker services). */
+  preDeployCommand: string;
   envVars: EnvVarEntry[];
   secretFiles: SecretFileEntry[];
   projectId: string | null;
@@ -114,6 +124,24 @@ export interface BuildShape {
    * with no port.
    */
   imagePorts: boolean;
+  /**
+   * Render's Health Check Path: a web service of any source. Private services
+   * get Render's TCP check, and the other types have none (bex-api refuses a
+   * path for them, `errHealthCheckPathNotApplicable`).
+   */
+  showHealthCheckPath: boolean;
+  /**
+   * Render's Pre-Deploy Command: a web service, private service or background
+   * worker of any source. A cron job and a static site run no pre-deploy step.
+   */
+  showPreDeployCommand: boolean;
+  /**
+   * The Pre-Deploy Command is shown but disabled: Render sells it on paid
+   * plans only ("available for paid web services, private services, and
+   * background workers", render.com/docs/deploys), and bex-api refuses one on
+   * Free (`errPreDeployCommandFreePlan`). Its draft is kept, never sent.
+   */
+  preDeployPaidOnly: boolean;
 }
 
 /**
@@ -153,6 +181,7 @@ export function buildShape(form: NewServiceForm): BuildShape {
   const isGitSource = form.tab === "github" || form.tab === "git";
   const isBuildableGit = isGitSource && !isStaticType;
   const isDockerBuild = isBuildableGit && form.runtime === "docker";
+  const showPreDeployCommand = !isCronType && !isStaticType;
   return {
     isCronType,
     isStaticType,
@@ -176,6 +205,9 @@ export function buildShape(form: NewServiceForm): BuildShape {
       isImageSource,
       isContainerBuildSource,
     ),
+    showHealthCheckPath: isWebServiceType(form.serviceType),
+    showPreDeployCommand,
+    preDeployPaidOnly: showPreDeployCommand && form.plan === "free",
   };
 }
 
@@ -224,7 +256,9 @@ export function submittableSecretFiles(
 export interface CreateFormErrors {
   rootDir?: keyof typeof en;
   dockerfilePath?: keyof typeof en;
+  dockerContext?: keyof typeof en;
   publishPath?: keyof typeof en;
+  healthCheckPath?: keyof typeof en;
   /** An invalid Build Filter pattern in either list holds Submit. */
   buildFilter: boolean;
   /** The row index of an environment variable whose value the server refuses. */
@@ -246,6 +280,11 @@ export function createFormErrors(form: NewServiceForm): CreateFormErrors {
     errors.rootDir = rootDirError(form.rootDir) ?? undefined;
   if (shape.isDockerBuild) {
     errors.dockerfilePath = relativePathError(form.dockerfilePath) ?? undefined;
+    errors.dockerContext = rootDirError(form.dockerContext) ?? undefined;
+  }
+  if (shape.showHealthCheckPath) {
+    errors.healthCheckPath =
+      healthCheckPathError(form.healthCheckPath) ?? undefined;
   }
   if (shape.isStaticType) {
     errors.publishPath =
@@ -254,7 +293,9 @@ export function createFormErrors(form: NewServiceForm): CreateFormErrors {
         repoBacked: shape.isGitSource,
       }) ?? undefined;
   }
-  if (shape.isStaticBuild) {
+  // Render's Build Filters gate a repository push: every repository-backed
+  // type has them, an image or a Build Source has no push to filter.
+  if (shape.isGitSource) {
     errors.buildFilter = [
       ...form.buildFilterPaths,
       ...form.buildFilterIgnored,
@@ -326,6 +367,8 @@ export function isSubmittable(form: NewServiceForm): boolean {
     Object.keys(fieldErrors.envValues).length === 0 &&
     !fieldErrors.rootDir &&
     !fieldErrors.dockerfilePath &&
+    !fieldErrors.dockerContext &&
+    !fieldErrors.healthCheckPath &&
     !fieldErrors.publishPath &&
     !fieldErrors.buildFilter &&
     !fieldErrors.secretFilesLimit &&
@@ -417,8 +460,9 @@ export function buildCreateServiceInput(
         ? optionalCommand(form.command)
         : undefined,
     dockerfilePath: shape.isDockerBuild ? set(form.dockerfilePath) : undefined,
+    dockerContext: shape.isDockerBuild ? set(form.dockerContext) : undefined,
     buildFilter:
-      shape.isStaticBuild && (paths.length || ignoredPaths.length)
+      shape.isGitSource && (paths.length || ignoredPaths.length)
         ? { paths, ignoredPaths }
         : undefined,
     plan: shape.showPlan ? form.plan || undefined : undefined,
@@ -439,6 +483,13 @@ export function buildCreateServiceInput(
     port: shape.showPort
       ? (parsePort(portDraft(form, shape)) ?? undefined)
       : undefined,
+    healthCheckPath: shape.showHealthCheckPath
+      ? set(form.healthCheckPath)
+      : undefined,
+    preDeployCommand:
+      shape.showPreDeployCommand && !shape.preDeployPaidOnly
+        ? optionalCommand(form.preDeployCommand)
+        : undefined,
     envVars: submittableEnvVars(form.envVars),
     secretFiles: submittableSecretFiles(form.secretFiles),
   };

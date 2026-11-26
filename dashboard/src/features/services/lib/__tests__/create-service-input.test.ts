@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCreateServiceInput,
+  buildShape,
   createFormErrors,
   isSubmittable,
   type NewServiceForm,
@@ -22,6 +23,7 @@ function form(overrides: Partial<NewServiceForm> = {}): NewServiceForm {
     buildCommand: "yarn build",
     startCommand: "yarn start",
     dockerfilePath: "./Dockerfile",
+    dockerContext: "",
     staticBuildCommand: "",
     publishPath: "",
     buildFilterPaths: [],
@@ -31,6 +33,8 @@ function form(overrides: Partial<NewServiceForm> = {}): NewServiceForm {
     autoDeploy: true,
     schedule: "",
     command: "",
+    healthCheckPath: "",
+    preDeployCommand: "",
     envVars: [],
     secretFiles: [],
     projectId: null,
@@ -934,5 +938,187 @@ describe("Build Source service creation (w2/m612 t003)", () => {
     });
     expect(isSubmittable(f)).toBe(false);
     expect(buildCreateServiceInput(f).buildSourceId).toBeUndefined();
+  });
+});
+
+// w4/m651: the Advanced card's Health Check Path, Pre-Deploy Command, Docker
+// Build Context Directory and Build Filters, gated as Render's create form
+// gates them (docs/render-artifacts/new-service-wizard.md § The Advanced
+// section) and as bex-api refuses them.
+describe("Advanced fields at create (w4/m651)", () => {
+  const imageForm = (overrides: Partial<NewServiceForm> = {}) =>
+    form({ tab: "image", image: "nginx:alpine", ...overrides });
+  const buildSourceForm = (overrides: Partial<NewServiceForm> = {}) =>
+    form({
+      tab: "build-source",
+      buildSourceId: "bds-image",
+      selectedBuildSource: {
+        id: "bds-image",
+        name: "Prebuilt Image",
+        source: "ghcr.io/acme/api:1",
+        kind: "image",
+        branch: null,
+        region: null,
+        nativeRuntime: null,
+      },
+      ...overrides,
+    });
+
+  it("sends a web service's Health Check Path, from any source, and never another type's", () => {
+    for (const f of [
+      form({ healthCheckPath: "/healthz" }),
+      imageForm({ healthCheckPath: "/healthz" }),
+      buildSourceForm({ healthCheckPath: "/healthz" }),
+    ]) {
+      expect(buildCreateServiceInput(f).healthCheckPath).toBe("/healthz");
+    }
+    for (const serviceType of [
+      "private_service",
+      "background_worker",
+      "cron_job",
+      "static_site",
+    ] as const) {
+      const input = buildCreateServiceInput(
+        form({
+          serviceType,
+          healthCheckPath: "/healthz",
+          schedule: "*/5 * * * *",
+          publishPath: "dist",
+        }),
+      );
+      expect(input.healthCheckPath).toBeUndefined();
+    }
+  });
+
+  it("sends the Pre-Deploy Command of a paid web, private or worker service, from any source", () => {
+    for (const serviceType of [
+      "web_service",
+      "private_service",
+      "background_worker",
+    ] as const) {
+      for (const f of [
+        form({ serviceType, preDeployCommand: "npm run migrate" }),
+        imageForm({ serviceType, preDeployCommand: "npm run migrate" }),
+        buildSourceForm({ serviceType, preDeployCommand: "npm run migrate" }),
+      ]) {
+        expect(buildCreateServiceInput(f).preDeployCommand).toBe(
+          "npm run migrate",
+        );
+      }
+    }
+  });
+
+  it("never sends a Pre-Deploy Command for a cron job, a static site or a Free plan", () => {
+    const cron = form({
+      serviceType: "cron_job",
+      schedule: "*/5 * * * *",
+      command: "node job.js",
+      preDeployCommand: "npm run migrate",
+    });
+    const site = form({
+      serviceType: "static_site",
+      publishPath: "dist",
+      preDeployCommand: "npm run migrate",
+    });
+    const free = form({ plan: "free", preDeployCommand: "npm run migrate" });
+    for (const f of [cron, site, free]) {
+      expect(buildCreateServiceInput(f).preDeployCommand).toBeUndefined();
+    }
+    // Free disables the field but still lets the service deploy.
+    expect(buildShape(free).preDeployPaidOnly).toBe(true);
+    expect(isSubmittable(free)).toBe(true);
+    // The kept draft ships again once a paid plan is chosen.
+    expect(
+      buildCreateServiceInput({ ...free, plan: "starter" }).preDeployCommand,
+    ).toBe("npm run migrate");
+  });
+
+  it("omits blank values, and keeps a command's bytes as the build and start commands do", () => {
+    const blank = buildCreateServiceInput(
+      form({ healthCheckPath: "   ", preDeployCommand: " \t " }),
+    );
+    expect(blank.healthCheckPath).toBeUndefined();
+    expect(blank.preDeployCommand).toBeUndefined();
+
+    const set = buildCreateServiceInput(
+      form({
+        healthCheckPath: " /healthz ",
+        preDeployCommand: "printf '%s' tail\\ ",
+      }),
+    );
+    expect(set.healthCheckPath).toBe("/healthz");
+    expect(set.preDeployCommand).toBe("printf '%s' tail\\ ");
+  });
+
+  it("holds Submit on a Health Check Path that does not start with /, with Settings' reason", () => {
+    const bad = form({ healthCheckPath: "healthz" });
+    expect(createFormErrors(bad).healthCheckPath).toBe(
+      "services.healthCheckPathSlash",
+    );
+    expect(isSubmittable(bad)).toBe(false);
+    expect(isSubmittable(form({ healthCheckPath: "/healthz" }))).toBe(true);
+    // A draft left under a type with no HTTP check is never judged.
+    const worker = form({
+      serviceType: "background_worker",
+      healthCheckPath: "healthz",
+    });
+    expect(createFormErrors(worker).healthCheckPath).toBeUndefined();
+    expect(isSubmittable(worker)).toBe(true);
+  });
+
+  it("sends a Docker build's Docker Build Context Directory and refuses one that leaves the repository", () => {
+    const docker = form({ runtime: "docker", dockerContext: " ./server " });
+    expect(buildCreateServiceInput(docker).dockerContext).toBe("./server");
+    expect(
+      buildCreateServiceInput({ ...docker, dockerContext: "" }).dockerContext,
+    ).toBeUndefined();
+    expect(
+      buildCreateServiceInput({ ...docker, runtime: "node" }).dockerContext,
+    ).toBeUndefined();
+    expect(
+      buildCreateServiceInput(imageForm({ dockerContext: "server" }))
+        .dockerContext,
+    ).toBeUndefined();
+
+    const escaping = { ...docker, dockerContext: "../other" };
+    expect(createFormErrors(escaping).dockerContext).toBe(
+      "services.buildPathDotDot",
+    );
+    expect(isSubmittable(escaping)).toBe(false);
+    // Not judged once the build is native again.
+    expect(isSubmittable({ ...escaping, runtime: "node" })).toBe(true);
+  });
+
+  it("sends Build Filters for every repository-backed type, and none for an image or a Build Source", () => {
+    const filters = {
+      buildFilterPaths: ["src/**"],
+      buildFilterIgnored: ["docs/**"],
+    };
+    for (const f of [
+      form(filters),
+      form({ ...filters, serviceType: "private_service" }),
+      form({ ...filters, serviceType: "background_worker" }),
+      form({
+        ...filters,
+        serviceType: "cron_job",
+        schedule: "*/5 * * * *",
+        command: "node job.js",
+      }),
+      form({ ...filters, serviceType: "static_site", publishPath: "dist" }),
+    ]) {
+      expect(buildCreateServiceInput(f).buildFilter).toEqual({
+        paths: ["src/**"],
+        ignoredPaths: ["docs/**"],
+      });
+    }
+    expect(buildCreateServiceInput(imageForm(filters)).buildFilter).toBe(
+      undefined,
+    );
+    expect(buildCreateServiceInput(buildSourceForm(filters)).buildFilter).toBe(
+      undefined,
+    );
+    // A bad pattern holds a web service's Submit too, and only where shown.
+    expect(isSubmittable(form({ buildFilterPaths: ["["] }))).toBe(false);
+    expect(isSubmittable(imageForm({ buildFilterPaths: ["["] }))).toBe(true);
   });
 });

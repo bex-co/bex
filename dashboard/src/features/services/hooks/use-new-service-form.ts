@@ -37,6 +37,7 @@ interface PlainFields {
   /** The Public Git tab's Branch, kept for the URL it was typed against. */
   gitBranchDraft: { gitUrl: string; branch: string } | null;
   rootDir: string;
+  dockerContext: string;
   planOverride: string | null;
   port: string | null;
   autoDeploy: boolean;
@@ -46,6 +47,8 @@ interface PlainFields {
   staticBuildCommand: string;
   buildFilterPaths: string[];
   buildFilterIgnored: string[];
+  healthCheckPath: string;
+  preDeployCommand: string;
   envVars: EnvVarEntry[];
   secretFiles: SecretFileEntry[];
   projectId: string | null;
@@ -79,6 +82,7 @@ export function useNewServiceForm(search: NewServiceSearch) {
     branch: "",
     gitBranchDraft: null,
     rootDir: "",
+    dockerContext: "",
     planOverride: null,
     port: null,
     autoDeploy: true,
@@ -91,6 +95,8 @@ export function useNewServiceForm(search: NewServiceSearch) {
     staticBuildCommand: "",
     buildFilterPaths: [],
     buildFilterIgnored: [],
+    healthCheckPath: "",
+    preDeployCommand: "",
     envVars: [],
     secretFiles: [],
     projectId: search.projectId ?? null,
@@ -118,8 +124,7 @@ export function useNewServiceForm(search: NewServiceSearch) {
 
   const selectBuildSource = useCallback(
     (id: string) => {
-      const next =
-        buildSourcesState.sources.find((s) => s.id === id) ?? null;
+      const next = buildSourcesState.sources.find((s) => s.id === id) ?? null;
       set((current) => {
         const patch: Partial<PlainFields> = { buildSourceId: id };
         if (next?.nativeRuntime) {

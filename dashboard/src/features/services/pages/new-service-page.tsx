@@ -164,7 +164,9 @@ export function NewServicePage({
   // An invalid field inside Advanced holds the card open, so the reason
   // Deploy is held is never folded away.
   const advancedInvalid = Boolean(
+    fieldErrors.healthCheckPath ||
     fieldErrors.dockerfilePath ||
+    fieldErrors.dockerContext ||
     fieldErrors.buildFilter ||
     fieldErrors.secretFilesLimit ||
     secretFilesInvalid(form),
@@ -648,30 +650,38 @@ export function NewServicePage({
                 onChange={(envVars) => set({ envVars })}
               />
 
+              {/* Render's Advanced card, in its order (docs/render-artifacts/
+                  new-service-wizard.md § The Advanced section): Secret Files,
+                  Health Check Path, the Docker build's settings, Docker
+                  Command, Pre-Deploy Command, Auto-Deploy, Build Filters. */}
               <CreateAdvanced forceOpen={advancedInvalid}>
                 <CreateSecretFileEditor
                   rows={form.secretFiles}
                   onChange={(secretFiles) => set({ secretFiles })}
                 />
 
-                {shape.isBuildableGit && !shape.isNativeBuild ? (
+                {shape.showHealthCheckPath ? (
+                  <CreateTextField
+                    id="svc-health-check-path"
+                    label={t("services.settingsHealthCheckPath")}
+                    optional
+                    mono
+                    value={form.healthCheckPath}
+                    onChange={(healthCheckPath) => set({ healthCheckPath })}
+                    placeholder={t(
+                      "services.settingsHealthCheckPathPlaceholder",
+                    )}
+                    description={t("services.settingsHealthCheckPathHint")}
+                    error={
+                      fieldErrors.healthCheckPath
+                        ? t(fieldErrors.healthCheckPath)
+                        : undefined
+                    }
+                  />
+                ) : null}
+
+                {shape.isDockerBuild ? (
                   <>
-                    <CreateTextField
-                      id="svc-dockerfile-path"
-                      label={t("services.createFieldDockerfilePath")}
-                      mono
-                      value={form.dockerfilePath}
-                      onChange={build.setDockerfilePath}
-                      placeholder={t(
-                        "services.createFieldDockerfilePathPlaceholder",
-                      )}
-                      description={t("services.createFieldDockerfilePathHint")}
-                      error={
-                        fieldErrors.dockerfilePath
-                          ? t(fieldErrors.dockerfilePath)
-                          : undefined
-                      }
-                    />
                     <CreateField
                       label={t("services.createRegistryCredentialLabel")}
                       htmlFor="svc-registry-credential-docker"
@@ -688,6 +698,37 @@ export function NewServicePage({
                         )}
                       />
                     </CreateField>
+                    <CreateTextField
+                      id="svc-docker-context"
+                      label={t("services.dockerContextLabel")}
+                      optional
+                      mono
+                      value={form.dockerContext}
+                      onChange={(dockerContext) => set({ dockerContext })}
+                      placeholder={t("services.dockerContextPlaceholder")}
+                      description={t("services.dockerContextHint")}
+                      error={
+                        fieldErrors.dockerContext
+                          ? t(fieldErrors.dockerContext)
+                          : undefined
+                      }
+                    />
+                    <CreateTextField
+                      id="svc-dockerfile-path"
+                      label={t("services.createFieldDockerfilePath")}
+                      mono
+                      value={form.dockerfilePath}
+                      onChange={build.setDockerfilePath}
+                      placeholder={t(
+                        "services.createFieldDockerfilePathPlaceholder",
+                      )}
+                      description={t("services.createFieldDockerfilePathHint")}
+                      error={
+                        fieldErrors.dockerfilePath
+                          ? t(fieldErrors.dockerfilePath)
+                          : undefined
+                      }
+                    />
                     {!shape.isCronType ? (
                       <CreateTextField
                         id="svc-docker-command"
@@ -738,6 +779,28 @@ export function NewServicePage({
                   />
                 ) : null}
 
+                {/* On Free the field is disabled and empty, as Render's gated
+                    input is; the draft comes back with a paid plan and is
+                    never sent on Free. */}
+                {shape.showPreDeployCommand ? (
+                  <CreateTextField
+                    id="svc-pre-deploy-command"
+                    label={t("services.preDeployLabel")}
+                    optional
+                    mono
+                    disabled={shape.preDeployPaidOnly}
+                    value={shape.preDeployPaidOnly ? "" : form.preDeployCommand}
+                    onChange={(preDeployCommand) => set({ preDeployCommand })}
+                    placeholder={t("services.preDeployPlaceholder")}
+                    description={t("services.preDeployHint")}
+                    hint={
+                      shape.preDeployPaidOnly
+                        ? t("services.preDeployPaidOnly")
+                        : undefined
+                    }
+                  />
+                ) : null}
+
                 {shape.isGitSource || shape.isBuildSource ? (
                   <CreateField
                     label={t("services.createFieldAutoDeploy")}
@@ -757,7 +820,7 @@ export function NewServicePage({
                   </CreateField>
                 ) : null}
 
-                {shape.isStaticBuild ? (
+                {shape.isGitSource ? (
                   <CreateField
                     label={t("services.buildFilterLabel")}
                     description={t("services.buildFilterHint")}

@@ -121,12 +121,15 @@ const buildSourcesState: {
   loading: boolean;
   error: Error | undefined;
 } = { sources: [], loading: false, error: undefined };
-vi.mock("@/features/services/hooks/use-build-sources", async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import("@/features/services/hooks/use-build-sources")
-  >()),
-  useBuildSources: () => buildSourcesState,
-}));
+vi.mock(
+  "@/features/services/hooks/use-build-sources",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@/features/services/hooks/use-build-sources")
+    >()),
+    useBuildSources: () => buildSourcesState,
+  }),
+);
 
 const connectionState: {
   connections: Array<{
@@ -2062,9 +2065,7 @@ describe("NewServicePage Build Source tab (w2/m612 t003)", () => {
 
     await user.click(await screen.findByRole("tab", { name: "Build source" }));
     await user.click(screen.getByRole("combobox", { name: "Build source" }));
-    await user.click(
-      await screen.findByRole("option", { name: /Mono Node/ }),
-    );
+    await user.click(await screen.findByRole("option", { name: /Mono Node/ }));
 
     // Source-owned fields are hidden; region notice + Start Command are shown.
     expect(screen.queryByLabelText("Runtime")).not.toBeInTheDocument();
@@ -2123,5 +2124,262 @@ describe("NewServicePage Build Source tab (w2/m612 t003)", () => {
         }),
       ),
     );
+  });
+});
+
+// w4/m651: Render's Advanced card sets a Health Check Path and a Pre-Deploy
+// Command at create, so the first deploy is health-gated and runs the command
+// (docs/render-artifacts/new-service-wizard.md § The Advanced section).
+describe("NewServicePage Advanced: Health Check Path and Pre-Deploy Command (w4/m651)", () => {
+  const healthCheck = () => screen.queryByLabelText("Health Check Path");
+  const preDeploy = () => screen.queryByLabelText("Pre-Deploy Command");
+
+  it.each([
+    ["web_service", true, true],
+    ["private_service", false, true],
+    ["background_worker", false, true],
+    ["cron_job", false, false],
+    ["static_site", false, false],
+  ] as const)(
+    "a %s shows Health Check Path: %s, Pre-Deploy Command: %s",
+    async (type, showsHealthCheck, showsPreDeploy) => {
+      const user = userEvent.setup();
+      renderPage(`/?type=${type}`);
+      await pickRepo(user);
+      await openAdvanced(user);
+      expect(healthCheck() !== null).toBe(showsHealthCheck);
+      expect(preDeploy() !== null).toBe(showsPreDeploy);
+    },
+  );
+
+  it("disables Pre-Deploy Command on Free with Settings' reason, and enables it on a paid plan", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await pickRepo(user);
+    await openAdvanced(user);
+    // A web service opens on the first tier, Free.
+    expect(preDeploy()).toBeDisabled();
+    expect(preDeploy()).toHaveAccessibleDescription(
+      expect.stringContaining(
+        "Pre-deploy commands are available on paid plans.",
+      ),
+    );
+
+    await user.click(screen.getByRole("radio", { name: /Starter/i }));
+    expect(preDeploy()).toBeEnabled();
+    expect(
+      screen.queryByText("Pre-deploy commands are available on paid plans."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("creates a paid web service with both, in one create", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await pickRepo(user);
+    await user.click(screen.getByRole("radio", { name: /Starter/i }));
+    await openAdvanced(user);
+    await user.type(healthCheck()!, "/healthz");
+    await user.type(preDeploy()!, "npm run migrate");
+    await user.click(screen.getByRole("button", { name: /^Deploy / }));
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "web_service",
+        plan: "starter",
+        healthCheckPath: "/healthz",
+        preDeployCommand: "npm run migrate",
+      }),
+    );
+  });
+
+  it("drops what no longer applies when the plan or the type changes", async () => {
+    const user = userEvent.setup();
+    const { router } = renderPage();
+    await pickRepo(user);
+    await user.click(screen.getByRole("radio", { name: /Starter/i }));
+    await openAdvanced(user);
+    await user.type(healthCheck()!, "/healthz");
+    await user.type(preDeploy()!, "npm run migrate");
+
+    // Free: the command is not shown and not sent. (A refused create keeps
+    // the page, so the draft can be followed further.)
+    await user.click(screen.getByRole("radio", { name: /Free/i }));
+    expect(preDeploy()).toHaveValue("");
+    create.mockResolvedValueOnce(null);
+    await user.click(screen.getByRole("button", { name: /^Deploy / }));
+    expect(create).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        healthCheckPath: "/healthz",
+        preDeployCommand: undefined,
+      }),
+    );
+
+    // A background worker has no HTTP check.
+    await chooseType(router, "background_worker");
+    expect(healthCheck()).not.toBeInTheDocument();
+    expect(preDeploy()).toHaveValue("npm run migrate");
+    await user.click(screen.getByRole("button", { name: /^Deploy / }));
+    expect(create).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        type: "background_worker",
+        healthCheckPath: undefined,
+        preDeployCommand: "npm run migrate",
+      }),
+    );
+  });
+
+  it("holds Deploy on a Health Check Path without a leading / and says so with Settings' message", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await pickRepo(user);
+    await openAdvanced(user);
+    await user.type(healthCheck()!, "healthz");
+
+    expect(
+      screen.getByText("Must start with /, or be empty for a port-only check"),
+    ).toBeInTheDocument();
+    expect(healthCheck()).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("button", { name: /^Deploy / })).toBeDisabled();
+
+    await user.type(healthCheck()!, "{Home}/");
+    expect(screen.getByRole("button", { name: /^Deploy / })).toBeEnabled();
+  });
+
+  it("keeps Advanced open while its Health Check Path is invalid", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await pickRepo(user);
+    await openAdvanced(user);
+    await user.type(healthCheck()!, "healthz");
+    await user.click(screen.getByRole("button", { name: "Advanced" }));
+    expect(healthCheck()).toBeInTheDocument();
+  });
+
+  it("offers both on an Existing Image web service", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(
+      await screen.findByRole("tab", { name: /Existing Image/i }),
+    );
+    await user.type(
+      screen.getByPlaceholderText("docker.io/library/nginx:latest"),
+      "nginx:alpine",
+    );
+    await user.click(screen.getByRole("radio", { name: /Starter/i }));
+    await openAdvanced(user);
+    await user.type(healthCheck()!, "/");
+    await user.type(preDeploy()!, "nginx -t");
+    await user.click(screen.getByRole("button", { name: /^Deploy / }));
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        image: "nginx:alpine",
+        healthCheckPath: "/",
+        preDeployCommand: "nginx -t",
+      }),
+    );
+  });
+});
+
+// w4/m651 t004: the rest of Render's Advanced card — Docker Build Context
+// Directory for a Docker build, Build Filters for every repository-backed type.
+describe("NewServicePage Advanced: Docker Build Context Directory and Build Filters (w4/m651)", () => {
+  it("submits a Docker build's context, beside its Dockerfile Path, in Render's order", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await pickRepo(user);
+    await user.click(screen.getByRole("combobox", { name: /Runtime/i }));
+    await user.click(screen.getByRole("option", { name: "Docker" }));
+    await openAdvanced(user);
+
+    const labels = [
+      "Registry Credential",
+      "Docker Build Context Directory",
+      "Dockerfile Path",
+      "Docker Command",
+    ].map((label) => screen.getByLabelText(label));
+    for (let i = 1; i < labels.length; i++) {
+      expect(
+        labels[i - 1].compareDocumentPosition(labels[i]) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
+    await user.type(
+      screen.getByLabelText("Docker Build Context Directory"),
+      "server",
+    );
+    await user.click(screen.getByRole("button", { name: /^Deploy / }));
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ runtime: "docker", dockerContext: "server" }),
+    );
+  });
+
+  it("holds Deploy on a build context that leaves the repository", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await pickRepo(user);
+    await user.click(screen.getByRole("combobox", { name: /Runtime/i }));
+    await user.click(screen.getByRole("option", { name: "Docker" }));
+    await openAdvanced(user);
+    await user.type(
+      screen.getByLabelText("Docker Build Context Directory"),
+      "../shared",
+    );
+    expect(
+      screen.getByLabelText("Docker Build Context Directory"),
+    ).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("button", { name: /^Deploy / })).toBeDisabled();
+  });
+
+  it("offers no build context to a native build", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await pickRepo(user);
+    await openAdvanced(user);
+    expect(
+      screen.queryByLabelText("Docker Build Context Directory"),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each(["web_service", "private_service", "background_worker", "cron_job"])(
+    "sets a %s's Build Filters at create",
+    async (type) => {
+      const user = userEvent.setup();
+      renderPage(`/?type=${type}`);
+      await pickRepo(user);
+      if (type === "cron_job") {
+        await user.type(screen.getByLabelText("Start Command"), "node job.js");
+      }
+      await openAdvanced(user);
+      await user.click(
+        screen.getByRole("button", { name: /Add included path/ }),
+      );
+      await user.type(
+        screen.getByRole("textbox", { name: "Included Paths" }),
+        "src/**",
+      );
+      await user.click(screen.getByRole("button", { name: /^Deploy / }));
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          buildFilter: { paths: ["src/**"], ignoredPaths: [] },
+        }),
+      );
+    },
+  );
+
+  it("offers no Build Filters to an Existing Image service", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(
+      await screen.findByRole("tab", { name: /Existing Image/i }),
+    );
+    await user.type(
+      screen.getByPlaceholderText("docker.io/library/nginx:latest"),
+      "nginx:alpine",
+    );
+    await openAdvanced(user);
+    expect(
+      screen.queryByRole("button", { name: /Add included path/ }),
+    ).not.toBeInTheDocument();
   });
 });

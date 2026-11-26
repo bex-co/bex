@@ -105,7 +105,8 @@ export function CreateField({
  * A text input row. `description` is the row's standing copy in the label
  * column; `hint` is copy that follows the value (a schedule preview, a
  * required-field reminder) and sits under the input, where `error` replaces
- * it. The input names whichever applies to assistive technology.
+ * it. The input names whichever applies to assistive technology. A `disabled`
+ * row says why in its `hint`.
  */
 export function CreateTextField({
   id,
@@ -119,6 +120,7 @@ export function CreateTextField({
   optional,
   required,
   mono = false,
+  disabled = false,
 }: {
   id: string;
   label: string;
@@ -132,6 +134,7 @@ export function CreateTextField({
   required?: boolean;
   /** Commands and paths read in the monospace face, as on Render. */
   mono?: boolean;
+  disabled?: boolean;
 }) {
   const descriptionId = useId();
   const noteId = useId();
@@ -153,6 +156,7 @@ export function CreateTextField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
+        disabled={disabled}
         autoComplete="off"
         aria-invalid={Boolean(error)}
         aria-describedby={describedBy}

@@ -34,18 +34,13 @@ export interface CreateServiceInput {
   branch?: string;
   rootDir?: string;
   runtime?:
-    | "docker"
-    | "elixir"
-    | "go"
-    | "image"
-    | "node"
-    | "python"
-    | "ruby"
-    | "rust";
+    "docker" | "elixir" | "go" | "image" | "node" | "python" | "ruby" | "rust";
   buildCommand?: string;
   startCommand?: string;
   dockerCommand?: string;
   dockerfilePath?: string;
+  /** Render's Docker Build Context Directory, relative to the Root Directory (w8/m128). */
+  dockerContext?: string;
   /** Render's Build Filters (glob paths/ignoredPaths) gating git-push auto-deploys. */
   buildFilter?: { paths: string[]; ignoredPaths: string[] };
   plan?: string;
@@ -60,6 +55,13 @@ export interface CreateServiceInput {
    * which leaves the platform default in place.
    */
   port?: number;
+  /** Render's Health Check Path (spec.healthCheckPath): web services only. */
+  healthCheckPath?: string;
+  /**
+   * Render's Pre-Deploy Command (spec.preDeployCommand, w1/m33): paid web
+   * services, private services and background workers only.
+   */
+  preDeployCommand?: string;
   envVars?: EnvVarEntry[];
   secretFiles?: SecretFileEntry[];
 }
@@ -159,7 +161,10 @@ export function useCreateService(): UseCreateServiceResult {
           setCapLimit(capMessage);
         } else if (isNameConflictError(err)) {
           setNameConflict(true);
-        } else if (input.image && /image/i.test(err instanceof Error ? err.message : "")) {
+        } else if (
+          input.image &&
+          /image/i.test(err instanceof Error ? err.message : "")
+        ) {
           // An image refusal is shown under the field it names, with the
           // server's own wording (w4/406); the toast would leave the user
           // hunting for the field to fix.

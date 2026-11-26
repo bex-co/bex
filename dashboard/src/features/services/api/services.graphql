@@ -123,6 +123,7 @@ mutation CreateService(
   $startCommand: String
   $dockerCommand: String
   $dockerfilePath: String
+  $dockerContext: String
   $buildFilter: BuildFilterInput
   $plan: String
   $region: String
@@ -131,6 +132,8 @@ mutation CreateService(
   $command: String
   $publishPath: String
   $port: Int
+  $healthCheckPath: String
+  $preDeployCommand: String
   $envVars: [EnvVarInput]
   $secretFiles: [SecretFileInput]
 ) {
@@ -150,6 +153,7 @@ mutation CreateService(
     startCommand: $startCommand
     dockerCommand: $dockerCommand
     dockerfilePath: $dockerfilePath
+    dockerContext: $dockerContext
     buildFilter: $buildFilter
     plan: $plan
     region: $region
@@ -158,6 +162,8 @@ mutation CreateService(
     command: $command
     publishPath: $publishPath
     port: $port
+    healthCheckPath: $healthCheckPath
+    preDeployCommand: $preDeployCommand
     envVars: $envVars
     secretFiles: $secretFiles
   ) {
