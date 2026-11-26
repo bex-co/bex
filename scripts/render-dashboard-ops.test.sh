@@ -116,6 +116,14 @@ check "a featureflags export shape this parser cannot read fails closed" 1 "its 
 check "no flag call at all fails closed" 1 "no chunk calls a featureflags hook with a flag name" \
   run "$(cp -R "$fixtures" "$sandbox/no-calls" && sed -E -i.bak 's#(jx|Mx|kx|Zq9)\(`[a-z-]*`#\1(e#g' "$sandbox"/no-calls/assets/*.js &&
     echo "$sandbox/no-calls/index.html")" "$ledger"
+check "an anonymous operation fails and names its chunk" 1 "anonymous query in Billing" \
+  run "$(bundle_with anonymous-op assets/Billing-B1ll-ng0.js 's#^export{A};#var B=new Qe(V`query { anonThing }`);export{A,B};#')" "$ledger"
+check "an anonymous operation with variables fails" 1 "anonymous subscription in index" \
+  run "$(bundle_with anonymous-sub assets/index-Ent1y-_A.js 's#query server#subscription($x: String!) { anonSub } query server#')" "$ledger"
+check "a nested subscription field is not an anonymous operation" 1 "no row: query nestedOp" \
+  run "$(bundle_with nested-sub assets/Billing-B1ll-ng0.js 's#^export{A};#var B=new Qe(V`query nestedOp { subscription { x } }`);export{A,B};#')" "$ledger"
+check "a JS call shaped like an operation is not one" 0 "every operation and flag has a row" \
+  run "$(bundle_with js-call assets/Billing-B1ll-ng0.js 's#^export{A};#var q=query({a:1});export{A};#')" "$ledger"
 check "an operation whose selection set does not parse fails" 1 "query server in index: no selection set" \
   run "$(bundle_with bad-op assets/index-Ent1y-_A.js 's#query server($id: String!) {#query server($id: String!) [#')" "$ledger"
 check "a selection set that ends early fails" 1 "query server in index: unexpected" \

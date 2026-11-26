@@ -35,7 +35,9 @@ The chunks are third-party data: they are read as text and never executed.
 Run with `python3 -I`. Anything this parser no longer recognizes (no entry
 script, no featureflags chunk, an export clause it cannot read, no operations
 or no flag calls at all) fails with a message naming it rather than reporting
-every row as removed.
+every row as removed. An operation without a name fails the same way: the
+ledger rows operations by name, so a nameless one cannot take a row and must
+never pass silently.
 
 Exit 0 when the ledger matches, 1 on drift or an unreadable bundle, 2 on bad
 usage.
@@ -61,6 +63,11 @@ ENTRY_SCRIPT = re.compile(r"<script\b[^>]*\bsrc=[\"']([^\"']*?assets/index-[A-Za
 # The name must be followed by its variables or its selection set, so prose
 # such as "a `next` query param" is not an operation.
 OPERATION = re.compile(r"(?<![\w$.])(query|mutation|subscription)\s+([A-Za-z_]\w*)\s*(?=[({])")
+# An operation without a name (query { … }, subscription($x: …) { … }):
+# GraphQL allows them, the ledger cannot row them (rows are keyed by name),
+# and the named pattern above cannot see them, so each one validated below is
+# a loud failure naming its chunk, never a silent miss.
+ANONYMOUS_OPERATION = re.compile(r"(?<![\w$.])(query|mutation|subscription)\s*(?=[({])")
 NAME = re.compile(r"[A-Za-z_]\w*")
 # One binding of an import or export clause: `name` or `name as other`.
 BINDING = re.compile(r"\s*([\w$]+)(?:\s+as\s+([\w$]+))?\s*")
@@ -210,8 +217,12 @@ def _skip_directives(src: str, i: int) -> int:
     return i
 
 
-def root_fields(src: str, i: int) -> list[str]:
-    """Parse the operation whose variables or selection set start at src[i]."""
+def root_fields(src: str, i: int) -> tuple[list[str], int]:
+    """Parse the operation whose variables or selection set start at src[i].
+
+    Return its root fields and the index of its closing brace, so callers can
+    tell a nested field shaped like an operation from a top-level one.
+    """
     i = _skip_space(src, i)
     if src.startswith("(", i):
         i = _skip_space(src, _skip_group(src, i, ")"))
@@ -223,7 +234,7 @@ def root_fields(src: str, i: int) -> list[str]:
     while True:
         i = _skip_space(src, i)
         if src.startswith("}", i):
-            return fields
+            return fields, i
         if src.startswith("${", i):  # root fields chosen at run time
             fields.append("${...}")
             i = _skip_interpolation(src, i)
@@ -238,7 +249,8 @@ def root_fields(src: str, i: int) -> list[str]:
             if match:  # an inline fragment's type condition
                 i = _skip_space(src, NAME.match(src, _skip_space(src, match.end())).end())
             i = _skip_directives(src, i)
-            fields.extend(root_fields(src, i))  # its fields are root fields too
+            sub, _ = root_fields(src, i)  # its fields are root fields too
+            fields.extend(sub)
             i = _skip_group(src, i, "}")
             continue
         match = NAME.match(src, i)
@@ -319,19 +331,40 @@ def flag_calls(chunks: dict[str, str]) -> dict[str, set[str]]:
 def inventory(page_url: str) -> dict:
     entry, chunks = crawl(page_url)
     operations: dict[tuple[str, str], dict] = {}
+    anonymous: list[tuple[str, str, list[str]]] = []
     for name, text in sorted(chunks.items()):
+        spans: list[tuple[int, int]] = []
         for match in OPERATION.finditer(text):
             key = (match.group(1), match.group(2))
             try:
-                fields = root_fields(text, match.end())
+                fields, end = root_fields(text, match.end())
             except (ValueError, AttributeError) as err:
                 raise BundleError(
                     "Render dashboard operation unreadable",
                     f"{key[0]} {key[1]} in {family(name)}: {err}; update root_fields",
                 ) from None
+            spans.append((match.start(), end))
             op = operations.setdefault(key, {"kind": key[0], "name": key[1], "fields": [], "families": set()})
             op["fields"] = sorted(set(op["fields"]) | set(fields))
             op["families"].add(family(name))
+        for match in ANONYMOUS_OPERATION.finditer(text):
+            if any(start <= match.start() < end for start, end in spans):
+                continue  # a nested field of a named operation, not an operation
+            try:
+                fields, _ = root_fields(text, match.end())
+            except (ValueError, AttributeError):
+                continue  # a JS call or prose shaped like one; named ops carry the inventory
+            anonymous.append((match.group(1), family(name), fields))
+    if anonymous:
+        detail = "; ".join(
+            f"anonymous {kind} in {fam} (root fields {', '.join(fields) or 'none'})"
+            for kind, fam, fields in anonymous
+        )
+        raise BundleError(
+            "Render dashboard anonymous operation",
+            f"{detail}: an operation without a name has no ledger row; "
+            "extend this parser and the ledger to row it",
+        )
     if not operations:
         raise BundleError(
             "Render dashboard operations not found",
