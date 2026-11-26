@@ -36,8 +36,11 @@ query Services($ownerId: String) {
     plan
     idleTTLSeconds
     # The header's source facts, so a service page's loading frame draws the
-    # repository and registry-credential items its header will (w3/094).
+    # repository and registry-credential items its header will (w3/094), the
+    # repository and branch in their own words so its row wraps where the
+    # header's does (w3/112).
     repo
+    branch
     registryCredentialId
   }
 }

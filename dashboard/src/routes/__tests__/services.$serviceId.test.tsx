@@ -667,6 +667,40 @@ describe("service-detail layout routing", () => {
     },
   );
 
+  // w3/112: the frame lays the row's items out in the cached words, so the
+  // row wraps where the ready one does (at 640 the URL wraps under the
+  // repository).
+  it("the pending header lays out the cached repository, branch and URL", async () => {
+    cachedSource.value = {
+      repository: true,
+      registryCredential: false,
+      cron: false,
+      suspendedNotice: null,
+      id: "app",
+      repo: "https://github.com/bex-co/hello-go.git",
+      branch: "main",
+      url: "https://app.onbex.co",
+    };
+    const { resolveLoader } = renderPendingAt("/services/app/deploys");
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    const header = document.querySelector(
+      '[data-skeleton-region="service-header"]',
+    )!;
+    expect(
+      header.querySelector('[data-skeleton-item="repository"]'),
+    ).toHaveTextContent("github.com · bex-co / hello-gomain");
+    expect(
+      header.querySelector('[data-skeleton-item="service-url"]'),
+    ).toHaveTextContent("https://app.onbex.co");
+
+    await act(async () => {
+      resolveLoader({});
+    });
+  });
+
   // w3/106: the pending frame of a page with no service header draws no
   // header frame either, so the tab's skeleton starts where its page will.
   it("the pending frame on Metrics has no header frame, and the ready page no header", async () => {

@@ -28,7 +28,11 @@ import {
   TooltipContent,
 } from "@/common/components/ui/tooltip";
 import { CopyButton } from "@/common/components/copy-button";
-import { ReservedText } from "@/common/components/reserved-skeleton";
+import {
+  ReservedBadge,
+  ReservedButton,
+  ReservedText,
+} from "@/common/components/reserved-skeleton";
 import { LocalDateTimeWithZone } from "@/common/components/local-time";
 import { RelativeAge } from "@/common/components/relative-time";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
@@ -1071,7 +1075,11 @@ const GIT_SOURCE: CachedServiceSource = {
  * The second row wraps, so it draws the source items the ready one will: an
  * image-backed service has no repository item, and at 1024 its Service ID and
  * URL fit on one line where a Git service's take two (w3/094). `source` comes
- * from the cache; without it the frame is a Git service's.
+ * from the cache; without it the frame is a Git service's. Each item is laid
+ * out in the ready one's words where they are known (the labels always, the
+ * id, repository, branch and URL from the cache), so the row wraps where the
+ * ready one does at every width: at 640 fixed bars fit the URL beside the
+ * repository where the ready URL wraps under it (w3/112).
  *
  * A cron job's frame is its own (w3/m555): one action, Trigger Run, and its
  * two "Runs …" items in the URL's place. A suspended service of any type has
@@ -1087,8 +1095,16 @@ export function ServiceDetailHeaderSkeleton({
   name?: string | null;
 }) {
   const { t } = useTranslations();
-  const { repository, registryCredential, cron, suspendedNotice } =
-    source ?? GIT_SOURCE;
+  const {
+    repository,
+    registryCredential,
+    cron,
+    suspendedNotice,
+    id,
+    repo,
+    branch,
+    url,
+  } = source ?? GIT_SOURCE;
   return (
     <div
       aria-hidden="true"
@@ -1129,17 +1145,38 @@ export function ServiceDetailHeaderSkeleton({
               <Skeleton className="h-[22px] w-14 rounded-full" />
             </div>
           </div>
+          {/* The actions' own boxes, so the row wraps where the ready one
+              does in every language (w3/112). */}
           <div className="flex items-center gap-2 empty:hidden md:max-lg:col-start-2 md:max-lg:row-start-1">
             {suspendedNotice ? null : cron ? (
-              <Skeleton
+              <ReservedButton
+                variant="default"
+                size="sm"
                 data-touch-spacer=""
                 data-skeleton-item="trigger-run"
-                className="h-8 w-[101px]"
-              />
+              >
+                {t("services.cronTriggerRun")}
+              </ReservedButton>
             ) : (
               <>
-                <Skeleton data-touch-spacer="" className="h-8 w-24" />
-                <Skeleton data-touch-spacer="" className="h-8 w-28" />
+                <ReservedButton
+                  variant="outline"
+                  size="sm"
+                  data-touch-spacer=""
+                  data-skeleton-item="connect"
+                >
+                  {t("services.connect")}
+                  <ChevronDown className="size-3.5" />
+                </ReservedButton>
+                <ReservedButton
+                  variant="default"
+                  size="sm"
+                  data-touch-spacer=""
+                  data-skeleton-item="manual-deploy"
+                >
+                  {t("services.eventsManualDeploy")}
+                  <ChevronDown className="size-3.5" />
+                </ReservedButton>
               </>
             )}
           </div>
@@ -1147,15 +1184,41 @@ export function ServiceDetailHeaderSkeleton({
         {/* Placed as the ready row is: on a phone every item stacks in the
             first column and "Details" takes the second beside the first of
             them, at its touch height. */}
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 max-sm:pt-1.5 max-sm:[&>*]:col-start-1 sm:flex sm:flex-wrap sm:gap-x-6 sm:gap-y-0.5">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 text-sm max-sm:pt-1.5 max-sm:[&>*]:col-start-1 sm:flex sm:flex-wrap sm:gap-x-6 sm:gap-y-0.5">
           <div
             data-skeleton-item="service-id"
             className="flex items-center gap-1.5 max-lg:hidden"
           >
-            <Skeleton className="h-4 w-64" />
+            <span className="relative">
+              <ReservedText>{t("services.headerServiceId")}</ReservedText>
+            </span>
+            {id ? (
+              <span className="relative font-mono text-xs">
+                <ReservedText>{id}</ReservedText>
+              </span>
+            ) : (
+              <Skeleton className="h-4 w-44" />
+            )}
             <Skeleton data-touch-spacer="" className="size-8" />
           </div>
-          {repository ? (
+          {repository && repo ? (
+            <div
+              data-skeleton-item="repository"
+              className="flex min-w-0 items-center gap-1.5 max-sm:hidden"
+            >
+              <Skeleton className="size-3.5 shrink-0 rounded-full" />
+              <span className="relative min-w-0 truncate">
+                <ReservedText>
+                  <RepoLabel repo={repo} />
+                </ReservedText>
+              </span>
+              {branch ? (
+                <ReservedBadge variant="secondary">
+                  <span className="font-mono">{branch}</span>
+                </ReservedBadge>
+              ) : null}
+            </div>
+          ) : repository ? (
             <div
               data-skeleton-item="repository"
               className="flex h-[22px] items-center gap-1.5 max-sm:hidden"
@@ -1199,9 +1262,15 @@ export function ServiceDetailHeaderSkeleton({
           ) : (
             <div
               data-skeleton-item="service-url"
-              className="flex items-center gap-1.5"
+              className="flex min-w-0 items-center gap-1.5"
             >
-              <Skeleton className="h-4 w-56" />
+              {url ? (
+                <span className="relative min-w-0 truncate">
+                  <ReservedText>{url}</ReservedText>
+                </span>
+              ) : (
+                <Skeleton className="h-4 w-56" />
+              )}
               <Skeleton data-touch-spacer="" className="size-8" />
             </div>
           )}
@@ -1210,7 +1279,11 @@ export function ServiceDetailHeaderSkeleton({
             data-touch-spacer=""
             className="row-start-1 flex items-center max-sm:col-start-2! sm:ml-auto lg:hidden"
           >
-            <Skeleton className="h-4 w-14" />
+            {/* The toggle's words and its chevron's room. */}
+            <span className="relative flex items-center gap-1 text-xs font-medium">
+              <ReservedText>{t("services.headerMoreFacts")}</ReservedText>
+              <span className="size-3.5" />
+            </span>
           </div>
         </div>
         <div className="hidden h-4 flex-wrap gap-x-4 gap-y-1 lg:flex">

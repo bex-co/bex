@@ -1532,9 +1532,10 @@ describe("ServiceDetailHeaderSkeleton second row", () => {
       // The ready button is a `button.size-8` in the page's touch region, so
       // it grows to 44px below `lg`; the square must take the same rule.
       expect(square).toHaveAttribute("data-touch-spacer");
-      // Nothing else in the row is taller than the square.
+      // Nothing else in the row is taller than the square: its words, or a
+      // 16px bar where the frame does not know them.
       for (const child of Array.from(row!.children).slice(0, -1)) {
-        expect(sizes(child)).toEqual(["h-4"]);
+        expect(sizes(child).filter((size) => size !== "h-4")).toEqual([]);
       }
     },
   );
@@ -1656,6 +1657,144 @@ describe("ServiceDetailHeaderSkeleton source items", () => {
   it("draws a Git service's items while nothing cached has said", () => {
     const { container } = render(<ServiceDetailHeaderSkeleton source={null} />);
     expect(drawn(container)).toEqual(["repository"]);
+  });
+});
+
+// w3/112: the second row wraps on its items' widths. At 640 the frame's fixed
+// bars fit the URL beside the repository where the ready URL wraps under it,
+// with "Details" beside it, and the frame ended 22px below the ready band. The
+// frame now lays each item out in the ready one's words (the labels always;
+// the id, repository, branch and URL from the cache) at the ready item's
+// type and flex sizing, and each action as the ready button's own box.
+describe("ServiceDetailHeaderSkeleton words (w3/112)", () => {
+  const SOURCE = {
+    repository: true,
+    registryCredential: false,
+    cron: false,
+    suspendedNotice: null,
+    id: "app",
+    repo: "https://github.com/bex-co/hello-go.git",
+    branch: "main",
+    url: "https://app.onbex.co",
+  };
+  const slot = (container: Element, item: string) =>
+    container.querySelector(`[data-skeleton-item="${item}"]`)!;
+  // What an item reads, without its controls' accessible labels.
+  const words = (el: Element) => {
+    const copy = el.cloneNode(true) as Element;
+    copy.querySelectorAll("button, svg").forEach((node) => node.remove());
+    return copy.textContent!.replace(/\s+/g, " ").trim();
+  };
+  const invisibleWords = (el: Element) =>
+    Array.from(el.querySelectorAll(".invisible"), (node) => node.textContent)
+      .join("")
+      .replace(/\s+/g, " ")
+      .trim();
+  // The classes that size an item: its flex behaviour and its type, not its
+  // colour.
+  const FLEX =
+    /^(?:min-w-|max-w-|basis-|grow|shrink|truncate|gap-|text-(?:xs|sm)$|font-(?:mono|medium)$)/;
+  const flex = (el: Element) =>
+    [...el.classList].filter((c) => FLEX.test(c)).sort();
+
+  it("lays the row's items out in the ready ones' words, at their sizes", async () => {
+    renderHeader(svc());
+    const details = await screen.findByRole("button", { name: "Details" });
+    const repoLink = screen.getByRole("link", {
+      name: "github.com · bex-co / hello-go",
+    });
+    const ready = {
+      "service-id": screen.getByRole("button", { name: "Copy service ID" })
+        .parentElement!,
+      repository: repoLink.parentElement!,
+      "service-url": screen.getByRole("button", { name: "Copy service URL" })
+        .parentElement!,
+      "details-toggle": details,
+    };
+
+    const { container } = render(
+      <ServiceDetailHeaderSkeleton source={SOURCE} />,
+    );
+    for (const [item, el] of Object.entries(ready)) {
+      const frame = slot(container, item);
+      expect(words(frame)).toBe(words(el));
+      expect(words(frame)).not.toBe("");
+      // Laid out, never shown.
+      expect(invisibleWords(frame)).toBe(words(frame));
+    }
+    // The repository and URL items shrink and truncate as the ready ones do,
+    // so a long one keeps its line instead of pushing the next one down.
+    for (const item of ["repository", "service-url"] as const) {
+      expect(flex(slot(container, item))).toEqual(flex(ready[item]));
+    }
+    expect(slot(container, "repository").children[1]).toHaveClass(
+      "min-w-0",
+      "truncate",
+    );
+    expect(slot(container, "service-url").firstElementChild).toHaveClass(
+      "min-w-0",
+      "truncate",
+    );
+    // The branch is the ready badge's box, in its monospace.
+    const branch = within(ready.repository).getByText("main");
+    expect(branch).toHaveClass("font-mono");
+    const reserved = within(slot(container, "repository") as HTMLElement)
+      .getByText("main")
+      .closest('[data-slot="badge"]')!;
+    expect(reserved).toHaveClass("invisible");
+    expect(flex(reserved).filter((c) => c !== "font-mono")).toEqual(
+      flex(branch).filter((c) => c !== "font-mono"),
+    );
+    // The row's own type size and wrapping are the ready row's.
+    const row = slot(container, "details-toggle").parentElement!;
+    for (const c of ["text-sm", "sm:flex", "sm:flex-wrap", "sm:gap-x-6"]) {
+      expect(details.parentElement).toHaveClass(c);
+      expect(row).toHaveClass(c);
+    }
+  });
+
+  it("keeps a bar where the cache has not said an item's words", () => {
+    const { container } = render(<ServiceDetailHeaderSkeleton />);
+    for (const item of ["repository", "service-url"]) {
+      expect(words(slot(container, item))).toBe("");
+    }
+    expect(words(slot(container, "service-id"))).toBe("Service ID:");
+    expect(words(slot(container, "details-toggle"))).toBe("Details");
+  });
+
+  it("reserves each action as the ready button's own box", async () => {
+    renderHeader(svc());
+    const connect = await screen.findByRole("button", { name: "Connect" });
+    const deploy = screen.getByRole("button", { name: "Manual Deploy" });
+
+    const { container } = render(
+      <ServiceDetailHeaderSkeleton source={SOURCE} />,
+    );
+    for (const [item, ready] of [
+      ["connect", connect],
+      ["manual-deploy", deploy],
+    ] as const) {
+      const frame = slot(container, item);
+      expect(frame).toHaveTextContent(ready.textContent!);
+      // The ready button's classes, its padding beside a chevron included.
+      expect(frame.firstElementChild).toHaveClass(...ready.classList);
+      expect(frame.firstElementChild!.querySelector("svg")).toHaveClass(
+        "size-3.5",
+      );
+      // It grows under the touch rule, as the ready button does.
+      expect(frame).toHaveAttribute("data-touch-spacer");
+    }
+  });
+
+  it("reserves a cron job's Trigger Run as its own box", async () => {
+    renderHeader(svc({ type: "cron_job", url: null, schedule: "* * * * *" }));
+    const ready = await screen.findByRole("button", { name: "Trigger Run" });
+    const { container } = render(
+      <ServiceDetailHeaderSkeleton source={{ ...SOURCE, cron: true }} />,
+    );
+    const frame = slot(container, "trigger-run");
+    expect(frame).toHaveTextContent("Trigger Run");
+    expect(frame.firstElementChild).toHaveClass(...ready.classList);
   });
 });
 

@@ -132,12 +132,20 @@ describe("useCachedServiceSource (w3/094)", () => {
       registryCredential: false,
       cron: false,
       suspendedNotice: null,
+      id: "srv-img",
+      repo: null,
+      branch: null,
+      url: null,
     });
     expect(read("srv-git")).toEqual({
       repository: true,
       registryCredential: false,
       cron: false,
       suspendedNotice: null,
+      id: "srv-git",
+      repo: "https://github.com/acme/app",
+      branch: null,
+      url: null,
     });
   });
 
@@ -237,6 +245,10 @@ describe("useCachedServiceSource (w3/094)", () => {
       registryCredential: true,
       cron: false,
       suspendedNotice: null,
+      id: "srv-img",
+      repo: null,
+      branch: null,
+      url: null,
     });
   });
 
@@ -260,6 +272,36 @@ describe("useCachedServiceSource (w3/094)", () => {
       registryCredential: true,
       cron: false,
       suspendedNotice: null,
+      id: "srv-a",
+      repo: "https://github.com/acme/app",
+      branch: null,
+      url: null,
+    });
+  });
+
+  // w3/112: the frame lays the row's items out in their own words, so it
+  // wraps where the ready row does; the list carries the branch for it.
+  it("reads the id, repository, branch and URL the row will show", () => {
+    const read = setup(
+      (cache) =>
+        writeServices(cache, [
+          {
+            id: "srv-web",
+            type: "web_service",
+            repo: "https://github.com/acme/app",
+            branch: "main",
+            url: "https://app.onbex.co",
+            registryCredentialId: null,
+          },
+        ]),
+      useCachedServiceSource,
+    );
+    expect(read("srv-web")).toMatchObject({
+      repository: true,
+      id: "srv-web",
+      repo: "https://github.com/acme/app",
+      branch: "main",
+      url: "https://app.onbex.co",
     });
   });
 

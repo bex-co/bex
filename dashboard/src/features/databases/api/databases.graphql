@@ -571,6 +571,7 @@ query PostgresAdminApps($databaseId: String!) {
       plan
       idleTTLSeconds
       repo
+      branch
       registryCredentialId
     }
   }

@@ -67,6 +67,14 @@ export interface CachedServiceSource {
   /** While it is suspended, the title of the notice its header then has in
    *  place of any action (w3/107); null while it runs. */
   suspendedNotice: SuspendedNoticeTitleKey | null;
+  /** The words of the row's items, where the cache has them: the service's
+   *  id, its repository and branch, its live URL. The frame lays them out
+   *  invisibly, so the row wraps where the ready one does (w3/112); an item
+   *  whose words are absent keeps its fixed bar. */
+  id?: string | null;
+  repo?: string | null;
+  branch?: string | null;
+  url?: string | null;
 }
 
 /**
@@ -88,5 +96,9 @@ export function useCachedServiceSource(
     suspendedNotice: isSuspended(service.suspended ?? null)
       ? suspendedNoticeTitleKeyFor(service.suspenders, currentWorkspace?.plan)
       : null,
+    id: service.id ?? null,
+    repo: service.repo || null,
+    branch: service.branch ?? null,
+    url: service.url ?? null,
   };
 }

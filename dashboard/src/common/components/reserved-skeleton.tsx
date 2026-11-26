@@ -19,13 +19,16 @@ export function ReservedText({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** A ready button's exact box — same variant, size and label — as a bar. */
+/** A ready button's exact box — same variant, size and label — as a bar.
+ *  Other attributes land on the box (a `data-touch-spacer`, so it grows with
+ *  the touch rule as the ready button does). */
 export function ReservedButton({
   variant,
   size,
   className,
   children,
-}: {
+  ...props
+}: Omit<React.ComponentProps<"span">, "className" | "children"> & {
   variant: "outline" | "destructive" | "default";
   size?: "sm";
   /** The ready button's own size classes, beyond its variant's. */
@@ -33,7 +36,7 @@ export function ReservedButton({
   children: React.ReactNode;
 }) {
   return (
-    <span className="relative inline-flex shrink-0">
+    <span className="relative inline-flex shrink-0" {...props}>
       <span
         className={cn(
           buttonVariants({ variant, size }),

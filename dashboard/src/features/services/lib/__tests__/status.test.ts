@@ -39,6 +39,7 @@ function node(overrides: Partial<ServiceNode> = {}): ServiceNode {
     plan: null,
     idleTTLSeconds: 0,
     repo: null,
+    branch: null,
     registryCredentialId: null,
     ...overrides,
   };
