@@ -365,7 +365,8 @@ jobs:
       - name: Render examples corpus fetch unit tests
         run: bash scripts/render-examples-corpus.test.sh
       # w6/m644: outcome and stage reporting, the plan guard that never approves a
-      # plan touching an existing resource, and cleanup after every failure.
+      # plan touching an existing resource, and cleanup after every failure;
+      # w6/m653: the peer that checks a private service, and its deletion.
       - name: Render examples live run unit tests
         run: bash scripts/render-examples-live.test.sh
       - name: Verified CI download fallback unit tests

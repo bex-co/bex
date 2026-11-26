@@ -64,6 +64,11 @@ if scenario == "worker":
     resources.append({"id": "srv-wrk", "name": "wrk", "type": "background_worker"})
 if scenario == "shared-name":
     resources.insert(0, {"id": "dpg-web", "name": "web", "type": "postgres"})
+if scenario.startswith("peer"):
+    resources.append({"id": "srv-ps", "name": "ps", "type": "private_service"})
+if scenario == "long-name":
+    # bex lists a name past 30 characters by its resource slug (w6/190).
+    resources[0]["name"] = "wrapped-for-linkedin-sc-74a57f"
 code, body = 404, {"message": "not found"}
 
 if method == "DELETE":
@@ -113,10 +118,22 @@ elif path.startswith("/v1/postgres/"):
 elif path.endswith("/events"):
     code, body = 200, [{"event": {"type": "deploy_ended",
                                   "details": {"failureReason": "container exited shortly after start (last exit code 1)"}}}]
+elif path == "/v1/services" and method == "POST":
+    # The peer worker: its body is kept for the test to read.
+    open(os.path.join(state, "peer-body"), "w").write(data)
+    code, body = 201, {"service": {"id": "srv-peer", "name": json.loads(data)["name"]}}
 elif path.startswith("/v1/services/"):
     rid = path.split("/")[3]
     if rid.startswith("srv-") and (not gone(rid) or scenario == "stuck"):
         code, body = 200, {"id": rid, "slug": rid, "serviceDetails": {"url": "https://web.test"}}
+        if scenario == "long-name" and rid == "srv-web":
+            body["name"] = "wrapped-for-linkedin-screenshots"
+        if rid == "srv-ps":
+            body.update(serviceDetails={"url": "ps-abc:8123"}, environmentId="evm-1")
+elif path == "/v1/logs" and "resource=srv-peer" in url:
+    lines = {"peer": ["peer ps-abc:8123 answered: HTTP/1.1 200 OK  Content-Type: text/plain  Ok. "],
+             "peer-refused": ["peer ps-abc:8123 got no answer"]}
+    code, body = 200, {"logs": [{"message": m} for m in lines.get(scenario, [])]}
 elif path == "/v1/logs":
     if "type=build" in url:
         code, body = 200, {"logs": [{"message": "npm ERR! missing script: build"}, {"message": "==> Cloning"}]}
@@ -202,6 +219,10 @@ CHECKS='http web / Hello' run shared-name fixture-s
 expect "a check finds the service when a database shares its name" 0 "fixture-s live - 2 resource(s)" \
   "GET https://web.test/" "DELETE https://api.test/v1/postgres/dpg-web"
 
+CHECKS='http wrapped-for-linkedin-screenshots / Hello' run long-name fixture-l
+expect "a check finds a service the Blueprint lists by its shortened slug" 0 "fixture-l live - 1 resource(s)" \
+  "GET https://web.test/"
+
 OWNER='' run live fixture-a
 expect "a key that reaches one workspace needs no BEX_OWNER_ID" 0 "fixture-a live - " "ownerId=tea-test"
 OWNER='' run two-owners fixture-a
@@ -250,6 +271,70 @@ run build-failed fixture-a --keep
 expect "--keep leaves a failed run's resources" 1 "fixture-a failed build" "cleanup: kept for triage, delete by hand: Blueprint exs-1 srv-web"
 if printf '%s' "$calls" | grep -q DELETE; then
   echo "FAIL: --keep deleted something: $calls" >&2
+  fails=$((fails + 1))
+fi
+
+# peer_gone <label>: the peer worker was deleted with the template's resources.
+peer_gone() {
+  if [ -e "$tmp/state/deleted-srv-peer" ] && [ -e "$tmp/state/deleted-srv-ps" ]; then
+    echo "ok: $1 deletes the peer"
+  else
+    echo "FAIL: $1 left the peer or the private service: $calls" >&2
+    fails=$((fails + 1))
+  fi
+}
+
+CHECKS='peer ps 8123 Ok.' run peer fixture-p
+expect "a peer that reads the expected text passes" 0 "fixture-p live - 2 resource(s)" \
+  "POST https://api.test/v1/services" "resource=srv-peer" "cleanup: ok, deleted the Blueprint and 3 resource(s)"
+peer_gone "a passing peer check"
+# shellcheck disable=SC2016 # the peer's shell expands these
+if ! jq -e '.type == "background_worker" and .name == "render-examples-live-peer-fixture-p" and .environmentId == "evm-1"
+    and .image.imagePath == "docker.io/library/busybox:1.37"
+    and (.serviceDetails.envSpecificDetails.dockerCommand
+      | startswith("sh -c '"'"'") and contains("nc -w 10 \"$1\" \"$2\"")
+        and contains("p ps-abc 8123 \"GET / HTTP/1.0\\r\\nHost: ps-abc\\r\\n\\r\\n\" \"\"; "))' \
+  "$tmp/state/peer-body" >/dev/null; then
+  echo "FAIL: the peer is not a busybox worker in ps's environment sending GET / to ps-abc:8123: $(cat "$tmp/state/peer-body")" >&2
+  fails=$((fails + 1))
+fi
+
+CHECKS='peer ps 6379/ignored PONG' run peer fixture-p
+expect "a peer on a Redis port sends PING, not HTTP" 1 "fixture-p failed check ps: the peer never read"
+if ! jq -e '.serviceDetails.envSpecificDetails.dockerCommand | contains("p ps-abc 6379 \"PING\\r\\n\" \"/ignored\"")' \
+  "$tmp/state/peer-body" >/dev/null; then
+  echo "FAIL: the Redis probe is not PING: $(cat "$tmp/state/peer-body")" >&2
+  fails=$((fails + 1))
+fi
+
+CHECKS='peer ps 8123 Ok.' run peer-refused fixture-p
+expect "a peer that cannot connect fails at check" 1 \
+  'fixture-p failed check ps: the peer never read "Ok." in an answer from ps-abc:8123; its last line: peer ps-abc:8123 got no answer'
+peer_gone "a failing peer check"
+CHECKS='peer ps redis:10000 PONG' run peer fixture-p
+expect "a protocol before the port overrides the port's default" 1 "fixture-p failed check ps: the peer never read"
+if ! jq -e '.serviceDetails.envSpecificDetails.dockerCommand | contains("p ps-abc 10000 \"PING\\r\\n\" \"\"")' \
+  "$tmp/state/peer-body" >/dev/null; then
+  echo "FAIL: redis:10000 does not send PING to port 10000: $(cat "$tmp/state/peer-body")" >&2
+  fails=$((fails + 1))
+fi
+
+CHECKS='peer ps 8123' run peer-refused fixture-p
+expect "a peer check with no text still needs an answer" 1 \
+  'fixture-p failed check ps: the peer never read an answer from ps-abc:8123; its last line: peer ps-abc:8123 got no answer'
+
+CHECKS='peer ps 8123 Ok.' run peer-refused fixture-p --keep
+expect "--keep names the peer among the kept resources" 1 "fixture-p failed check" "srv-peer"
+if printf '%s' "$calls" | grep -q DELETE; then
+  echo "FAIL: --keep deleted the peer: $calls" >&2
+  fails=$((fails + 1))
+fi
+
+CHECKS='peer ps 8123/x"y' run peer fixture-p
+expect "a path the peer's shell would misread is refused before any peer exists" 1 \
+  'fixture-p failed check ps: cannot probe ps-abc:8123 on 8123/x"y'
+if [ -e "$tmp/state/peer-body" ]; then
+  echo "FAIL: a peer was created for an unusable path" >&2
   fails=$((fails + 1))
 fi
 

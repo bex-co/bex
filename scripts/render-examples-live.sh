@@ -113,6 +113,7 @@ deadline=$(($(now) + timeout_s))
 
 # --- cleanup ---------------------------------------------------------------
 bp_id=""
+peer_id=""      # the peer worker this run created for its peer checks
 resources=()    # "<id> <type> <name>" lines from the Blueprint
 projects_before=""
 projects=()     # project ids this run created
@@ -152,6 +153,7 @@ cleanup() {
   refresh_resources
   local ids=()
   for line in "${resources[@]-}"; do [ -n "$line" ] && ids+=("${line%% *}"); done
+  [ -z "$peer_id" ] || ids+=("$peer_id")
   if [ -n "$bp_id" ] && [ "$keep" = 1 ] && [ "$outcome" != live ]; then
     echo "cleanup: kept for triage, delete by hand: Blueprint $bp_id ${ids[*]-} ${projects[*]-}"
     rm -rf "$tmp"
@@ -224,10 +226,25 @@ fi
 #                                  the same for a POST with a JSON body
 #   log <service> <text>           the service's app log shows text
 #   cron <service>                 a triggered run ends successful
+#   peer <service> [<protocol>:]<port>[/<path>] [text]
+#                                  a peer in the same workspace connects to the
+#                                  private service's internal host on port, and
+#                                  its answer contains text (any answer when
+#                                  there is none). The peer is one background
+#                                  worker for the run's peer checks,
+#                                  render-examples-live-peer-<repo> (busybox),
+#                                  deleted with the rest. It sends, by
+#                                  protocol: mysql nothing (MySQL greets
+#                                  first), postgres an SSLRequest, redis PING,
+#                                  mongodb isMaster, http GET <path> HTTP/1.0,
+#                                  and logs the answer's printable bytes. The
+#                                  protocol defaults by port: 3306 mysql, 5432
+#                                  postgres, 6379 redis, 27017 mongodb, any
+#                                  other http
 #   addr <service> <port>          the private service's internal address
-#                                  names the port its first deploy detected
-#                                  (bex runs no one-off jobs, so a peer's
-#                                  connection cannot be tried from here)
+#                                  names the port its first deploy detected:
+#                                  only for a port whose protocol the peer
+#                                  cannot open in one command
 # A template not listed gets the default: every web service answers 2xx on /.
 # RENDER_EXAMPLES_LIVE_CHECKS (lines in the same form) replaces the table's
 # entry, to try a template with checks of your own.
@@ -242,8 +259,8 @@ checks_for() {
     celery) printf '%s\n' 'http app / Asynchronous addition using Celery!' 'http flower / Flower' 'log celery-worker ready.' ;;
     ioredis) echo 'log ioredis-worker Result for key animal: cat' ;;
     webhook-playground) printf '%s\n' 'http webhook-playground / Webhook Playground' 'cron webhook-playground-cleanup' ;;
-    clickhouse) echo 'addr clickhouse 8123' ;;
-    pg_pinecone_render) echo 'addr pg-pinecone 5432' ;;
+    clickhouse) echo 'peer clickhouse 8123 Ok.' ;;
+    pg_pinecone_render) echo 'peer pg-pinecone 5432' ;;
     n8n) echo 'http n8n-service /healthz ok' ;;
     umami) printf '%s\n' 'http umami /api/heartbeat' 'post umami /api/auth/login {"username":"admin","password":"umami"} token' ;;
     bun-docker) echo 'http bun / Welcome to Bun!' ;;
@@ -253,6 +270,95 @@ checks_for() {
     postgrest) echo 'http postgrest / swagger' ;;
     minio) printf '%s\n' 'http minio-server /minio/health/live' 'http minio-console / MinIO' ;;
     wordpress) echo 'http wordpress /wp-admin/install.php WordPress' ;;
+    ackee) printf '%s\n' 'http ackee / <title>Ackee</title>' 'peer ackee-mongodb 27017 ismaster' ;;
+    adminer) echo 'http adminer / Login - Adminer' ;;
+    astro-ssr) printf '%s\n' 'http astro-ssr / It works.' 'http astro-ssr /api/hello?name=Astro Hello, Astro!' ;;
+    blitzjs) echo 'http blitzapp / Your app is ready, including user sign-up and log-in.' ;;
+    crawl4ai-url-to-markdown)
+      printf '%s\n' 'http url-to-markdown /health "status":"healthy"' 'http url-to-markdown / <title>URL to Markdown</title>' \
+        'post url-to-markdown /crawl {"url":"https://example.com"} Example Domain'
+      ;;
+    elasticsearch) echo 'peer elasticsearch 9200 You Know, for Search' ;;
+    elysiajs-hello-world) echo 'http elysiajs-hello-world / Hello Elysia' ;;
+    fastapi-uv) printf '%s\n' 'http fastapi-uv / {"message":"Hello World"}' 'http fastapi-uv /?name=Render {"message":"Hello Render"}' ;;
+    fastify-hello-world) echo 'http fastify-hello-world-example / Hello from Render using Fastify!' ;;
+    ghost) printf '%s\n' 'http ghost / <meta name="generator" content="Ghost 5.14"' 'peer mysql 3306 8.0.24' ;;
+    gitpod-openvscode-server) echo 'http gitpod-openvscode-server-example / vscode-workbench-web-configuration' ;;
+    hasura-graphql-metadata-db-only) printf '%s\n' 'http hasura /healthz OK' 'http hasura /v1/version v2.0.2' ;;
+    hasura-graphql) echo 'http hasura /healthz OK' ;;
+    langfuse4-template)
+      printf '%s\n' 'http langfuse /api/public/health "status":"OK"' 'http langfuse-minio /minio/health/live' \
+        'log langfuse-worker Listening: http://' 'peer langfuse-clickhouse 8123/ping Ok.'
+      ;;
+    matomo) printf '%s\n' 'http matomo / Matomo is libre software' 'peer mysql-matomo 3306 mysql_native_password' ;;
+    mattermost) printf '%s\n' 'http mattermost /api/v4/system/ping "status":"OK"' 'peer mattermost-minio 9000/minio/health/live HTTP/1.1 200 OK' ;;
+    mcp-server-python | mcp-server-typescript) echo 'http my-mcp-server /health {"status":"ok"}' ;;
+    metabase) echo 'http metabase /api/health {"status":"ok"}' ;;
+    mongodb) echo 'peer mongodb 27017 maxWireVersion' ;;
+    multi-environments-blueprint)
+      printf '%s\n' 'http portal-web-env-demo / "environment":"production"' 'http portal-web-env-demo-staging / "environment":"staging"' \
+        'cron nightly-jobs' 'log nightly-jobs Nightly tasks completed successfully'
+      ;;
+    mysql) echo 'peer mysql 3306 mysql_native_password' ;;
+    nextjs-hello-world) printf '%s\n' 'http next-js / Hello World.' 'http next-js /about About' ;;
+    nuxtjs-hello-world) echo 'http nuxt-js / Welcome!' ;;
+    paradedb) echo 'peer paradedb 5432 N' ;;
+    patient-api) echo 'http patient-api / {"status":"ok"}' ;;
+    pocketbase) printf '%s\n' 'http pocketbase /api/health API is healthy.' 'log pocketbase /_/#/pbinstall/' ;;
+    # postgresql-missing-trigger-index declares only a database: available is its check.
+    prometheus)
+      printf '%s\n' 'http prometheus /graph Prometheus Time Series Collection and Processing Server' \
+        'http prometheus /-/healthy Prometheus Server is Healthy.' \
+        'http prometheus /api/v1/query?query=prometheus_http_requests_total "job":"prometheus"'
+      ;;
+    python-memray-profiling) echo 'http render-memray-example / "service":"render-memray-example"' ;;
+    python-poetry) echo 'http flask-poetry / Hello, World!' ;;
+    questdb) printf '%s\n' 'http questdb /index.html QuestDB · Console' 'http questdb /exec?query=SELECT%201 "dataset":[' ;;
+    rabbitmq) echo 'http rabbitmq / RabbitMQ Management' ;;
+    rails-6) echo 'http myrailssite / Hello Rails on Render!' ;;
+    redash)
+      # redash/redash:latest is still Redash 8, whose entrypoint starts Celery.
+      printf '%s\n' 'http redash /ping PONG.' 'log redash-scheduler Starting scheduler and 1 workers for queues: celery' \
+        'log redash-worker Starting 2 workers for queues: queries,scheduled_queries,schemas' 'peer redash-redis redis:10000 PONG'
+      ;;
+    redis) echo 'peer redis redis:10000 PONG' ;;
+    remix-postgres) printf '%s\n' 'http remix /healthcheck OK' 'http remix / Indie Stack' ;;
+    render-tanstack-demo) printf '%s\n' 'http tanstack-playground / TanStack Playground' 'http tanstack-playground /deep/link TanStack Playground' ;;
+    retool) echo 'http retool /api/checkHealth "version"' ;;
+    shynet) echo 'http shynet /healthz/?format=json "DatabaseBackend": "working"' ;;
+    strapi-postgres) printf '%s\n' 'http strapi / The server is running successfully.' 'http strapi /_health' ;;
+    svelte) printf '%s\n' 'http svelte-static / Svelte app' 'http svelte-static /build/bundle.js' ;;
+    sveltekit-static) printf '%s\n' 'http sveltekit-static / id="svelte"' 'http sveltekit-static /about' ;;
+    sveltekit) printf '%s\n' 'http sveltekit / SvelteKit app' 'http sveltekit /sverdle Sverdle' ;;
+    tanstack-start)
+      printf '%s\n' 'http tanstack-start /health {"status":"ok"}' 'http tanstack-start / TanStack Start on Render' \
+        'http tanstack-start /about How it works'
+      ;;
+    temporal)
+      # The frontend speaks gRPC, which the peer cannot open in one command.
+      # shellcheck disable=SC2016 # the log line's dollar sign is literal
+      printf '%s\n' 'http app-workflow-trigger / OK!' 'peer temporal-ui 8088 200 OK' \
+        'peer temporal-elasticsearch 9200 missing authentication credentials' 'addr temporal-frontend 7233' \
+        'http app-workflow-trigger /trigger-workflow is processing.' 'log app-worker Depositing $54.990002 into account 002-002'
+      ;;
+    vibe-code-demo-apps)
+      printf '%s\n' 'http vibe-anurag-marin-silent-retreat-web / Stillwood' \
+        'http vibe-anurag-peninsula-interiors-web / Coastal-Modern Interiors' \
+        'http vibe-demo-user-aussie-shepherd-guide-web / Australian Shepherd Guide' \
+        'http vibe-demo-user-bark-brigade-web / Bark Brigade Volunteer K9 Fire Corps' \
+        'http vibe-demo-user-el-fuego-tacos-web / El Fuego Tacos' \
+        'http vibe-demo-user-gloomy-tails-web / Gloomy Tails Wellness Center' \
+        'http vibe-demo-user-ironridge-meatpacking-web / Ironridge Meat Packing Co.' \
+        'http vibe-demo-user-ironvale-meats-web / Ironvale Meats' \
+        'http vibe-demo-user-masa-fuego-tacos-web / Masa Fuego' \
+        'http vibe-demo-user-mendocino-silent-yoga-web / Still Grove' \
+        'http vibe-demo-user-synthwave-collective-web / Synthwave Collective'
+      ;;
+    wikijs) echo 'http wikijs / Wiki.js Setup' ;;
+    wrapped-for-linkedin)
+      printf '%s\n' 'http wrappedforlinkedin / Wrapped for LinkedIn' 'http wrappedforlinkedin /deep/link Wrapped for LinkedIn' \
+        'http wrapped-for-linkedin-screenshots /healthz ok'
+      ;;
   esac
 }
 
@@ -363,10 +469,18 @@ done
 stage=check
 service_id() {
   # The service of that name: a database may share it (rails-7's myrailssite).
+  # The Blueprint lists a name longer than 30 characters by its shortened
+  # resource slug (w6/190), so the service's own name is asked for too.
   local line id type rname
   for line in "${resources[@]}"; do
     read -r id type rname <<<"$line"
     case "$id" in srv-* | crn-*) [ "$rname" = "$1" ] && echo "$id" && return 0 ;; esac
+  done
+  for line in "${resources[@]}"; do
+    id="${line%% *}"
+    case "$id" in srv-* | crn-*) ;; *) continue ;; esac
+    api GET "/v1/services/$id"
+    [ "$(body '.name // empty')" = "$1" ] && echo "$id" && return 0
   done
   return 1
 }
@@ -407,6 +521,52 @@ log_check() {
   return 1
 }
 
+peer_target() {
+  # peer_target [PROTOCOL:]PORT[/PATH]: sets peer_proto, peer_port and
+  # peer_path, or fails when the peer's shell could misread them.
+  local target="$1"
+  peer_proto=""
+  case "$target" in *:*) peer_proto="${target%%:*}" target="${target#*:}" ;; esac
+  peer_port="${target%%/*}"
+  peer_path="${target#"$peer_port"}"
+  if [ -z "$peer_proto" ]; then
+    case "$peer_port" in
+      3306) peer_proto=mysql ;;
+      5432) peer_proto=postgres ;;
+      6379) peer_proto=redis ;;
+      27017) peer_proto=mongodb ;;
+      *) peer_proto=http ;;
+    esac
+  fi
+  [[ "$peer_proto" =~ ^(http|mysql|postgres|redis|mongodb)$ && "$peer_port" =~ ^[0-9]+$ &&
+    "$peer_path" =~ ^(/[A-Za-z0-9._~/?=\&-]*)?$ ]]
+}
+
+peer_call() {
+  # peer_call HOST: the peer script's probe of HOST at peer_target's target.
+  # The probe is a printf format, with octal escapes for binary protocols.
+  local probe
+  case "$peer_proto" in
+    mysql) probe='' ;;
+    postgres) probe='\000\000\000\010\004\322\026\057' ;;
+    redis) probe='PING\r\n' ;;
+    mongodb) probe='\072\000\000\000\001\000\000\000\000\000\000\000\324\007\000\000\000\000\000\000admin.\044cmd\000\000\000\000\000\377\377\377\377\023\000\000\000\020isMaster\000\001\000\000\000\000' ;;
+    http) probe="GET ${peer_path:-/} HTTP/1.0\\r\\nHost: $1\\r\\n\\r\\n" ;;
+  esac
+  printf 'p %s %s "%s" "%s"; ' "$1" "$peer_port" "$probe" "$peer_path"
+}
+
+peer_check() {
+  # peer_check TARGET TEXT: the peer logged an answer from TARGET (host:port
+  # and path) that contains TEXT.
+  api GET "/v1/logs?ownerId=$owner&resource=$peer_id&type=app&text=$(q "peer $1 ")&limit=20&direction=backward&startTime=$(q "$started")"
+  # shellcheck disable=SC2016 # $m and $t are jq's variables
+  [ "$status" = 200 ] && body --arg m "peer $1 answered: " --arg t "$2" \
+    '[.logs[]? | .message | select(startswith($m) and contains($t))] | length > 0' | grep -qx true && return 0
+  check_detail="the peer never read ${2:+\"$2\" in }an answer from $1; its last line: $(body '.logs[0]?.message // "none"' | head -c 160)"
+  return 1
+}
+
 run_until_done() {
   # run_until_done GET-PATH OK-STATUS: poll a cron run to a terminal state.
   local st
@@ -438,6 +598,38 @@ if [ -z "$checks" ]; then
     [ "$type" = web_service ] && checks+="http $rname /"$'\n'
   done
 fi
+
+# One peer probes every private service the checks name, every 10 seconds, and
+# logs each answer as `peer <host>:<port><path> answered: <printable bytes>`.
+# It joins the first one's environment, which network isolation may close to
+# every service outside it, as a user would place a client there.
+peer_calls=""
+peer_env=""
+while IFS= read -r check; do
+  read -r kind svc rest <<<"$check"
+  [ "$kind" = peer ] || continue
+  id="$(service_id "$svc")" || fail check "the Blueprint created no resource named $svc"
+  api GET "/v1/services/$id"
+  url="$(body '.serviceDetails.url // empty')"
+  read -r target _ <<<"$rest"
+  if ! peer_target "$target" || ! [[ "$url" =~ ^[a-z0-9.-]+:[0-9]+$ ]]; then
+    fail check "$svc: cannot probe ${url:-an empty internal address} on $target"
+  fi
+  peer_calls+="$(peer_call "${url%:*}")"
+  [ -n "$peer_env" ] || peer_env="$(body '.environmentId // empty')"
+done <<<"$checks"
+if [ -n "$peer_calls" ]; then
+  # shellcheck disable=SC2016 # the peer's shell expands these
+  peer_cmd='sh -c '\''trap "exit 0" TERM; p() { a="$(printf "$3" | nc -w 10 "$1" "$2" | tr -c " -~" " " | head -c 2000)"; if [ -n "$a" ]; then echo "peer $1:$2$4 answered: $a"; else echo "peer $1:$2$4 got no answer"; fi; }; while :; do '"$peer_calls"'sleep 10; done'\'
+  api POST /v1/services "$(jq -nc --arg name "render-examples-live-peer-$repo" --arg owner "$owner" --arg cmd "$peer_cmd" \
+    --arg image "${RENDER_EXAMPLES_LIVE_PEER_IMAGE:-docker.io/library/busybox:1.37}" --arg env "$peer_env" \
+    '{type: "background_worker", name: $name, ownerId: $owner, image: {ownerId: $owner, imagePath: $image},
+      serviceDetails: {runtime: "image", plan: "starter", envSpecificDetails: {dockerCommand: $cmd}}}
+      + if $env == "" then {} else {environmentId: $env} end')"
+  peer_id="$(body '.service.id // empty')"
+  [[ "$status" == 2* && -n "$peer_id" ]] || fail check "creating the peer answered $status: $(error_text)"
+fi
+
 while IFS= read -r check; do
   [ -n "$check" ] || continue
   read -r kind svc rest <<<"$check"
@@ -465,6 +657,11 @@ while IFS= read -r check; do
         fail check "$svc: triggering a run answered $status: $(error_text)"
       fi
       run_until_done "/v1/cron-jobs/$id/runs/$run_id" successful || fail check "$svc: $check_detail"
+      ;;
+    peer)
+      read -r target text <<<"$rest"
+      peer_target "$target"
+      retry "$check_window" peer_check "${url%:*}:$peer_port$peer_path" "${text-}" || fail check "$svc: $check_detail"
       ;;
     addr)
       if [ "${url##*:}" != "$rest" ]; then
