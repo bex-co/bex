@@ -5544,6 +5544,13 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling CronJob for "+image)
 	}
 	labels := map[string]string{labelApp: app.Name, labelAppID: appIDOrName(app)}
+	// The private-network denies know a tenant source by its workspace label,
+	// as for Deployment pods (appPodLabels): without it a cron run could reach
+	// a background worker or a free web service, which on Render receive no
+	// private traffic (w6/m640).
+	if ws := app.Labels[labelWorkspace]; ws != "" {
+		labels[labelWorkspace] = ws
+	}
 	// The environment boundary admits peers by this label, as for Deployment
 	// pods (appPodLabels); without it an isolated cron could not reach its own
 	// environment's services (w4/m185 audit, w4/m342). A run in flight takes
@@ -5573,6 +5580,8 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	var tmpl corev1.PodTemplateSpec
 	if restore != nil {
 		tmpl = *restore
+		syncRestoredPolicyLabels(&tmpl, app)
+		syncTemplateLabel(&tmpl, labelWorkspace, labels[labelWorkspace])
 		recordManagedOIDCOf(app, tmpl)
 	} else {
 		tmpl = r.cronPodSpec(effectiveApp, image, port, labels, launch, r.imageProvenance(ctx, app, image).Commit)
@@ -8497,6 +8506,19 @@ func syncPolicyLabels(tpl *corev1.PodTemplateSpec, app *appv1alpha1.App) bool {
 		changed = syncTemplateLabel(tpl, key, want) || changed
 	}
 	return changed
+}
+
+// syncRestoredPolicyLabels gives a served release's template, restored over a
+// canceled deploy, the networkPolicyLabels of the plan it runs (templateTier,
+// as recordServedTier reads it), and reports whether tpl changed. The record
+// may predate a label, as every one from before w6/m640 predates the send-only
+// one, and a canceled deploy restores it on every pass.
+func syncRestoredPolicyLabels(tpl *corev1.PodTemplateSpec, app *appv1alpha1.App) bool {
+	served := *app // networkPolicyLabels reads the spec's type and tier only
+	if tier, ok := templateTier(*tpl); ok {
+		served.Spec.Tier = tier
+	}
+	return syncPolicyLabels(tpl, &served)
 }
 
 // syncTemplateLabel sets key to want on tpl (removing it when want is empty)

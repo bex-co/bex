@@ -801,6 +801,7 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 		applyDeploymentSpec(d, runtime, params)
 		if restore != nil {
 			d.Spec.Template = *restore.DeepCopy()
+			syncRestoredPolicyLabels(&d.Spec.Template, app)
 		}
 		// The environment labels never roll a pod: a template that differs
 		// from the stored one only in them keeps the stored values, and the

@@ -19,7 +19,12 @@ package controller
 import (
 	"testing"
 
+	. "github.com/onsi/gomega"
+
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/predeploy"
@@ -108,6 +113,34 @@ func TestPrivateNetworkLabelOnCronAndPreDeployPods(t *testing.T) {
 	}
 }
 
+// A cron run is a tenant source like a service's pod: it carries its
+// workspace label, by which the send-only and free-plan ingress denies know a
+// tenant source, so it cannot reach a background worker or a free web service.
+// Without it, a manual run on production opened a worker's port by its pod IP
+// and its <slug>-discovery name, and a free web service's internal address
+// (w6/m640 t004, 2026-11-26). Manual runs take the CronJob's template.
+func TestCronRunPodsCarryTheWorkspaceLabel(t *testing.T) {
+	g := NewWithT(t)
+	app := activeApp("tea-cron-workspace")
+	app.UID = "cron-workspace-uid"
+	app.Spec.Type = appv1alpha1.TypeCronJob
+	app.Spec.Tier = "starter"
+	app.Spec.Expose = false
+	app.Spec.Schedule = "* * * * *"
+	app.Spec.Command = "echo sends"
+	scheme := wakeScheme()
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
+		WithStatusSubresource(&appv1alpha1.App{}, &batchv1.Job{}).Build()
+	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+	reconcileTwice(t, wakeReconciler(cl, scheme), nn)
+	var cron batchv1.CronJob
+	g.Expect(cl.Get(t.Context(), nn, &cron)).To(Succeed())
+	labels := cron.Spec.JobTemplate.Spec.Template.Labels
+	g.Expect(labels).To(HaveKeyWithValue(labelWorkspace, "tea-cron-workspace"))
+	g.Expect(sendOnly(labels)).To(BeTrue(), "a cron run still receives nothing: %v", labels)
+
+}
+
 // A held release's served template follows a plan change: a move from Free to
 // Starter drops both network policy labels, and a move back restores them. A
 // worker's label stays through any plan change.
@@ -139,5 +172,42 @@ func TestSyncPolicyLabelsFollowReceiving(t *testing.T) {
 		if !sendOnly(worker.Labels) {
 			t.Fatalf("worker on %q: labels %v", tier, worker.Labels)
 		}
+	}
+}
+
+// A served release's template restored over a canceled deploy takes the labels
+// of the plan it runs, read from its app container's resources, whatever plan
+// the canceled release saved: a record from before w6/m640 has no send-only
+// label, and a canceled move from Free to Starter still runs Free.
+func TestSyncRestoredPolicyLabelsFollowTheServedPlan(t *testing.T) {
+	restored := func(tier string, labels map[string]string) *corev1.PodTemplateSpec {
+		tpl := &corev1.PodTemplateSpec{}
+		tpl.Labels = labels
+		tpl.Spec.Containers = []corev1.Container{{Name: appContainerName, Resources: resourcesForTier(tier)}}
+		return tpl
+	}
+	worker := projectionApp(func(a *appv1alpha1.App) { a.Spec.Type, a.Spec.Tier = appv1alpha1.TypeBackgroundWorker, "starter" })
+	tpl := restored("starter", map[string]string{labelApp: "w"})
+	if !syncRestoredPolicyLabels(tpl, worker) || !sendOnly(tpl.Labels) {
+		t.Fatalf("a worker's pre-label record: labels %v", tpl.Labels)
+	}
+	if syncRestoredPolicyLabels(tpl, worker) {
+		t.Fatal("an already labeled template reported a change")
+	}
+
+	toStarter := projectionApp(func(a *appv1alpha1.App) { a.Spec.Tier = "starter" })
+	tpl = restored(tierFree, map[string]string{labelApp: "web", execution.LabelFreePlan: execution.FreePlanValue})
+	syncRestoredPolicyLabels(tpl, toStarter)
+	if !sendOnly(tpl.Labels) || tpl.Labels[execution.LabelFreePlan] != execution.FreePlanValue {
+		t.Fatalf("a canceled Free → Starter still runs Free: labels %v", tpl.Labels)
+	}
+	if toStarter.Spec.Tier != "starter" {
+		t.Fatal("the App itself was changed")
+	}
+
+	toFree := projectionApp(func(a *appv1alpha1.App) { a.Spec.Tier = tierFree })
+	tpl = restored("starter", map[string]string{labelApp: "web"})
+	if syncRestoredPolicyLabels(tpl, toFree) || len(tpl.Labels) != 1 {
+		t.Fatalf("a canceled Starter → Free still runs Starter and receives: labels %v", tpl.Labels)
 	}
 }
