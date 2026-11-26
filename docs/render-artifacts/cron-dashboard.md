@@ -160,7 +160,7 @@ The docs and the changelog still say Builds. The signed-in dashboard says **Depl
 
 ## The resume's deploy (2026-11-25, w3/m643)
 
-**Evidence.** Render's public API spec as pinned in `lego/backend/internal/api/openapi/render-public-api-1.json`, and Render's public dashboard bundle read without sign-in on 2026-11-25 (`service-*.js` `resumeService`, `CronJob-*.js` `Pr`; the chunk hashes are in [w3/m643](../../.pm/w3/blocked/m643/README.md#what-render-does)). Render's docs and changelog say nothing about what a resume deploys: the API reference's "Resume service" reads only "Resume the service with the provided ID (if it's currently suspended)" and answers 202 with no body, and the webhook docs list `service_resumed` under service availability, beside the deploy events. No Render service was resumed for this record.
+**Evidence.** Render's public API spec as pinned in `lego/backend/internal/api/openapi/render-public-api-1.json`, and Render's public dashboard bundle read without sign-in on 2026-11-25 (`service-*.js` `resumeService`, `CronJob-*.js` `Pr`; the chunk hashes are in [w3/m643](../../.pm/w3/done/m643/README.md#what-render-does)). Render's docs and changelog say nothing about what a resume deploys: the API reference's "Resume service" reads only "Resume the service with the provided ID (if it's currently suspended)" and answers 202 with no body, and the webhook docs list `service_resumed` under service availability, beside the deploy events. No Render service was resumed for this record.
 
 | Fact | Source |
 | --- | --- |

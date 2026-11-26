@@ -1,6 +1,6 @@
 # w3 · m643 — A cron job's header, its suspension notice and Manual Build say and do what Render's do: the last run's zone, every schedule in words, Resume opens the new deploy
 
-**Worker:** worker3 **Goal:** the five differences from Render's cron header and actions that w3/m555 left are gone: the last run's date carries its zone and Render's UTC tooltip, every valid schedule reads in Render's cronstrue words, a Hobby workspace's notice says "Suspended by you", Resume service opens the deploy the resume starts, and Manual Build toasts only a failure, which stays until dismissed. **Status:** blocked (pin must carry `c28239c97b`: t007's production re-check outside English, then t011; t001–t006 and t008–t010 done, t007 walked locally and on production pin `9b91284a4a2e`)
+**Worker:** worker3 **Goal:** the five differences from Render's cron header and actions that w3/m555 left are gone: the last run's date carries its zone and Render's UTC tooltip, every valid schedule reads in Render's cronstrue words, a Hobby workspace's notice says "Suspended by you", Resume service opens the deploy the resume starts, and Manual Build toasts only a failure, which stays until dismissed. **Status:** done (every task done; t007 walked locally, on production pin `9b91284a4a2e` in English and on pin `11695fb886cb` in zh-CN and de-DE)
 
 ## Tasks (in order)
 
@@ -12,11 +12,11 @@
 | [t004](done/t004.md) | Resume opens a deploy with Render's `service_resumed` trigger, and GraphQL `resumeService` answers it — **DONE** | 1h30m | — |
 | [t005](done/t005.md) | Resume service opens the new deploy, with Render's resume toasts — **DONE** | 45m | t004 |
 | [t006](done/t006.md) | Manual Build: no toast on success, and a failure that stays until dismissed — **DONE** | 20m | — |
-| [t007](t007.md) | Verify in a real browser at 1440 and 390, locally and on production | 45m | t001, t002, t003, t005, t006 |
+| [t007](done/t007.md) | Verify in a real browser at 1440 and 390, locally and on production — **DONE** | 45m | t001, t002, t003, t005, t006 |
 | [t008](done/t008.md) | Render parity — **DONE** | 30m | t007 |
 | [t009](done/t009.md) | Simplify — **DONE** | 15m | t008 |
 | [t010](done/t010.md) | Test coverage — **DONE** | 45m | t008 |
-| [t011](t011.md) | Closeout | 10m | t009, t010 |
+| [t011](done/t011.md) | Closeout — **DONE** | 10m | t009, t010 |
 
 Total: **11 tasks, about 7h**.
 
@@ -68,6 +68,18 @@ Pin `9b91284a4a2e` (`c767c1bbd9`, carries `18d2615235`): both `bex-api` pods ran
 
 **Left for the next pin** (t007 step 2's re-check, once production carries `c28239c97b`): as the QA user in `bex-canary`, a cron job created for it (disposable) that has run once, opened in zh-CN (Asia/Shanghai) and de-DE at 1440 and 390: no page error on its Runs, Deploys and Settings, and the server's HTML (`data-header-item="cron-runs"`) carries the page language's schedule words.
 
+### Production re-check (2026-11-26, t007 step 2, pin `11695fb886cb`)
+
+Pin `11695fb886cb` (`ec6211f2ca`, carries `c28239c97b`): both `bex-api` pods ran `bex-operator@sha256:f031439853c2…` and the `dashboard` pod `bex-dashboard@sha256:6c65a6a43b12…`, started 13:57–13:58 UTC. Walked 16:20–16:29 UTC as the QA user (`scripts/qa-login.sh`) in Google Chrome headless through `playwright-core` 1.65.1, zh-CN in Asia/Shanghai and de-DE in Europe/Berlin (each with its own `Accept-Language`), at 1440 and at 390 as a touch device. In `bex-canary`, created over REST: the repo-backed cron job `qa-20261126-m643-i18n` (disposable, `srv-dc45odbi676s73bu75t0`, `render-examples/express-hello-world` on `main`, Node, build `yarn`, command `node -e "console.log('m643 run ok')"`, Starter, schedule `0 0 1 * *`). Its first build went live in under 2 minutes, and a triggered run succeeded at 16:23:38 UTC.
+
+| Point | Seen at 1440 and 390 | Verdict |
+| --- | --- | --- |
+| Page errors | zh-CN and de-DE: no page error and no console error on the bare URL (it lands on Runs), Runs, Deploys, Events, Logs and Settings, at either width (24 page loads) | holds |
+| The server's schedule words | `0 0 1 * *`: the server's HTML of `data-header-item="cron-runs"` read "运行 `<command>` 在 UTC 上午 12:00, 限每月 1 号" in zh and "Startet `<command>` um 00:00 UTC, an Tag 1 des Monats" in de, the same text the browser drew after hydration, on every page that draws the header (Logs draws none). Then changed over REST: `0 9 * * 1-5` "在 UTC 上午 09:00, 星期一至星期五" and "um 09:00 UTC, Montag bis Freitag"; `*/40 * * * *` "每隔 40 分钟" and "alle 40 Minuten", with en-US "every 40 minutes" as the control. The server's words matched the browser's on Runs each time, with no error | holds |
+| The last run | zh "上次成功运行 2026年11月27日 上午12:23 GMT+8", de "Letzter erfolgreicher Lauf 26. November 2026 um 17:23 MEZ", en-US "… November 26, 2026 at 8:23 AM PST". The line at y 180, 20 px at 1440; at 390 y 252, 20 px in zh and 40 px (two lines) in de | holds |
+
+**Cleanup:** the cron job was deleted (`DELETE` 204, by-id `GET` 404), and within 15 s the app cluster kept no App, CronJob, Job or Pod of it. The QA session was logged out (`qa-login.sh --logout`, after which its cookie answered 401), and the session jar, the state file and the fetched kubeconfig were deleted.
+
 ## Definition of done
 
 1. A cron job's "Last successful run" reads Render's date with the zone's abbreviation in the viewer's zone, with a "UTC: …" tooltip only off UTC, and no hydration error.
@@ -89,3 +101,5 @@ Pin `9b91284a4a2e` (`c767c1bbd9`, carries `18d2615235`): both `bex-api` pods ran
 
 - **2026-11-26, `/loopx w3` (verified evidence, no user decision):** the gate, pin must carry `18d2615235`, holds. The newest pin on `origin/main` is `c767c1bbd9` `chore(deploy): pin platform images to 9b91284a4a2e`, and `git merge-base --is-ancestor 18d2615235 9b91284a4a2e` exits 0. Affects t007 (production half) and t011. Next: t007 walks every point of its step 2 on production as the QA user in `bex-canary` at 1440 and 390 and records it under `## Live walk`; t011 closes the milestone once definition of done 6 holds. No gate remains.
 - **2026-11-26, `/loopx w3`, parked again (verified evidence, no user decision):** t007's production walk held every point in English at 1440 and 390 (§ Live walk › Production) and found React #418 on every cron job page outside English, fixed in `c28239c97b`. Gate: pin must carry `c28239c97b`; nothing is needed from the user. Next: t007 step 2's re-check as § Live walk › Production lists it under "Left for the next pin", recorded there; then t011 closes the milestone if it holds.
+- **2026-11-26, `/loopx w3` (verified evidence, no user decision):** the gate, pin must carry `c28239c97b`, holds. The newest pin on `origin/main` is `ec6211f2ca` `chore(deploy): pin platform images to 11695fb886cb`, and `git merge-base --is-ancestor c28239c97b 11695fb886cb` exits 0. Affects t007 (step 2's re-check outside English) and t011. Next: t007 opens a cron job created for it (disposable) in zh-CN (Asia/Shanghai) and de-DE at 1440 and 390 as the QA user in `bex-canary`, checks for no page error on its Runs, Deploys and Settings and for the page language's schedule words in the server's HTML, and records it under `## Live walk`; t011 closes the milestone if it holds. No gate remains.
+- **2026-11-26, `/loopx w3`, closed:** t007 step 2's re-check held on production pin `11695fb886cb` in zh-CN and de-DE at 1440 and 390 (§ Live walk › Production re-check): no page error on any cron job page, and the server's HTML carries the page language's schedule words. Every point of the definition of done holds; t011 moved the milestone to `done/`.
