@@ -84,6 +84,6 @@ Each card of bex's former single Postgres page goes to the page whose Render cou
 
 - Render shows Read Replicas on Info; bex keeps them in the High Availability card on Plan ([w3/116](../../.pm/w3/116.md)).
 - Render's Logs and Metrics pages hide the resource header ([w3/117](../../.pm/w3/117.md)). A signed-in, read-only walk on 2026-11-25 confirmed it: a Postgres database's Info page draws the header, and its Logs page (at 1440 and 390) and Metrics page (at 1440) do not. [w3/106](../../.pm/w3/done/106.md) did the same for a service's.
-- A Key Value instance keeps its single page ([w3/115](../../.pm/w3/115.md)).
+- A Key Value instance keeps its single page ([w3/115](../../.pm/w3/done/115.md), promoted to w3/m649).
 - Render's document title has no page name; bex's names the page first, as its service tabs do.
 - Render's Sharing page (legacy, flagged) and its log stream override (a [`DO_NOT_DO.md`](../../.pm/DO_NOT_DO.md) non-goal) have no bex counterpart.
