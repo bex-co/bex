@@ -59,7 +59,7 @@ run() { # run <page> <ledger> [mode]
 page="$fixtures/index.html"
 ledger="$fixtures/ledger.md"
 
-check "the fixture bundle matches its ledger" 0 "7 operations and 4 flags in 6 chunks (entry index-Ent1y-_A.js)" \
+check "the fixture bundle matches its ledger" 0 "8 operations and 6 flags in 7 chunks (entry index-Ent1y-_A.js)" \
   run "$page" "$ledger"
 
 # The crawl: a chunk reached only through two dynamic imports (entry ->
@@ -95,6 +95,19 @@ sed -e 's#Zq9(`okta-app-available`)#Zq9(`okta-app-available`)\&\&Zq9(`skip-banne
 check "a flag that moved to another chunk family passes with a notice" 0 \
   "flag skip-banner is now called from Settings (recorded: index)" run "$moved" "$ledger"
 
+# Render's second flag mechanism: hooks from the frontendFlag chunk, whose
+# values Render's server evaluates (allFrontendFlags). Each flag records which
+# chunk's hooks read it; a route loader's flag counts like a hook call (w1/148).
+hooks() { python3 -I -c 'import json,sys; print([f["hooks"] for f in json.load(sys.stdin)["flags"] if f["name"]==sys.argv[1]][0])' "$1" <<<"$inventory"; }
+check "a frontend flag is read through the frontendFlag chunk" 0 "['frontendFlag']" hooks oauth_proxy
+check "a frontend flag on a route loader is found" 0 "['frontendFlag']" hooks sandbox_shell
+check "a featureflags flag is read through the featureflags chunk" 0 "['featureflags']" hooks okta-app-available
+check "a new frontend flag gate fails and is named" 1 "no row: flag brand_new_flag (called from Settings)" \
+  run "$(bundle_with new-frontend-flag assets/Settings-SeTT1ngs.js 's#So(`oauth_proxy`)#So(`oauth_proxy`)\&\&So(`brand_new_flag`)#')" "$ledger"
+check "a removed frontend flag gate fails and names the item to reopen" 1 \
+  "flag gate sandbox_shell is gone from Render's dashboard bundle: Render made the feature GA or dropped it; reopen A frontend flag on a route loader: compare \`w1/152\`" \
+  run "$(bundle_with removed-frontend-flag assets/index-Ent1y-_A.js 's#Co(`sandbox_shell`)#null#')" "$ledger"
+
 # Flag calls are found under whatever local name the caller imports a hook as.
 check "a flag call under another local import name is found" 0 "every operation and flag has a row" \
   run "$(bundle_with renamed-local assets/Settings-SeTT1ngs.js 's#Zq9#$q_0#g')" "$ledger"
@@ -113,6 +126,16 @@ check "a renamed featureflags chunk fails closed" 1 "want one featureflags-*.js 
     echo "$sandbox/renamed-chunk/index.html")" "$ledger"
 check "a featureflags export shape this parser cannot read fails closed" 1 "its export shape changed" \
   run "$(bundle_with export-shape assets/featureflags-F1agsAbC.js 's#export{g as a,p as i,h as n,d as o,f as r,m as t};#export default {g,p,h,d,f,m};#')" "$ledger"
+check "a renamed frontendFlag chunk fails closed" 1 "want one frontendFlag-*.js chunk in the import graph, found none" \
+  run "$(cp -R "$fixtures" "$sandbox/renamed-frontend" && cd "$sandbox/renamed-frontend/assets" &&
+    mv frontendFlag-Fr0ntF1g.js uiFlags-Fr0ntF1g.js && sed -i.bak 's#frontendFlag-Fr0ntF1g#uiFlags-Fr0ntF1g#g' ./*.js &&
+    echo "$sandbox/renamed-frontend/index.html")" "$ledger"
+check "a frontendFlag chunk that no longer reads allFrontendFlags fails closed" 1 \
+  "frontendFlag has no export{…} clause over allFrontendFlags" \
+  run "$(bundle_with frontend-marker assets/frontendFlag-Fr0ntF1g.js 's#allFrontendFlags#frontendSettings#g')" "$ledger"
+check "no frontend flag call fails closed" 1 "no chunk calls a frontendFlag hook with a flag name" \
+  run "$(cp -R "$fixtures" "$sandbox/no-frontend-calls" && sed -E -i.bak 's#(So|Co)\(`[a-z_]*`#\1(e#g' "$sandbox"/no-frontend-calls/assets/*.js &&
+    echo "$sandbox/no-frontend-calls/index.html")" "$ledger"
 check "no flag call at all fails closed" 1 "no chunk calls a featureflags hook with a flag name" \
   run "$(cp -R "$fixtures" "$sandbox/no-calls" && sed -E -i.bak 's#(jx|Mx|kx|Zq9)\(`[a-z-]*`#\1(e#g' "$sandbox"/no-calls/assets/*.js &&
     echo "$sandbox/no-calls/index.html")" "$ledger"
@@ -154,24 +177,26 @@ check "a duplicate row fails" 1 "second row for query server" \
 check "a row with a missing cell fails" 1 "3 cells, want 4" \
   run "$page" "$(ledger_with short-row 's#| `server` | query | matched |#| `server` | matched |#')"
 check "a ledger with no Flag table fails" 1 "found no Operation or no Flag rows" \
-  run "$page" "$(grep -v '^| `[a-z-]*` | `' "$ledger" >"$sandbox/no-flags.md"; echo "$sandbox/no-flags.md")"
+  run "$page" "$(grep -v '^| `[a-z0-9_-]*` | `' "$ledger" >"$sandbox/no-flags.md"; echo "$sandbox/no-flags.md")"
 RENDER_DASHBOARD_OPS_LEDGER="$sandbox/absent.md" check "a missing ledger fails" 1 "does not exist" "$script"
 
 # The committed ledger itself, offline: every row is well formed, and a bundle
 # built from its rows (each operation in the entry chunk, each flag called
-# there) reads back as all dispositioned. The live comparison is the weekly
-# job's; this catches a bad row on the push that adds it.
+# there through both flag chunks' hooks) reads back as all dispositioned. The
+# live comparison is the weekly job's; this catches a bad row on the push that
+# adds it.
 committed="$sandbox/committed"
 mkdir -p "$committed/assets"
 cp "$fixtures/index.html" "$committed/index.html"
-cp "$fixtures/assets/hooks-HooK5x9Q.js" "$fixtures/assets/featureflags-F1agsAbC.js" "$committed/assets/"
+cp "$fixtures/assets/hooks-HooK5x9Q.js" "$fixtures/assets/featureflags-F1agsAbC.js" "$fixtures/assets/frontendFlag-Fr0ntF1g.js" \
+  "$committed/assets/"
 {
-  echo 'import{n as Qe,y as V}from"./hooks-HooK5x9Q.js";import{t as Mx}from"./featureflags-F1agsAbC.js";'
+  echo 'import{n as Qe,y as V}from"./hooks-HooK5x9Q.js";import{t as Mx}from"./featureflags-F1agsAbC.js";import{o as So}from"./frontendFlag-Fr0ntF1g.js";'
   awk -F'|' '/^\| `[A-Za-z_][A-Za-z0-9_]*` \| (query|mutation|subscription) \|/ {
     gsub(/[` ]/, "", $2); gsub(/ /, "", $3)
     printf "new Qe(V`\n  %s %s {\n    x\n  }\n`);\n", $3, $2
   }' "$committed_ledger"
-  awk -F'|' '/^\| `[a-z0-9-]+` \| `/ { gsub(/[` ]/, "", $2); printf "Mx(`%s`,e);\n", $2 }' "$committed_ledger"
+  awk -F'|' '/^\| `[a-z0-9_-]+` \| `/ { gsub(/[` ]/, "", $2); printf "Mx(`%s`,e);So(`%s`);\n", $2, $2 }' "$committed_ledger"
 } >"$committed/assets/index-Ent1y-_A.js"
 check "the committed ledger is well formed" 0 "every operation and flag has a row" run "$committed/index.html" "$committed_ledger"
 

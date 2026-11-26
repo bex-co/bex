@@ -1,4 +1,4 @@
-import{n as Qe,y as V}from"./hooks-HooK5x9Q.js";import{a as Ox,i as kx,r as jx,t as Mx}from"./featureflags-F1agsAbC.js";
+import{n as Qe,y as V}from"./hooks-HooK5x9Q.js";import{a as Ox,i as kx,r as jx,t as Mx}from"./featureflags-F1agsAbC.js";import{r as Co}from"./frontendFlag-Fr0ntF1g.js";
 var Mu=new Qe(V`
   query server($id: String!) {
     server(id: $id) {
@@ -13,8 +13,8 @@ var Mu=new Qe(V`
     }
   }
 `);
-const lazy=()=>import("./Settings-SeTT1ngs.js"),deps=["assets/Billing-B1ll-ng0.js"];
+const lazy=()=>import("./Settings-SeTT1ngs.js"),deps=["assets/Billing-B1ll-ng0.js"],routes=[{path:`/sandboxes`,loader:Co(`sandbox_shell`)}];
 function Card(e){let t=jx(`postgres-parameter-overrides`),n=Mx(`share-postgres`,e.owner),r=kx(`skip-banner`);return t&&n&&r}
 // Prose that mentions a `next` query param is not an operation.
 const note=`"${e}" is part of the routes and shouldn't be used as a \`next\` query param`;
-export{Card,lazy,deps,note};
+export{Card,lazy,deps,routes,note};

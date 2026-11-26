@@ -1,4 +1,4 @@
-import{r as Zq9}from"./featureflags-F1agsAbC.js";import{n as Qe,y as V}from"./hooks-HooK5x9Q.js";
+import{r as Zq9}from"./featureflags-F1agsAbC.js";import{o as So}from"./frontendFlag-Fr0ntF1g.js";import{n as Qe,y as V}from"./hooks-HooK5x9Q.js";
 const rollback=()=>import("./Rollback-R0llBack.js");
 var Ld=new Qe(V`
   query statusQuery (
@@ -13,3 +13,4 @@ var Ld=new Qe(V`
   }
 `);
 export const Settings=()=>Zq9(`okta-app-available`)?rollback:Ld;
+export const Auth=()=>So(`oauth_proxy`)&&Ld;

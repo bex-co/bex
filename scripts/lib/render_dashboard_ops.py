@@ -24,20 +24,25 @@ dialog) is missed by a one-level read. Chunk file names carry content hashes
 that change on every Render deploy, so everything is keyed by operation or
 flag name, and chunks only by family (the name without its hash).
 
-A flag gate is a call to one of the hooks the `featureflags-*.js` chunk
-exports, under whatever local name the caller imports it, with a string
-literal first argument: `import{r as jx}from"./featureflags-….js"` then
-jx(`postgres-parameter-overrides`). Rollup moves call sites between chunks
-from one deploy to the next (most sit in the entry chunk), so a flag's chunk
-families are reported but never fail a check.
+A flag gate is a call to one of the hooks a flag chunk exports, under
+whatever local name the caller imports it, with a string literal first
+argument: `import{r as jx}from"./featureflags-….js"` then
+jx(`postgres-parameter-overrides`). Render gates features two ways, so there
+are two flag chunks (FLAG_CHUNKS): `featureflags-*.js` reads the workspace's
+or user's `featureFlags`, and `frontendFlag-*.js` reads `allFrontendFlags`,
+which Render's server evaluates for the signed-in user, workspace and
+organization (w1/148: the per-service Authentication setting sits behind the
+frontend flag `oauth_proxy`). Rollup moves call sites between chunks from one
+deploy to the next (most sit in the entry chunk), so a flag's chunk families
+are reported but never fail a check.
 
 The chunks are third-party data: they are read as text and never executed.
 Run with `python3 -I`. Anything this parser no longer recognizes (no entry
-script, no featureflags chunk, an export clause it cannot read, no operations
-or no flag calls at all) fails with a message naming it rather than reporting
-every row as removed. An operation without a name fails the same way: the
-ledger rows operations by name, so a nameless one cannot take a row and must
-never pass silently.
+script, a missing flag chunk, an export clause it cannot read, no operations
+or no calls to either flag chunk's hooks) fails with a message naming it
+rather than reporting every row as removed. An operation without a name fails
+the same way: the ledger rows operations by name, so a nameless one cannot
+take a row and must never pass silently.
 
 Exit 0 when the ledger matches, 1 on drift or an unreadable bundle, 2 on bad
 usage.
@@ -71,7 +76,10 @@ ANONYMOUS_OPERATION = re.compile(r"(?<![\w$.])(query|mutation|subscription)\s*(?
 NAME = re.compile(r"[A-Za-z_]\w*")
 # One binding of an import or export clause: `name` or `name as other`.
 BINDING = re.compile(r"\s*([\w$]+)(?:\s+as\s+([\w$]+))?\s*")
-FLAG = re.compile(r"[a-z0-9][a-z0-9-]*[a-z0-9]")
+FLAG = re.compile(r"[a-z0-9][a-z0-9_-]*[a-z0-9]")
+# Each flag chunk's family and a string its text must hold, so a chunk that
+# keeps the name but no longer evaluates flags fails instead of passing empty.
+FLAG_CHUNKS = (("featureflags", "featureFlags"), ("frontendFlag", "allFrontendFlags"))
 LEDGER_DISPOSITIONS = ("matched", "partial", "gap", "non-goal", "n/a", "flagged")
 BOARD_ITEM = re.compile(r"\bw\d+/(?:m\d+|\d{3})\b")
 PLACEHOLDER = re.compile(r"[\W_]*(?:unknown|todo|tbd|unowned|n/?a)?[\W_]*", re.I)
@@ -270,12 +278,12 @@ def root_fields(src: str, i: int) -> tuple[list[str], int]:
             i = _skip_group(src, i, "}")
 
 
-def featureflags_exports(chunks: dict[str, str]) -> tuple[str, list[str]]:
-    names = sorted(name for name in chunks if family(name) == "featureflags")
+def flag_chunk_exports(chunks: dict[str, str], hooks: str, marker: str) -> tuple[str, list[str]]:
+    names = sorted(name for name in chunks if family(name) == hooks)
     if len(names) != 1:
         raise BundleError(
             "Render feature-flag chunk not found",
-            f"want one featureflags-*.js chunk in the import graph, found {len(names) or 'none'}"
+            f"want one {hooks}-*.js chunk in the import graph, found {len(names) or 'none'}"
             + (f" ({', '.join(names)})" if names else "")
             + "; the flag hooks moved, so update this parser",
         )
@@ -289,18 +297,30 @@ def featureflags_exports(chunks: dict[str, str]) -> tuple[str, list[str]]:
                 exported = []
                 break
             exported.append(match.group(2) or match.group(1))
-    if not exported or "featureFlags" not in text:
+    if not exported or marker not in text:
         raise BundleError(
             "Render feature-flag chunk unreadable",
-            f"{family(names[0])} has no export{{…}} clause over featureFlags this parser can read; "
-            "its export shape changed, so update featureflags_exports",
+            f"{hooks} has no export{{…}} clause over {marker} this parser can read; "
+            "its export shape changed, so update flag_chunk_exports",
         )
     return names[0], exported
 
 
-def flag_calls(chunks: dict[str, str]) -> dict[str, set[str]]:
-    """Flag name -> chunk families that call a featureflags hook with it."""
-    flags_chunk, exported = featureflags_exports(chunks)
+def flag_calls(chunks: dict[str, str]) -> dict[str, dict[str, set[str]]]:
+    """Flag name -> the flag chunks whose hooks it is read through, and the
+    chunk families that call them with it."""
+    flags: dict[str, dict[str, set[str]]] = {}
+    for hooks, marker in FLAG_CHUNKS:
+        found = hook_calls(chunks, *flag_chunk_exports(chunks, hooks, marker))
+        for flag, families in found.items():
+            entry = flags.setdefault(flag, {"hooks": set(), "families": set()})
+            entry["hooks"].add(hooks)
+            entry["families"] |= families
+    return flags
+
+
+def hook_calls(chunks: dict[str, str], flags_chunk: str, exported: list[str]) -> dict[str, set[str]]:
+    """Flag name -> chunk families that call one of flags_chunk's hooks with it."""
     imports = re.compile(r"\bimport\s*(\{[^}]*\}|\*\s*as\s+[\w$]+)\s*from\s*[\"']\./" + re.escape(flags_chunk) + r"[\"']")
     flags: dict[str, set[str]] = {}
     for name, text in chunks.items():
@@ -323,7 +343,7 @@ def flag_calls(chunks: dict[str, str]) -> dict[str, set[str]]:
     if not flags:
         raise BundleError(
             "Render feature-flag calls not found",
-            f"no chunk calls a {family(flags_chunk)} hook with a flag name; the call shape changed, so update flag_calls",
+            f"no chunk calls a {family(flags_chunk)} hook with a flag name; the call shape changed, so update hook_calls",
         )
     return flags
 
@@ -377,7 +397,10 @@ def inventory(page_url: str) -> dict:
         "operations": [
             {**op, "families": sorted(op["families"])} for _, op in sorted(operations.items(), key=lambda kv: kv[0][::-1])
         ],
-        "flags": [{"name": flag, "families": sorted(families)} for flag, families in sorted(flags.items())],
+        "flags": [
+            {"name": flag, "hooks": sorted(found["hooks"]), "families": sorted(found["families"])}
+            for flag, found in sorted(flags.items())
+        ],
     }
 
 
