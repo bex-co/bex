@@ -183,6 +183,17 @@ func (s *Service) datastoreAppMetric(ctx context.Context, q MetricQuery, resourc
 	if err := checkCPUAggregation(q.Metric, q.CPUAggregation); err != nil {
 		return nil, err
 	}
+	// No datastore metric has a per-request status axis, so any statusCode
+	// filter is refused before any store — like the service read's refusal.
+	// Validation lives here (not in DatastoreMetrics) because StatusCodes are
+	// dropped when building the DatastoreMetricQuery below.
+	statusCodes, err := normalizeStatusCodeFilters(q.StatusCodes)
+	if err != nil {
+		return nil, err
+	}
+	if len(statusCodes) > 0 {
+		return nil, fmt.Errorf("%w: statusCode filters apply only to http_requests and http_latency", core.ErrBadRequest)
+	}
 	series, err := s.DatastoreMetrics(ctx, DatastoreMetricQuery{
 		Kind: kind, Resource: resource, Metric: q.Metric,
 		Start: q.Start, End: q.End, Resolution: q.Resolution,
