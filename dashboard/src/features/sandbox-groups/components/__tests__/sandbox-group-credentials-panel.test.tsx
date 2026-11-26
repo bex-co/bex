@@ -48,7 +48,6 @@ vi.mock(
 import { SandboxGroupCredentialsPanel } from "@/features/sandbox-groups/components/sandbox-group-credentials-panel";
 import {
   SandboxGroupCredentialsPanelSkeleton,
-  SandboxGroupDetailRouteSkeleton,
   SandboxGroupsListRouteSkeleton,
 } from "@/features/sandbox-groups/components/sandbox-group-skeletons";
 import { ROUTE_SKELETON_MANIFEST } from "@/common/lib/route-skeleton-manifest";
@@ -361,7 +360,6 @@ describe("SandboxGroupCredentialsPanel", () => {
   it("route skeletons declare every region in ROUTE_SKELETON_MANIFEST", () => {
     for (const [path, El] of [
       ["/sandbox-groups", SandboxGroupsListRouteSkeleton],
-      ["/sandbox-groups/$sandboxGroupId", SandboxGroupDetailRouteSkeleton],
     ] as const) {
       const entry = ROUTE_SKELETON_MANIFEST[path];
       expect(entry.kind).toBe("render");

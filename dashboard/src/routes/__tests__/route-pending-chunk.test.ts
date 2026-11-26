@@ -11,10 +11,7 @@ import {
   OrganizationSettingsRouteSkeleton,
   OrganizationWorkspacesRouteSkeleton,
 } from "@/features/organizations/components/organization-route-skeletons";
-import {
-  SandboxGroupDetailRouteSkeleton,
-  SandboxGroupsListRouteSkeleton,
-} from "@/features/sandbox-groups/components/sandbox-group-skeletons";
+import { SandboxGroupsListRouteSkeleton } from "@/features/sandbox-groups/components/sandbox-group-skeletons";
 import {
   BuildDetailRouteSkeleton,
   BuildSourceBuildsTabSkeleton,
@@ -36,6 +33,16 @@ import { Route as OrganizationMembersRoute } from "../org.$orgId.members";
 import { Route as OrganizationSettingsRoute } from "../org.$orgId.settings";
 import { Route as SandboxGroupsRoute } from "../sandbox-groups";
 import { Route as SandboxGroupDetailRoute } from "../sandbox-groups_.$sandboxGroupId";
+import { Route as SandboxGroupSandboxesRoute } from "../sandbox-groups_.$sandboxGroupId.index";
+import { Route as SandboxGroupSnapshotsRoute } from "../sandbox-groups_.$sandboxGroupId.snapshots";
+import { Route as SandboxGroupImagesRoute } from "../sandbox-groups_.$sandboxGroupId.images";
+import { Route as SandboxGroupSettingsRoute } from "../sandbox-groups_.$sandboxGroupId.settings";
+import {
+  ImagesPageSkeleton,
+  SandboxGroupSettingsSkeleton,
+  SandboxesPageSkeleton,
+  SnapshotsPageSkeleton,
+} from "@/features/sandbox-group-pages/components/group-page-skeletons";
 import { Route as BuildSourcesRoute } from "../build-sources";
 import { Route as BuildSourcesNewRoute } from "../build-sources_.new";
 import { Route as BuildSourceDetailRoute } from "../build-sources_.$buildSourceId";
@@ -91,10 +98,26 @@ describe("route pending components and code splitting (w3/066)", () => {
       SandboxGroupsRoute,
       SandboxGroupsListRouteSkeleton,
     ],
+    // w1/m658: a group's pages draw their skeletons from a skeleton-only module.
     [
-      "/sandbox-groups/$sandboxGroupId",
-      SandboxGroupDetailRoute,
-      SandboxGroupDetailRouteSkeleton,
+      "/sandbox-groups/$sandboxGroupId/",
+      SandboxGroupSandboxesRoute,
+      SandboxesPageSkeleton,
+    ],
+    [
+      "/sandbox-groups/$sandboxGroupId/snapshots",
+      SandboxGroupSnapshotsRoute,
+      SnapshotsPageSkeleton,
+    ],
+    [
+      "/sandbox-groups/$sandboxGroupId/images",
+      SandboxGroupImagesRoute,
+      ImagesPageSkeleton,
+    ],
+    [
+      "/sandbox-groups/$sandboxGroupId/settings",
+      SandboxGroupSettingsRoute,
+      SandboxGroupSettingsSkeleton,
     ],
     // w2/m613–m614: build sources list, create & detail skeletons live in a skeleton-only module.
     [
@@ -148,6 +171,8 @@ describe("route pending components and code splitting (w3/066)", () => {
 
   it.each([
     ["/databases/$databaseId", DatabaseRoute],
+    // w1/m658: the group layout draws its pending frame with the layout.
+    ["/sandbox-groups/$sandboxGroupId", SandboxGroupDetailRoute],
     ["/webhook/$webhookId", WebhookRoute],
     ["/services/$serviceId", ServiceRoute],
   ] as const)(

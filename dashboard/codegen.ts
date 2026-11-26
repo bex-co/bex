@@ -49,6 +49,7 @@ const operationsConfig = {
 };
 
 const ORGANIZATIONS_DOCUMENTS = "src/features/organizations/**/*.graphql";
+const SANDBOX_GROUPS_DOCUMENTS = "src/features/sandbox-groups/**/*.graphql";
 
 const config: CodegenConfig = {
   overwrite: true,
@@ -84,15 +85,21 @@ const config: CodegenConfig = {
     // A feature's documents can be generated into a file of their own, which
     // definitions.ts re-exports, so that no generated file reaches the 1 MiB
     // blob limit (scripts/repo-artifact-guard.sh, w1/m657): the organizations
-    // documents (and their OrganizationFields fragment) are the first.
+    // documents (and their OrganizationFields fragment) are the first, the
+    // sandbox groups' (w1/m658) the second.
     "./src/graphql/definitions.ts": {
-      documents: ["src/**/*.graphql", `!${ORGANIZATIONS_DOCUMENTS}`],
+      documents: [
+        "src/**/*.graphql",
+        `!${ORGANIZATIONS_DOCUMENTS}`,
+        `!${SANDBOX_GROUPS_DOCUMENTS}`,
+      ],
       plugins: [
         {
           add: {
             content: [
               'export * from "./schema-types";',
               'export * from "./definitions-organizations";',
+              'export * from "./definitions-sandbox-groups";',
             ].join("\n"),
           },
         },
@@ -103,6 +110,11 @@ const config: CodegenConfig = {
     },
     "./src/graphql/definitions-organizations.ts": {
       documents: [ORGANIZATIONS_DOCUMENTS],
+      plugins: ["typescript-operations", "typed-document-node"],
+      config: operationsConfig,
+    },
+    "./src/graphql/definitions-sandbox-groups.ts": {
+      documents: [SANDBOX_GROUPS_DOCUMENTS],
       plugins: ["typescript-operations", "typed-document-node"],
       config: operationsConfig,
     },

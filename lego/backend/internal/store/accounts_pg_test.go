@@ -328,6 +328,7 @@ var accountDeletionDispositions = map[string]string{
 	"organization_invites.email":                   "anonymize: cleanupAccountEmail deletes pending org invitations and anonymizes accepted history",
 	"organization_invites.invited_by":              "anonymize: CleanupAccountSubject replaces inviter provenance",
 	"tenants.billing_email":                        "anonymize: cleanupAccountEmail replaces matching account addresses; alternate workspace-owned financial contacts remain",
+	"sandbox_lifecycle_events.user_email":          "anonymize: cleanupAccountEmail replaces the person a sandbox's created event names (w1/m658)",
 	"tenants.owner_identity_id":                    "anonymize: RemoveAccountMember clears the owner binding on surviving workspaces; other workspaces are deleted",
 	"webhook_delivery_attempts.requested_by":       "anonymize: CleanupAccountSubject replaces manual replay provenance; trigger permits only the recorded deleted marker with all other evidence unchanged",
 	"webhook_endpoints.created_by":                 "anonymize: CleanupAccountSubject replaces creator on surviving workspace resources",

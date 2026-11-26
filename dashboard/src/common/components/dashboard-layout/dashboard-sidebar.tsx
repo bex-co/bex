@@ -33,12 +33,18 @@ const DatabaseSidebar = lazy(() =>
 const KeyValueSidebar = lazy(() =>
   import("./key-value-sidebar").then((m) => ({ default: m.KeyValueSidebar })),
 );
+const SandboxGroupSidebar = lazy(() =>
+  import("./sandbox-group-sidebar").then((m) => ({
+    default: m.SandboxGroupSidebar,
+  })),
+);
 
 export function DashboardSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { projectId, serviceId, databaseId, keyValueId } = useParams({
-    strict: false,
-  });
+  const { projectId, serviceId, databaseId, keyValueId, sandboxGroupId } =
+    useParams({
+      strict: false,
+    });
   const agentsEnabled = useAgentsFeatureEnabled();
   const isItemActive = useCallback(
     (to: string) => isNavItemActive(pathname, to),
@@ -70,6 +76,13 @@ export function DashboardSidebar() {
     return (
       <Suspense fallback={<SidebarShell />}>
         <KeyValueSidebar keyValueId={keyValueId} />
+      </Suspense>
+    );
+  }
+  if (sandboxGroupId) {
+    return (
+      <Suspense fallback={<SidebarShell />}>
+        <SandboxGroupSidebar sandboxGroupId={sandboxGroupId} />
       </Suspense>
     );
   }

@@ -545,12 +545,8 @@ func (s *Service) ListSnapshots(ctx context.Context, groupID, snapshotName strin
 	if err != nil {
 		return nil, err
 	}
-	for _, st := range statuses {
-		if !slices.Contains(snapshotStatuses, st) {
-			return nil, core.NewBadRequestError(CodeInvalidSnapshotStatus,
-				fmt.Sprintf("%q is not a snapshot status; use %s", st, strings.Join(snapshotStatuses, ", ")),
-				map[string]any{"field": "status", "supported": snapshotStatuses})
-		}
+	if err := validateSnapshotStatuses(statuses); err != nil {
+		return nil, err
 	}
 	rows, err := s.Snapshots.Store.SandboxSnapshots(ctx, group.WorkspaceID, group.ID, snapshotName, statuses, s.Now())
 	if err != nil {
@@ -562,6 +558,23 @@ func (s *Service) ListSnapshots(ctx context.Context, groupID, snapshotName strin
 	}
 	return core.Page(out, after, core.PageLimitOrDefault(limit), func(sn Snapshot) string { return sn.ID }), nil
 }
+
+// validateSnapshotStatuses refuses a status filter value that is not a
+// snapshot status, by name.
+func validateSnapshotStatuses(statuses []string) error {
+	for _, st := range statuses {
+		if !slices.Contains(snapshotStatuses, st) {
+			return core.NewBadRequestError(CodeInvalidSnapshotStatus,
+				fmt.Sprintf("%q is not a snapshot status; use %s", st, strings.Join(snapshotStatuses, ", ")),
+				map[string]any{"field": "status", "supported": snapshotStatuses})
+		}
+	}
+	return nil
+}
+
+// snapshotTimedOutReason is the failure a capture past snapshotCaptureTimeout
+// records; GraphQL reads it as Render's DEADLINE_EXCEEDED.
+const snapshotTimedOutReason = "the capture did not finish in time"
 
 // DeleteSnapshot deletes one snapshot of a group, as Render's
 // delete-sandbox-snapshot: it leaves lists and reads, a create can no longer
@@ -730,7 +743,7 @@ func (s *Service) sweepSnapshots(ctx context.Context) error {
 	st := s.Snapshots.Store
 	now := s.Now()
 	var errs []error
-	stale, err := st.StaleCreatingSandboxSnapshots(ctx, now.Add(-snapshotCaptureTimeout), "the capture did not finish in time")
+	stale, err := st.StaleCreatingSandboxSnapshots(ctx, now.Add(-snapshotCaptureTimeout), snapshotTimedOutReason)
 	if err != nil {
 		errs = append(errs, err)
 	}

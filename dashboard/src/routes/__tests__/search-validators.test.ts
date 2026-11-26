@@ -17,6 +17,9 @@ import { Route as ServiceShellRoute } from "../services.$serviceId.shell";
 import { Route as ProjectApplicationLogsRoute } from "../project.$projectId.observability.logs.application";
 import { Route as ProjectRequestLogsRoute } from "../project.$projectId.observability.logs.request";
 import { Route as ProjectMetricsRoute } from "../project.$projectId.observability.metrics";
+import { Route as SandboxGroupIndexRoute } from "../sandbox-groups_.$sandboxGroupId.index";
+import { Route as SandboxGroupImagesRoute } from "../sandbox-groups_.$sandboxGroupId.images";
+import { Route as SandboxGroupSnapshotsRoute } from "../sandbox-groups_.$sandboxGroupId.snapshots";
 import { Route as SettingsRoute } from "../settings";
 import { Route as StaticDeployRoute } from "../static.$serviceId.deploys.$deployId";
 import { Route as WorkspaceSettingsRoute } from "../workspace.settings";
@@ -308,6 +311,44 @@ describe.each([
     BuildSourcesNewRoute,
     { projectId: "prj-123" },
     { projectId: "prj-123" },
+  ],
+  // A sandbox group's drawers (w1/m658): a sandbox, snapshot or image and
+  // the drawer's tab; a malformed id or an unknown tab is dropped.
+  [
+    "/sandbox-groups/$sandboxGroupId/",
+    SandboxGroupIndexRoute,
+    { sandbox: "sbx-dc44tha9086ovmjtv6c0", tab: "snapshots", extra: 1 },
+    { sandbox: "sbx-dc44tha9086ovmjtv6c0", tab: "snapshots" },
+  ],
+  [
+    "/sandbox-groups/$sandboxGroupId/",
+    SandboxGroupIndexRoute,
+    { sandbox: "srv-123", tab: "shell" },
+    { sandbox: undefined, tab: undefined },
+  ],
+  [
+    "/sandbox-groups/$sandboxGroupId/snapshots",
+    SandboxGroupSnapshotsRoute,
+    { snapshot: "snp-dc44tha9086ovmjtv6c0" },
+    { snapshot: "snp-dc44tha9086ovmjtv6c0" },
+  ],
+  [
+    "/sandbox-groups/$sandboxGroupId/snapshots",
+    SandboxGroupSnapshotsRoute,
+    { snapshot: 7 },
+    { snapshot: undefined },
+  ],
+  [
+    "/sandbox-groups/$sandboxGroupId/images",
+    SandboxGroupImagesRoute,
+    { image: "agent-runtime", tab: "sandboxes" },
+    { image: "agent-runtime", tab: "sandboxes" },
+  ],
+  [
+    "/sandbox-groups/$sandboxGroupId/images",
+    SandboxGroupImagesRoute,
+    { image: "  ", tab: "logs" },
+    { image: undefined, tab: undefined },
   ],
 ])("%s validates %j", (_path, route, input, want) => {
   it("to exactly the keys it owns", () => {

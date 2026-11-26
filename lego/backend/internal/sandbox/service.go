@@ -194,6 +194,10 @@ type Service struct {
 	// Records keeps each sandbox's record past its end (w3/m318); nil (store
 	// off) keeps none, and an ended sandbox is not found.
 	Records RecordStore
+	// Lifecycle keeps each sandbox's lifecycle events, the timeline Render's
+	// drawer reads (w1/m658); nil records none, and the timeline reads only
+	// what the sandbox's record says (its creation and its end).
+	Lifecycle LifecycleStore
 	// Groups holds Render's sandbox groups and each sandbox's group (w22/m311);
 	// nil (store off) serves no group route, refuses a create that names a group
 	// and enforces no concurrency limit.
@@ -810,7 +814,16 @@ func sandboxFromOpenSandbox(raw osSandbox, workspace string) Sandbox {
 	if policy.Default == "" {
 		policy = nil
 	}
+	var details sandboxDetails
+	switch mapOpenSandboxStatus(raw.Status.State) {
+	case StatusCreating, StatusRunning, StatusResuming:
+		// Render's timeoutAt: when the running sandbox's timeout ends it.
+		if deadline, ok := lifetimeDeadline(raw); ok {
+			details.timeoutAt = &deadline
+		}
+	}
 	return Sandbox{
+		details:        details,
 		ID:             canonicalID(raw),
 		Plan:           Plan(raw.Metadata[metadataPlan]),
 		Status:         mapOpenSandboxStatus(raw.Status.State),
@@ -935,6 +948,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	s.settleSlot(ctx, ws, publicID)
 	box.SandboxGroupID = group.ID
 	s.recordLive(ctx, ws, box)
+	s.recordCreated(ctx, ws, box)
 	s.snapshotUsed(ctx, restored)
 	s.ObserveProductActivity(ctx, core.ProductActivity{WorkspaceID: ws, ResourceID: publicID, ResourceType: "sandbox", EventType: "created"})
 	return box, nil
@@ -1692,6 +1706,13 @@ func (s *Service) List(ctx context.Context) ([]Sandbox, error) {
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
+	return s.list(ctx, true)
+}
+
+// list is List for a caller that has authorized the read; rules false leaves
+// allow-list sandboxes' rules unread, a Kubernetes read each, for a caller
+// that reads them for a page only.
+func (s *Service) list(ctx context.Context, rules bool) ([]Sandbox, error) {
 	if !s.enabled() {
 		return nil, core.ErrSandboxesUnavailable
 	}
@@ -1716,8 +1737,23 @@ func (s *Service) List(ctx context.Context) ([]Sandbox, error) {
 			out = append(out, s.sandboxView(r, ws))
 		}
 	}
-	// Each allow-list sandbox's rules are one policy read; run them side by
-	// side so a list costs about one round trip, not one per sandbox.
+	if rules {
+		var err error
+		if out, err = s.withAllRules(ctx, ws, out); err != nil {
+			return nil, err
+		}
+	}
+	named, err := s.withNames(ctx, ws, out)
+	if err != nil {
+		return nil, err
+	}
+	return s.withGroups(ctx, ws, named)
+}
+
+// withAllRules fills every allow-list sandbox's rules. Each is one policy
+// read; they run side by side so a list costs about one round trip, not one
+// per sandbox.
+func (s *Service) withAllRules(ctx context.Context, ws string, out []Sandbox) ([]Sandbox, error) {
 	group, groupCtx := errgroup.WithContext(ctx)
 	group.SetLimit(maxConcurrentRuleReads)
 	for i := range out {
@@ -1730,11 +1766,7 @@ func (s *Service) List(ctx context.Context) ([]Sandbox, error) {
 	if err := group.Wait(); err != nil {
 		return nil, err
 	}
-	named, err := s.withNames(ctx, ws, out)
-	if err != nil {
-		return nil, err
-	}
-	return s.withGroups(ctx, ws, named)
+	return out, nil
 }
 
 // withGroups fills each Render sandbox's group: the one it was created in, or
@@ -1801,6 +1833,11 @@ func (s *Service) withNames(ctx context.Context, workspace string, boxes []Sandb
 // the same default, order and refusals. The filter is validated before the
 // authorized List runs.
 func (s *Service) listFiltered(ctx context.Context, status []string, name, groupID string) ([]Sandbox, error) {
+	return s.listFilteredRules(ctx, status, name, groupID, true)
+}
+
+// listFilteredRules is listFiltered; rules as for list.
+func (s *Service) listFilteredRules(ctx context.Context, status []string, name, groupID string, rules bool) ([]Sandbox, error) {
 	want, err := parseStatusFilter(status)
 	if err != nil {
 		return nil, err
@@ -1813,7 +1850,13 @@ func (s *Service) listFiltered(ctx context.Context, status []string, name, group
 			return nil, err
 		}
 	}
-	out, err := s.List(ctx)
+	var out []Sandbox
+	if rules {
+		out, err = s.List(ctx)
+	} else {
+		// The caller authorized the read (groupSandboxes).
+		out, err = s.list(ctx, false)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -1947,6 +1990,7 @@ func (s *Service) endTerminated(ctx context.Context, workspace string, raw osSan
 	s.releaseSlot(ctx, workspace, canonicalID(raw))
 	raw.Status.State = string(StatusTerminated)
 	s.Meter.Observe(ctx, raw)
+	s.recordLifecycle(ctx, workspace, canonicalID(raw), LifecycleTerminated, TriggerSystem)
 	s.recordEnded(ctx, workspace, raw)
 }
 
@@ -2051,6 +2095,9 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 	}
 	raw.Status.State = string(phase)
 	s.Meter.Observe(ctx, raw)
+	if idleTracked(raw) {
+		s.recordLifecycle(ctx, ws, canonicalID(raw), phaseLifecycle[phase], lifecycleTrigger(ctx))
+	}
 	if phase == StatusTerminated {
 		s.recordEnded(ctx, ws, raw)
 	}

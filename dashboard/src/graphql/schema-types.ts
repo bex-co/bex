@@ -5174,18 +5174,23 @@ export type Query = {
   routerAvailable: Maybe<Scalars['Boolean']['output']>;
   routerOverview: Maybe<RouterOverview>;
   sandbox: Maybe<Sandbox>;
+  sandboxBuildSources: SandboxBuildSourcePage;
+  sandboxEvents: SandboxEventPage;
   sandboxExecution: Maybe<SandboxExecution>;
   sandboxExecutions: Maybe<Array<Maybe<SandboxExecution>>>;
   sandboxGroup: Maybe<SandboxGroup>;
   sandboxGroupCredential: Maybe<SandboxGroupCredential>;
   sandboxGroupCredentialVersions: Maybe<Array<SandboxGroupCredentialVersion>>;
   sandboxGroupCredentials: Maybe<Array<SandboxGroupCredential>>;
+  sandboxGroupRuns: SandboxGroupRuns;
   sandboxGroups: Maybe<Array<Maybe<SandboxGroup>>>;
   sandboxImage: Maybe<SandboxImage>;
   sandboxImages: Maybe<Array<Maybe<SandboxImage>>>;
   sandboxSnapshot: Maybe<SandboxSnapshot>;
   sandboxSnapshots: Maybe<Array<Maybe<SandboxSnapshot>>>;
+  sandboxSnapshotsForGroup: SandboxSnapshotPage;
   sandboxes: Maybe<Array<Maybe<Sandbox>>>;
+  sandboxesForGroup: SandboxesForGroupPage;
   savedSearch: Maybe<SavedSearch>;
   savedSearches: Array<SavedSearch>;
   secretFiles: Maybe<Array<Maybe<SecretFileWithCursor>>>;
@@ -6012,6 +6017,20 @@ export type QuerySandboxArgs = {
 };
 
 
+export type QuerySandboxBuildSourcesArgs = {
+  input: SandboxBuildSourcesFilterInput;
+};
+
+
+export type QuerySandboxEventsArgs = {
+  before?: InputMaybe<Scalars['String']['input']>;
+  beforeId?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxId: Scalars['String']['input'];
+};
+
+
 export type QuerySandboxExecutionArgs = {
   executionId: Scalars['String']['input'];
   id: Scalars['String']['input'];
@@ -6053,6 +6072,14 @@ export type QuerySandboxGroupCredentialsArgs = {
 };
 
 
+export type QuerySandboxGroupRunsArgs = {
+  endedAfter?: InputMaybe<Scalars['String']['input']>;
+  endedBefore?: InputMaybe<Scalars['String']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
+};
+
+
 export type QuerySandboxGroupsArgs = {
   cursor?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -6080,7 +6107,7 @@ export type QuerySandboxImagesArgs = {
 export type QuerySandboxSnapshotArgs = {
   id: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
-  sandboxGroupId: Scalars['String']['input'];
+  sandboxGroupId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -6094,11 +6121,21 @@ export type QuerySandboxSnapshotsArgs = {
 };
 
 
+export type QuerySandboxSnapshotsForGroupArgs = {
+  input: SandboxSnapshotsFilterInput;
+};
+
+
 export type QuerySandboxesArgs = {
   name?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
   sandboxGroupId?: InputMaybe<Scalars['String']['input']>;
   status?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+
+export type QuerySandboxesForGroupArgs = {
+  input: SandboxesForGroupFilterInput;
 };
 
 
@@ -6441,6 +6478,8 @@ export type SshKey = {
 export type Sandbox = {
   __typename: 'Sandbox';
   createdAt: Maybe<Scalars['String']['output']>;
+  endedAt: Maybe<Scalars['String']['output']>;
+  errorReason: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];
   idleTimeoutSeconds: Maybe<Scalars['Int']['output']>;
   image: Maybe<Scalars['String']['output']>;
@@ -6448,12 +6487,61 @@ export type Sandbox = {
   networkPolicy: Maybe<SandboxNetworkPolicy>;
   owner: Maybe<Scalars['String']['output']>;
   plan: Maybe<Scalars['String']['output']>;
+  planSpec: Maybe<SandboxPlanSpec>;
   region: Maybe<Scalars['String']['output']>;
   sandboxGroupId: Maybe<Scalars['String']['output']>;
+  source: Maybe<SandboxSource>;
+  sourceBuild: Maybe<SandboxSourceBuild>;
+  sourceBuildId: Maybe<Scalars['String']['output']>;
+  sourceSnapshotId: Maybe<Scalars['String']['output']>;
+  startedAt: Maybe<Scalars['String']['output']>;
   status: Scalars['String']['output'];
   terminatedAt: Maybe<Scalars['String']['output']>;
+  timeoutAt: Maybe<Scalars['String']['output']>;
   timeoutSeconds: Maybe<Scalars['Int']['output']>;
+  trigger: Maybe<Scalars['String']['output']>;
   workspace: Maybe<Scalars['String']['output']>;
+};
+
+export type SandboxBuildSource = {
+  __typename: 'SandboxBuildSource';
+  latestBuild: SandboxImage;
+  latestSucceededBuild: Maybe<SandboxImage>;
+  name: Scalars['String']['output'];
+  source: SandboxImageSource;
+};
+
+export type SandboxBuildSourcePage = {
+  __typename: 'SandboxBuildSourcePage';
+  cursor: Maybe<Scalars['String']['output']>;
+  hasMore: Scalars['Boolean']['output'];
+  sources: Array<SandboxBuildSource>;
+};
+
+export type SandboxBuildSourcesFilterInput = {
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
+  search?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type SandboxEmailSource = {
+  __typename: 'SandboxEmailSource';
+  email: Scalars['String']['output'];
+};
+
+export type SandboxEvent = {
+  id: Scalars['String']['output'];
+  label: Scalars['String']['output'];
+  outcome: Scalars['String']['output'];
+  timestamp: Scalars['String']['output'];
+};
+
+export type SandboxEventPage = {
+  __typename: 'SandboxEventPage';
+  events: Array<SandboxEvent>;
+  hasMore: Scalars['Boolean']['output'];
 };
 
 export type SandboxExecution = {
@@ -6469,6 +6557,22 @@ export type SandboxExecution = {
   userId: Scalars['String']['output'];
 };
 
+export type SandboxExecutionEvent = SandboxEvent & {
+  __typename: 'SandboxExecutionEvent';
+  completedAt: Maybe<Scalars['String']['output']>;
+  executionId: Scalars['String']['output'];
+  executionType: Scalars['String']['output'];
+  exitCode: Maybe<Scalars['Int']['output']>;
+  fullCommand: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  label: Scalars['String']['output'];
+  operation: Scalars['String']['output'];
+  outcome: Scalars['String']['output'];
+  startedAt: Maybe<Scalars['String']['output']>;
+  summary: Scalars['String']['output'];
+  timestamp: Scalars['String']['output'];
+};
+
 export type SandboxGroup = {
   __typename: 'SandboxGroup';
   concurrencyLimit: Scalars['Int']['output'];
@@ -6479,6 +6583,7 @@ export type SandboxGroup = {
   name: Scalars['String']['output'];
   ownerId: Scalars['String']['output'];
   region: Scalars['String']['output'];
+  runningSandboxCount: Maybe<Scalars['Int']['output']>;
   updatedAt: Maybe<Scalars['String']['output']>;
 };
 
@@ -6515,6 +6620,14 @@ export type SandboxGroupCredentialVersion = {
   updatedBy: Scalars['String']['output'];
 };
 
+export type SandboxGroupRuns = {
+  __typename: 'SandboxGroupRuns';
+  buckets: Array<SandboxRunBucket>;
+  errored: Scalars['Int']['output'];
+  succeeded: Scalars['Int']['output'];
+  total: Scalars['Int']['output'];
+};
+
 export type SandboxImage = {
   __typename: 'SandboxImage';
   createdAt: Maybe<Scalars['String']['output']>;
@@ -6534,6 +6647,17 @@ export type SandboxImageSource = {
   image: Scalars['String']['output'];
   reference: Scalars['String']['output'];
   repository: Scalars['String']['output'];
+};
+
+export type SandboxLifecycleEvent = SandboxEvent & {
+  __typename: 'SandboxLifecycleEvent';
+  id: Scalars['String']['output'];
+  label: Scalars['String']['output'];
+  lifecycleType: Scalars['String']['output'];
+  outcome: Scalars['String']['output'];
+  timestamp: Scalars['String']['output'];
+  trigger: Maybe<Scalars['String']['output']>;
+  userEmail: Maybe<Scalars['String']['output']>;
 };
 
 export type SandboxNetworkPolicy = {
@@ -6560,21 +6684,96 @@ export type SandboxNetworkPolicyRuleInput = {
   protocol?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type SandboxPlanSpec = {
+  __typename: 'SandboxPlanSpec';
+  cpus: Maybe<Scalars['Float']['output']>;
+  memoryGb: Maybe<Scalars['Float']['output']>;
+  name: Scalars['String']['output'];
+};
+
+export type SandboxRunBucket = {
+  __typename: 'SandboxRunBucket';
+  errored: Scalars['Int']['output'];
+  succeeded: Scalars['Int']['output'];
+  time: Maybe<Scalars['String']['output']>;
+};
+
 export type SandboxSnapshot = {
   __typename: 'SandboxSnapshot';
   capturedAt: Maybe<Scalars['String']['output']>;
   error: Maybe<Scalars['String']['output']>;
   expiresAt: Maybe<Scalars['String']['output']>;
+  failureCode: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];
   kind: Scalars['String']['output'];
   name: Maybe<Scalars['String']['output']>;
   plan: Scalars['String']['output'];
+  planSpec: Maybe<SandboxPlanSpec>;
   requestedAt: Maybe<Scalars['String']['output']>;
   sandboxGroupId: Scalars['String']['output'];
   sizeBytes: Maybe<Scalars['Float']['output']>;
   sourceSandboxId: Scalars['String']['output'];
   status: Scalars['String']['output'];
   ttlSeconds: Maybe<Scalars['Float']['output']>;
+};
+
+export type SandboxSnapshotEvent = SandboxEvent & {
+  __typename: 'SandboxSnapshotEvent';
+  id: Scalars['String']['output'];
+  label: Scalars['String']['output'];
+  outcome: Scalars['String']['output'];
+  snapshot: SandboxSnapshot;
+  timestamp: Scalars['String']['output'];
+};
+
+export type SandboxSnapshotPage = {
+  __typename: 'SandboxSnapshotPage';
+  cursor: Maybe<Scalars['String']['output']>;
+  hasMore: Scalars['Boolean']['output'];
+  snapshots: Array<SandboxSnapshot>;
+};
+
+export type SandboxSnapshotsFilterInput = {
+  createdAfter?: InputMaybe<Scalars['String']['input']>;
+  createdBefore?: InputMaybe<Scalars['String']['input']>;
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
+  search?: InputMaybe<Scalars['String']['input']>;
+  sourceSandboxId?: InputMaybe<Scalars['String']['input']>;
+  statuses?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+export type SandboxSource = SandboxEmailSource;
+
+export type SandboxSourceBuild = {
+  __typename: 'SandboxSourceBuild';
+  id: Scalars['String']['output'];
+  name: Maybe<Scalars['String']['output']>;
+};
+
+export type SandboxesForGroupFilterInput = {
+  createdAfter?: InputMaybe<Scalars['String']['input']>;
+  createdBefore?: InputMaybe<Scalars['String']['input']>;
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
+  search?: InputMaybe<Scalars['String']['input']>;
+  sourceBuildId?: InputMaybe<Scalars['String']['input']>;
+  sourceBuildIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  sourceSnapshotId?: InputMaybe<Scalars['String']['input']>;
+  statuses?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+export type SandboxesForGroupPage = {
+  __typename: 'SandboxesForGroupPage';
+  cursor: Maybe<Scalars['String']['output']>;
+  hasMore: Scalars['Boolean']['output'];
+  sandboxes: Array<Sandbox>;
+  sortDirection: Scalars['String']['output'];
+  sortField: Scalars['String']['output'];
 };
 
 export type SavedSearch = {

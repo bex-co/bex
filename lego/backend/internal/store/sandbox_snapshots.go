@@ -228,10 +228,11 @@ func (s *PGStore) CreateSandboxSnapshot(ctx context.Context, in NewSandboxSnapsh
 
 // SandboxSnapshot returns one snapshot of a group that is neither deleted nor
 // expired at now, or ErrNotFound (a snapshot of another group or workspace is
-// not found either).
+// not found either). An empty groupID reads it in any group of the workspace,
+// as a link to a snapshot by id does (w1/m658).
 func (s *PGStore) SandboxSnapshot(ctx context.Context, workspaceID, groupID, id string, now time.Time) (SandboxSnapshot, error) {
 	snap, err := scanSandboxSnapshot(s.Pool.QueryRow(ctx, `SELECT `+sandboxSnapshotColumns+` FROM sandbox_snapshots
-		WHERE `+sandboxSnapshotLiveSQL+` AND id = $2 AND sandbox_group_id = $3 AND workspace_id = $4`,
+		WHERE `+sandboxSnapshotLiveSQL+` AND id = $2 AND ($3 = '' OR sandbox_group_id = $3) AND workspace_id = $4`,
 		now.UTC(), id, groupID, workspaceID))
 	if err != nil {
 		return SandboxSnapshot{}, classify("sandbox snapshot", err)

@@ -31,6 +31,7 @@ import ptOnboarding from "@/features/onboarding/locales/pt";
 import ptAgentEnvironment from "@/features/agent-environment/locales/pt";
 import ptAgentAutomations from "@/features/agent-automations/locales/pt";
 import ptSandboxGroups from "@/features/sandbox-groups/locales/pt";
+import ptSandboxGroupPages from "@/features/sandbox-group-pages/locales/pt";
 import ptBuildSources from "@/features/build-sources/locales/pt";
 import ptLegal from "@/features/legal/locales/pt";
 import ptOrganizations from "@/features/organizations/locales/pt";
@@ -80,6 +81,7 @@ const pt: Record<string, string> = {
   ...extractMessages(ptAgentEnvironment),
   ...extractMessages(ptAgentAutomations),
   ...extractMessages(ptSandboxGroups),
+  ...extractMessages(ptSandboxGroupPages),
   ...extractMessages(ptBuildSources),
   ...extractMessages(ptLegal),
   ...extractMessages(ptOrganizations),

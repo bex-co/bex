@@ -31,6 +31,7 @@ import enOnboarding from "@/features/onboarding/locales/en";
 import enAgentEnvironment from "@/features/agent-environment/locales/en";
 import enAgentAutomations from "@/features/agent-automations/locales/en";
 import enSandboxGroups from "@/features/sandbox-groups/locales/en";
+import enSandboxGroupPages from "@/features/sandbox-group-pages/locales/en";
 import enBuildSources from "@/features/build-sources/locales/en";
 import enLegal from "@/features/legal/locales/en";
 import enOrganizations from "@/features/organizations/locales/en";
@@ -98,6 +99,7 @@ export const en: Record<string, string> = {
   ...extractMessages(enAgentEnvironment),
   ...extractMessages(enAgentAutomations),
   ...extractMessages(enSandboxGroups),
+  ...extractMessages(enSandboxGroupPages),
   ...extractMessages(enBuildSources),
   ...extractMessages(enLegal),
   ...extractMessages(enOrganizations),

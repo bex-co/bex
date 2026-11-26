@@ -1,0 +1,291 @@
+# A sandbox group's pages (w1/m658): Render's sandboxesForGroup,
+# sandboxDetails, sandboxEvents, SandboxSnapshots, SandboxBuildSources and
+# SandboxBuilds, with the group's run summary and running count.
+
+fragment SandboxListFields on Sandbox {
+  id
+  name
+  status
+  createdAt
+  startedAt
+  endedAt
+  errorReason
+  timeoutSeconds
+  timeoutAt
+  idleTimeoutSeconds
+  region
+  image
+  plan
+  planSpec {
+    name
+    cpus
+    memoryGb
+  }
+  networkPolicy {
+    type
+    rules {
+      domain
+    }
+  }
+  sourceSnapshotId
+  sourceBuildId
+  sourceBuild {
+    id
+    name
+  }
+  source {
+    ... on SandboxEmailSource {
+      email
+    }
+  }
+  trigger
+  sandboxGroupId
+}
+
+query SandboxesForGroup($input: SandboxesForGroupFilterInput!) {
+  sandboxesForGroup(input: $input) {
+    cursor
+    hasMore
+    sandboxes {
+      ...SandboxListFields
+    }
+  }
+}
+
+# The Sandboxes page's live read: one document, so one request per poll, and
+# bex-api lists the group once for all three fields.
+query SandboxGroupSandboxesPage(
+  $input: SandboxesForGroupFilterInput!
+  $id: String!
+  $ownerId: String
+  $endedAfter: String
+) {
+  sandboxesForGroup(input: $input) {
+    cursor
+    hasMore
+    sandboxes {
+      ...SandboxListFields
+    }
+  }
+  sandboxGroupRuns(
+    sandboxGroupId: $id
+    ownerId: $ownerId
+    endedAfter: $endedAfter
+  ) {
+    total
+    errored
+    succeeded
+    buckets {
+      time
+      succeeded
+      errored
+    }
+  }
+  sandboxGroup(id: $id, ownerId: $ownerId) {
+    id
+    runningSandboxCount
+  }
+}
+
+query SandboxDetails($id: String!, $ownerId: String) {
+  sandbox(id: $id, ownerId: $ownerId) {
+    ...SandboxListFields
+  }
+}
+
+query SandboxEvents(
+  $sandboxId: String!
+  $ownerId: String
+  $before: String
+  $beforeId: String
+  $limit: Int
+) {
+  sandboxEvents(
+    sandboxId: $sandboxId
+    ownerId: $ownerId
+    before: $before
+    beforeId: $beforeId
+    limit: $limit
+  ) {
+    hasMore
+    events {
+      __typename
+      id
+      timestamp
+      outcome
+      label
+      ... on SandboxLifecycleEvent {
+        lifecycleType
+        trigger
+        userEmail
+      }
+      ... on SandboxExecutionEvent {
+        summary
+        executionId
+        executionType
+        operation
+        fullCommand
+        exitCode
+        startedAt
+        completedAt
+      }
+      ... on SandboxSnapshotEvent {
+        snapshot {
+          id
+          kind
+          status
+          failureCode
+          requestedAt
+          capturedAt
+          sizeBytes
+        }
+      }
+    }
+  }
+}
+
+mutation TerminateGroupSandbox($id: String!, $ownerId: String) {
+  terminateSandbox(id: $id, ownerId: $ownerId)
+}
+
+fragment SandboxSnapshotRowFields on SandboxSnapshot {
+  id
+  sandboxGroupId
+  name
+  kind
+  status
+  sourceSandboxId
+  planSpec {
+    name
+    cpus
+    memoryGb
+  }
+  sizeBytes
+  failureCode
+  requestedAt
+  capturedAt
+  expiresAt
+  ttlSeconds
+}
+
+query SandboxSnapshotsForGroup($input: SandboxSnapshotsFilterInput!) {
+  sandboxSnapshotsForGroup(input: $input) {
+    cursor
+    hasMore
+    snapshots {
+      ...SandboxSnapshotRowFields
+    }
+  }
+}
+
+query SandboxSnapshotDetails(
+  $sandboxGroupId: String!
+  $id: String!
+  $ownerId: String
+) {
+  sandboxSnapshot(sandboxGroupId: $sandboxGroupId, id: $id, ownerId: $ownerId) {
+    ...SandboxSnapshotRowFields
+  }
+}
+
+mutation DeleteGroupSandboxSnapshot(
+  $sandboxGroupId: String!
+  $id: String!
+  $ownerId: String
+) {
+  deleteSandboxSnapshot(
+    sandboxGroupId: $sandboxGroupId
+    id: $id
+    ownerId: $ownerId
+  )
+}
+
+fragment SandboxBuildFields on SandboxImage {
+  id
+  sandboxGroupId
+  name
+  source {
+    repository
+    image
+    reference
+  }
+  sourceDigest
+  status
+  failureReason
+  createdAt
+  finishedAt
+}
+
+query SandboxBuildSources($input: SandboxBuildSourcesFilterInput!) {
+  sandboxBuildSources(input: $input) {
+    cursor
+    hasMore
+    sources {
+      name
+      source {
+        repository
+        image
+        reference
+      }
+      latestBuild {
+        ...SandboxBuildFields
+      }
+      latestSucceededBuild {
+        ...SandboxBuildFields
+      }
+    }
+  }
+}
+
+query SandboxImageVersions(
+  $sandboxGroupId: String!
+  $name: String!
+  $ownerId: String
+) {
+  sandboxImages(sandboxGroupId: $sandboxGroupId, name: $name, ownerId: $ownerId) {
+    ...SandboxBuildFields
+  }
+}
+
+# Links by id (Render's resourceTypeBySandboxId and
+# resourceTypeBySandboxSnapshotId): the group a sandbox or a snapshot is in.
+query ResourceTypeBySandboxId($id: String!) {
+  sandbox(id: $id) {
+    id
+    sandboxGroupId
+    workspace
+  }
+}
+
+query ResourceTypeBySandboxSnapshotId($id: String!, $ownerId: String) {
+  sandboxSnapshot(id: $id, ownerId: $ownerId) {
+    id
+    sandboxGroupId
+  }
+}
+
+mutation UpdateSandboxGroupLimit(
+  $id: String!
+  $concurrencyLimit: Int!
+  $ownerId: String
+) {
+  updateSandboxGroup(
+    id: $id
+    concurrencyLimit: $concurrencyLimit
+    ownerId: $ownerId
+  ) {
+    id
+    concurrencyLimit
+  }
+}
+
+mutation DeleteSandboxGroup($id: String!, $ownerId: String) {
+  deleteSandboxGroup(id: $id, ownerId: $ownerId)
+}
+
+mutation SetDefaultSandboxGroup($id: String!, $ownerId: String) {
+  setDefaultSandboxGroup(id: $id, ownerId: $ownerId) {
+    id
+    isDefault
+  }
+}

@@ -1,23 +1,23 @@
 # w1 · m658 — A sandbox group's page lists its sandboxes, snapshots and custom images, with each sandbox's details and events, as on Render
 
-**Worker:** worker1 **Goal:** bex's sandbox group page becomes Render's: a Sandboxes list (the group's index) with live status, search, a time range, the group's run summary and terminate; a sandbox details drawer with its events, snapshots and details; a Snapshots page with snapshot details and delete; and a Custom images page with each image's versions. **Status:** todo
+**Worker:** worker1 **Goal:** bex's sandbox group page becomes Render's: a Sandboxes list (the group's index) with live status, search, a time range, the group's run summary and terminate; a sandbox details drawer with its events, snapshots and details; a Snapshots page with snapshot details and delete; and a Custom images page with each image's versions. **Status:** todo (t001–t008 and t010–t012 done; t009's production walk and t013 wait for a production pin)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Record Render's group pages in `sandbox-groups.md` and settle the details the bundle leaves open | 45m | — |
-| [t002](t002.md) | GraphQL: a group's sandboxes with Render's filters, paging and run summary, and the sandbox fields Render's drawer reads | 1h30m | t001 |
-| [t003](t003.md) | GraphQL `sandboxEvents`: one sandbox's lifecycle, execution and snapshot events, newest first | 1h30m | t001 |
-| [t004](t004.md) | The group page's navigation and its Sandboxes list | 2h | t002 |
-| [t005](t005.md) | The sandbox details drawer: Events, Snapshots, Logs and Details, and Terminate sandbox | 1h45m | t003, t004 |
-| [t006](t006.md) | The group's Snapshots page: list, snapshot drawer, Delete snapshot | 1h15m | t004 |
-| [t007](t007.md) | The group's Custom images page: images by name, each with its versions and sandboxes | 1h30m | t004 |
-| [t008](t008.md) | Links to a sandbox or a snapshot by id resolve to its group's drawer | 30m | t005, t006 |
+| [t001](done/t001.md) | Record Render's group pages in `sandbox-groups.md` and settle the details the bundle leaves open — **DONE** | 45m | — |
+| [t002](done/t002.md) | GraphQL: a group's sandboxes with Render's filters, paging and run summary, and the sandbox fields Render's drawer reads — **DONE** | 1h30m | t001 |
+| [t003](done/t003.md) | GraphQL `sandboxEvents`: one sandbox's lifecycle, execution and snapshot events, newest first — **DONE** | 1h30m | t001 |
+| [t004](done/t004.md) | The group page's navigation and its Sandboxes list — **DONE** | 2h | t002 |
+| [t005](done/t005.md) | The sandbox details drawer: Events, Snapshots, Logs and Details, and Terminate sandbox — **DONE** | 1h45m | t003, t004 |
+| [t006](done/t006.md) | The group's Snapshots page: list, snapshot drawer, Delete snapshot — **DONE** | 1h15m | t004 |
+| [t007](done/t007.md) | The group's Custom images page: images by name, each with its versions and sandboxes — **DONE** | 1h30m | t004 |
+| [t008](done/t008.md) | Links to a sandbox or a snapshot by id resolve to its group's drawer — **DONE** | 30m | t005, t006 |
 | [t009](t009.md) | Verify in a real browser and over the API, on dev-1 and on production | 1h | t005, t006, t007, t008 |
-| [t010](t010.md) | Render parity | 30m | t009 |
-| [t011](t011.md) | Simplify | 15m | t010 |
-| [t012](t012.md) | Test coverage | 45m | t010 |
+| [t010](done/t010.md) | Render parity — **DONE** | 30m | t009 |
+| [t011](done/t011.md) | Simplify — **DONE** | 15m | t010 |
+| [t012](done/t012.md) | Test coverage — **DONE** | 45m | t010 |
 | [t013](t013.md) | Closeout | 10m | t011, t012 |
 
 Total: **13 tasks, about 13h15m**.
@@ -53,6 +53,12 @@ Verified 2026-11-26 on main `33f407ff55`.
 - **Logs:** `GET /v1/logs` refuses Render's `sandbox` filter by name ("sandbox output is not served by the logs API", `unsupportedLogFilters` in `lego/backend/internal/logs/rest.go`); a command's output is read from the sandbox's run stream.
 - **Service code:** `lego/backend/internal/sandbox/` (`graphql.go`, `executions.go`, `snapshots.go`, `images.go`, `groups.go`).
 - **Ledger:** the `gap` rows in [dashboard-operations.md](../../../docs/render-artifacts/dashboard-operations.md#sandboxes) and the `sandbox_builds` and `sandboxes` flag rows name this milestone; the shell's two rows are `flagged` on `sandbox_shell`.
+
+## What shipped (2026-11-26)
+
+- **Backend:** GraphQL `sandboxesForGroup(input)` (statuses, search by id or name, created range, the snapshot or image versions a sandbox started from, cursor paging), `sandboxGroupRuns` (Total, Errored, Succeeded and 30 buckets over a range), `SandboxGroup.runningSandboxCount`, `sandboxEvents(sandboxId, before, beforeId, limit)` over lifecycle, execution and snapshot events, `sandboxSnapshotsForGroup(input)`, `sandboxBuildSources(input)`, `sandboxSnapshot` by id alone, and the drawer's `Sandbox` fields (`startedAt endedAt errorReason timeoutAt sourceSnapshotId sourceBuildId sourceBuild source trigger planSpec`) and `SandboxSnapshot.failureCode`/`planSpec`. Lifecycle events are a new store (migration 0350, `sandbox_lifecycle_events`), recorded at create, suspend (verb and idle sweeper), resume (verb and for a command), terminate and group delete. One GraphQL document lists the group once for all its fields (`core.WithRequestMemo` per document). Backend tests: `lego/backend/internal/sandbox/group_pages_test.go` (real Postgres).
+- **Dashboard:** `/sandbox-groups/<id>` is a layout with the group's sidebar (Sandboxes, Snapshots, Custom images, Settings); Sandboxes is the index with search (a status word filters), the time range, Total/Errored/Running and the run chart, Pause/Resume live updates, Show or hide columns, select-and-terminate, paging and Render's three empty states; the sandbox drawer (`?sandbox=<id>&tab=`) has Events (Load earlier events), Snapshots and Details with Terminate sandbox; Snapshots has its drawer and Delete snapshot (sudo phrase); Custom images has its Versions, Details and Sandboxes drawer; Settings holds the region, Make default, the concurrency limit, the brokered credentials and Delete sandbox group; `/sandboxes/<sbx-id>` and `/sandbox-snapshots/<snp-id>` resolve a bare id. Strings in all eight locales; skeletons in `group-page-skeletons.tsx`.
+- **Decisions and follow-ups:** recorded in [sandbox-groups.md § What bex does](../../../docs/render-artifacts/sandbox-groups.md#what-bex-does-w1m658). Follow-ups: [w1/162](../162.md) (the Logs tab and the `sandbox` logs filter), [w1/163](../163.md) (a sandbox's Cost), [w1/164](../164.md) (renaming a group; the ledger had `updateSandboxGroupName` as matched).
 
 ## Definition of done
 

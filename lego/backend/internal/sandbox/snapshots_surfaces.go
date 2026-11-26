@@ -104,6 +104,9 @@ var sandboxSnapshotGQLType = graphql.NewObject(graphql.ObjectConfig{
 			return float64(*sn.SizeBytes)
 		}),
 		"error": gqlutil.StrField(func(sn Snapshot) any { return sn.Error }),
+		// Render's failureCode and plan object (w1/m658).
+		"failureCode": gqlutil.StrField(func(sn Snapshot) any { return snapshotFailureCode(sn) }),
+		"planSpec":    gqlutil.Typed(sandboxPlanSpecGQLType, func(sn Snapshot) any { return planSpec(Plan(sn.Plan)) }),
 	},
 })
 
@@ -127,12 +130,17 @@ func (s *Service) snapshotQueryFields() graphql.Fields {
 		"sandboxSnapshot": &graphql.Field{
 			Type: sandboxSnapshotGQLType,
 			Args: graphql.FieldConfigArgument{
-				"sandboxGroupId": gqlutil.ReqArg(graphql.String),
+				// Omitted, the snapshot is found by its id alone in the
+				// workspace, as a link to it resolves (w1/m658).
+				"sandboxGroupId": gqlutil.Arg(graphql.String),
 				"id":             gqlutil.ReqArg(graphql.String),
 				"ownerId":        gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.GetSnapshot(gqlutil.OwnerScoped(p), p.Args["sandboxGroupId"].(string), p.Args["id"].(string))
+				if groupID := gqlutil.Str(p.Args, "sandboxGroupId"); groupID != "" {
+					return s.GetSnapshot(gqlutil.OwnerScoped(p), groupID, p.Args["id"].(string))
+				}
+				return s.GetSnapshotByID(gqlutil.OwnerScoped(p), p.Args["id"].(string))
 			},
 		},
 	}

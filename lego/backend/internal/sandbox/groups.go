@@ -135,6 +135,9 @@ type Group struct {
 	ConcurrencyLimit int       `json:"concurrencyLimit"`
 	CreatedAt        time.Time `json:"createdAt"`
 	UpdatedAt        time.Time `json:"updatedAt"`
+	// running counts the group's active sandboxes for GraphQL's
+	// runningSandboxCount (w1/m658), only when that field is asked for.
+	running func(context.Context) (int, error)
 }
 
 // GroupEnvelope wraps a Group for Render's list surface, a cursor-paginated

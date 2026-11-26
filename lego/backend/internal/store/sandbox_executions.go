@@ -155,6 +155,29 @@ func (s *PGStore) SandboxExecutions(ctx context.Context, workspaceID, sandboxID,
 	return out, rows.Err()
 }
 
+// SandboxExecutionsUntil lists one sandbox's executions that started at or
+// before until (every one when until is nil), newest first, at most limit:
+// a page of the sandbox's event timeline (w1/m658), which merges them with
+// its lifecycle and snapshot events by time.
+func (s *PGStore) SandboxExecutionsUntil(ctx context.Context, workspaceID, sandboxID string, until *time.Time, limit int) ([]SandboxExecution, error) {
+	rows, err := s.Pool.Query(ctx, `SELECT `+sandboxExecutionColumns+` FROM sandbox_executions
+		WHERE workspace_id = $1 AND sandbox_id = $2 AND ($3::timestamptz IS NULL OR started_at <= $3)
+		ORDER BY started_at DESC, id DESC LIMIT $4`, workspaceID, sandboxID, until, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []SandboxExecution{}
+	for rows.Next() {
+		e, err := scanSandboxExecution(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
 // SandboxExecution reads one execution of one sandbox; ErrNotFound when the
 // sandbox has no such execution.
 func (s *PGStore) SandboxExecution(ctx context.Context, workspaceID, sandboxID, executionID string) (SandboxExecution, error) {

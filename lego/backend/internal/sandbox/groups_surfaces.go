@@ -22,6 +22,7 @@ import (
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
@@ -44,6 +45,9 @@ var sandboxGroupGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"concurrencyLimit": gqlutil.Typed(graphql.NewNonNull(graphql.Int), func(g Group) any { return g.ConcurrencyLimit }),
 		"createdAt":        gqlutil.TimeField(func(g Group) any { return g.CreatedAt }),
 		"updatedAt":        gqlutil.TimeField(func(g Group) any { return g.UpdatedAt }),
+		// Render's running count: creating, running, resuming or suspending
+		// now, what counts against the concurrency limit (w1/m658).
+		"runningSandboxCount": runningSandboxCountField,
 	},
 })
 
@@ -67,7 +71,15 @@ func (s *Service) groupQueryFields() graphql.Fields {
 				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.GetGroup(gqlutil.OwnerScoped(p), p.Args["id"].(string))
+				ctx, id := gqlutil.OwnerScoped(p), p.Args["id"].(string)
+				g, err := s.GetGroup(ctx, id)
+				if err != nil {
+					return nil, err
+				}
+				g.running = func(ctx context.Context) (int, error) {
+					return s.GroupRunningCount(core.WithWorkspace(ctx, g.OwnerID), id)
+				}
+				return g, nil
 			},
 		},
 	}

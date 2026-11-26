@@ -923,11 +923,50 @@ export const ROUTE_SKELETON_MANIFEST = {
     shape: "sandbox-groups-list",
     regions: ["page-header", "sandbox-groups-list"],
   },
+  // A sandbox group's pages (w1/m658): the layout, Sandboxes (its index),
+  // Snapshots, Custom images and Settings, and links by a sandbox's or a
+  // snapshot's id, which land on the group's page.
   "/sandbox-groups/$sandboxGroupId": {
     kind: "render",
     owner: "routes/sandbox-groups_.$sandboxGroupId.tsx",
     shape: "sandbox-group-detail",
-    regions: ["page-header", "group-metadata", "credentials-panel"],
+    regions: ["resource-header", "active-page"],
+  },
+  "/sandbox-groups/$sandboxGroupId/": {
+    kind: "render",
+    owner: "routes/sandbox-groups_.$sandboxGroupId.index.tsx",
+    shape: "sandbox-group-sandboxes",
+    regions: ["sandboxes-toolbar", "run-summary", "sandboxes-table"],
+  },
+  "/sandbox-groups/$sandboxGroupId/snapshots": {
+    kind: "render",
+    owner: "routes/sandbox-groups_.$sandboxGroupId.snapshots.tsx",
+    shape: "sandbox-group-snapshots",
+    regions: ["snapshots-toolbar", "snapshots-table"],
+  },
+  "/sandbox-groups/$sandboxGroupId/images": {
+    kind: "render",
+    owner: "routes/sandbox-groups_.$sandboxGroupId.images.tsx",
+    shape: "sandbox-group-images",
+    regions: ["images-toolbar", "images-table"],
+  },
+  "/sandbox-groups/$sandboxGroupId/settings": {
+    kind: "render",
+    owner: "routes/sandbox-groups_.$sandboxGroupId.settings.tsx",
+    shape: "sandbox-group-settings",
+    regions: ["group-general", "credentials-panel", "danger-zone"],
+  },
+  "/sandboxes/$sandboxId": {
+    kind: "delegate",
+    owner: "routes/sandboxes.$sandboxId.tsx",
+    to: "/sandbox-groups/$sandboxGroupId/",
+    reason: "data-dependent redirect",
+  },
+  "/sandbox-snapshots/$snapshotId": {
+    kind: "delegate",
+    owner: "routes/sandbox-snapshots.$snapshotId.tsx",
+    to: "/sandbox-groups/$sandboxGroupId/snapshots",
+    reason: "data-dependent redirect",
   },
 } satisfies { [Path in RoutePath]: RouteSkeletonDisposition };
 

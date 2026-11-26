@@ -26,7 +26,7 @@ The rows below are the **contract**: what Render does and what bex must do. A ro
 
 **Authority.** The state ledgers are [ADR018](ADR018-render-parity.md) (§ Sandbox create flags and the sandbox rows) and [cli-compatibility-checklist.md](cli-compatibility-checklist.md); this ADR owns the contract and the decisions. The State columns below are a dated snapshot (2026-11-10), not a second ledger. Landing this ADR requires amending the ADR018 rows it contradicts (gap 11), so the two cannot disagree.
 
-**Surfaces.** Every row applies to REST, GraphQL and MCP (the dashboard is N/A for sandboxes except groups: Render's docs show a Dashboard "+ New > Sandbox Group" menu, with an optional project environment, read 2026-11-10 and again 2026-11-14; bex's dialog has both, w22/m311 t012 and w22/m412). A row is not ✅ until all three answer the same way.
+**Surfaces.** Every row applies to REST, GraphQL and MCP. Render's docs show only the Dashboard's "+ New > Sandbox Group" menu, with an optional project environment (read 2026-11-10, 2026-11-14 and 2026-11-26; bex's dialog has both, w22/m311 t012 and w22/m412), but Render's dashboard gives each group its pages: Sandboxes with a sandbox's drawer and events, Snapshots, Custom images and Settings. bex shows them to every workspace since w1/m658, through GraphQL reads of their own (`sandboxesForGroup`, `sandboxEvents`, `sandboxGroupRuns`, `sandboxSnapshotsForGroup`, `sandboxBuildSources`, `SandboxGroup.runningSandboxCount`) that answer the same sandboxes, snapshots and images REST and MCP do ([sandbox-groups.md § The dashboard](render-artifacts/sandbox-groups.md#the-dashboard)). A row is not ✅ until all three answer the same way.
 
 ### D2 — Lifecycle, timeouts and suspension
 

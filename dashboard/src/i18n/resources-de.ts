@@ -31,6 +31,7 @@ import deOnboarding from "@/features/onboarding/locales/de";
 import deAgentEnvironment from "@/features/agent-environment/locales/de";
 import deAgentAutomations from "@/features/agent-automations/locales/de";
 import deSandboxGroups from "@/features/sandbox-groups/locales/de";
+import deSandboxGroupPages from "@/features/sandbox-group-pages/locales/de";
 import deBuildSources from "@/features/build-sources/locales/de";
 import deLegal from "@/features/legal/locales/de";
 import deOrganizations from "@/features/organizations/locales/de";
@@ -80,6 +81,7 @@ const de: Record<string, string> = {
   ...extractMessages(deAgentEnvironment),
   ...extractMessages(deAgentAutomations),
   ...extractMessages(deSandboxGroups),
+  ...extractMessages(deSandboxGroupPages),
   ...extractMessages(deBuildSources),
   ...extractMessages(deLegal),
   ...extractMessages(deOrganizations),

@@ -30,6 +30,8 @@ import (
 	"github.com/graphql-go/graphql/language/kinds"
 	"github.com/graphql-go/graphql/language/location"
 	"github.com/graphql-go/graphql/language/visitor"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // runGraphQL is graphql.Do over the document the gates already parsed:
@@ -49,7 +51,9 @@ func (s *Server) runGraphQL(ctx context.Context, body graphqlRequestBody, doc *a
 			AST:           doc,
 			OperationName: body.OperationName,
 			Args:          body.Variables,
-			Context:       ctx,
+			// One document is one API call: a read its fields share (a sandbox
+			// group's listing, w1/m658) is made once (core.Memoized).
+			Context: core.WithRequestMemo(ctx),
 		})
 	}
 	locateGraphQLErrors(body.Query, result.Errors)

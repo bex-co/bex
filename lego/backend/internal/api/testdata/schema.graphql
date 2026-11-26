@@ -2804,18 +2804,23 @@ type Query {
   routerAvailable(ownerId: String!): Boolean
   routerOverview(ownerId: String!): RouterOverview
   sandbox(id: String!, ownerId: String): Sandbox
+  sandboxBuildSources(input: SandboxBuildSourcesFilterInput!): SandboxBuildSourcePage!
+  sandboxEvents(before: String, beforeId: String, limit: Int, ownerId: String, sandboxId: String!): SandboxEventPage!
   sandboxExecution(executionId: String!, id: String!, ownerId: String): SandboxExecution
   sandboxExecutions(cursor: String, id: String!, limit: Int, ownerId: String): [SandboxExecution]
   sandboxGroup(id: String!, ownerId: String): SandboxGroup
   sandboxGroupCredential(id: String!, ownerId: String, sandboxGroupId: String!): SandboxGroupCredential
   sandboxGroupCredentialVersions(id: String!, ownerId: String, sandboxGroupId: String!): [SandboxGroupCredentialVersion!]
   sandboxGroupCredentials(ownerId: String, sandboxGroupId: String!): [SandboxGroupCredential!]
+  sandboxGroupRuns(endedAfter: String, endedBefore: String, ownerId: String, sandboxGroupId: String!): SandboxGroupRuns!
   sandboxGroups(cursor: String, limit: Int, ownerId: String): [SandboxGroup]
   sandboxImage(id: String!, ownerId: String, sandboxGroupId: String!): SandboxImage
   sandboxImages(cursor: String, limit: Int, name: String, ownerId: String, sandboxGroupId: String!, status: [String!]): [SandboxImage]
-  sandboxSnapshot(id: String!, ownerId: String, sandboxGroupId: String!): SandboxSnapshot
+  sandboxSnapshot(id: String!, ownerId: String, sandboxGroupId: String): SandboxSnapshot
   sandboxSnapshots(cursor: String, limit: Int, name: String, ownerId: String, sandboxGroupId: String!, status: [String!]): [SandboxSnapshot]
+  sandboxSnapshotsForGroup(input: SandboxSnapshotsFilterInput!): SandboxSnapshotPage!
   sandboxes(name: String, ownerId: String, sandboxGroupId: String, status: [String!]): [Sandbox]
+  sandboxesForGroup(input: SandboxesForGroupFilterInput!): SandboxesForGroupPage!
   savedSearch(id: String!): SavedSearch
   savedSearches(projectId: String!, type: SavedSearchType): [SavedSearch!]!
   secretFiles(cursor: String, limit: Int, serviceId: String!): [SecretFileWithCursor]
@@ -2981,6 +2986,8 @@ type SSHKey {
 
 type Sandbox {
   createdAt: String
+  endedAt: String
+  errorReason: String
   id: String!
   idleTimeoutSeconds: Int
   image: String
@@ -2988,12 +2995,57 @@ type Sandbox {
   networkPolicy: SandboxNetworkPolicy
   owner: String
   plan: String
+  planSpec: SandboxPlanSpec
   region: String
   sandboxGroupId: String
+  source: SandboxSource
+  sourceBuild: SandboxSourceBuild
+  sourceBuildId: String
+  sourceSnapshotId: String
+  startedAt: String
   status: String!
   terminatedAt: String
+  timeoutAt: String
   timeoutSeconds: Int
+  trigger: String
   workspace: String
+}
+
+type SandboxBuildSource {
+  latestBuild: SandboxImage!
+  latestSucceededBuild: SandboxImage
+  name: String!
+  source: SandboxImageSource!
+}
+
+type SandboxBuildSourcePage {
+  cursor: String
+  hasMore: Boolean!
+  sources: [SandboxBuildSource!]!
+}
+
+input SandboxBuildSourcesFilterInput {
+  cursor: String
+  limit: Int
+  ownerId: String
+  sandboxGroupId: String!
+  search: String
+}
+
+type SandboxEmailSource {
+  email: String!
+}
+
+interface SandboxEvent {
+  id: String!
+  label: String!
+  outcome: String!
+  timestamp: String!
+}
+
+type SandboxEventPage {
+  events: [SandboxEvent!]!
+  hasMore: Boolean!
 }
 
 type SandboxExecution {
@@ -3008,6 +3060,21 @@ type SandboxExecution {
   userId: String!
 }
 
+type SandboxExecutionEvent implements SandboxEvent {
+  completedAt: String
+  executionId: String!
+  executionType: String!
+  exitCode: Int
+  fullCommand: String
+  id: String!
+  label: String!
+  operation: String!
+  outcome: String!
+  startedAt: String
+  summary: String!
+  timestamp: String!
+}
+
 type SandboxGroup {
   concurrencyLimit: Int!
   createdAt: String
@@ -3017,6 +3084,7 @@ type SandboxGroup {
   name: String!
   ownerId: String!
   region: String!
+  runningSandboxCount: Int
   updatedAt: String
 }
 
@@ -3050,6 +3118,13 @@ type SandboxGroupCredentialVersion {
   updatedBy: String!
 }
 
+type SandboxGroupRuns {
+  buckets: [SandboxRunBucket!]!
+  errored: Int!
+  succeeded: Int!
+  total: Int!
+}
+
 type SandboxImage {
   createdAt: String
   failureCode: String
@@ -3067,6 +3142,16 @@ type SandboxImageSource {
   image: String!
   reference: String!
   repository: String!
+}
+
+type SandboxLifecycleEvent implements SandboxEvent {
+  id: String!
+  label: String!
+  lifecycleType: String!
+  outcome: String!
+  timestamp: String!
+  trigger: String
+  userEmail: String
 }
 
 type SandboxNetworkPolicy {
@@ -3091,20 +3176,89 @@ input SandboxNetworkPolicyRuleInput {
   protocol: String
 }
 
+type SandboxPlanSpec {
+  cpus: Float
+  memoryGb: Float
+  name: String!
+}
+
+type SandboxRunBucket {
+  errored: Int!
+  succeeded: Int!
+  time: String
+}
+
 type SandboxSnapshot {
   capturedAt: String
   error: String
   expiresAt: String
+  failureCode: String
   id: String!
   kind: String!
   name: String
   plan: String!
+  planSpec: SandboxPlanSpec
   requestedAt: String
   sandboxGroupId: String!
   sizeBytes: Float
   sourceSandboxId: String!
   status: String!
   ttlSeconds: Float
+}
+
+type SandboxSnapshotEvent implements SandboxEvent {
+  id: String!
+  label: String!
+  outcome: String!
+  snapshot: SandboxSnapshot!
+  timestamp: String!
+}
+
+type SandboxSnapshotPage {
+  cursor: String
+  hasMore: Boolean!
+  snapshots: [SandboxSnapshot!]!
+}
+
+input SandboxSnapshotsFilterInput {
+  createdAfter: String
+  createdBefore: String
+  cursor: String
+  limit: Int
+  ownerId: String
+  sandboxGroupId: String!
+  search: String
+  sourceSandboxId: String
+  statuses: [String!]
+}
+
+union SandboxSource = SandboxEmailSource
+
+type SandboxSourceBuild {
+  id: String!
+  name: String
+}
+
+input SandboxesForGroupFilterInput {
+  createdAfter: String
+  createdBefore: String
+  cursor: String
+  limit: Int
+  ownerId: String
+  sandboxGroupId: String!
+  search: String
+  sourceBuildId: String
+  sourceBuildIds: [String!]
+  sourceSnapshotId: String
+  statuses: [String!]
+}
+
+type SandboxesForGroupPage {
+  cursor: String
+  hasMore: Boolean!
+  sandboxes: [Sandbox!]!
+  sortDirection: String!
+  sortField: String!
 }
 
 type SavedSearch {

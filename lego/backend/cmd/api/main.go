@@ -1870,6 +1870,7 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 			deps.SandboxNames = st
 			deps.SandboxRecords = st
 			deps.SandboxExecutions = st
+			deps.SandboxLifecycle = st
 			// Sandbox groups and their concurrency limits (w22/m311).
 			deps.SandboxGroups = st
 			// Sandbox group credentials (w2/m532, ADR122).

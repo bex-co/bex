@@ -17,8 +17,10 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 
 /**
- * Breakpoint-matched skeletons for `/sandbox-groups`, `/sandbox-groups/$groupId`,
- * `SandboxGroupCredentialsPanel`, and `CredentialVersionsDialog` (w2/m533 t005).
+ * Breakpoint-matched skeletons for `/sandbox-groups`,
+ * `SandboxGroupCredentialsPanel`, and `CredentialVersionsDialog` (w2/m533 t005);
+ * a group's own pages have theirs in
+ * `features/sandbox-group-pages/components/group-page-skeletons.tsx` (w1/m658).
  * Kept in a skeleton-only module so route pending components stay out of the
  * lazy page chunks (w3/066).
  */
@@ -236,41 +238,6 @@ export function SandboxGroupCredentialsPanelSkeleton({
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-export function SandboxGroupDetailRouteSkeleton() {
-  return (
-    <DashboardLayout>
-      <PageFrame
-        pending="sandbox-group-detail"
-        header={
-          <PageHeader
-            leading={<Skeleton className="h-8 w-8 rounded-md" />}
-            title={<Skeleton className="h-6 w-44" />}
-            titleAddon={<Skeleton className="h-5 w-16 rounded-full" />}
-            description={<Skeleton className="h-4 w-56" />}
-          />
-        }
-      >
-        {/* Group metadata summary row */}
-        <div
-          data-skeleton-region="group-metadata"
-          className="grid grid-cols-1 gap-4 sm:grid-cols-3"
-          aria-hidden="true"
-        >
-          {Array.from({ length: 3 }).map((_, idx) => (
-            <Card key={idx} className="gap-1.5 py-4">
-              <CardHeader className="px-4 py-0">
-                <Skeleton className="h-3.5 w-20" />
-                <Skeleton className="h-5 w-28" />
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
-        <SandboxGroupCredentialsPanelSkeleton />
-      </PageFrame>
-    </DashboardLayout>
   );
 }
 

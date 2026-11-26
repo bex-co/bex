@@ -350,6 +350,7 @@ func (s *Service) resumeForActivity(ctx context.Context, key, ws string, raw osS
 	case err == nil:
 		// The runtime timeout restarts at the resume, as on Render.
 		s.afterResume(ctx, key, raw)
+		s.recordLifecycle(ctx, ws, canonicalID(raw), LifecycleResuming, TriggerConnection)
 	case errors.Is(err, errOpenSandboxConflict):
 		// Another request or replica is resuming it and renews the expiry.
 	case errors.Is(err, errOpenSandboxNotFound):
@@ -432,6 +433,11 @@ func (w *IdleSuspender) Sweep(ctx context.Context) int {
 		// Ended records past retention go, whatever their workspace (w3/m318).
 		if err := records.ExpireSandboxRecords(ctx, w.Service.Now()); err != nil {
 			log.Printf("sandbox idle: expire records: %v", err)
+		}
+	}
+	if events := w.Service.Lifecycle; events != nil {
+		if err := events.ExpireSandboxLifecycleEvents(ctx, w.Service.Now()); err != nil {
+			log.Printf("sandbox idle: expire lifecycle events: %v", err)
 		}
 	}
 	return suspended
@@ -534,6 +540,7 @@ func (w *IdleSuspender) suspendIfIdle(ctx context.Context, key store.SandboxTena
 		return false
 	}
 	s.afterSuspend(ctx, raw)
+	s.recordLifecycle(ctx, key.WorkspaceID, canonicalID(raw), LifecycleSuspended, TriggerIdleTimeout)
 	// A suspended sandbox holds no concurrency slot.
 	s.clearSlotLease(ctx, key.WorkspaceID, canonicalID(raw))
 	// Close the running interval now: compute stops accruing at the moment

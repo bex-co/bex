@@ -194,6 +194,9 @@ type Sandbox struct {
 	// ungrouped marks an agent-session sandbox, which belongs to no group. It is
 	// not part of any wire shape.
 	ungrouped bool
+	// details are what the dashboard's sandbox drawer reads (w1/m658), on
+	// GraphQL alone.
+	details sandboxDetails
 }
 
 // NetworkPolicy mirrors Render's per-sandbox outbound posture (w32/m283,

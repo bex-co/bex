@@ -107,7 +107,8 @@ var sandboxExecutionGQLType = graphql.NewObject(graphql.ObjectConfig{
 // Render REST shape.
 var sandboxGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Sandbox",
-	Fields: graphql.Fields{
+	// The drawer's fields (w1/m658) beside the REST shape.
+	Fields: withFields(sandboxDetailFields(), graphql.Fields{
 		"id": gqlutil.ReqStrField(func(s Sandbox) any { return s.ID }),
 		// Render's optional sandbox name (w5/m287); null when unnamed.
 		"name": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Sandbox) any {
@@ -137,8 +138,14 @@ var sandboxGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// The group the sandbox belongs to (w22/m311); null for an agent-session
 		// sandbox and when the deployment has no group store.
 		"sandboxGroupId": gqlutil.OptionalStrField(func(s Sandbox) any { return s.SandboxGroupID }),
-	},
+	}),
 })
+
+// withFields is extra with base's fields added.
+func withFields(extra, base graphql.Fields) graphql.Fields {
+	maps.Copy(extra, base)
+	return extra
+}
 
 // envFromArgs turns GraphQL's `[{key, value}]` into Render's env map. A
 // sandbox has no generated values, and a repeated key is ambiguous.
@@ -224,6 +231,13 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
+				// The drawer's details cost a read of their own; a by-id lookup
+				// (a link) asks for none of them.
+				for _, field := range []string{"startedAt", "trigger", "source", "sourceBuild"} {
+					if gqlutil.Selects(p, field) {
+						return s.GetDetailed(gqlutil.OwnerScoped(p), p.Args["id"].(string))
+					}
+				}
 				return s.Get(gqlutil.OwnerScoped(p), p.Args["id"].(string))
 			},
 		},
@@ -232,6 +246,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	maps.Copy(fields, s.credentialQueryFields())
 	maps.Copy(fields, s.imageQueryFields())
 	maps.Copy(fields, s.snapshotQueryFields())
+	maps.Copy(fields, s.groupPageQueryFields())
 	return s.limitedFields("Query", fields)
 }
 

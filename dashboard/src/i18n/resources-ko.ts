@@ -31,6 +31,7 @@ import koOnboarding from "@/features/onboarding/locales/ko";
 import koAgentEnvironment from "@/features/agent-environment/locales/ko";
 import koAgentAutomations from "@/features/agent-automations/locales/ko";
 import koSandboxGroups from "@/features/sandbox-groups/locales/ko";
+import koSandboxGroupPages from "@/features/sandbox-group-pages/locales/ko";
 import koBuildSources from "@/features/build-sources/locales/ko";
 import koLegal from "@/features/legal/locales/ko";
 import koOrganizations from "@/features/organizations/locales/ko";
@@ -80,6 +81,7 @@ const ko: Record<string, string> = {
   ...extractMessages(koAgentEnvironment),
   ...extractMessages(koAgentAutomations),
   ...extractMessages(koSandboxGroups),
+  ...extractMessages(koSandboxGroupPages),
   ...extractMessages(koBuildSources),
   ...extractMessages(koLegal),
   ...extractMessages(koOrganizations),

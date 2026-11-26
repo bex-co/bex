@@ -493,6 +493,8 @@ func cleanupAccountEmail(ctx context.Context, tx pgx.Tx, email, marker string) e
 		`UPDATE organization_invites SET email = $2 WHERE lower(email) = lower($1)`,
 		`UPDATE workspace_creation_attempts SET billing_email = $2 WHERE lower(billing_email) = lower($1)`,
 		`UPDATE tenants SET billing_email = $2 WHERE lower(billing_email) = lower($1)`,
+		// Who started a sandbox, as its created event names them (w1/m658).
+		`UPDATE sandbox_lifecycle_events SET user_email = $2 WHERE user_email <> '' AND lower(user_email) = lower($1)`,
 	} {
 		if _, err := tx.Exec(ctx, statement, email, anonymousEmail); err != nil {
 			return err

@@ -465,6 +465,9 @@ type Deps struct {
 	// SandboxRecords keeps each sandbox's record past its end (w3/m318); nil
 	// answers an ended sandbox as not found.
 	SandboxRecords sandbox.RecordStore
+	// SandboxLifecycle holds each sandbox's lifecycle events, the timeline of
+	// the dashboard's sandbox drawer (w1/m658); nil records none.
+	SandboxLifecycle sandbox.LifecycleStore
 	// SandboxExecutions holds Render's sandbox execution history (w32/m298);
 	// nil answers the /execs reads as unavailable.
 	SandboxExecutions sandbox.ExecutionStore
@@ -1585,6 +1588,7 @@ type (
 	restRegistrar       interface{ RegisterREST(*http.ServeMux) }
 	gqlQueryProvider    interface{ GraphQLQuery() graphql.Fields }
 	gqlMutationProvider interface{ GraphQLMutation() graphql.Fields }
+	gqlTypesProvider    interface{ GraphQLTypes() []graphql.Type }
 	mcpRegistrar        interface{ RegisterMCP(*mcp.Server) }
 )
 
@@ -1610,6 +1614,7 @@ func sandboxService(base *core.Base, d Deps, resolver core.EnvironmentResolver) 
 		Activity:        d.SandboxActivity,
 		Names:           d.SandboxNames,
 		Records:         d.SandboxRecords,
+		Lifecycle:       d.SandboxLifecycle,
 		Executions:      d.SandboxExecutions,
 		UserIDs:         userIDLookup(d.SandboxExecutions),
 
@@ -2104,6 +2109,7 @@ var notOfferedRoutes = func() map[string]bool {
 func (s *Server) newSchema() (graphql.Schema, error) {
 	query := graphql.Fields{}
 	mutation := graphql.Fields{}
+	var types []graphql.Type
 	for _, f := range s.features() {
 		if p, ok := f.(gqlQueryProvider); ok {
 			maps.Copy(query, p.GraphQLQuery())
@@ -2111,10 +2117,16 @@ func (s *Server) newSchema() (graphql.Schema, error) {
 		if p, ok := f.(gqlMutationProvider); ok {
 			maps.Copy(mutation, p.GraphQLMutation())
 		}
+		// An interface's implementations reach the schema only when named:
+		// no field returns them by their own type (w1/m658's SandboxEvent).
+		if p, ok := f.(gqlTypesProvider); ok {
+			types = append(types, p.GraphQLTypes()...)
+		}
 	}
 	schema, err := graphql.NewSchema(graphql.SchemaConfig{
 		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: query}),
 		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: mutation}),
+		Types:    types,
 	})
 	if err != nil {
 		return schema, err

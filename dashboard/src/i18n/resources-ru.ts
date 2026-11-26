@@ -31,6 +31,7 @@ import ruOnboarding from "@/features/onboarding/locales/ru";
 import ruAgentEnvironment from "@/features/agent-environment/locales/ru";
 import ruAgentAutomations from "@/features/agent-automations/locales/ru";
 import ruSandboxGroups from "@/features/sandbox-groups/locales/ru";
+import ruSandboxGroupPages from "@/features/sandbox-group-pages/locales/ru";
 import ruBuildSources from "@/features/build-sources/locales/ru";
 import ruLegal from "@/features/legal/locales/ru";
 import ruOrganizations from "@/features/organizations/locales/ru";
@@ -80,6 +81,7 @@ const ru: Record<string, string> = {
   ...extractMessages(ruAgentEnvironment),
   ...extractMessages(ruAgentAutomations),
   ...extractMessages(ruSandboxGroups),
+  ...extractMessages(ruSandboxGroupPages),
   ...extractMessages(ruBuildSources),
   ...extractMessages(ruLegal),
   ...extractMessages(ruOrganizations),
