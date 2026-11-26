@@ -25,6 +25,16 @@ import "strings"
 // never selected again.
 const AnnotationInitialDeployHookRan = "bex.co/initial-deploy-hook-ran"
 
+// LabelPreDeployStep says which of the plane's two commands a pre-deploy Job
+// and its pod run. The operator stamps it (w33/m435); bex-api reads it to
+// attribute the step's logs. The spelling lives here so the stamp and the
+// readers can never drift apart.
+const LabelPreDeployStep = "app.bex.co/predeploy-step"
+
+// PreDeployStepInitialDeployHook is the LabelPreDeployStep value for the
+// service's one-time initialDeployHook, run after the first release is live.
+const PreDeployStepInitialDeployHook = "initial-deploy-hook"
+
 // RollsDeployment reports a service that runs as a Deployment: web and private
 // services and background workers. A cron job, static site or build source has
 // none, and runs neither a pre-deploy step nor an initial deploy hook.

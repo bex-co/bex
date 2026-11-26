@@ -89,8 +89,9 @@ const (
 
 // LabelStep says which of the plane's two commands a Job and its pod run
 // (w33/m435). A Job without it was created by an operator that ran the hook
-// as the pre-deploy step.
-const LabelStep = "app.bex.co/predeploy-step"
+// as the pre-deploy step. Aliases the v1alpha1 canonical, which bex-api also
+// reads, so the stamp and the log attribution can never drift apart.
+const LabelStep = appv1alpha1.LabelPreDeployStep
 
 // Step is a LabelStep value.
 type Step string
@@ -100,8 +101,8 @@ const (
 	// The zero Step means it.
 	StepPreDeploy Step = "pre-deploy"
 	// StepInitialDeployHook is the service's one-time initialDeployHook, run
-	// after the first release is live.
-	StepInitialDeployHook Step = "initial-deploy-hook"
+	// after the first release is live. Aliases the v1alpha1 canonical.
+	StepInitialDeployHook Step = Step(appv1alpha1.PreDeployStepInitialDeployHook)
 )
 
 // predeployTimeout bounds a single pre-deploy Job's wall-clock (its Job

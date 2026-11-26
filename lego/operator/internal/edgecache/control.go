@@ -22,6 +22,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // The pod annotations a running proxy follows (w3/m486). The operator patches
@@ -29,9 +31,11 @@ import (
 // downward-API file that carries them, so a purge or a profile switch reaches
 // the running proxy without restarting the instance, as on Render's CDN.
 const (
-	// PurgedAtAnnotation is the App's last manual purge
-	// (appv1alpha1.CachePurgedAtAnnotation); a new value empties the cache.
-	PurgedAtAnnotation = "app.bex.co/cache-purged-at"
+	// PurgedAtAnnotation is the App's last manual purge; a new value empties
+	// the cache. Aliases the v1alpha1 canonical, which bex-api stamps and the
+	// controller propagates here, so the stamp and the purge can never drift
+	// apart.
+	PurgedAtAnnotation = appv1alpha1.CachePurgedAtAnnotation
 	// RevisionAnnotation is the deploy whose success last emptied the cache.
 	// The operator sets it on each pod of a service's cache tier (w3/m489),
 	// which outlives the app's instances, so a deploy no longer starts it
