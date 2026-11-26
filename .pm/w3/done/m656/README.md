@@ -1,6 +1,6 @@
 # w3 · m656 — A Postgres database warns that it is almost full, as Render's does
 
-**Worker:** worker3 **Goal:** when a Postgres database has used more than 80% of its storage and has less than 5 GiB left, its Info and Plan pages show Render's "almost full" warning, with a link to the place that grows its storage. GraphQL's `Database` carries Render's `storageUsedPercent`, `storageUsed` and `storageTotal`. **Status:** blocked (t001–t003 and t005–t007 done; t004 walked locally, its production read waits for a pin carrying the code)
+**Worker:** worker3 **Goal:** when a Postgres database has used more than 80% of its storage and has less than 5 GiB left, its Info and Plan pages show Render's "almost full" warning, with a link to the place that grows its storage. GraphQL's `Database` carries Render's `storageUsedPercent`, `storageUsed` and `storageTotal`. **Status:** done (every task done; t004 walked locally on dev-3 and read on production pin `11695fb886cb`)
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | [t001](done/t001.md) | Record Render's almost-full warning and settle bex's used and total numbers — **DONE** | 20m | — |
 | [t002](done/t002.md) | GraphQL `storageUsedPercent`, `storageUsed` and `storageTotal` on `Database` — **DONE** | 1h30m | t001 |
 | [t003](done/t003.md) | The warning on Info and Plan, in Render's words, with its two links — **DONE** | 1h | t002 |
-| [t004](t004.md) | Verify locally by filling a database past the line, and on production | 45m | t003 |
+| [t004](done/t004.md) | Verify locally by filling a database past the line, and on production — **DONE** | 45m | t003 |
 | [t005](done/t005.md) | Render parity — **DONE** | 20m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 40m | t005 |
-| [t008](t008.md) | Closeout | 10m | t006, t007 |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t006, t007 |
 
 Total: **8 tasks, about 5h**.
 
@@ -69,6 +69,18 @@ bex-api and the dashboard ran from this tree on dev-3 (`scripts/dev-env.sh 3 up`
 
 Not walked: the "contact support" ending (storage at its plan's 16 TB ceiling), which the page tests cover.
 
+## Production read (2026-11-26, t004 step 3)
+
+Pin `11695fb886cb` (`ec6211f2ca`, carries `fa9a9913e2`): both `bex-api` pods ran `bex-operator@sha256:f031439853c2…` and the `dashboard` pod `bex-dashboard@sha256:6c65a6a43b12…`, the pin's digests. Read 16:50–16:56 UTC as the QA user (`scripts/qa-login.sh`). In `bex-canary` (`tea-daif693dqjvc73e7as3g`), created over REST: the Postgres `qa-20261126-m656-pg` (disposable, `dpg-dc4679ri676s73bu77ug`, Basic 256MB, 1 GB, PostgreSQL 17, `oregon`). It is Basic 256MB because bex-api refused Free: the workspace already holds its one free database.
+
+| Point | Seen | Verdict |
+| --- | --- | --- |
+| The three fields | GraphQL `database { storageUsedPercent storageUsed storageTotal }` as it came up and 75 s later: `storageTotal` `"1073741824"`, `storageUsed` `"82968576"`, `storageUsedPercent` 7.727; `storageUsed` equal to the newest `datastoreMetrics(name: "disk")` sample of its one instance volume, `storageTotal` to `datastoreMetrics(name: "disk_capacity")`'s 1073741824 | holds |
+| REST unchanged | `GET /v1/postgres/{id}` carries no usage field, only `diskSizeGB` (1) and `diskAutoscalingEnabled` | holds |
+| Info, Plan and Recovery below the line | Google Chrome headless through `playwright-core`, `en-US`, at 1440×900 and 390×900: each page's own `DatabaseStorage` read answered 200 with 99627008 used (9.28%), and no page drew the warning or any other alert; each had its `h2` (Info, Plan, Recovery) and its title, no error text, no page or console error, and no sideways scroll at 390 | holds |
+
+Not done on production: filling a database past the line, which t004 leaves out of scope; the warning, its two endings and links, and the cut-off Prometheus were walked locally (§ Local walk). The database was deleted after the read (REST `DELETE` 204, then 404) and the QA session revoked (`qa-login.sh --logout`, then REST 401).
+
 ## Decisions and deviations
 
 - **Placement.** Render also draws the warning on Recovery, under Point-in-Time Recovery and above Export; bex draws it above Recovery's one card, which holds both. On Info and Plan it sits above the page heading, as on Render's Info.
@@ -83,3 +95,7 @@ Not walked: the "contact support" ending (storage at its plan's 16 TB ceiling), 
 
 Shipped in `fa9a9913e2`. Everything but the production read is done: t004 step 3 reads `database { storageUsedPercent storageUsed storageTotal }` on production as the QA user in `bex-canary` (`tea-daif693dqjvc73e7as3g`) for a Postgres created for it (disposable), opens its Info and Plan at 1440 and 390 without the warning, and deletes it, once the newest `chore(deploy): pin platform images to <sha>` carries `fa9a9913e2`. Then t008 closes the milestone. Nothing is needed from the user.
 
+## Unblock record
+
+- **2026-11-26, `/loopx w3` (verified evidence, no user decision):** the gate, pin must carry `fa9a9913e2`, holds. The newest pin on `origin/main` is `ec6211f2ca` `chore(deploy): pin platform images to 11695fb886cb`, and `git merge-base --is-ancestor fa9a9913e2 11695fb886cb` exits 0. Affects t004 (step 3) and t008. Next: t004 step 3 reads the three fields on production as the QA user in `bex-canary` for a Postgres created for it (disposable), opens its Info and Plan at 1440 and 390 without the warning, deletes it and records the read under § Production read; t008 closes the milestone if definition of done item 4 holds. No gate remains.
+- **2026-11-26, `/loopx w3`, closed:** t004 step 3 held definition of done item 4 on production pin `11695fb886cb` (§ Production read), with the database deleted and the QA session revoked. Every point of the definition of done holds; t008 moved the milestone to `done/`.
