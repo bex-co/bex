@@ -214,3 +214,151 @@ func TestResumeReleaseFallsBackWhenSelectionIsLostAfterTheRowWrite(t *testing.T)
 		})
 	}
 }
+
+// w3/m643 follow-up: a service_resumed deploy row is a first-class release
+// row. Restarting while it serves re-releases its recorded configuration, and
+// rolling back to it runs its recorded image — exactly as for a restart row:
+// no selection reads the row's trigger. The serving-row trigger matrix for
+// the settled window lives here; the unprojected window is covered by
+// TestRestartSelectsTheServingReleaseBeforeItsRowIsLive.
+func TestRestartFromServingServiceResumedRereleasesIt(t *testing.T) {
+	svc, cl, ds := servingFixture(t, store.TriggerServiceResumed, nil)
+	d, err := svc.Restart(context.Background(), "web")
+	if err != nil {
+		t.Fatalf("Restart from a serving service_resumed deploy: %v", err)
+	}
+	assertRestartedGeneration(t, cl, ds, d, 2, "b")
+	// The new row's trigger is a per-verb constant (selectedOpening.rowTrigger),
+	// never the serving row's: the fake records restart rows as "api", so the
+	// spelling itself is pinned at the rollback level above and by PGStore.
+}
+
+// Rolling back to a service_resumed deploy runs its recorded image with its
+// recorded configuration, exactly as rolling back to a restart row does.
+func TestRollbackToAServiceResumedDeployRunsItsRecordedImage(t *testing.T) {
+	for _, trigger := range []string{store.TriggerRestart, store.TriggerServiceResumed} {
+		t.Run(trigger, func(t *testing.T) {
+			ctx := context.Background()
+			ds := newFakeStore()
+			seedDeploys(ds,
+				store.Deploy{ID: "dep-target", Trigger: trigger, Status: store.DeployLive, Image: "web:v1", ResolvedImage: "web:v1", Generation: 1, Commit: "c1"},
+				store.Deploy{ID: "dep-live", Trigger: store.TriggerAPI, Status: store.DeployLive, Image: "web:v2", ResolvedImage: "web:v2", Generation: 2, Commit: "c2"},
+			)
+			app := sampleApp("web", "srv-1")
+			app.Spec.Image = "web:v2"
+			app.Spec.StartCommand = "./server --v2"
+			app.Spec.Tier = "standard"
+			svc, cl := newService(ds, app, servingRecord("web", 1, "./server --v1"))
+			rolled, err := svc.Rollback(ctx, "web", "dep-target")
+			if err != nil {
+				t.Fatalf("Rollback to a %s deploy: %v", trigger, err)
+			}
+			row, err := ds.GetDeploy(ctx, "srv-1", rolled.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if row.Trigger != store.TriggerRollback || row.Image != "web:v1" || row.RollbackOf != "dep-target" {
+				t.Errorf("rollback row = trigger %q image %q rollbackOf %q, want rollback of web:v1 naming dep-target",
+					row.Trigger, row.Image, row.RollbackOf)
+			}
+			got := getApp(t, cl, "web")
+			sel := got.Spec.ReleaseConfig
+			if sel == nil || sel.SourceGeneration != 1 || sel.Image != "web:v1" {
+				t.Fatalf("rollback selection = %+v, want the target's recorded image from generation 1", sel)
+			}
+			// The record generation 1 names carries the target's start command;
+			// the operator restores it from there (no selection reads the
+			// row's trigger).
+			if got.Spec.Image != "web:v2" || got.Spec.StartCommand != "./server --v2" {
+				t.Errorf("rollback rewrote saved settings: %+v", got.Spec)
+			}
+		})
+	}
+}
+
+// rollbackImage depends only on the row's image fields, never its trigger: a
+// tag re-resolves, a digest (what a resume records) and a platform image run
+// pinned, and an empty image runs the resolved one.
+func TestRollbackImageIgnoresTheRowsTrigger(t *testing.T) {
+	for _, tc := range []struct {
+		name, image, resolved, want string
+	}{
+		{"registry tag", "registry.example.com/app:v3", "registry.example.com/app@sha256:3", "registry.example.com/app:v3"},
+		{"digest", "registry.example.com/app@sha256:3", "registry.example.com/app@sha256:3", "registry.example.com/app@sha256:3"},
+		{"platform image", "zot.svc.cluster.local/app:v1", "zot.svc.cluster.local/app@sha256:9", "zot.svc.cluster.local/app@sha256:9"},
+		{"empty image", "", "registry.example.com/app@sha256:4", "registry.example.com/app@sha256:4"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var got []string
+			for _, trigger := range []string{store.TriggerRestart, store.TriggerServiceResumed} {
+				got = append(got, rollbackImage(store.Deploy{Trigger: trigger, Image: tc.image, ResolvedImage: tc.resolved}))
+			}
+			if got[0] != tc.want || got[1] != tc.want {
+				t.Errorf("rollbackImage = %q (restart) %q (service_resumed), want %q for both", got[0], got[1], tc.want)
+			}
+		})
+	}
+}
+
+// A static site's resume opens a service_resumed deploy of its serving
+// publication when one is retained, and nothing when it is not — the same
+// selection Restart makes (w32/049, w4/m197).
+func TestResumeReleaseOnStaticSite(t *testing.T) {
+	ctx := context.Background()
+	suspendedSite := func() *appv1alpha1.App {
+		app := staticSite()
+		app.Spec.Suspended = true
+		app.Status = appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseRunning, ActiveRevision: "rev-2", ReleaseGeneration: 2}
+		return app
+	}
+
+	t.Run("retained publication opens a service_resumed deploy", func(t *testing.T) {
+		ds := newFakeStore()
+		liveStaticDeploys(t, ds)
+		app := suspendedSite()
+		svc, _ := newService(ds, app, staticRecord(app, 1, "tea-1/site/rev-1/"), staticRecord(app, 2, "tea-1/site/rev-2/"))
+		calls := &resumeCalls{}
+		id, err := svc.ResumeRelease(ctx, "site", app, calls.write, calls.resume)
+		if err != nil || id == "" {
+			t.Fatalf("ResumeRelease = %q, %v; want a deploy of the serving publication", id, err)
+		}
+		row, err := ds.GetDeploy(ctx, "srv-site", id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if row.Trigger != store.TriggerServiceResumed || row.Image != "" || row.RollbackOf != "" {
+			t.Errorf("resume row = trigger %q image %q rollbackOf %q, want an imageless service_resumed provenance row",
+				row.Trigger, row.Image, row.RollbackOf)
+		}
+		got := getApp(t, svc.Client, "site")
+		sel := got.Spec.ReleaseConfig
+		if sel == nil || sel.StaticPrefix != "tea-1/site/rev-2/" || sel.Generation != row.Generation {
+			t.Fatalf("resume selection = %+v, want the serving publication on release %d", sel, row.Generation)
+		}
+		if got.Spec.Suspended {
+			t.Error("the App is still suspended: the resume did not ride the release write")
+		}
+		if calls.rows != 1 || calls.mutates == 0 {
+			t.Errorf("the resume's row write ran %d times and its App change %d, want both in the release write", calls.rows, calls.mutates)
+		}
+	})
+
+	t.Run("no retained publication opens nothing", func(t *testing.T) {
+		ds := newFakeStore()
+		liveStaticDeploys(t, ds)
+		app := suspendedSite()
+		svc, cl := newService(ds, app, staticRecord(app, 1, "tea-1/site/rev-1/"))
+		calls := &resumeCalls{}
+		before := len(ds.byApp["srv-site"])
+		if id, err := svc.ResumeRelease(ctx, "site", app, calls.write, calls.resume); err != nil || id != "" {
+			t.Fatalf("ResumeRelease = %q, %v; want no deploy without a retained publication", id, err)
+		}
+		if calls.rows != 0 || calls.mutates != 0 || len(ds.byApp["srv-site"]) != before {
+			t.Errorf("the resume was written (%d row writes, %d App changes, %d rows); the caller resumes without a deploy",
+				calls.rows, calls.mutates, len(ds.byApp["srv-site"]))
+		}
+		if got := getApp(t, cl, "site"); !got.Spec.Suspended {
+			t.Error("the App was resumed without its caller")
+		}
+	})
+}

@@ -68,6 +68,8 @@ func TestDeploySourceHelper(t *testing.T) {
 		{"static rollback with empty image", repo, "main", "", TriggerRollback, "", ""},
 		{"container restart", repo, "main", "registry/app@sha256:1", TriggerRestart, "", ""},
 		{"static restart with empty image", repo, "main", "", TriggerRestart, "", ""},
+		{"container resume", repo, "main", "registry/app@sha256:1", TriggerServiceResumed, "", ""},
+		{"static resume with empty image", repo, "main", "", TriggerServiceResumed, "", ""},
 		{"linked build source with no own repo", "", "main", "", TriggerAPI, "", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
