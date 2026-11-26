@@ -1,6 +1,6 @@
 # w1 · m657 — An Org Owner mints audit-log API keys, and the org Members page shows each member's login methods and 2FA, as on Render
 
-**Worker:** worker1 **Goal:** an Org Owner creates, lists and revokes organization API keys that read the audit logs of the org and of every workspace in it, and nothing else; and the org Members page's **View details** shows a member's workspaces, the login methods they have signed in with and whether 2FA is on, as Render's does. **Status:** todo (t001–t006 and t008–t010 done; t007 walked on dev-1, its production walk waits for a pin carrying the milestone, then t011)
+**Worker:** worker1 **Goal:** an Org Owner creates, lists and revokes organization API keys that read the audit logs of the org and of every workspace in it, and nothing else; and the org Members page's **View details** shows a member's workspaces, the login methods they have signed in with and whether 2FA is on, as Render's does. **Status:** blocked (t001–t006 and t008–t010 done, shipped in `3926ec646c`; t007 walked on dev-1, its production walk waits for a production pin carrying `3926ec646c`, then t011)
 
 ## Tasks (in order)
 
@@ -41,11 +41,11 @@ Read 2026-11-26 from Render's public dashboard bundle (the `Settings`, `Members`
 
 Verified 2026-11-26 on main `bea7a8664a`.
 
-- **Org audit log:** `GET /v1/organizations/{orgId}/audit-logs` and GraphQL `organizationAuditLogs` (w7/m464, [ADR115 D7](../../../docs/ADR115-organizations.md#d7--the-org-audit-log)) answer an Owner's own session or key. `audit.Service.ListOrganization` (`lego/backend/internal/audit/organizations.go`) checks `can_manage` on the org and then the caller's org role. A workspace's log is `audit.Service.List` (`audit/service.go`).
+- **Org audit log:** `GET /v1/organizations/{orgId}/audit-logs` and GraphQL `organizationAuditLogs` (w7/m464, [ADR115 D7](../../../../docs/ADR115-organizations.md#d7--the-org-audit-log)) answer an Owner's own session or key. `audit.Service.ListOrganization` (`lego/backend/internal/audit/organizations.go`) checks `can_manage` on the org and then the caller's org role. A workspace's log is `audit.Service.List` (`audit/service.go`).
 - **No organization key exists.** Every API key is a Hydra client bound to one workspace (`lego/backend/internal/apikeys/service.go`: `CreateAPIKey`, the binding's `TenantForKey`, the active-key quota, the `bex.co/last-used` stamp). The bearer form is `bex_<id>_<secret>` (`apikeys/bearerkey.go`), resolved in `lego/backend/internal/api/auth_apikey.go`. What a scoped key may call is `lego/backend/internal/api/key_permission_ops.go` and `scope_matrix_ops.go` (w9/m496).
 - **No per-member login status.** GraphQL `OrganizationMember` has `subject`, `email`, `role`, `workspaces`, `isSelf`, `createdAt`, `avatarDownload` and no auth fields. The org enforcement gate reads 2FA enrollment and the Google account through `workspaces.KratosIdentities` (`MFAEnrolled`, `GoogleAccountMatches` in `lego/backend/internal/workspaces/kratos_verification.go`), and w1/m647 lists the members a requirement locks out, but no surface shows one member's methods.
 - **Dashboard:** `dashboard/src/features/organizations/components/organization-audit-logs-card.tsx` (org Settings, Export as CSV only) and `organization-members-card.tsx` (a table with Remove; no row menu and no details dialog). Pending frames live in `organization-route-skeletons.tsx`.
-- **Ledger:** rows `organizationAPITokens`, `provisionOrganizationAuditLogToken`, `revokeOrganizationAPIToken` and `orgUserAuthStatus` are `gap` on this milestone, and the `scoped_access_tokens` flag row names it, in [dashboard-operations.md](../../../docs/render-artifacts/dashboard-operations.md#workspaces-members-and-organizations).
+- **Ledger:** rows `organizationAPITokens`, `provisionOrganizationAuditLogToken`, `revokeOrganizationAPIToken` and `orgUserAuthStatus` are `gap` on this milestone, and the `scoped_access_tokens` flag row names it, in [dashboard-operations.md](../../../../docs/render-artifacts/dashboard-operations.md#workspaces-members-and-organizations).
 
 ## Definition of done
 
@@ -59,8 +59,8 @@ Verified 2026-11-26 on main `bea7a8664a`.
 
 ## Source + Goal linkage
 
-- **Source:** promoted from [w1/151](../done/151.md) on 2026-11-26 by `/loopx w1`; the note was filed from w1/m645's dashboard ledger ([done/m645](../done/m645/README.md)). Its own estimate already said "more than an hour: promote to a milestone".
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)). Both are customer-facing organization behavior that Render shows every Org Owner: the keys behind a staged rollout of a documented feature, the login status with no flag at all. An Org Owner who needs audit logs in a SIEM, or to check who is ready before turning on Require Login Method (ADR115 D10), has no way to do it in bex today.
+- **Source:** promoted from [w1/151](../../done/151.md) on 2026-11-26 by `/loopx w1`; the note was filed from w1/m645's dashboard ledger ([done/m645](../../done/m645/README.md)). Its own estimate already said "more than an hour: promote to a milestone".
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). Both are customer-facing organization behavior that Render shows every Org Owner: the keys behind a staged rollout of a documented feature, the login status with no flag at all. An Org Owner who needs audit logs in a SIEM, or to check who is ready before turning on Require Login Method (ADR115 D10), has no way to do it in bex today.
 - **Expected outcome:** an org's audit logs can be read by a key that can do nothing else, and an Owner sees each member's sign-in methods and 2FA before or after enforcing them.
 - **Why now:** the ledger just made both gaps visible and checkable, the org login settings (w7/m466) and their lock-out lists (w1/m647) are fresh, and an Owner's own key is today the only way to read the org log over the API, which hands a log reader everything the Owner can do.
 - **Triage notes (2026-11-26):** the note's "no flag" was half wrong. The keys sit behind `scoped_access_tokens` (as the w1/148 worker reported), but render.com/docs/api-keys documents them, so the gap stands. The login status is unflagged and gated only by `viewOrgUserAuthStatus`; it lives in the row's **View details** dialog, not in a column as the note said. SAML SSO rows are out (`.pm/DO_NOT_DO.md`, Enterprise surfaces).
