@@ -634,6 +634,50 @@
       "files": [
         "lego/operator/internal/build/nativebases.go"
       ]
+    },
+    {
+      "id": "native-node-24-14-1-bookworm-donor",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-node-24.14.1-bookworm",
+      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:210786383693b54c7e0044d0dfa7d5351bc0faebc686da451f08378e5d4f89a0",
+      "resolved_at": "2026-11-26T23:03:00Z",
+      "source": "Node 24.14.1 runtime tree rebuilt from its official source with Node's own Brotli fix nodejs/node@49dff6f57aa7 (w3/m672): published, scanned and signed by native-base-image.yml run 45887397538 on 410850e802, whose network-off gates ran check-brotli.py against the repaired decoder; process.versions and npm equal the official image's; copied onto the common base for node:24.14.1-bookworm, Render's dated Node default from 2026-04-21",
+      "files": [
+        "lego/operator/internal/build/nativebases.go"
+      ]
+    },
+    {
+      "id": "native-node-24-14-1-bookworm",
+      "kind": "native-base",
+      "upstream": "docker.io/library/node:24.14.1-bookworm",
+      "committed": "node:24.14.1-bookworm@sha256:80fc934952c8f1b2b4d39907af7211f8a9fff1a4c2cf673fb49099292c251cec",
+      "resolved_at": "2026-11-26T19:00:00Z",
+      "source": "Docker Hub node:24.14.1-bookworm multi-arch index: Render's dated Node default whose runtime the published 24.14.1 donor tree, rebuilt with Node's own Brotli fix, replaces on the common base (w3/m672). A superseded patch tag no longer moves.",
+      "files": [
+        "lego/operator/internal/build/nativebases.go"
+      ]
+    },
+    {
+      "id": "native-node-24-21-0-bookworm-donor",
+      "kind": "native-base",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:native-node-24.21.0-bookworm",
+      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:970bf4c14ac3d44025c08246d00f1dd99d30274ad0e7489047eca256b39c32ba",
+      "resolved_at": "2026-11-26T22:31:00Z",
+      "source": "Node 24.21.0 runtime tree rebuilt from its official source with Node's own Brotli fix nodejs/node@49dff6f57aa7 (w3/m672): published, scanned and signed by native-base-image.yml run 45887400787 on 410850e802, whose network-off gates ran check-brotli.py against the repaired decoder; process.versions and npm equal the official image's; copied onto the common base for node:24.21.0-bookworm, Render's dated Node default from 2026-09-17",
+      "files": [
+        "lego/operator/internal/build/nativebases.go"
+      ]
+    },
+    {
+      "id": "native-node-24-21-0-bookworm",
+      "kind": "native-base",
+      "upstream": "docker.io/library/node:24.21.0-bookworm",
+      "committed": "node:24.21.0-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+      "resolved_at": "2026-11-26T19:00:00Z",
+      "source": "Docker Hub node:24.21.0-bookworm multi-arch index: Render's dated Node default whose runtime the published 24.21.0 donor tree, rebuilt with Node's own Brotli fix, replaces on the common base (w3/m672). A superseded patch tag no longer moves.",
+      "files": [
+        "lego/operator/internal/build/nativebases.go"
+      ]
     }
   ]
 }

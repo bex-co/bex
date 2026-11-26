@@ -1,13 +1,13 @@
 # w3 · m672 — Render's dated Node defaults 24.14.1 and 24.21.0 carry the CVE-2026-111497 Brotli fix
 
-**Worker:** worker3 **Goal:** a no-signal Node service, or another runtime's companion Node, created 2026-04-21 to 2026-10-20 still builds on Render's exact 24.14.1 or 24.21.0, and that Node's bundled Brotli decoder rejects Node's own CVE-2026-111497 regression input. **Status:** in progress (t001 done)
+**Worker:** worker3 **Goal:** a no-signal Node service, or another runtime's companion Node, created 2026-04-21 to 2026-10-20 still builds on Render's exact 24.14.1 or 24.21.0, and that Node's bundled Brotli decoder rejects Node's own CVE-2026-111497 regression input. **Status:** in progress (t001, t002 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | [Extend the Node Brotli backport recipe to 24.14.1 and 24.21.0](done/t001.md) — **DONE** | 45m | — |
-| t002 | [Publish the two runtime donors on amd64 and arm64](t002.md) | 1h30m | t001 |
+| t002 | [Publish the two runtime donors on amd64 and arm64](done/t002.md) — **DONE** | 1h30m | t001 |
 | t003 | [Adopt the donors in native builds](t003.md) | 45m | t002 |
 | t004 | [Guard the dated Node defaults and amend ADR060 and ADR018](t004.md) | 30m | t003 |
 | t005 | [Verify on dev-3 and production](t005.md) | 30m | t004 |

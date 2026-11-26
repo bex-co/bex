@@ -1327,7 +1327,7 @@ class ProfileRoutingControls(unittest.TestCase):
         return "\n".join(lines) + "\n"
 
     def test_all_routes_are_exact_single_cases_and_bounds_are_fixed(self):
-        expected = {"node-addon": (4, 120, 150), "node": (8, 90, 120), "node-donors": (8, 90, 120), "modern-python": (6, 110, 140),
+        expected = {"node-addon": (4, 120, 150), "node": (8, 90, 120), "node-donors": (12, 90, 120), "modern-python": (6, 110, 140),
                     "legacy-python": (2, 110, 140), "ruby": (10, 75, 105),
                     "go-rust": (2, 75, 105), "elixir": (5, 90, 120), "native-init": (1, 60, 90)}
         self.assertEqual(set(qualification.PROFILES), set(expected))
@@ -1404,10 +1404,11 @@ class ProfileRoutingControls(unittest.TestCase):
         for case in ("node-exact14212", "ruby-node-exact14212"):
             self.assertEqual(qualification.profile_selection("node", case)["flag"],
                              "BEX_NATIVE_TEST_NODE_PROFILE")
-        for case in ("node-exact14213", "ruby-node-exact14213", "node-exact14212", "ruby-node-exact14212"):
+        for case in ("node-exact14213", "ruby-node-exact14213", "node-exact14212", "ruby-node-exact14212",
+                     "node-exact24141", "ruby-node-exact24141", "node-exact24210", "ruby-node-exact24210"):
             self.assertEqual(qualification.profile_selection("node-donors", case)["flag"],
                              "BEX_NATIVE_TEST_NODE_DONORS")
-        for case in ("node-exact14211", "ruby-node-exact14211", "node-22", "all"):
+        for case in ("node-exact14211", "ruby-node-exact14211", "node-exact24221", "node-22", "all"):
             with self.subTest(case=case), self.assertRaises(ValueError):
                 qualification.profile_selection("node-donors", case)
 
@@ -1475,7 +1476,7 @@ class ProfileRoutingControls(unittest.TestCase):
                 self.assertEqual({c for p, c in legs if p == "node"}, {"node-22", "node-26"})
                 self.assertEqual({c for p, c in legs if p == "node-addon"},
                                  {"common-node14-primary", "common-node16-primary", "common-python313-node16"})
-                self.assertEqual(len(legs), 39)
+                self.assertEqual(len(legs), 43)
                 for leg in actual["matrix"]:
                     selected = qualification.profile_selection(leg["profile"], leg["case"])
                     self.assertEqual(leg["job_minutes"], int(selected["job_minutes"]))

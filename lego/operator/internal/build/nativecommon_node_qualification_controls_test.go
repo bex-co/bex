@@ -40,6 +40,14 @@ func commonNodeQualificationFake() *fakeExact {
 	fake.envByImage["node:14.21.2-bullseye@"+exactDigest] = fakeExactMetadata{
 		env: []string{"NODE_VERSION=14.21.2", "PATH=/usr/local/bin:/usr/bin"},
 	}
+	// Render's dated Node 24 defaults resolve to the official identities their
+	// donors are keyed by, as the registry answers (w3/m672).
+	donors, _ := commonNodeQualificationArtifacts("1")
+	for source := range donors {
+		if ref, digest, _ := strings.Cut(source, "@"); strings.HasPrefix(ref, "node:24.") {
+			fake.digests[ref] = digest
+		}
+	}
 	return fake
 }
 
@@ -56,8 +64,8 @@ func TestCommonNodeQualificationDonorMode(t *testing.T) {
 	}
 	artifacts, err := commonNodeQualificationArtifacts("1")
 	must(t, err)
-	if len(artifacts) != 5 || len(commonNodeDonorQualificationCases()) != 8 {
-		t.Fatal("five published runtime donors and eight separate qualification cells are required")
+	if len(artifacts) != 7 || len(commonNodeDonorQualificationCases()) != 12 {
+		t.Fatal("seven published runtime donors and twelve separate qualification cells are required")
 	}
 	for source, artifact := range artifacts {
 		must(t, validateNativeBase(source))

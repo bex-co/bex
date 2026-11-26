@@ -55,7 +55,9 @@ PROFILES = {
     "node-donors": ("TestCommonNodeGeneratedImages", "BEX_NATIVE_TEST_NODE_DONORS",
                     ("node-14", "node-16", "node-18", "node-20",
                      "node-exact14213", "ruby-node-exact14213",
-                     "node-exact14212", "ruby-node-exact14212"), 90, 120),
+                     "node-exact14212", "ruby-node-exact14212",
+                     "node-exact24141", "ruby-node-exact24141",
+                     "node-exact24210", "ruby-node-exact24210"), 90, 120),
     "modern-python": ("TestNativeModernPythonGeneratedImages", "BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE",
                       ("3.9", "3.10", "3.11", "3.12", "3.14", "3.15"), 110, 140),
     "legacy-python": ("TestNativeLegacyPythonGeneratedImages", "BEX_NATIVE_LEGACY_PYTHON_INTEGRATION",
@@ -76,8 +78,9 @@ PROFILES = {
 
 # One dispatch runs every case below, as a matrix, on the image that run
 # published: one digest is then shown to pass all of them (w8/m91). Production
-# Node 14/16/18/20 run on the published donor trees, so those lines go through
-# node-donors; node keeps only its lines that are not backports. A historical
+# Node 14/16/18/20 and Render's dated 24.14.1/24.21.0 (w3/m672) run on the
+# published donor trees, so they go through node-donors; node keeps only its
+# lines that are not backports. A historical
 # route builds on the official images without the common base, so it says
 # nothing about the digest; it stays a single case.
 FAMILIES = "families"

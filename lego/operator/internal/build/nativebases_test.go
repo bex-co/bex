@@ -23,6 +23,9 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/Masterminds/semver/v3"
 )
 
 // withoutCommonBase clears the common-base pin for one test: the recipe then
@@ -211,8 +214,8 @@ func nativeCommonAdoptionDataError(common string, artifacts map[string]string) e
 	}
 	const exact14212 = "node:14.21.2-bullseye@sha256:cc748803fe49871926c433ae6aafbfd59b765eed6005dc0843b916eb74f67b12"
 	const donor14212 = "ghcr.io/bex-co/bex-cnb-run@sha256:332869e644cdd45bf1f9e7c42ed3df91fedb95c4d0cee6bf2abf771c9eb760c7"
-	if len(reviewed) != 5 || reviewed[exact14212] != donor14212 || len(artifacts) != len(reviewed) {
-		return fmt.Errorf("common adoption requires all four reviewed lines and exact14.21.2")
+	if len(reviewed) != 7 || reviewed[exact14212] != donor14212 || len(artifacts) != len(reviewed) {
+		return fmt.Errorf("common adoption requires all four reviewed lines, exact14.21.2 and Render's dated Node 24.14.1 and 24.21.0")
 	}
 	for source, donor := range reviewed {
 		if artifacts[source] != donor {
@@ -280,5 +283,108 @@ func TestNativeCommonAdoptionDataRejectsPartialCatalog(t *testing.T) {
 	nativeToolchains[nativeNodeRuntime] = updated
 	if nativeCommonAdoptionDataError(commonFixtureImage, reviewed) == nil {
 		t.Fatal("updated production catalog silently reused stale artifact source identities")
+	}
+}
+
+// nodeFirstBrotliFix is each Node line's first release whose bundled decoder
+// carries Node's own CVE-2026-111497 fix (w1/135; nodejs/node@49dff6f57aa7
+// on the 24 line, read from each tag's src/node_zlib.cc on 2026-11-26).
+var nodeFirstBrotliFix = map[string]string{"22": "22.23.4", "24": "24.22.1", "26": "26.12.1"}
+
+type nodeDonor struct{ source, tree string }
+
+// nodeDonorsByVersion keys nativeRuntimeArtifacts' Node entries by the
+// version in their official tag (a line image's key is its line).
+func nodeDonorsByVersion() map[string]nodeDonor {
+	donors := map[string]nodeDonor{}
+	for source, tree := range nativeRuntimeArtifacts {
+		ref, _, _ := strings.Cut(source, "@")
+		if tag, ok := strings.CutPrefix(ref, "node:"); ok {
+			version, _, _ := strings.Cut(tag, "-")
+			donors[version] = nodeDonor{source, tree}
+		}
+	}
+	return donors
+}
+
+// TestDatedNodeDefaultsHaveAFixedDecoder: every patch Render's dated
+// node-version rows give a no-signal Node service, or another runtime's
+// companion Node, carries Node's own Brotli fix or has a reviewed backport
+// donor (w3/m672). A new Render row below its line's first fixed release
+// fails here instead of reaching production unrepaired: publish its donor
+// with deploy/native-base/node-brotli/patch.sh first.
+func TestDatedNodeDefaultsHaveAFixedDecoder(t *testing.T) {
+	donors := nodeDonorsByVersion()
+	for _, step := range exactDefaults[nativeNodeRuntime] {
+		line, _, _ := strings.Cut(step.Version, ".")
+		fixed, recorded := nodeFirstBrotliFix[line]
+		if !recorded {
+			t.Errorf("Node %s, Render's default from %s: nodeFirstBrotliFix records no first Brotli-fixed release for the %s line", step.Version, step.From.Format(time.DateOnly), line)
+			continue
+		}
+		if !semver.MustParse(step.Version).LessThan(semver.MustParse(fixed)) {
+			continue
+		}
+		if _, ok := donors[step.Version]; !ok {
+			t.Errorf("Node %s, Render's default from %s, predates the %s line's first Brotli-fixed release %s and has no reviewed backport donor in nativeRuntimeArtifacts", step.Version, step.From.Format(time.DateOnly), line, fixed)
+		}
+	}
+}
+
+// w3/m672: a no-signal Node service, and another runtime's companion Node,
+// created in Render's 24.14.1 or 24.21.0 band copies that release's published
+// Brotli donor, keeps its source record and probes the decoder at build time.
+// One created from 2026-10-21 gets 24.22.1, which carries Node's own fix,
+// from its official image with neither.
+func TestDatedNode24DefaultsCopyTheirBrotliDonors(t *testing.T) {
+	donors := nodeDonorsByVersion()
+	fake := &fakeExact{digests: map[string]string{"node:24.22.1-bookworm": exactDigest}}
+	for _, version := range []string{"24.14.1", "24.21.0"} {
+		donor, ok := donors[version]
+		if !ok {
+			t.Fatalf("Render's dated Node %s has no donor in nativeRuntimeArtifacts", version)
+		}
+		ref, digest, _ := strings.Cut(donor.source, "@")
+		fake.digests[ref] = digest
+	}
+	const probe = "RUN --network=none /usr/local/bin/node /usr/share/bex-security/node-check.js\n"
+	for _, tc := range []struct {
+		name, runtime, version string
+		created                time.Time
+	}{
+		{"node created 2026-05-01", nativeNodeRuntime, "24.14.1", on2026(time.May, 1)},
+		{"node created 2026-10-01", nativeNodeRuntime, "24.21.0", on2026(time.October, 1)},
+		{"node created 2026-11-01", nativeNodeRuntime, "24.22.1", on2026(time.November, 1)},
+		{"python companion created 2026-05-01", nativePythonRuntime, "24.14.1", on2026(time.May, 1)},
+		{"python companion created 2026-10-01", nativePythonRuntime, "24.21.0", on2026(time.October, 1)},
+		{"python companion created 2026-11-01", nativePythonRuntime, "24.22.1", on2026(time.November, 1)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			choices, dockerfile := resolveExactAt(t, fake, tc.created, tc.runtime, nil, nil)
+			i := slices.IndexFunc(choices, func(c NativeChoice) bool { return c.Label == "Node" })
+			if i < 0 {
+				t.Fatalf("no Node selection in %+v", choices)
+			}
+			node := choices[i]
+			if version, _ := commonImageVariable(node.imageEnv, "NODE_VERSION"); version != tc.version {
+				t.Fatalf("selected Node %q (%s), want Render's dated %s", version, node.Image, tc.version)
+			}
+			donor, repaired := donors[tc.version]
+			if !repaired {
+				if node.primaryImage != "" || strings.Contains(dockerfile, "node-check.js") || strings.Contains(dockerfile, "/usr/share/bex-node-brotli") {
+					t.Fatalf("Node %s carries Node's own fix, yet the build copies a donor or claims a backport:\n%s", tc.version, dockerfile)
+				}
+				return
+			}
+			provenance := "COPY --link --from=" + donor.tree + " /usr/share/bex-node-brotli /usr/share/bex-node-brotli\n"
+			if node.Image != donor.source || node.primaryImage != donor.tree ||
+				!strings.Contains(dockerfile, "COPY --link --from="+donor.tree+" /usr/local/") ||
+				!strings.Contains(dockerfile, provenance) || !strings.Contains(dockerfile, probe) {
+				t.Fatalf("Node %s did not copy its donor %s with its source record and build-time probe:\n%s", tc.version, donor.tree, dockerfile)
+			}
+			if strings.Contains(dockerfile, "build-node") || strings.Contains(dockerfile, "--from="+donor.source+" /usr/local/") {
+				t.Fatalf("Node %s compiled in the tenant build or copied the unrepaired official tree:\n%s", tc.version, dockerfile)
+			}
+		})
 	}
 }

@@ -54,8 +54,8 @@ func commonNativeRuntimeChoice(ctx context.Context, exact ExactImageResolver, ru
 		return NativeChoice{}, fmt.Errorf("selected %s runtime environment does not match its selected release", runtime)
 	}
 	choice.runtimeCheck = "RUN --network=none [ \"$(" + command + ")\" = " + version + " ]\n"
-	if runtime == nativeNodeRuntime && commonNodeBackport(version) {
-		if choice.primaryImage == "" && len(nativeRuntimeArtifacts) == 0 {
+	if runtime == nativeNodeRuntime {
+		if choice.primaryImage == "" && len(nativeRuntimeArtifacts) == 0 && commonNodeBackport(version) {
 			checksum, err := exact.NodeSourceDigest(ctx, version)
 			if err != nil {
 				return NativeChoice{}, fmt.Errorf("read exact Node source identity: %w", err)
@@ -69,8 +69,9 @@ func commonNativeRuntimeChoice(ctx context.Context, exact ExactImageResolver, ru
 				return NativeChoice{}, err
 			}
 		}
-		// A populated map is the bounded production backport catalog. Other
-		// exact patches keep their selected official runtime; do not compile or
+		// A populated map is the bounded production backport catalog: the EOL
+		// lines and Render's dated Node 24 defaults (w3/m672). Other exact
+		// patches keep their selected official runtime; do not compile or
 		// claim a fixed bundled decoder for a runtime outside that verdict.
 		if choice.primaryImage != "" {
 			choice.runtimeCheck += "RUN --network=none /usr/local/bin/node /usr/share/bex-security/node-check.js\n"
@@ -136,17 +137,19 @@ func commonNodeBuildPython() (nativeLine, string, error) {
 	return python, buildPython, nil
 }
 
+// commonNodeBackport names the EOL lines a tenant build may compile from
+// source when no donor catalog is pinned. Node 24's dated defaults are
+// published donors only (w3/m672); they never compile in a tenant build.
 func commonNodeBackport(version string) bool {
 	major, _, _ := strings.Cut(version, ".")
 	return major == "14" || major == "16" || major == "18" || major == "20"
 }
 
+// commonRuntimeProvenance keeps a repaired Node's source record beside it. A
+// Node primaryImage is always a reviewed backport: a published donor or the
+// EOL source build.
 func commonRuntimeProvenance(choice NativeChoice) string {
 	if !strings.HasPrefix(choice.Image, "node:") || choice.primaryImage == "" {
-		return ""
-	}
-	version, _ := commonImageVariable(choice.imageEnv, "NODE_VERSION")
-	if !commonNodeBackport(version) {
 		return ""
 	}
 	return "COPY --link --from=" + choice.primaryImage + " /usr/share/bex-node-brotli /usr/share/bex-node-brotli\n"

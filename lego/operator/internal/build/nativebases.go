@@ -39,7 +39,9 @@ var nativeCommonBase = "ghcr.io/bex-co/bex-cnb-run@sha256:9c3fac2fc2a764c83434eb
 // system base. Keys are exact selected upstream identities; a line artifact
 // must not substitute a newer patch for another exact request. These are the
 // published Node 14/16/18/20 and exact 14.21.2 trees with the Brotli backport
-// (2026-11-04 donor route); the families run qualifies exactly this map
+// (2026-11-04 donor route), and Render's dated Node 24 defaults 24.14.1 and
+// 24.21.0 rebuilt with Node's own fix (w3/m672, native-base-image.yml runs
+// 45887397538 and 45887400787); the families run qualifies exactly this map
 // (commonNodeQualificationArtifacts).
 var nativeRuntimeArtifacts = map[string]string{
 	"node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e":      "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
@@ -47,6 +49,8 @@ var nativeRuntimeArtifacts = map[string]string{
 	"node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6":      "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
 	"node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783":      "ghcr.io/bex-co/bex-cnb-run@sha256:6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
 	"node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5":      "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+	"node:24.14.1-bookworm@sha256:80fc934952c8f1b2b4d39907af7211f8a9fff1a4c2cf673fb49099292c251cec": "ghcr.io/bex-co/bex-cnb-run@sha256:210786383693b54c7e0044d0dfa7d5351bc0faebc686da451f08378e5d4f89a0",
+	"node:24.21.0-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0": "ghcr.io/bex-co/bex-cnb-run@sha256:970bf4c14ac3d44025c08246d00f1dd99d30274ad0e7489047eca256b39c32ba",
 }
 
 var nativeImageEnvName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)

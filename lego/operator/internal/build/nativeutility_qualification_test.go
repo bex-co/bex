@@ -631,7 +631,7 @@ func TestNativeUtilityExactDefaultSelectionKeepsLookupEvidence(t *testing.T) {
 // it: a case created in their bands fails only the hours-long qualification
 // build (run 45874535257), and this check fails in seconds instead.
 func TestNativeUtilityExactDefaultCaseHasAFixedNode(t *testing.T) {
-	firstFixed := semver.MustParse("24.22.1")
+	firstFixed := semver.MustParse(nodeFirstBrotliFix["24"])
 	cases := nativeUtilityCases()
 	i := slices.IndexFunc(cases, func(c nativeUtilityCase) bool { return c.expectedPythonVersion != "" })
 	if i < 0 {

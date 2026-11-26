@@ -412,7 +412,7 @@ func TestCommonNodeRuntimeArtifactPolicy(t *testing.T) {
 		name, request, line, version, image string
 		exact, missing, source              bool
 	}
-	cases := make([]policyCase, 0, 8)
+	cases := make([]policyCase, 0, 10)
 	for _, requested := range []string{"14", "16", "18", "20"} {
 		line, found := nativeToolchains[nativeNodeRuntime].find(requested)
 		if !found {
@@ -425,7 +425,11 @@ func TestCommonNodeRuntimeArtifactPolicy(t *testing.T) {
 		policyCase{name: "exact-donor", request: "14.21.2", line: "14.21.2", version: "14.21.2", image: "node:14.21.2-bullseye@sha256:cc748803fe49871926c433ae6aafbfd59b765eed6005dc0843b916eb74f67b12", exact: true},
 		policyCase{name: "uncovered-exact", request: "14.21.1", line: "14.21.1", version: "14.21.1", image: "node:14.21.1-bullseye@" + exactDigest, exact: true},
 		policyCase{name: "missing-exact-tag", request: "14.21.1", line: "14", version: line14.version, image: line14.image, missing: true},
-		policyCase{name: "source-qualification", request: "14", line: "14", version: line14.version, image: line14.image, source: true})
+		policyCase{name: "source-qualification", request: "14", line: "14", version: line14.version, image: line14.image, source: true},
+		// Render's dated 24.14.1 has a donor (w3/m672); a neighboring 24.x
+		// below the line's Brotli fix keeps its official image and no claim.
+		policyCase{name: "dated-24-donor", request: "24.14.1", line: "24.14.1", version: "24.14.1", image: "node:24.14.1-bookworm@sha256:80fc934952c8f1b2b4d39907af7211f8a9fff1a4c2cf673fb49099292c251cec", exact: true},
+		policyCase{name: "uncovered-24-exact", request: "24.10.0", line: "24.10.0", version: "24.10.0", image: "node:24.10.0-bookworm@" + exactDigest, exact: true})
 	for _, runtime := range []string{nativeNodeRuntime, nativeRubyRuntime} {
 		for _, tc := range cases {
 			t.Run(runtime+"-"+tc.name, func(t *testing.T) {
