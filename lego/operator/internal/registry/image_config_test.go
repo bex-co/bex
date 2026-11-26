@@ -22,14 +22,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
 	boundedhttp "github.com/bex-co/bex/lego/operator/internal/httpclient"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 func imageMetadataFixture(t *testing.T) (*http.Client, string, map[string][]byte) {
@@ -434,6 +437,50 @@ func TestPrivateTCPPortsSkipWhatTheyCannotPublish(t *testing.T) {
 	got := privateTCPPorts(declare(keys...))
 	if len(got) != 101 || got[0] != 8000 || got[100] != 8100 || !slices.IsSorted(got) {
 		t.Fatalf("EXPOSE 19099 8000-8100 = %d ports %v…, want 8000-8100 ascending", len(got), got[:min(3, len(got))])
+	}
+}
+
+// A generated EXPOSE map exercises every declaration shape at once: the
+// discovery read keeps exactly the usable TCP ports — a bare number reads as
+// TCP, any case of "tcp" counts, and a reserved, UDP, SCTP, malformed or
+// out-of-range key never publishes — ascending and deduplicated (w6/181).
+func TestPrivateTCPPortsPropertySweep(t *testing.T) {
+	rng := rand.New(rand.NewSource(20261126))
+	numbers := []string{"1", "80", "3000", "080", "8000", "10000", "18012", "18013", "19099", "65535", "0", "65536", "-1", "9999999999999999999999", "bad", "", "80 ", " 80", "0x50", "8000-8100", "1.5"}
+	protocols := []string{"", "tcp", "TCP", "Tcp", "tCp", "udp", "UDP", "sctp", "SCTP", "http", "tcp/extra", "/"}
+	for i := range 2000 {
+		exposed := map[string]json.RawMessage{}
+		for range 1 + rng.Intn(12) {
+			key := numbers[rng.Intn(len(numbers))] + "/" + protocols[rng.Intn(len(protocols))]
+			if rng.Intn(4) == 0 {
+				key = numbers[rng.Intn(len(numbers))]
+			}
+			exposed[key] = json.RawMessage(`{}`)
+		}
+		got := privateTCPPorts(exposed)
+		want := map[int32]bool{}
+		for key := range exposed {
+			number, protocol, _ := strings.Cut(key, "/")
+			port, err := strconv.ParseInt(number, 10, 32)
+			if err != nil || port < 1 || port > 65535 || protocol != "" && !strings.EqualFold(protocol, "tcp") {
+				continue
+			}
+			if appv1alpha1.IsReservedImagePort(int32(port)) {
+				continue
+			}
+			want[int32(port)] = true
+		}
+		expected := make([]int32, 0, len(want))
+		for p := range want {
+			expected = append(expected, p)
+		}
+		slices.Sort(expected)
+		if !reflect.DeepEqual(got, expected) {
+			t.Fatalf("case %d: privateTCPPorts(%v) = %v, want %v", i, exposed, got, expected)
+		}
+		if !slices.IsSorted(got) || len(got) > len(exposed) {
+			t.Fatalf("case %d: %v is not ascending or larger than its input", i, got)
+		}
 	}
 }
 
