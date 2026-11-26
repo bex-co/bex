@@ -373,7 +373,7 @@ spec:
                   rule: '!self.mountPath.endsWith(''/'')'
                 - message: disk.mountPath is a reserved platform path; mount a subdirectory
                     of it instead
-                  rule: '!(self.mountPath in [''/etc'',''/etc/secrets'',''/home'',''/home/render'',''/opt'',''/opt/render'',''/opt/render/project'',''/opt/render/project/src''])'
+                  rule: '!(self.mountPath in [''/etc'',''/etc/secrets'',''/home'',''/home/render'',''/opt'',''/opt/render'',''/opt/render/project'',''/opt/render/project/src'',''/bex-health''])'
               displayName:
                 description: |-
                   DisplayName is the free-form, human-facing label for this App. It is

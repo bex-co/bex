@@ -98,6 +98,9 @@ var _ = Describe("Persistent disk admission", func() {
 		Entry("mounted over the projected secrets", func(a *appv1alpha1.App) {
 			a.Spec.Disk.MountPath = "/etc/secrets"
 		}, "reserved platform path"),
+		Entry("mounted over the health-probe helper", func(a *appv1alpha1.App) {
+			a.Spec.Disk.MountPath = "/bex-health"
+		}, "reserved platform path"),
 		Entry("larger than a Hetzner volume can be", func(a *appv1alpha1.App) {
 			a.Spec.Disk.SizeGB = 20000
 		}, "should be less than or equal to 10000"),
@@ -106,6 +109,13 @@ var _ = Describe("Persistent disk admission", func() {
 	It("allows a subdirectory of a reserved path", func() {
 		app := newDiskApp("disk-subdir")
 		app.Spec.Disk.MountPath = "/opt/render/project/src/uploads"
+		Expect(k8sClient.Create(ctx, app)).To(Succeed())
+		Expect(k8sClient.Delete(ctx, app)).To(Succeed())
+	})
+
+	It("allows a subdirectory of the health-probe mount", func() {
+		app := newDiskApp("disk-health-subdir")
+		app.Spec.Disk.MountPath = "/bex-health/data"
 		Expect(k8sClient.Create(ctx, app)).To(Succeed())
 		Expect(k8sClient.Delete(ctx, app)).To(Succeed())
 	})

@@ -1361,15 +1361,16 @@ type AutoscalingSpec struct {
 // (docs/ADR082-persistent-disks.md D2, evidence in
 // docs/render-artifacts/disks.md).
 //
-// The mount-path rules are Render's own denylist. They exist because a volume
-// mounted over a directory the platform populates would shadow it: the build
-// output at /opt/render/project/src, the projected credentials at
-// /etc/secrets, or the whole root filesystem. Subdirectories of every denied
-// path remain legal — it is mounting *over* the directory that breaks, not
-// mounting inside it.
+// The mount-path rules are Render's own denylist plus bex's own mounts. They
+// exist because a volume mounted over a directory the platform populates would
+// shadow it: the build output at /opt/render/project/src, the projected
+// credentials at /etc/secrets, the whole root filesystem, or the health-probe
+// helper at /bex-health (which the operator also mounts into the container).
+// Subdirectories of every denied path remain legal — it is mounting *over*
+// the directory that breaks, not mounting inside it.
 // +kubebuilder:validation:XValidation:rule="self.mountPath.startsWith('/')",message="disk.mountPath must be an absolute path"
 // +kubebuilder:validation:XValidation:rule="!self.mountPath.endsWith('/')",message="disk.mountPath must not be the root directory or end with a slash"
-// +kubebuilder:validation:XValidation:rule="!(self.mountPath in ['/etc','/etc/secrets','/home','/home/render','/opt','/opt/render','/opt/render/project','/opt/render/project/src'])",message="disk.mountPath is a reserved platform path; mount a subdirectory of it instead"
+// +kubebuilder:validation:XValidation:rule="!(self.mountPath in ['/etc','/etc/secrets','/home','/home/render','/opt','/opt/render','/opt/render/project','/opt/render/project/src','/bex-health'])",message="disk.mountPath is a reserved platform path; mount a subdirectory of it instead"
 type DiskSpec struct {
 	// Name labels the disk. Render accepts any string here and does not display
 	// it in its dashboard, so it is identity for the Blueprint/API contract
