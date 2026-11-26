@@ -1,6 +1,6 @@
 # w6 · m624 — A service that probes by exec mounts its health probe from bex's image, so its app starts without waiting for the kubelet's relist
 
-**Worker:** worker6 **Goal:** a pod that carries bex's health-probe helper gets the binary from an `image` volume of bex's image instead of the `bex-health-probe-install` init container. With no init container, the kubelet starts the app in the same pass that starts the pod, and the 0–1 s wait for its next relist is gone. **Status:** blocked (t001, t002, t006, t007 done; t003 waits for a cx33 in fsn1 to roll the control plane onto `ImageVolume`)
+**Worker:** worker6 **Goal:** a pod that carries bex's health-probe helper gets the binary from an `image` volume of bex's image instead of the `bex-health-probe-install` init container. With no init container, the kubelet starts the app in the same pass that starts the pod, and the 0–1 s wait for its next relist is gone. **Status:** todo (t001, t002, t003, t006, t007 done; t004 turns the image volume on in production's operator)
 
 ## Tasks (in order)
 
@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | t001 | [The operator mounts the health probe from an image volume when the cluster serves them](done/t001.md) — **DONE** | 1h30m | — |
 | t002 | [Prove the image volume on the local CAPD cluster](done/t002.md) — **DONE** | 1h | t001 |
-| t003 | [Turn on `ImageVolume` on production's API servers and tenant kubelets](t003.md) | 1h30m | — |
+| t003 | [Turn on `ImageVolume` on production's API servers and tenant kubelets](done/t003.md) — **DONE** | 1h30m | — |
 | t004 | [Turn the image volume on in production's operator](t004.md) | 20m | t001, t002, t003 |
 | t005 | [Measure on production and record the window](t005.md) | 1h30m | t004 |
 | t006 | [Simplify](done/t006.md) — **DONE** | 15m | t005 |
@@ -62,7 +62,7 @@ The note's directions, weighed against the code at `3dd1fccbae` and upstream sou
 - **Pin.** Production's newest pin, `chore(deploy): pin platform images to 7b046987bcd8` (`4b533337ab`), carries `10549cd8b2` (t001's operator change). The date gate 2026-11-25T10:00Z has passed (checked 10:42Z).
 - **fsn1.** `GET /v1/server_types/115` reads cx33 `available: false` in fsn1, nbg1 and hel1 again. w1/144 saw the same flag while Hetzner created a cx33 (2026-11-16), so the flag does not decide. The roll itself is the probe, as the gate says: re-apply the control-plane hunk of `3ac4bb829d` and watch its first surge. If Hetzner refuses it, revert first and park again with the date a day later.
 - **Not approved:** the cpx32 fallback for the control plane (ADR053) is still the user's to take through `/unblock w6`.
-- **Result: parked again.** `b93fb1ccce` re-applied the hunk, and Hetzner refused the first surge, `bex-control-plane-nwbmc`, at 10:56:55Z (`resource_unavailable` for cx33 in fsn1). `a184c14412` reverted it, and KCP was back on its three members at 10:58:26Z with no server left at Hetzner. cpx32 also read unavailable in fsn1 at 10:59Z. Next probe from 2026-11-26T11:00Z, the same way ([t003](t003.md)).
+- **Result: parked again.** `b93fb1ccce` re-applied the hunk, and Hetzner refused the first surge, `bex-control-plane-nwbmc`, at 10:56:55Z (`resource_unavailable` for cx33 in fsn1). `a184c14412` reverted it, and KCP was back on its three members at 10:58:26Z with no server left at Hetzner. cpx32 also read unavailable in fsn1 at 10:59Z. Next probe from 2026-11-26T11:00Z, the same way ([t003](done/t003.md)).
 
 ## Gate check (2026-11-26, `/loopx w6`)
 

@@ -29,6 +29,8 @@
 #                         trust-on-first-use with a notice)
 #      WL_KUBECONFIG      skip the fetch and use this kubeconfig (check 1 still
 #                         runs unless SKIP_FETCH=1)
+#      CAPI_NAMESPACE     where the CAPI objects and the autoscaler live
+#                         (default bex-capi, docs/runbooks/operator-kubeconfig-isolation.md)
 # Exit 0 on full pass; non-zero naming the failed check. Requires kubectl, jq,
 # curl, and SSH access to a control-plane node. HCLOUD_TOKEN reaches curl on
 # stdin, never in its argv (scripts/lib/curl-auth.sh, w3/m472).
@@ -61,9 +63,10 @@ if [ "${SKIP_FETCH:-0}" != "1" ]; then
   pass "access: kubeconfig fetched via hcloud API + CP SSH (no mgmt cluster)"
 fi
 wl() { kubectl --kubeconfig "$KUBECONFIG_FILE" "$@"; }
+CAPI_NAMESPACE="${CAPI_NAMESPACE:-bex-capi}"
 
 # --- 2. SELF-MGMT: machines + healthy KCP reconcile in-cluster ----------------
-MACHINES_JSON=$(wl get machines -n default -o json 2>/dev/null) \
+MACHINES_JSON=$(wl get machines -n "$CAPI_NAMESPACE" -o json 2>/dev/null) \
   || fail "self-mgmt: 'kubectl get machines' failed in-cluster (CAPI absent?)"
 TOTAL=$(echo "$MACHINES_JSON" | jq '.items | length')
 [ "$TOTAL" -ge 1 ] || fail "self-mgmt: zero Machine objects in-cluster"
@@ -71,7 +74,7 @@ NOT_RUNNING=$(echo "$MACHINES_JSON" | jq '[.items[] | select(.status.phase != "R
 [ "$NOT_RUNNING" -eq 0 ] || fail "self-mgmt: $NOT_RUNNING/$TOTAL machines not Running"
 NO_NODE=$(echo "$MACHINES_JSON" | jq '[.items[] | select(.status.nodeRef == null)] | length')
 [ "$NO_NODE" -eq 0 ] || fail "self-mgmt: $NO_NODE machines have no nodeRef"
-KCP_JSON=$(wl get kcp bex-control-plane -n default -o json 2>/dev/null) \
+KCP_JSON=$(wl get kcp bex-control-plane -n "$CAPI_NAMESPACE" -o json 2>/dev/null) \
   || fail "self-mgmt: KubeadmControlPlane bex-control-plane absent"
 KCP_INIT=$(jq -r '.status.initialization.controlPlaneInitialized // false' <<<"$KCP_JSON")
 [ "$KCP_INIT" = "true" ] || fail "self-mgmt: KubeadmControlPlane not initialized in-cluster"
@@ -235,7 +238,7 @@ SCAN=$(ssh -o BatchMode=yes -o ConnectTimeout=8 \
 pass "network: CAPH-owned 10.10/16; private healthy LB targets; remote node scan only :22"
 
 # --- 9. AUTOSCALER: in-cluster, Running ---------------------------------------
-CA_PHASE=$(wl get pods -n default -l app.kubernetes.io/instance=cluster-autoscaler \
+CA_PHASE=$(wl get pods -n "$CAPI_NAMESPACE" -l app.kubernetes.io/instance=cluster-autoscaler \
   -o jsonpath='{.items[0].status.phase}' 2>/dev/null)
 [ "$CA_PHASE" = "Running" ] || fail "autoscaler: in-cluster autoscaler pod not Running (${CA_PHASE:-absent})"
 pass "autoscaler: in-cluster cluster-autoscaler Running"
