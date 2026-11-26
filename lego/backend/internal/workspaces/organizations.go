@@ -453,7 +453,7 @@ func (s *Service) setOrganizationLoginRequirement(ctx context.Context, orgID str
 // a change between Scale and Enterprise moves every org workspace; a change
 // below Scale is refused until Render's preconditions hold, and then deletes
 // the org.
-func (s *Service) changeOrganizationPlan(ctx context.Context, orgs OrganizationStore, t store.Tenant, plan string) (WorkspaceView, error) {
+func (s *Service) changeOrganizationPlan(ctx context.Context, orgs OrganizationStore, t store.Tenant, plan, caller string) (WorkspaceView, error) {
 	o, err := orgs.GetOrganization(ctx, t.OrganizationID)
 	if err != nil {
 		return WorkspaceView{}, mapStoreErr(err)
@@ -480,14 +480,14 @@ func (s *Service) changeOrganizationPlan(ctx context.Context, orgs OrganizationS
 	if err != nil {
 		return WorkspaceView{}, err
 	}
-	unmet, err := s.downgradePreconditions(ctx, orgs, o, workspaces, plan)
+	unmet, err := s.downgradePreconditions(ctx, orgs, o, workspaces, plan, caller)
 	if err != nil {
 		return WorkspaceView{}, err
 	}
 	if len(unmet) > 0 {
 		return WorkspaceView{}, core.NewOrganizationDowngradeBlockedError(o.ID, plan, unmet)
 	}
-	if err := s.guardPlanCapacity(ctx, t.ID, plan); err != nil {
+	if err := s.guardPlanCapacity(ctx, t.ID, plan, caller); err != nil {
 		return WorkspaceView{}, err
 	}
 	members, err := orgs.ListOrganizationMembers(ctx, o.ID)
@@ -535,7 +535,7 @@ func (s *Service) purgeOrganizationKeys(ctx context.Context, orgID string) {
 // its web services and static sites. Rules on Postgres and Key Value are not
 // affected. A target with a member cap (Hobby seats one) also names everyone
 // beyond it. People are named by email (w7/087).
-func (s *Service) downgradePreconditions(ctx context.Context, orgs OrganizationStore, o store.Organization, workspaces []store.Tenant, plan string) ([]core.DowngradePrecondition, error) {
+func (s *Service) downgradePreconditions(ctx context.Context, orgs OrganizationStore, o store.Organization, workspaces []store.Tenant, plan, caller string) ([]core.DowngradePrecondition, error) {
 	var unmet []core.DowngradePrecondition
 	var secondaries []string
 	for _, w := range workspaces {
@@ -561,8 +561,7 @@ func (s *Service) downgradePreconditions(ctx context.Context, orgs OrganizationS
 		unmet = append(unmet, core.DowngradePrecondition{Kind: core.PreconditionInviteRoles, Items: invitedRoles(blocked)})
 	}
 	if limit := store.LimitsFor(plan).MaxMembers; limit > 0 {
-		caller, _ := core.IdentityFrom(ctx)
-		over, overInvites := unseated(members, invites, limit, caller.Subject)
+		over, overInvites := unseated(members, invites, limit, caller)
 		if items := append(s.memberRoles(ctx, over), invitedRoles(overInvites)...); len(items) > 0 {
 			unmet = append(unmet, core.DowngradePrecondition{Kind: core.PreconditionMemberLimit, Items: items})
 		}
@@ -664,9 +663,12 @@ func serviceRestrictsInbound(spec appv1alpha1.AppSpec) bool {
 // upgradeToOrganization is ChangePlan's upgrade of a standalone workspace to
 // Scale or Enterprise: the plan write and the new org land in one
 // transaction, with the caller as Owner (ADR115 D2).
-func (s *Service) upgradeToOrganization(ctx context.Context, orgs OrganizationStore, workspaceID, plan string) (WorkspaceView, error) {
-	id, _ := core.IdentityFrom(ctx)
-	t, o, members, err := orgs.UpgradeToOrganization(ctx, workspaceID, plan, []string{id.Subject})
+func (s *Service) upgradeToOrganization(ctx context.Context, orgs OrganizationStore, workspaceID, plan, caller string) (WorkspaceView, error) {
+	var owners []string
+	if caller != "" {
+		owners = []string{caller}
+	}
+	t, o, members, err := orgs.UpgradeToOrganization(ctx, workspaceID, plan, owners)
 	if err != nil {
 		if errors.Is(err, store.ErrInOrganization) {
 			return WorkspaceView{}, core.NewWorkspaceInOrganizationError(workspaceID)

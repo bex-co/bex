@@ -1553,19 +1553,46 @@ func (s *Service) ChangePlan(ctx context.Context, id, plan string) (WorkspaceVie
 	return v, err
 }
 
+// planCallerSubject resolves the subject acting on ChangePlan. For a human
+// session or delegated OAuth token it is id.Subject; for an attributed bex API
+// key it is the human who minted the key via s.KeyCreator(ctx), failing closed
+// when the key registry cannot answer or when a bex API key has no recorded
+// creator. An operator-provisioned machine client (isKey == false) keeps
+// id.Subject.
+func (s *Service) planCallerSubject(ctx context.Context) (string, error) {
+	id, ok := core.IdentityFrom(ctx)
+	if !ok {
+		return "", nil
+	}
+	creator, isKey, err := s.KeyCreator(ctx)
+	if err != nil {
+		return "", err
+	}
+	if isKey {
+		if creator == "" {
+			return "", core.ErrForbidden
+		}
+		return creator, nil
+	}
+	return id.Subject, nil
+}
+
 // changePlan is ChangePlan's move of workspace t to plan, which differs from
 // t's own.
 func (s *Service) changePlan(ctx context.Context, t store.Tenant, plan string) (WorkspaceView, error) {
 	id := t.ID
-	identity, _ := core.IdentityFrom(ctx)
-	if err := s.requirePlanEntitlement(ctx, identity.Subject, id, plan); err != nil {
+	caller, err := s.planCallerSubject(ctx)
+	if err != nil {
+		return WorkspaceView{}, err
+	}
+	if err := s.requirePlanEntitlement(ctx, caller, id, plan); err != nil {
 		return WorkspaceView{}, err
 	}
 	// A workspace in an organization follows its org's plan (w7/m464,
 	// ADR115 D2, D6).
 	orgs, hasOrgs := s.organizations()
 	if hasOrgs && t.OrganizationID != "" {
-		return s.changeOrganizationPlan(ctx, orgs, t, plan)
+		return s.changeOrganizationPlan(ctx, orgs, t, plan, caller)
 	}
 	// A paid upward transition is a billable intent and must be checked before
 	// any authoritative plan write. Downgrades remain available during dunning
@@ -1576,13 +1603,13 @@ func (s *Service) changePlan(ctx context.Context, t store.Tenant, plan string) (
 			return WorkspaceView{}, err
 		}
 	}
-	if err := s.guardPlanCapacity(ctx, id, plan); err != nil {
+	if err := s.guardPlanCapacity(ctx, id, plan, caller); err != nil {
 		return WorkspaceView{}, err
 	}
 	// Upgrading a standalone workspace to Scale or Enterprise creates its
 	// organization, with this workspace as the primary (ADR115 D2).
 	if hasOrgs && core.OrganizationPlan(plan) {
-		return s.upgradeToOrganization(ctx, orgs, id, plan)
+		return s.upgradeToOrganization(ctx, orgs, id, plan, caller)
 	}
 	nt, err := s.Store.UpdateTenantPlan(ctx, id, plan)
 	if err != nil {
@@ -1595,7 +1622,7 @@ func (s *Service) changePlan(ctx context.Context, t store.Tenant, plan string) (
 // pending invites against MaxMembers, its services against MaxServices, the
 // caller's own workspaces of that plan against MaxWorkspacesPerUser, and any
 // member or pending invite holding a role the plan does not offer.
-func (s *Service) guardPlanCapacity(ctx context.Context, id, plan string) error {
+func (s *Service) guardPlanCapacity(ctx context.Context, id, plan, caller string) error {
 	members, err := s.Store.ListTenantMembers(ctx, id)
 	if err != nil {
 		return err
@@ -1627,8 +1654,8 @@ func (s *Service) guardPlanCapacity(ctx context.Context, id, plan string) error 
 				core.ErrBadRequest, n, plan, limits.MaxServices)
 		}
 	}
-	if caller, ok := core.IdentityFrom(ctx); ok {
-		if err := s.guardPerUserWorkspaceCap(ctx, caller.Subject, plan); err != nil {
+	if caller != "" {
+		if err := s.guardPerUserWorkspaceCap(ctx, caller, plan); err != nil {
 			return err
 		}
 	}
