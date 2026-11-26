@@ -86,7 +86,7 @@ Measured 2026-11-25 (t003). No signed-in walk: the shared Playwright browser tha
 | link (Forgot password?, sign up) | 2 px solid outline, 2 px off the text | 3.71 |
 | tab (`Tabs` chunk) | `outline-2 outline-offset-2` (or `-offset-1`), not walked | 3.56–3.71 |
 
-The colour is `--outline-focus-action`: `#0088e5` in light and light high contrast (3.71:1 on `#fff`, 3.56:1 on `#fafafa`), `#8ad6ff` in dark and dark high contrast (12.16:1 on `#0d0d0d`). Against bex: both draw 2 px at full strength; bex measures 4.27–4.88 in light where Render measures 3.56–3.71, and 4.61 or more in the light twin, where Render keeps its 3.71. The colour differs (bex's brand green, Render's blue), which is not a gap. One difference remains, filed as [w3/113](../../113.md): Render sets buttons, links and tabs 1–2 px off the control, where bex's ring is flush, so bex's ring meets a primary button's fill of the same green.
+The colour is `--outline-focus-action`: `#0088e5` in light and light high contrast (3.71:1 on `#fff`, 3.56:1 on `#fafafa`), `#8ad6ff` in dark and dark high contrast (12.16:1 on `#0d0d0d`). Against bex: both draw 2 px at full strength; bex measures 4.27–4.88 in light where Render measures 3.56–3.71, and 4.61 or more in the light twin, where Render keeps its 3.71. The colour differs (bex's brand green, Render's blue), which is not a gap. One difference remains, filed as [w3/113](../113.md): Render sets buttons, links and tabs 1–2 px off the control, where bex's ring is flush, so bex's ring meets a primary button's fill of the same green.
 
 ## Definition of done
 

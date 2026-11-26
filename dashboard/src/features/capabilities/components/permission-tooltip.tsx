@@ -34,8 +34,13 @@ export function PermissionTooltip({
         {triggerAsChild ? (
           children
         ) : (
-          // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- the wrapper is the tooltip's trigger, focusable so keyboard users can reach the reason a disabled control explains
-          <span className="inline-flex" tabIndex={0}>
+          // It takes the focus the disabled button cannot, so it draws the
+          // shared Button's outline, 2 px off its edge (w3/113).
+          <span
+            className="inline-flex rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- the wrapper is the tooltip's trigger, focusable so keyboard users can reach the reason a disabled control explains
+            tabIndex={0}
+          >
             {children}
           </span>
         )}

@@ -84,8 +84,8 @@ function Spinner({ className }: { className?: string }) {
 
 /**
  * Ory's social button chrome (`buttonStyles`, intent `social`) at the
- * dashboard's h-9 scale, with the shared controls' 2 px focus ring at full
- * strength around Ory's 1 px ring (w3/m642).
+ * dashboard's h-9 scale. Its focus outline, 2 px off the button as on Render,
+ * is the stylesheet's rule for every Ory button (w3/113).
  * Padding and type use the classes Ory's own sheet compiles: its reset sits in
  * a later layer than the dashboard's utilities and would zero theirs.
  */
@@ -94,7 +94,6 @@ const socialButtonClassName = cn(
   "disabled:cursor-not-allowed loading:pointer-events-none loading:cursor-wait",
   "transition-colors duration-100 ease-linear",
   "min-h-9 max-w-[488px] px-4 py-2 text-sm",
-  "focus-visible:shadow-[0_0_0_2px_var(--ring)]",
   "bg-button-social-background-default text-button-social-foreground-default ring-button-social-border-default",
   "hover:bg-button-social-background-hover hover:text-button-social-foreground-hover hover:ring-button-social-border-hover",
   "disabled:bg-button-social-background-disabled disabled:text-button-social-foreground-disabled disabled:ring-button-social-border-disabled",
@@ -199,7 +198,7 @@ export function SsoButtonRows({ nodes, children }: OryFormSsoRootProps) {
       ) : (
         <button
           type="button"
-          className="cursor-pointer justify-self-center text-sm text-button-link-default-secondary hover:text-button-link-default-secondary-hover focus-visible:underline focus-visible:outline-none"
+          className="cursor-pointer justify-self-center text-sm text-button-link-default-secondary hover:text-button-link-default-secondary-hover"
           onClick={() => setExpanded(true)}
         >
           {t("auth.ssoMoreOptions")}

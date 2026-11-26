@@ -205,7 +205,7 @@ export function ConfirmDialog({
           disabled={pending || confirmDisabled || !gateOpen}
           className={cn(
             destructive &&
-              "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive",
+              "bg-destructive text-white hover:bg-destructive/90 focus-visible:outline-destructive",
           )}
           onClick={(event) => {
             // preventDefault stops Radix's close-on-action so a re-prompting

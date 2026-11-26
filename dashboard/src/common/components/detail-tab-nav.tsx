@@ -37,6 +37,7 @@ export function DetailTabNav({
           aria-current={tab.active ? "page" : undefined}
           className={cn(
             "border-b-2 px-3 py-2 text-sm",
+            "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
             tab.active
               ? "border-foreground text-foreground"
               : "border-transparent text-muted-foreground",

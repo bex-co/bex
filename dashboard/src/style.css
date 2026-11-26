@@ -192,13 +192,24 @@
      vertical middle. */
   align-items: center;
 }
-/* Focus: the shared controls pair the border swap with a 2px ring at full
-   strength (focus-visible:ring-ring ring-2), which reaches 3:1 on every
-   surface (w3/m642); Ory only swaps the border. */
+/* Focus: a field pairs the border swap with a 2px ring at full strength
+   (focus-visible:ring-ring ring-2), which reaches 3:1 on every surface
+   (w3/m642); Ory only swaps the border. */
 .ory-elements input[data-testid^="ory/form/node/input"]:focus-visible,
-.ory-elements div:focus-within > input[data-testid^="ory/form/node/input"],
-.ory-elements button[data-testid^="ory/form/node/button"]:focus-visible {
+.ory-elements div:focus-within > input[data-testid^="ory/form/node/input"] {
   box-shadow: 0 0 0 2px var(--ring);
+}
+/* Ory's buttons and links draw the shared Button's 2px outline 2px off their
+   edge (w3/113), as Render's Sign in, provider buttons and links do; the
+   show-password button inside the field draws it inset, as Render's does.
+   Unlayered: Ory's sheet is a later layer than the dashboard's, and its
+   `:-moz-focusring { outline: auto }` would replace a utility's outline. */
+.ory-elements :is(a[href], button:not([data-slot])):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.ory-elements input + button:not([data-slot]):focus-visible {
+  outline-offset: -2px;
 }
 /* Card: match shadcn Card's density and shadow-sm (Ory defaults to
    px-8 py-12 sm:px-12 sm:py-14 with gap-8 and no shadow). */
@@ -389,6 +400,24 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* A link or a button draws its focus outline 2px off its edge, as Render's
+     do (w3/113): a solid 2px line in --ring (the `*` rule's colour), not the
+     browser's auto ring flush against it. The shared Button draws the same
+     with utilities; a control with focus classes of its own overrides it. */
+  a[href]:focus-visible,
+  button:focus-visible {
+    outline-style: solid;
+    outline-width: 2px;
+    outline-offset: 2px;
+  }
+  /* Tab scrolls a control just into its scroll container, which cut the
+     outline 4px past it off on that side until the page scrolled on: keep
+     that much room, and a little more. */
+  a[href],
+  button {
+    scroll-margin: 0.5rem;
   }
 
   /* Keep the interaction affordance consistent for native controls and

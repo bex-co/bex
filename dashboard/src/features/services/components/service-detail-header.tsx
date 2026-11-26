@@ -202,7 +202,7 @@ export function ServiceDetailHeader({
                   )}`}
                   // A 30px target from `md` (the badge is 22px), 46px on a
                   // phone where the rows have room.
-                  className="relative flex items-center gap-1.5 rounded-md after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-md:after:-inset-y-3"
+                  className="relative flex items-center gap-1.5 rounded-md after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] max-md:after:-inset-y-3"
                 >
                   <span className="text-xs font-medium text-muted-foreground">
                     {t("services.headerLatestDeploy")}
@@ -395,7 +395,7 @@ export function ServiceDetailHeader({
             aria-expanded={factsOpen}
             aria-controls={`${serviceIdRowId} ${repoRowId} ${factsId}`}
             onClick={() => setFactsOpen((open) => !open)}
-            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring relative row-start-1 flex items-center gap-1 self-center rounded-sm text-xs font-medium after:absolute after:-inset-y-3.5 after:-right-3 after:-left-1 after:content-[''] focus-visible:ring-2 focus-visible:outline-none max-sm:col-start-2! sm:ml-auto lg:hidden"
+            className="text-muted-foreground hover:text-foreground relative row-start-1 flex items-center gap-1 self-center rounded-sm text-xs font-medium after:absolute after:-inset-y-3.5 after:-right-3 after:-left-1 after:content-[''] max-sm:col-start-2! sm:ml-auto lg:hidden"
           >
             {t("services.headerMoreFacts")}
             <ChevronDown

@@ -675,8 +675,8 @@ describe("the focus ring at the strength the components apply (w3/m642)", () => 
       ringUses(
         edited(
           "src/common/components/ui/button.tsx",
-          "focus-visible:ring-ring ",
-          "focus-visible:ring-ring/50 ",
+          "focus-visible:outline-ring ",
+          "focus-visible:outline-ring/50 ",
         ),
       ),
       RING_THEMES,
@@ -686,7 +686,7 @@ describe("the focus ring at the strength the components apply (w3/m642)", () => 
       found.every((f) => f.startsWith("src/common/components/ui/button.tsx:")),
     ).toBe(true);
     expect(found.join("\n")).toMatch(
-      /focus-visible:ring-ring\/50 \(--ring at 50%\) is 2\.06:1 on --background in light/,
+      /focus-visible:outline-ring\/50 \(--ring at 50%\) is 2\.06:1 on --background in light/,
     );
   });
 
@@ -695,13 +695,13 @@ describe("the focus ring at the strength the components apply (w3/m642)", () => 
       ringUses(
         edited(
           "src/common/components/ui/button.tsx",
-          "focus-visible:ring-destructive",
-          "focus-visible:ring-destructive/20",
+          "focus-visible:outline-destructive",
+          "focus-visible:outline-destructive/20",
         ),
       ),
       RING_THEMES,
     );
-    expect(found.join("\n")).toMatch(/ring-destructive\/20 .* in light,/);
+    expect(found.join("\n")).toMatch(/outline-destructive\/20 .* in light,/);
   });
 
   it("reads a colour-mixed ring, as the sign-in form's rule once drew it", () => {
