@@ -1,6 +1,6 @@
 # w3 · m678 — Every Blueprint sync has its own page, and Manual sync opens it for review and Approve, as Render's does
 
-**Worker:** worker3 **Goal:** each sync opens at `/blueprints/<id>/sync/<syncId>` with its commit, its state, the actions it planned and their states, and **Approve** while it waits; Syncs lists Render's sync cards linking there; Manual sync plans a sync and opens its page; every sync `dashboardUrl` bex-api emits opens that sync's page. **Status:** blocked (t001–t007 and t009–t011 done; t008 walked locally, its production walk waits for a pin carrying `30d75225ff`)
+**Worker:** worker3 **Goal:** each sync opens at `/blueprints/<id>/sync/<syncId>` with its commit, its state, the actions it planned and their states, and **Approve** while it waits; Syncs lists Render's sync cards linking there; Manual sync plans a sync and opens its page; every sync `dashboardUrl` bex-api emits opens that sync's page. **Status:** done (2026-11-27: every task done; t008 walked locally against `local-bex` and on production pin `546d61ac7343` as the QA user in `bex-canary` with a Blueprint created for the walk (disposable), at 1440 and 390)
 
 ## Tasks (in order)
 
@@ -13,11 +13,11 @@
 | [t005](done/t005.md) | Syncs lists Render's sync cards, each linking to its page — **DONE** | 40m | t003, w3/m677 t003 |
 | [t006](done/t006.md) | Manual sync plans a sync and opens its page; the sync dialog and the plan panel retire — **DONE** | 1h | t004 |
 | [t007](done/t007.md) | Every sync `dashboardUrl` bex-api emits opens that sync's page — **DONE** | 20m | t004 |
-| [t008](t008.md) | Verify in a real browser at 1440 and 390, locally and on production | 45m | t005, t006, t007 |
+| [t008](done/t008.md) | Verify in a real browser at 1440 and 390, locally and on production — **DONE** | 45m | t005, t006, t007 |
 | [t009](done/t009.md) | Render parity — **DONE** | 25m | t008 |
 | [t010](done/t010.md) | Simplify — **DONE** | 15m | t009 |
 | [t011](done/t011.md) | Test coverage — **DONE** | 45m | t009 |
-| [t012](t012.md) | Closeout | 10m | t010, t011 |
+| [t012](done/t012.md) | Closeout — **DONE** | 10m | t010, t011 |
 
 Total: **12 tasks, about 8h20m**.
 
@@ -71,3 +71,26 @@ Walked in headless Chromium against `yarn local-bex` (port 8499) behind a throwa
 ## Parked (2026-11-27)
 
 Shipped in `30d75225ff`. Everything but the production walk is done: once the newest `chore(deploy): pin platform images to <sha>` carries `30d75225ff`, t008 step 2 walks production as the QA user in `bex-canary` with a Blueprint created for the walk from a public repository (disposable), at 1440 and 390: Manual sync to Approve, a plan with no changes, a failed file, Syncs and its paging, and `bex ea blueprints plan`, whose Review in Dashboard link opens the sync's page. Then it deletes the Blueprint, and t012 closes the milestone if every point of the definition of done holds. Nothing is needed from the user.
+
+## Production walk (2026-11-27, t008 step 2)
+
+Pin `546d61ac7343` (`d465649ee4`, carries `30d75225ff`): the `dashboard` pod ran `bex-dashboard@sha256:28dafd897168…` and the `bex-api` pods `bex-operator@sha256:91cf7828761c…`, the pin's digests, read through the admin kubeconfig just before the walk. Walked 17:32–17:44Z as the QA user (`scripts/qa-login.sh`) in `bex-canary` (`tea-daif693dqjvc73e7as3g`) with a run-minted API key and the checkout's `bex` CLI, on the Blueprint `qa-20261127-m678` (disposable, `exs-dc4rteojnsts73b030mg`), created with `bex ea blueprints create` from `https://github.com/bex-co/bex`, branch `main`, `examples/blueprint-refs/render.yaml` (whose `MANUAL_SECRET` is `sync: false`), auto-sync off, `create_new` (suffix `-cx4p`). Google Chrome headless through `playwright-core`, `en-US`, at 1440×900 and 390×900. The shared Playwright browser stayed free for other sessions.
+
+| Point | Seen at 1440 and at 390 | Verdict |
+| --- | --- | --- |
+| Links (DoD 5, 7) | `bex ea blueprints create` and `bex ea blueprints plan` printed `Review in Dashboard (optional): https://dashboard.bex.co/blueprint/<exs-id>/sync/<exe-id>` for their plans, MCP `plan_blueprint` and GraphQL `planBlueprintSync` returned the same `dashboardUrl` for theirs, and `bex ea blueprints approve` printed `Track in Dashboard:` with the approved sync's page. Each opened `/blueprints/<id>/sync/<exe-id>` on that sync | holds |
+| The waiting plan (DoD 1) | `Sync: 587d3aa`, its card (the waiting icon, `587d3aa` linked to the commit on GitHub, the commit's subject, the relative time), Create rows for the environment group and the three services, "These values are not in the Blueprint file (sync: false). Enter them to approve." and a password field `blueprint-refs-app-cx4p: MANUAL_SECRET`. Approve stayed disabled until the field had a value. Syncs is the open sidebar entry, in the 390 drawer too, and the title reads `Sync ・ qa-20261127-m678 ・ Blueprint ・ bex Dashboard`. An earlier plan that later plans replaced still opens, and its Approve was refused with "Someone planned this Blueprint again. Review the newest plan, then approve it." | holds |
+| Approve (DoD 1, 3) | on the newest plan's page, opened from Render's `/blueprint/<id>/sync/<id>`, Approve with the value applied it without a navigation: Approve went away and the four rows turned Success in place (the run took 3 s, 17:34:27–30Z), and the header went from Awaiting approval to Paused | holds |
+| No changes (DoD 3) | Manual sync then opened `/blueprints/<id>/sync` reading `Sync` and Resources already up to date, and a reload kept it | holds |
+| A failed file (DoD 1) | `bex ea blueprints update --path examples/whoami-app.yaml` (a Kubernetes manifest) planned a failed sync, whose Review in Dashboard link opened its page. Manual sync on Syncs opened the next failed sync: the error card and "There were a few problems syncing with your Blueprint:" over four located errors (`line 4, column 1 · apiVersion` …), with no actions card | holds |
+| Syncs and paging (DoD 2) | after 19 more failed plans, Syncs listed 20 cards, newest first (the error icon, the linked short sha and subject, View details, the relative time, no badge on a settled sync). Load more appended the last two, the oldest being the approved sync with its check, and went away: 22 distinct syncs | holds |
+| A re-plan (DoD 7) | an update to `examples/retained-env/render.yaml` planned Create Service `retained-env-cx4p` and Stop managing for the three services, with no field and Approve enabled. The CLI approved it, and its Track in Dashboard page showed those rows and the detachment note. The plan says nothing about the environment group the file no longer declares, and the Blueprint then stops listing it: filed as [w3/152](../../152.md) | holds |
+| Pending frame | with `BlueprintSyncs` held on a client navigation from Resources, Syncs' heading (28 px) and its three frame rows (70 px at 1440, 100 at 390) equalled the ready cards. With `BlueprintSync` held on View details, the heading (28 px) and the card (48 px at 1440, 76 at 390) equalled the ready page's. The actions frame (94 px, two rows) follows the data, as in the local walk: this failed sync's four errors draw a 166 px card at 1440 and 266 px at 390 | holds |
+| Layout | no sideways scroll on any page at either width, no page or console error | holds |
+
+The Blueprint was deleted through REST (`DELETE` 204, then 404), and so were its services `retained-env-cx4p`, `blueprint-refs-app-cx4p`, `blueprint-refs-peer-cx4p` and `blueprint-refs-site-cx4p` (disposable) and its environment group `blueprint-refs-group-cx4p` (disposable): 204 each, then 404. `bex-canary` is back to the services, Blueprints and environment groups it had before the walk. The run key was revoked and the QA session logged out (`qa-login.sh --logout`).
+
+## Unblock record
+
+- **2026-11-27, `/loopx w3` (verified evidence, no user decision):** the gate, pin must carry `30d75225ff`, holds. The newest pin on `origin/main` is `d465649ee4` `chore(deploy): pin platform images to 546d61ac7343`, `git merge-base --is-ancestor 30d75225ff 546d61ac7343` exits 0, and production's `dashboard` and `bex-api` run that pin's digests. Affects t008 (step 2) and t012. No gate remains.
+- **2026-11-27, `/loopx w3`, closed:** t008 step 2 held every point of the definition of done on production pin `546d61ac7343` (§ Production walk), with the Blueprint and its resources deleted, the run key revoked and the QA session logged out. t012 moved the milestone to `done/`.
