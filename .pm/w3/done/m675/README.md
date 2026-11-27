@@ -1,6 +1,6 @@
 # w3 · m675 — A Postgres's and a Key Value's header is Render's: the plan badge, View docs, and Connect with the internal URL, the external URL and the CLI command
 
-**Worker:** worker3 **Goal:** on every page of a Postgres database or a Key Value instance, the header carries what Render's does: the name, status and plan badge (which opens the plan), a View docs link and a Connect menu. Connect holds the internal URL, the external URL or Render's note that external traffic is not allowed, and the PSQL or Redis CLI command. The header's kebab menu goes, as Render has none; its actions stay on Info. **Status:** blocked (t001–t004 and t006–t008 done; t005's local walk holds on dev-3; its production walk waits for a pin carrying the milestone, then t009)
+**Worker:** worker3 **Goal:** on every page of a Postgres database or a Key Value instance, the header carries what Render's does: the name, status and plan badge (which opens the plan), a View docs link and a Connect menu. Connect holds the internal URL, the external URL or Render's note that external traffic is not allowed, and the PSQL or Redis CLI command. The header's kebab menu goes, as Render has none; its actions stay on Info. **Status:** done (2026-11-27: walked on production pin `486e3f4afbf6`)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | One Connect menu for both datastores — **DONE** | 1h30m | t001 |
 | [t003](done/t003.md) | The header: plan badge, View docs and Connect; the kebab goes — **DONE** | 1h | t001 |
 | [t004](done/t004.md) | The header's pending frame equals its ready state at 1440 and 390 — **DONE** | 30m | t002, t003 |
-| [t005](t005.md) | Verify in a real browser, locally and on production | 45m | t004 |
+| [t005](done/t005.md) | Verify in a real browser, locally and on production — **DONE** | 45m | t004 |
 | [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 40m | t006 |
-| [t009](t009.md) | Closeout | 10m | t007, t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t007, t008 |
 
 Total: **9 tasks, about 5h40m**. **Starts after w3/m649 closes:** the Key Value header lives in the layout m649 is building (`keyvalue.$keyValueId.tsx`), and the Key Value plan badge opens m649's Info `#compute` card.
 
@@ -68,6 +68,17 @@ On dev-3 (main `6ba91ca5b7` plus the milestone), as an owner, with a Free Postgr
 - Info's danger zone still offers Delete, Restart and Suspend. Suspend and Resume both ran from it, and the header read "Suspended" then "Available", its plan badge, View docs and Connect unchanged, as Render's header is on a suspended datastore.
 - With the database's and the instance's reads held in flight, the pending header measured the same as the ready one: 65 px tall at 1440 and 105 px at 390, View docs and Connect at the same boxes (90×32 and 98×32), the actions wrapping under the name at 390.
 - The Viewer step was not walked locally: dev-3's bex-api runs with fail-open authorization (`BEX_ALLOW_INSECURE_AUTHZ`), so every member there is admin-equivalent. The disabled Connect, with the reason, is covered by `datastore-connect-menu.test.tsx` and both datastores' pages tests. Walk it on production with a member who cannot reveal secrets, if `bex-canary` has one.
+
+## Production walk (2026-11-27, t005)
+
+**Gate cleared (verified finding, `/pm unblock`):** production pin `486e3f4afbf6` (`a6f9307d74`, 2026-11-27T09:42Z) carries `9f40157886` (`git merge-base --is-ancestor`). Walked on production right after, as the QA user in `bex-canary` (`tea-daif693dqjvc73e7as3g`), with a Free Postgres `qa-20261127-m675-pg` and a Free Key Value `qa-20261127-m675-kv` created for the walk (disposable, deleted from Info's danger zone after it), at 1440 and 390. The Playwright MCP browser was held by another session, so the walk drove its own headless Chromium (Playwright 1.63).
+
+- **DoD 1, 2:** every page (Postgres Info, Logs, Metrics, Plan, Apps, Recovery; Key Value Info, Logs, Metrics) shows the name, the status, the "Free" badge, View docs and Connect, and no other control in the header. The Postgres badge opened `/plan` (from Logs); the Key Value badge opened `info#compute` (from Metrics), which lands on the Compute plan card (`#plan`, its alias). View docs opened https://bex.co/docs/platform/postgres and https://bex.co/docs/platform/key-value in a new tab.
+- **DoD 3:** Connect read the values on open (one GraphQL read) and each Copy put the shown value on the clipboard. The public Postgres's External tab showed its external URL and `bex psql <id>`; with both IP rules removed and saved, it showed "External traffic not allowed. Add IP addresses in the Access control section.", whose link landed on `info#access-control` and closed the menu. The private Key Value's External showed the note with Networking, landing on `info#networking`; with a `203.0.113.0/24` rule saved, it showed the `rediss://` URL and `bex kv-cli <id>`. A Viewer's disabled Connect: the QA user is Admin in each of its workspaces and no Viewer account can sign in, so the dashboard's `viewerCapabilities` answer was rewritten in the browser to a Viewer's (only `can_view`, `can_view_logs` and `can_view_activity` allowed, the rest `denied`/`insufficient_permission`). Connect was disabled on every page tried (Postgres Metrics and Info, Key Value Logs and Info) at both widths, its tooltip "Your role can’t reveal secret values. Ask a workspace admin.", and Info's Reveal was disabled beside it. bex-api's own refusal of a Viewer's connection-info read is unchanged by this milestone.
+- **DoD 4:** Info's danger zone offers Delete, Restart and Suspend (Postgres) and Delete and Suspend (Key Value). Suspend and Resume ran on both, the header reading "Suspended" then "Available" with its badge, View docs and Connect unchanged; Restart ran on the Postgres ("Restarting", then "Available"); Delete removed both.
+- **DoD 5:** with the `Database` and `KeyValue` reads held in flight on a navigation from the project page, the pending header measured the same as the ready one: 65 px tall at 1440 and 105 px at 390, View docs at 90×32 and Connect at 98×32 in the same boxes.
+- **Seen, not in the DoD:** at 390 the open Connect panel sits flush against the screen's left edge (x 0, 352 px wide), where the dashboard's menus keep the 16 px gutter (`ui/dropdown-menu.tsx` `collisionPadding = 16`). Filed as [w3/138](../../138.md).
+- Cleanup: both resources deleted (the workspace lists neither), the QA session logged out (`qa-login.sh --logout`, then `/auth/login` on reload), its jar and the browser profile removed.
 
 ## Decisions and deviations
 
