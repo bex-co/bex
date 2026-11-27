@@ -103,19 +103,26 @@ func (s *Service) resolvePullCredential(ctx context.Context, workspaceID, image 
 	case host == "":
 		host = cred.Host // explicit Docker-build binding: FROM host is not known at create time
 	}
-	secretMap, err := s.Secret.Get(ctx, secretPath(workspaceID, cred.ID))
-	if err != nil {
+	if password, err = s.storedSecret(ctx, workspaceID, cred.ID); err != nil {
 		return "", store.RegistryCredential{}, "", false, err
 	}
-	password, ok = secretMap["password"]
-	if !ok {
-		// The metadata row exists but its OpenBao secret is gone (deleted
-		// out-of-band, or a prior create's secret write rolled back after this
-		// read raced it) — refuse rather than materialize a Secret with an empty
-		// password that would just fail every pull.
-		return "", store.RegistryCredential{}, "", false, core.Err("registry credential " + cred.ID + " has no stored secret")
-	}
 	return host, cred, password, true, nil
+}
+
+// storedSecret is a credential's password from OpenBao. A metadata row whose
+// secret is gone (deleted out-of-band, or a prior create's secret write rolled
+// back after this read raced it) is refused rather than used with an empty
+// password that would just fail every pull.
+func (s *Service) storedSecret(ctx context.Context, workspaceID, id string) (string, error) {
+	secretMap, err := s.Secret.Get(ctx, secretPath(workspaceID, id))
+	if err != nil {
+		return "", err
+	}
+	password, ok := secretMap["password"]
+	if !ok {
+		return "", core.Err("registry credential " + id + " has no stored secret")
+	}
+	return password, nil
 }
 
 func (s *Service) materializePullSecret(ctx context.Context, workspaceID string, app *appv1alpha1.App, image string, credentialID *string) (secretName string, ok bool, err error) {

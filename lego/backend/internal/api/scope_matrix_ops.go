@@ -363,6 +363,7 @@ var classifiedOps = map[string]string{
 	"GQL Query.gitConnection":                                               core.OpClassRead,
 	"GQL Query.gitConnections":                                              core.OpClassRead,
 	"GQL Query.instanceTypes":                                               core.OpClassRead,
+	"GQL Query.isDeployableImage":                                           core.OpClassRead,
 	"GQL Query.job":                                                         core.OpClassRead,
 	"GQL Query.jobs":                                                        core.OpClassRead,
 	"GQL Query.keyValue":                                                    core.OpClassRead,

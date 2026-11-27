@@ -25,13 +25,26 @@ const serverState: UseServerResult = {
   error: undefined,
   refetch: vi.fn(async () => []),
 };
+// Render's image check (w1/m673) reads a registry through Apollo, which these
+// tests do not render; the stand-in answers at once.
+vi.mock(
+  "@/features/services/hooks/use-image-check",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@/features/services/hooks/use-image-check")
+    >()),
+    useImageCheck: (await import("@/test/image-check")).fakeUseImageCheck,
+  }),
+);
+
 vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: () => serverState,
 }));
 
 vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
-  const { mockAllowedResourceActions } =
-    await import("@/test/mocks/resource-actions");
+  const { mockAllowedResourceActions } = await import(
+    "@/test/mocks/resource-actions"
+  );
   return mockAllowedResourceActions("app");
 });
 

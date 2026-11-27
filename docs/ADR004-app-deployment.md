@@ -542,6 +542,8 @@ Once a generation has a digest, it keeps it. A pod that later re-pulls a moved t
 
 "Linux/amd64" is the hosting node pool's platform, the operator's `BEX_IMAGE_PLATFORM` default (w2/m293 t007, 2026-11-08). Index selection and the config check both use that one setting. The arm64 local CAPD mock sets `linux/arm64` (from `scripts/mock-cluster.sh operator`), because BuildKit there builds arm64 images; production leaves it unset. A config for another platform is refused as `image config is not Linux/<arch>`, and an index with no entry for it as `image has no Linux/<arch> manifest`.
 
+bex-api reads the same variable with the same values (w1/m673, 2026-11-26), because its image check before create, GraphQL `isDeployableImage`, must want what a deploy resolves: an index resolves to that platform's entry, and a config for another OS or architecture is Render's `unsupported_platform`. The backend cannot import the operator, so `registryread.ParsePlatform` keeps the operator's rule a second time, and both refuse startup on any other value. Production leaves both unset. `scripts/dev-env.sh` copies the shared operator's value to a dev stack's bex-api.
+
 Observed on containerd (kind v1.36.1, arm64, 2026-10-20): a pod running `docker.io/ealen/echo-server:0.9.2` reported `imageID` `docker.io/ealen/echo-server@sha256:006b92e1…`. That is the tag's OCI **index** digest (`docker buildx imagetools inspect`), not the linux/arm64 manifest (`sha256:74afa5ff…`). So for a multi-arch tag, `image.sha` is the platform-independent digest the tag resolved to. It is what a registry `HEAD` on the tag returns, and it is what `ref@<sha>` pulls on any node.
 
 **Limits.**

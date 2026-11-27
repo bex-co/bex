@@ -3963,6 +3963,62 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Inline error under a Docker Image field naming a private registry host (w4/406)",
   },
+  "services.imageCheckHelper": {
+    message: "从 Docker 镜像仓库部署镜像",
+    description: "Helper line under the Image URL field of the create form's Existing Image tab (Render's 'Deploy an image from a Docker registry', w1/m673)",
+  },
+  "services.imageCheckChecking": {
+    message: "正在检查镜像",
+    description: "Accessible name of the spinner at the end of the Image URL field while bex reads the image from its registry (w1/m673)",
+  },
+  "services.imageCheckDoesNotExist": {
+    message: "未找到公开镜像。你可能在使用私有镜像，请添加凭据，或检查镜像 URL 是否有误。",
+    description: "Under the Image URL field: the registry has no public image at this URL and no credential is chosen (Render's does_not_exist, w1/m673)",
+  },
+  "services.imageCheckDoesNotExistWithCredential": {
+    message: "提供的镜像 URL 和镜像仓库凭据无效。",
+    description: "Under the Image URL field: with the chosen credential the registry still has no image at this URL (Render's does_not_exist with a credential, w1/m673)",
+  },
+  "services.imageCheckInvalidUrl": {
+    message: "提供的镜像 URL 无效。",
+    description: "Under the Image URL field: the URL cannot name an image bex may pull (Render's invalid_input_url, w1/m673)",
+  },
+  "services.imageCheckInvalidCredential": {
+    message: "提供的镜像仓库凭据无效。",
+    description: "Under the Image URL field: the registry refused the chosen credential (Render's invalid_registry_credential, w1/m673)",
+  },
+  "services.imageCheckUnsupportedPlatform": {
+    message: "提供的镜像 URL 指向的镜像平台无效。镜像必须为 linux/amd64 平台构建。",
+    description: "Under the Image URL field: the image is not built for linux/amd64 (Render's unsupported_platform; keep 'linux/amd64' as is, w1/m673)",
+  },
+  "services.imageCheckTooLarge": {
+    message: "此 Docker 镜像的压缩大小超过了允许的上限。",
+    description: "Under the Image URL field: the image's compressed size is over the 10 GB limit (Render's image_too_large, w1/m673)",
+  },
+  "services.imageCheckError": {
+    message: "发生错误。",
+    description: "Under the Image URL field: the image check failed in a way none of the specific messages names (Render's 'An error occurred.', w1/m673)",
+  },
+  "services.imageCheckPublic": {
+    message: "这是无需凭据即可访问的公开镜像。",
+    description: "Settings > Update source, under the Image URL field: the image is public and deployable with no credential (w1/m673)",
+  },
+  "services.imageCheckAuthorized": {
+    message: "已通过所选凭据获得此镜像的访问授权。",
+    description: "Settings > Update source, under the Image URL field: the chosen credential can pull the image (w1/m673)",
+  },
+  "services.createBlockedImageChecking": {
+    message: "正在检查镜像…",
+    description: "Create-wizard action bar: why Deploy is held while bex checks the image against its registry (w1/m673)",
+  },
+  "services.createBlockedImage": {
+    message: "无法部署此镜像。请检查镜像 URL 和凭据。",
+    description: "Create-wizard action bar: why Deploy is held after the image check failed (w1/m673)",
+  },
+  "services.sourceCheckingImage": {
+    message: "正在检查镜像…",
+    description: "Settings > Update source footer: why Connect is held while bex checks the image against its registry (w1/m673)",
+  },
   "services.createFieldPort": {
     message: "端口",
     description: "Create wizard: service port field label",

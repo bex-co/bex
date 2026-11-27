@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
@@ -38,6 +39,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
 	"github.com/bex-co/bex/lego/backend/internal/oidcissuer"
+	"github.com/bex-co/bex/lego/backend/internal/registryread"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
@@ -88,8 +90,13 @@ type Config struct {
 	// any public registry, as on Render (w5/171). A cluster whose nodes do not
 	// all carry the containerd link-local deny yet pins it false.
 	PublicImageRegistries bool
-	RouterURL             string
-	RouterSecret          string
+	// BEX_IMAGE_PLATFORM is the hosting node pool's image platform, the
+	// operator's own setting: the image check before create (w1/m673) wants
+	// what a deploy will resolve. Unset is linux/amd64 (production); the arm64
+	// local cluster sets linux/arm64. Any other value refuses startup.
+	ImagePlatform v1.Platform
+	RouterURL     string
+	RouterSecret  string
 	// BEX_REGION is the explicit platform placement surfaced in Render resource
 	// metadata. Empty is honestly omitted.
 	Region       string
@@ -432,6 +439,11 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 		}
 	}
 	cfg.PublicImageRegistries = getenv("BEX_PUBLIC_IMAGE_REGISTRIES") != "false"
+	if platform, err := registryread.ParsePlatform(getenv("BEX_IMAGE_PLATFORM")); err != nil {
+		p.errorf("invalid BEX_IMAGE_PLATFORM: %v", err)
+	} else {
+		cfg.ImagePlatform = platform
+	}
 	cfg.RouterURL = getenv("BEX_ROUTER_URL")
 	cfg.RouterSecret = getenv("BEX_ROUTER_ASSERTION_SECRET")
 	if cfg.RouterURL != "" {

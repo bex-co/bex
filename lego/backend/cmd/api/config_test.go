@@ -840,6 +840,20 @@ func TestLoadConfigPublicImageRegistriesTurnsOffOnlyOnFalse(t *testing.T) {
 	}
 }
 
+// BEX_IMAGE_PLATFORM takes the operator's values, so the image check before
+// create resolves what a deploy will (w1/m673); anything else refuses startup.
+func TestLoadConfigImagePlatformTakesTheOperatorsValues(t *testing.T) {
+	for value, arch := range map[string]string{"": "amd64", "linux/amd64": "amd64", "linux/arm64": "arm64"} {
+		cfg, _, err := loadFor(t, map[string]string{"BEX_IMAGE_PLATFORM": value})
+		if err != nil || cfg.ImagePlatform.OS != "linux" || cfg.ImagePlatform.Architecture != arch {
+			t.Fatalf("BEX_IMAGE_PLATFORM=%q => %+v, %v; want linux/%s", value, cfg.ImagePlatform, err, arch)
+		}
+	}
+	if _, _, err := loadFor(t, map[string]string{"BEX_IMAGE_PLATFORM": "linux/arm"}); err == nil {
+		t.Fatal("BEX_IMAGE_PLATFORM=linux/arm was accepted; the operator refuses it")
+	}
+}
+
 // The turn bounds and the Completer's retry window are never disabled: a set
 // Go duration is used, 0 means the default silently, and an invalid value
 // keeps the default and warns.

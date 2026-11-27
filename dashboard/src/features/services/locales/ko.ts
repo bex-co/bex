@@ -4064,6 +4064,62 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Inline error under a Docker Image field naming a private registry host (w4/406)",
   },
+  "services.imageCheckHelper": {
+    message: "Docker 레지스트리의 이미지를 배포합니다",
+    description: "Helper line under the Image URL field of the create form's Existing Image tab (Render's 'Deploy an image from a Docker registry', w1/m673)",
+  },
+  "services.imageCheckChecking": {
+    message: "이미지 확인 중",
+    description: "Accessible name of the spinner at the end of the Image URL field while bex reads the image from its registry (w1/m673)",
+  },
+  "services.imageCheckDoesNotExist": {
+    message: "공개 이미지를 찾을 수 없습니다. 비공개 이미지를 사용하는 것 같습니다. 자격 증명을 추가하거나 이미지 URL에 오류가 없는지 확인하세요.",
+    description: "Under the Image URL field: the registry has no public image at this URL and no credential is chosen (Render's does_not_exist, w1/m673)",
+  },
+  "services.imageCheckDoesNotExistWithCredential": {
+    message: "입력한 이미지 URL과 레지스트리 자격 증명이 유효하지 않습니다.",
+    description: "Under the Image URL field: with the chosen credential the registry still has no image at this URL (Render's does_not_exist with a credential, w1/m673)",
+  },
+  "services.imageCheckInvalidUrl": {
+    message: "입력한 이미지 URL이 유효하지 않습니다.",
+    description: "Under the Image URL field: the URL cannot name an image bex may pull (Render's invalid_input_url, w1/m673)",
+  },
+  "services.imageCheckInvalidCredential": {
+    message: "입력한 레지스트리 자격 증명이 유효하지 않습니다.",
+    description: "Under the Image URL field: the registry refused the chosen credential (Render's invalid_registry_credential, w1/m673)",
+  },
+  "services.imageCheckUnsupportedPlatform": {
+    message: "입력한 이미지 URL이 유효하지 않은 플랫폼의 이미지를 가리킵니다. 이미지는 linux/amd64 플랫폼용으로 빌드해야 합니다.",
+    description: "Under the Image URL field: the image is not built for linux/amd64 (Render's unsupported_platform; keep 'linux/amd64' as is, w1/m673)",
+  },
+  "services.imageCheckTooLarge": {
+    message: "이 Docker 이미지의 압축 크기가 허용 한도를 초과합니다.",
+    description: "Under the Image URL field: the image's compressed size is over the 10 GB limit (Render's image_too_large, w1/m673)",
+  },
+  "services.imageCheckError": {
+    message: "오류가 발생했습니다.",
+    description: "Under the Image URL field: the image check failed in a way none of the specific messages names (Render's 'An error occurred.', w1/m673)",
+  },
+  "services.imageCheckPublic": {
+    message: "자격 증명 없이 접근할 수 있는 공개 이미지입니다.",
+    description: "Settings > Update source, under the Image URL field: the image is public and deployable with no credential (w1/m673)",
+  },
+  "services.imageCheckAuthorized": {
+    message: "선택한 자격 증명으로 이 이미지에 대한 접근 권한을 확인했습니다.",
+    description: "Settings > Update source, under the Image URL field: the chosen credential can pull the image (w1/m673)",
+  },
+  "services.createBlockedImageChecking": {
+    message: "이미지 확인 중…",
+    description: "Create-wizard action bar: why Deploy is held while bex checks the image against its registry (w1/m673)",
+  },
+  "services.createBlockedImage": {
+    message: "이 이미지는 배포할 수 없습니다. 이미지 URL과 자격 증명을 확인하세요.",
+    description: "Create-wizard action bar: why Deploy is held after the image check failed (w1/m673)",
+  },
+  "services.sourceCheckingImage": {
+    message: "이미지 확인 중…",
+    description: "Settings > Update source footer: why Connect is held while bex checks the image against its registry (w1/m673)",
+  },
   "services.createFieldPort": {
     message: "포트",
     description: "Create wizard: service port field label",

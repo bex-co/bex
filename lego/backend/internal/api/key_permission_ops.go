@@ -441,6 +441,7 @@ var keyPermissionOps = map[string][]core.KeyAction{
 	"GQL Query.pushNotificationsAvailable":                                  {core.KeyNoGrant},
 	"GQL Query.registryCredential":                                          {core.KeyWorkspaceRegistry},
 	"GQL Query.registryCredentials":                                         {core.KeyWorkspaceRegistry},
+	"GQL Query.isDeployableImage":                                           {core.KeyWorkspaceRegistry},
 	"GQL Query.repoBranches":                                                {core.KeyGitView},
 	"GQL Query.repoRuntimeDetection":                                        {core.KeyGitView},
 	"GQL Query.repos":                                                       {core.KeyGitView},

@@ -99,3 +99,73 @@ One component serves web services, private services, background workers, cron jo
 | Pre-Deploy Command | absent | added for web services, private services and background workers, disabled on Free with Settings' reason |
 | Auto-Deploy | present (toggle) | unchanged |
 | Build Filters | static sites only | every repository-backed type |
+
+## The image check (isDeployableImage)
+
+**Method.** Read 2026-11-26 (w1/m673 t001) without sign-in from Render's public dashboard bundle (`index-*.js`; find the code by the operation name and the strings below, since the chunk hashes change with each Render deploy) and from [render.com/docs/deploying-an-image](https://render.com/docs/deploying-an-image). Nothing was submitted. The docs say "Render verifies that it can access the image using any credentials you provide.", "The Docker image must be built for the `linux/amd64` platform." and "The Docker image's compressed size cannot exceed 10 GB.".
+
+**The operation.** `query isDeployableImage($externalImageReference: ExternalImageReferenceInput!) { isDeployableImage(externalImageReference: $externalImageReference) { deployable failureCode failureReason } }`. Apollo's `possibleTypes` map names the types `ExternalImageReferenceInput`, `IsDeployableImageResult` and `UndeployableImageFailureCode`. Both call sites send `{ registryCredentialId: <id> | null, imageUrl: <the parsed path> }` with the `network-only` policy. The enum's values are `does_not_exist`, `image_too_large`, `invalid_input_url`, `invalid_registry_credential` and `unsupported_platform`. No feature flag gates the operation, and Render has no REST path or MCP tool for it.
+
+**Two call sites.**
+
+- **The create flow's Existing Image tab** is an inline connect form: "Image URL", the helper "Deploy an image from a Docker registry", the placeholder `docker.io/library/nginx:latest`, "Credential (Optional)", and **Connect**.
+- **Settings' Image section** shows the image and credential read-only with **Edit**, which opens the **Update Image** dialog. It has the heading "Image URL" with "The image URL for your external image.", then "Credential (Optional)" with "If your service pulls private Docker images from a registry, specify a credential that can access those images. Manage your credentials in Settings.". Its buttons are **Cancel** and **Save Changes**.
+
+**When it runs.**
+
+- A change debounces 800 ms. A paste runs at once. An emptied field resets to idle at once.
+- Changing the credential runs the check again at once.
+- The Update Image dialog checks the service's current image as soon as it opens.
+- The client parses the path first (`docker.io/library/` is added to a bare name, `docker.io/` to `owner/name`). A path it cannot parse shows "Please supply the full name of the image." and sends no query.
+- A change typed while a check is in flight is dropped (the debounced handler returns while `loading`).
+
+**States.** The field's end icon shows a spinner while the check runs (`loading`), then a check mark (`success`) or a caution icon (`error`). Nothing shows in `idle`.
+
+**Messages.** The client maps `failureCode` to its own sentence. `failureReason` only marks the check as failed: once the path parses, the sentence always comes from the code, and a failure with no code (or a GraphQL error) reads "An error occurred.".
+
+| Code | No credential chosen | A credential chosen |
+| --- | --- | --- |
+| `does_not_exist` | "No public image found. It looks like you may be using a private image - please add a credential or check the image URL for mistakes." | "The provided image URL and registry credential are invalid." |
+| `invalid_input_url` | "The provided image URL is invalid." | same |
+| `invalid_registry_credential` | "The provided registry credential is invalid." | same |
+| `unsupported_platform` | "The provided image URL points to an image with an invalid platform. Images must be built with the platform linux/amd64." | same |
+| `image_too_large` | "This Docker image's compressed size is larger than the allowed limit." | same |
+| none | "An error occurred." | same |
+| deployable | "This is a public image that can be accessed without credentials." | "We were able to authorize access to this image with the selected credential." |
+
+In the Update Image dialog, "linux/amd64." links to `/docs/deploying-an-image#linux-amd64-platform` and "allowed limit." to `/docs/deploying-an-image#image-size`. The create form's inline copy has no links.
+
+**What each call site shows.**
+
+- **Create form.** It shows only failures, in the field's error line, and keeps the helper line otherwise. A deployable image gets the check mark and no sentence. **Connect** stays disabled until `deployable` is true.
+- **Update Image dialog.** It shows the success sentence or the failure under the fields, in a success or error notice. This is the `message` it hands to `onUpdate`. A failing URL that looks like a GitHub or GitLab repository reads "Invalid image URL – did you mean to deploy a Git repository instead?" instead. **Save Changes** is disabled while the URL is empty or unchanged with its credential, while the check runs, and after a failure.
+
+**The credential select.**
+
+- It is marked in error when the check fails with a credential chosen.
+- It is disabled while the image is a deployable public image and no credential is chosen. Both call sites pass `disabled: deployable && !credential`.
+- It lists only the credentials whose registry type matches the one the path names.
+
+**Create does not run it.** The bundle cannot say whether `createServer` refuses an image the check would fail: the create form gates on the check, and the Update Image dialog does too. bex keeps its create and source-update verbs as they were. They refuse what the reference rules refuse, and the deploy reports a pull failure, so an API caller gets the same service as before.
+
+**How bex reads the registry** (`lego/backend/internal/registryread`). It reads the manifest the deploy would pull, with the credential the deploy would use, through the SSRF-guarded transport:
+
+- An index resolves to its entry for the hosting platform (`BEX_IMAGE_PLATFORM`, unset = `linux/amd64`, the operator's setting).
+- That image's config must declare the same OS and architecture.
+- "Too large" is the sum of that manifest's compressed layer sizes over 10 × 10⁹ bytes, the rule w4/734 applies at deploy.
+- A failing request on the registry's own `/v2/` API is told apart from a failing token request (any other path, or another host).
+
+| Registry answer | No credential | A credential |
+| --- | --- | --- |
+| A reference create would refuse (`store.ValidateImage`: grammar, length, localhost or a private IP literal) | `invalid_input_url` | `invalid_input_url` |
+| The registry host resolves to a private or link-local address (the dial guard) | `invalid_input_url` | `invalid_input_url` |
+| The registry host does not resolve | `does_not_exist` | `does_not_exist` |
+| 404 on the manifest (`MANIFEST_UNKNOWN`, `NAME_UNKNOWN`) | `does_not_exist` | `does_not_exist` |
+| 401 or 403 on the manifest or the `/v2/` ping | `does_not_exist` | `does_not_exist` (the credential signed in, but cannot see this image: "The provided image URL and registry credential are invalid.") |
+| 401 or 403 from the token endpoint | `does_not_exist` | `invalid_registry_credential` |
+| The credential is for another registry host than the image's | — | `invalid_registry_credential` |
+| An index with no entry for the hosting platform, or a config for another OS or architecture | `unsupported_platform` | `unsupported_platform` |
+| Compressed layers over 10 × 10⁹ bytes | `image_too_large` | `image_too_large` |
+| A 429 or 5xx, a timeout (10 s), a refused or reset connection, a TLS failure, a manifest or config over its cap | no code | no code |
+
+A credential id the caller cannot read answers the same error `registryCredential(id)` answers, never a code. bex's docs page on images ([bex.co/docs/platform/docker-deploys](https://bex.co/docs/platform/docker-deploys), read 2026-11-26) has no section on the platform or the size limit, so bex's two messages carry no link.

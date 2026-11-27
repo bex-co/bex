@@ -24,6 +24,12 @@ import (
 	"time"
 )
 
+// ErrBlockedAddress is the error a guarded dial returns when the destination
+// resolves to an address the guard refuses, so a caller can tell the guard's
+// refusal from a network failure with errors.Is. Its text is matched by the
+// dashboard, so it never changes.
+var ErrBlockedAddress = errors.New("destination resolves to a blocked address")
+
 // mustPrefix parses a CIDR literal at package init, panicking on a typo — a
 // silently nil network would make Contains always-false, failing the deny
 // list OPEN. net.IPNet (not netip.Prefix) is deliberate: its Contains
@@ -125,7 +131,7 @@ func SafeDialContextFunc(timeout time.Duration, unsafe func(net.IP) bool) func(c
 		}
 		for _, a := range addrs {
 			if unsafe(a.IP) {
-				return nil, errors.New("destination resolves to a blocked address")
+				return nil, ErrBlockedAddress
 			}
 		}
 		return d.DialContext(ctx, network, net.JoinHostPort(addrs[0].IP.String(), port))

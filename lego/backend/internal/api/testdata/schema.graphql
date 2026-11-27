@@ -1729,6 +1729,11 @@ type EventUser {
   id: String
 }
 
+input ExternalImageReferenceInput {
+  imageUrl: String!
+  registryCredentialId: String
+}
+
 type FailureReason {
   earlyExit: Boolean
   evicted: Boolean
@@ -1810,6 +1815,12 @@ type InstanceType {
   planId: String!
   unavailableReason: String!
   usdPerMinute: String
+}
+
+type IsDeployableImageResult {
+  deployable: Boolean!
+  failureCode: UndeployableImageFailureCode
+  failureReason: String
 }
 
 scalar JSONObject
@@ -2761,6 +2772,7 @@ type Query {
   gitConnection(ownerId: String): GitConnection
   gitConnections(ownerId: String): [GitConnection]
   instanceTypes: [InstanceType]
+  isDeployableImage(externalImageReference: ExternalImageReferenceInput!): IsDeployableImageResult!
   job(jobId: String!, serviceId: String!): Job
   jobs(cursor: String, limit: Int, serviceId: String!): [Job]
   keyValue(id: String!): KeyValue
@@ -3593,6 +3605,14 @@ enum ThemeSetting {
   LIGHT_HIGH_CONTRAST
   SYSTEM
   SYSTEM_HIGH_CONTRAST
+}
+
+enum UndeployableImageFailureCode {
+  does_not_exist
+  image_too_large
+  invalid_input_url
+  invalid_registry_credential
+  unsupported_platform
 }
 
 input UpdateSandboxGroupCredentialInput {

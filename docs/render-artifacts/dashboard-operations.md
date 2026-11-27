@@ -96,7 +96,7 @@ Grouped by product area, then sorted by name.
 | `glob` | query | matched | ADR018 § Services & lifecycle: Build Filters (path-scoped auto-deploy); bex validates each pattern on save (`normalizeBuildFilter`) |
 | `globalSearchStatuses` | query | matched | ADR018 § Services & lifecycle: Get service (status badge and live state) |
 | `headersForService` | query | matched | ADR018 § Deployment sources & IaC: Header rules · redirects / rewrites |
-| `isDeployableImage` | query | gap | `w1/m673` (the image URL is checked against its registry before the service is created) |
+| `isDeployableImage` | query | matched | ADR018 § Services & lifecycle: Create service (the image check before create, `w1/m673`) |
 | `isServiceNameAvailable` | query | matched | ADR018 § Services & lifecycle: Create service (name availability); service display-name validation (`w8/034`) |
 | `jobs` | query | non-goal | ADR018 § Services & lifecycle: One-off jobs (run a command) (—) |
 | `minimalResourcesForOwner` | query | matched | ADR018 § Services & lifecycle: Get service; List services |

@@ -7,18 +7,24 @@ import type { SourceMutationResult } from "@/features/services/hooks/use-source-
 const navigate = vi.fn();
 let currentBase: "/services" | "/static" = "/services";
 
-const setImage = vi.fn(async (): Promise<SourceMutationResult> => ({
-  ok: true,
-  deployId: "dep-img-1",
-}));
-const setRepo = vi.fn(async (): Promise<SourceMutationResult> => ({
-  ok: true,
-  deployId: "dep-git-1",
-}));
-const linkBuildSource = vi.fn(async (): Promise<SourceMutationResult> => ({
-  ok: true,
-  deployId: "dep-bds-1",
-}));
+const setImage = vi.fn(
+  async (): Promise<SourceMutationResult> => ({
+    ok: true,
+    deployId: "dep-img-1",
+  }),
+);
+const setRepo = vi.fn(
+  async (): Promise<SourceMutationResult> => ({
+    ok: true,
+    deployId: "dep-git-1",
+  }),
+);
+const linkBuildSource = vi.fn(
+  async (): Promise<SourceMutationResult> => ({
+    ok: true,
+    deployId: "dep-bds-1",
+  }),
+);
 let repoLastError: string | null = null;
 let imageLastError: string | null = null;
 let linkLastError: string | null = null;
@@ -163,6 +169,17 @@ vi.mock("@/features/capabilities/hooks/use-capabilities", async () => {
     useCapabilities: () => mockCapabilities({ canCreate: true }),
   };
 });
+// Render's image check (w1/m673) reads a registry through Apollo, which this
+// test does not render; the stand-in answers at once.
+vi.mock(
+  "@/features/services/hooks/use-image-check",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@/features/services/hooks/use-image-check")
+    >()),
+    useImageCheck: (await import("@/test/image-check")).fakeUseImageCheck,
+  }),
+);
 vi.mock("@/features/services/components/registry-credential-select", () => ({
   RegistryCredentialSelect: () => null,
 }));
@@ -797,6 +814,51 @@ describe("ServiceSourceCard", () => {
       to: "/services/$serviceId/deploys/$deployId",
       params: { serviceId: "srv-2", deployId: "dep-img-1" },
     });
+  });
+
+  // w1/m673: Render's Update Image saves only an image its check says is
+  // deployable, and checks the current one as it opens.
+  it("holds Connect while the image is checked and after it fails", async () => {
+    const user = userEvent.setup();
+    render(
+      <ServiceSourceCard
+        serviceId="srv-2"
+        serviceType="web_service"
+        repo={null}
+        branch={null}
+        imagePath="nginx:stable"
+        registryCredentialId={null}
+        buildSourceId={null}
+        startCommand={null}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    // The current image is deployable: it says so, and nothing is to save.
+    expect(
+      document.getElementById("update-source-image-message"),
+    ).toHaveTextContent(
+      "This is a public image that can be accessed without credentials.",
+    );
+    const input = screen.getByDisplayValue("nginx:stable");
+    const connect = screen.getByRole("button", { name: "Connect" });
+
+    await user.clear(input);
+    await user.type(input, "ghcr.io/acme/slow:1");
+    expect(connect).toBeDisabled();
+    expect(connect).toHaveAccessibleDescription("Checking the image…");
+
+    await user.clear(input);
+    await user.type(input, "ghcr.io/acme/private:1");
+    expect(connect).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /No public image found/,
+    );
+    await user.click(connect);
+    expect(setImage).not.toHaveBeenCalled();
+
+    await user.clear(input);
+    await user.type(input, "nginx:1.27");
+    expect(connect).toBeEnabled();
   });
 
   it("switches an image-backed service to a connected Docker repo and deploys", async () => {

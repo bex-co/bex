@@ -20,6 +20,7 @@ import (
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
+	"github.com/bex-co/bex/lego/backend/internal/registryread"
 )
 
 // credentialGQLType mirrors the REST credentialWire shape — see rest.go's
@@ -44,6 +45,42 @@ var credentialGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// Render's isDeployableImage types (w1/m673), named as Render's schema names
+// them (docs/render-artifacts/new-service-wizard.md § The image check).
+var (
+	undeployableImageFailureCodeGQLEnum = func() *graphql.Enum {
+		values := graphql.EnumValueConfigMap{}
+		for _, code := range registryread.FailureCodes {
+			values[code] = &graphql.EnumValueConfig{Value: code}
+		}
+		return graphql.NewEnum(graphql.EnumConfig{Name: "UndeployableImageFailureCode", Values: values})
+	}()
+	isDeployableImageResultGQLType = graphql.NewObject(graphql.ObjectConfig{
+		Name: "IsDeployableImageResult",
+		Fields: graphql.Fields{
+			"deployable": gqlutil.Typed(graphql.NewNonNull(graphql.Boolean), func(v registryread.Verdict) any { return v.Deployable }),
+			// null when the image is deployable, and when the registry failed
+			// in a way none of Render's codes names.
+			"failureCode":   gqlutil.Typed(undeployableImageFailureCodeGQLEnum, func(v registryread.Verdict) any { return optional(v.Code) }),
+			"failureReason": gqlutil.StrField(func(v registryread.Verdict) any { return optional(v.Reason) }),
+		},
+	})
+	externalImageReferenceGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
+		Name: "ExternalImageReferenceInput",
+		Fields: graphql.InputObjectConfigFieldMap{
+			"imageUrl":             &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+			"registryCredentialId": &graphql.InputObjectFieldConfig{Type: graphql.String},
+		},
+	})
+)
+
+func optional(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
 // idOwnerArgs is the argument set shared by every by-id verb below.
 func idOwnerArgs() graphql.FieldConfigArgument {
 	return graphql.FieldConfigArgument{
@@ -52,7 +89,8 @@ func idOwnerArgs() graphql.FieldConfigArgument {
 	}
 }
 
-// GraphQLQuery returns registryCredentials(ownerId) + registryCredential(id, ownerId).
+// GraphQLQuery returns registryCredentials(ownerId), registryCredential(id,
+// ownerId) and Render's isDeployableImage(externalImageReference).
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"registryCredentials": &graphql.Field{
@@ -69,6 +107,18 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Args: idOwnerArgs(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Get(gqlutil.OwnerScoped(p), p.Args["id"].(string))
+			},
+		},
+		"isDeployableImage": &graphql.Field{
+			Type: graphql.NewNonNull(isDeployableImageResultGQLType),
+			Args: graphql.FieldConfigArgument{
+				"externalImageReference": gqlutil.ReqArg(externalImageReferenceGQLInput),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				in, _ := p.Args["externalImageReference"].(map[string]any)
+				image, _ := in["imageUrl"].(string)
+				credentialID, _ := in["registryCredentialId"].(string)
+				return s.IsDeployableImage(p.Context, image, credentialID)
 			},
 		},
 	}

@@ -81,6 +81,7 @@ import {
 import { PlanTierSlots } from "@/common/components/datastore-plan-preview";
 import { PlanCatalogUnavailable } from "@/common/components/plan-catalog-unavailable";
 import { servicePlanSlotCount } from "@/features/services/lib/instance-type";
+import { useImageCheck } from "@/features/services/hooks/use-image-check";
 
 /**
  * Render's service create page (render.com/web/new and its siblings, live
@@ -140,6 +141,14 @@ export function NewServicePage({
   const [editingSource, setEditingSource] = useState(false);
 
   const shape = buildShape(form);
+  // Render's isDeployableImage (w1/m673): the image is read from its registry
+  // as it is typed, and Deploy waits for a deployable answer.
+  const imageCheck = useImageCheck({
+    image: form.image,
+    credentialId: form.registryCredentialId,
+    enabled: shape.isImageSource,
+  });
+  const imageHeld = shape.isImageSource && imageCheck.status !== "deployable";
   const fieldErrors = createFormErrors(form);
   const patternError = (value: string) => {
     const reason = buildFilterPatternError(value);
@@ -162,69 +171,82 @@ export function NewServicePage({
   const showNameError = name.name.length > 0 && !name.nameValid;
   const showNameTaken = name.nameValid && (name.nameTaken || nameConflict);
   const canSubmit =
-    name.nameValid && !showNameTaken && !busy && isSubmittable(form);
+    name.nameValid &&
+    !showNameTaken &&
+    !busy &&
+    !imageHeld &&
+    isSubmittable(form);
   const selectedPlan = instanceTypes.find((it) => it.id === form.plan);
   // An invalid field inside Advanced holds the card open, so the reason
   // Deploy is held is never folded away.
   const advancedInvalid = Boolean(
     fieldErrors.diskMountPath ||
-    fieldErrors.diskSize ||
-    fieldErrors.healthCheckPath ||
-    fieldErrors.dockerfilePath ||
-    fieldErrors.dockerContext ||
-    fieldErrors.buildFilter ||
-    fieldErrors.secretFilesLimit ||
-    secretFilesInvalid(form),
+      fieldErrors.diskSize ||
+      fieldErrors.healthCheckPath ||
+      fieldErrors.dockerfilePath ||
+      fieldErrors.dockerContext ||
+      fieldErrors.buildFilter ||
+      fieldErrors.secretFilesLimit ||
+      secretFilesInvalid(form),
   );
   // The first thing holding Deploy, in page order: its words for the bar and
   // the field the bar's reason takes the user to, so the bar never points at
   // "the fields above" without saying which.
   const blocked: { reason: string; fieldId?: string } = !chosen
     ? { reason: t("services.createBlockedSource") }
-    : !name.nameValid
-      ? { reason: t("common.createBlockedName"), fieldId: "svc-name" }
-      : showNameTaken
-        ? { reason: t("common.createBlockedNameTaken"), fieldId: "svc-name" }
-        : nativeCommandsMissing(form, shape)
-          ? {
-              reason: t("services.createBlockedCommands"),
-              fieldId: shape.isNativeBuildSource
-                ? shape.isCronType
-                  ? "svc-command"
-                  : "svc-build-source-start-command"
-                : form.buildCommand.trim() === ""
-                  ? "svc-build-command"
-                  : shape.isCronType
-                    ? "svc-command"
-                    : "svc-start-command",
-            }
-          : shape.isCronType &&
-              (form.schedule.trim() === "" || scheduleProblem !== null)
+    : imageHeld
+      ? {
+          reason: t(
+            imageCheck.status === "failed"
+              ? "services.createBlockedImage"
+              : "services.createBlockedImageChecking",
+          ),
+          fieldId: "svc-image",
+        }
+      : !name.nameValid
+        ? { reason: t("common.createBlockedName"), fieldId: "svc-name" }
+        : showNameTaken
+          ? { reason: t("common.createBlockedNameTaken"), fieldId: "svc-name" }
+          : nativeCommandsMissing(form, shape)
             ? {
-                reason: t("services.createBlockedSchedule"),
-                fieldId: "svc-schedule",
+                reason: t("services.createBlockedCommands"),
+                fieldId: shape.isNativeBuildSource
+                  ? shape.isCronType
+                    ? "svc-command"
+                    : "svc-build-source-start-command"
+                  : form.buildCommand.trim() === ""
+                    ? "svc-build-command"
+                    : shape.isCronType
+                      ? "svc-command"
+                      : "svc-start-command",
               }
-            : shape.isStaticType && publishPathMissing
+            : shape.isCronType &&
+                (form.schedule.trim() === "" || scheduleProblem !== null)
               ? {
-                  reason: t("services.createBlockedPublishPath"),
-                  fieldId: "svc-publish-path",
+                  reason: t("services.createBlockedSchedule"),
+                  fieldId: "svc-schedule",
                 }
-              : portError
+              : shape.isStaticType && publishPathMissing
                 ? {
-                    reason: t("services.createBlockedPort"),
-                    fieldId: "svc-port",
+                    reason: t("services.createBlockedPublishPath"),
+                    fieldId: "svc-publish-path",
                   }
-                : fieldErrors.diskMountPath || fieldErrors.diskSize
+                : portError
                   ? {
-                      reason: t("services.createBlockedDisk"),
-                      fieldId: fieldErrors.diskMountPath
-                        ? "svc-disk-mount-path"
-                        : "svc-disk-size",
+                      reason: t("services.createBlockedPort"),
+                      fieldId: "svc-port",
                     }
-                  : // Waiting on the catalog is no fault of the user's.
-                    shape.showPlan && form.plan === "" && catalog.loading
-                    ? { reason: t("common.createBlockedLoadingPlans") }
-                    : { reason: t("common.createBlockedFields") };
+                  : fieldErrors.diskMountPath || fieldErrors.diskSize
+                    ? {
+                        reason: t("services.createBlockedDisk"),
+                        fieldId: fieldErrors.diskMountPath
+                          ? "svc-disk-mount-path"
+                          : "svc-disk-size",
+                      }
+                    : // Waiting on the catalog is no fault of the user's.
+                      shape.showPlan && form.plan === "" && catalog.loading
+                      ? { reason: t("common.createBlockedLoadingPlans") }
+                      : { reason: t("common.createBlockedFields") };
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -313,6 +335,7 @@ export function NewServicePage({
                           set({ registryCredentialId }),
                         // The Port row below explains the image's port.
                         showPortHint: false,
+                        check: { state: imageCheck, messages: "create" },
                       }
                 }
                 buildSource={

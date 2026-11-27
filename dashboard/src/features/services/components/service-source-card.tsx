@@ -60,6 +60,7 @@ import { useLinkBuildSource } from "@/features/services/hooks/use-link-build-sou
 import { useRepoBranches } from "@/features/services/hooks/use-repo-branches";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import { useSetImage } from "@/features/services/hooks/use-set-image";
+import { useImageCheck } from "@/features/services/hooks/use-image-check";
 import { useSetRepo } from "@/features/services/hooks/use-set-repo";
 import { commandText } from "@/features/services/lib/command-text";
 import { publishDirectoryError } from "@/features/services/lib/publish-directory";
@@ -370,6 +371,13 @@ function SourceEditDialog({
   const [branch, setBranch] = useState(currentBranch ?? "main");
   const [image, setImageValue] = useState(imagePath ?? "");
   const [credentialId, setCredentialId] = useState(registryCredentialId ?? "");
+  // Render's Update Image checks the image from its registry as it opens and
+  // as it is edited, and saves only a deployable one (w1/m673).
+  const imageCheck = useImageCheck({
+    image,
+    credentialId,
+    enabled: open && tab === "image",
+  });
 
   // The GitHub tab's repository: the one picked, else the service's own. The
   // service's own keeps the URL it already stores, which may end in ".git"
@@ -415,7 +423,7 @@ function SourceEditDialog({
       ? selectedSource !== undefined &&
         (!needsStart || startCommand.trim() !== "")
       : tab === "image"
-        ? isValidDockerImageRef(image)
+        ? isValidDockerImageRef(image) && imageCheck.status === "deployable"
         : repoValid && publishPathValid && nativeCommandsValid;
 
   // An image-backed service's repo arrives as "" (bex-api), not null, so
@@ -465,23 +473,25 @@ function SourceEditDialog({
         ? t("services.sourceEnterRepoUrl")
         : tab === "image" && image.trim() === ""
           ? t("services.sourceEnterImage")
-          : tab === "build-source" && selectedSource === undefined
-            ? sourcesLoading
-              ? null
-              : t(
-                  sources.length > 0
-                    ? "services.sourceSelectBuildSource"
-                    : "services.sourceNoBuildSources",
-                )
-            : !valid
-              ? t("services.sourceFixField")
-              : !dirty
-                ? t(
-                    tab === "image"
-                      ? "services.sourceNoChangesConnect"
-                      : "services.sourceNoChangesDeploy",
+          : tab === "image" && imageCheck.status === "checking"
+            ? t("services.sourceCheckingImage")
+            : tab === "build-source" && selectedSource === undefined
+              ? sourcesLoading
+                ? null
+                : t(
+                    sources.length > 0
+                      ? "services.sourceSelectBuildSource"
+                      : "services.sourceNoBuildSources",
                   )
-                : null;
+              : !valid
+                ? t("services.sourceFixField")
+                : !dirty
+                  ? t(
+                      tab === "image"
+                        ? "services.sourceNoChangesConnect"
+                        : "services.sourceNoChangesDeploy",
+                    )
+                  : null;
 
   // What submitting will deploy. The choice is otherwise a check mark on one
   // row of a list that scrolls and filters: out of sight, nothing named it.
@@ -767,6 +777,7 @@ function SourceEditDialog({
                       refusedImage !== null && refusedImage === image.trim()
                         ? imageError
                         : null,
+                    check: { state: imageCheck, messages: "update" },
                   }
             }
             buildSource={

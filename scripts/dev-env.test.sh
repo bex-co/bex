@@ -163,6 +163,8 @@ assert "bex-api gets BEX_PROM_URL on the per-N forward" \
   "sed -n '/^start_api()/,/^}/p' scripts/dev-env.sh | grep -q 'BEX_PROM_URL=\"http://localhost:\$PROM_PORT\"'"
 assert "BEX_PROM_URL follows the observability switch" \
   "sed -n '/^start_api()/,/^}/p' scripts/dev-env.sh | grep -B4 'BEX_PROM_URL=' | grep -q 'DEV_ENV_OBSERVABILITY'"
+assert "bex-api takes the shared operator's BEX_IMAGE_PLATFORM (w1/m673)" \
+  "sed -n '/^start_api()/,/^}/p' scripts/dev-env.sh | grep -q 'env\[?(@.name==\"BEX_IMAGE_PLATFORM\")\]' && sed -n '/^start_api()/,/^}/p' scripts/dev-env.sh | grep -q 'BEX_IMAGE_PLATFORM=\"\$image_platform\"'"
 for needle in "Prometheus ready" "kubelet_volume_stats_used_bytes reports"; do
   assert "status checks $needle" "sed -n '/^cmd_status()/,/^}/p' scripts/dev-env.sh | grep -q '$needle'"
 done

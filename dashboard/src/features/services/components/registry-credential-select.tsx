@@ -25,6 +25,8 @@ export interface RegistryCredentialSelectProps {
   onValueChange: (value: string) => void;
   description: string;
   disabled?: boolean;
+  /** The chosen credential failed the image check (w1/m673). */
+  invalid?: boolean;
   /** Leave the label to the caller: a create row names the select itself. */
   hideLabel?: boolean;
 }
@@ -46,6 +48,7 @@ export function RegistryCredentialSelect({
   onValueChange,
   description,
   disabled = false,
+  invalid = false,
   hideLabel = false,
 }: RegistryCredentialSelectProps) {
   const { t } = useTranslations();
@@ -79,6 +82,7 @@ export function RegistryCredentialSelect({
         <SelectTrigger
           id={id}
           aria-describedby={descriptionId}
+          aria-invalid={invalid || undefined}
           // Full width, 44 px on a phone, wherever the picker appears.
           className={CREATE_SELECT_CLASS}
         >

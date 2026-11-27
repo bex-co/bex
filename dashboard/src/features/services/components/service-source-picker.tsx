@@ -46,6 +46,15 @@ import { useOnGitConnectionsChange } from "@/features/git/hooks/use-on-git-conne
 import { useConnectGitAccount } from "@/features/git/hooks/use-connect-git";
 import { GitCredentialsMenu } from "@/features/git/components/git-credentials-menu";
 import { RegistryCredentialSelect } from "@/features/services/components/registry-credential-select";
+import { ImageCheckIcon } from "@/features/services/components/image-check-icon";
+import {
+  imageCheckMessage,
+  imageMessageSizerKeys,
+  MESSAGE_TONE_CLASS,
+  type ImageCheckMessages,
+  type ImageFieldMessage,
+} from "@/features/services/lib/image-check-messages";
+import type { ImageCheck } from "@/features/services/hooks/use-image-check";
 import {
   REPO_HEADING_CLASS,
   REPO_LIST_CLASS,
@@ -237,6 +246,12 @@ export type ImageSourceOption = {
   showPortHint: boolean;
   /** A server refusal of this image, shown under the field (w4/406). */
   serverError?: string | null;
+  /**
+   * The registry check before a service is created or switched to an image
+   * (w1/m673), and which of Render's two forms this is. A Build Source has
+   * none: Render checks only a service's image.
+   */
+  check?: { state: ImageCheck; messages: ImageCheckMessages };
 };
 
 const IMAGE_PROBLEM_KEYS = {
@@ -350,6 +365,18 @@ export function ServiceSourcePicker({
   const repoListPending =
     reposLoading || (connectionLoading && repos.length === 0);
   const imageProblem = image ? dockerImageProblem(image.value) : null;
+  // The field's own syntax message first, then the server's refusal of a
+  // submit, then the registry check's answer (w1/m673).
+  const imageMessage: ImageFieldMessage | null = !image
+    ? null
+    : imageProblem !== null
+      ? { text: t(IMAGE_PROBLEM_KEYS[imageProblem]), tone: "error" }
+      : image.serverError
+        ? { text: image.serverError, tone: "error" }
+        : image.check
+          ? imageCheckMessage(t, image.check.state, image.check.messages)
+          : null;
+  const imageInvalid = imageMessage?.tone === "error";
   // The Git URL is marked and announced like the image reference (w21/052).
   // A file page names no repository to build (w4/576).
   const gitUrlFilePage =
@@ -743,39 +770,62 @@ export function ServiceSourcePicker({
                 <Label htmlFor={`${idPrefix}-image`}>
                   {t("services.createImageLabel")}
                 </Label>
-                <Input
-                  id={`${idPrefix}-image`}
-                  className={CREATE_INPUT_CLASS}
-                  value={image.value}
-                  onChange={(e) => image.onChange(e.target.value)}
-                  placeholder={t("services.createImagePlaceholder")}
-                  autoComplete="off"
-                  aria-invalid={
-                    imageProblem !== null || Boolean(image.serverError)
-                  }
-                  aria-describedby={
-                    imageProblem !== null || image.serverError
-                      ? `${idPrefix}-image-error`
-                      : undefined
-                  }
-                />
-                {imageProblem !== null ? (
-                  <p
-                    id={`${idPrefix}-image-error`}
-                    role="alert"
-                    className="text-sm text-destructive"
-                  >
-                    {t(IMAGE_PROBLEM_KEYS[imageProblem])}
-                  </p>
-                ) : image.serverError ? (
-                  <p
-                    id={`${idPrefix}-image-error`}
-                    role="alert"
-                    className="text-sm text-destructive"
-                  >
-                    {image.serverError}
-                  </p>
-                ) : null}
+                <div className="relative">
+                  <Input
+                    id={`${idPrefix}-image`}
+                    className={cn(CREATE_INPUT_CLASS, "pr-9")}
+                    value={image.value}
+                    onChange={(e) => image.onChange(e.target.value)}
+                    onPaste={image.check?.state.notePaste}
+                    placeholder={t("services.createImagePlaceholder")}
+                    autoComplete="off"
+                    spellCheck={false}
+                    aria-invalid={imageInvalid}
+                    aria-describedby={
+                      imageMessage ? `${idPrefix}-image-message` : undefined
+                    }
+                  />
+                  {image.check ? (
+                    <ImageCheckIcon
+                      status={image.check.state.status}
+                      invalid={imageInvalid}
+                      checkingLabel={t("services.imageCheckChecking")}
+                    />
+                  ) : null}
+                </div>
+                {/* One grid cell holds every sentence the line can say,
+                    invisible, so the line is as tall as the longest: a check
+                    starting, answering, or answering differently never moves
+                    what is below. */}
+                <div className="grid text-sm" data-testid="image-message-line">
+                  {(image.check
+                    ? [
+                        ...imageMessageSizerKeys(image.check.messages),
+                        ...Object.values(IMAGE_PROBLEM_KEYS),
+                      ]
+                    : []
+                  ).map((key) => (
+                    <p
+                      key={key}
+                      aria-hidden="true"
+                      className="invisible col-start-1 row-start-1"
+                    >
+                      {t(key)}
+                    </p>
+                  ))}
+                  {imageMessage ? (
+                    <p
+                      id={`${idPrefix}-image-message`}
+                      role={imageMessage.tone === "error" ? "alert" : undefined}
+                      className={cn(
+                        "col-start-1 row-start-1",
+                        MESSAGE_TONE_CLASS[imageMessage.tone],
+                      )}
+                    >
+                      {imageMessage.text}
+                    </p>
+                  ) : null}
+                </div>
                 {image.showPortHint ? (
                   <p className="text-sm text-muted-foreground">
                     {t("services.createImagePortHint")}
@@ -787,6 +837,16 @@ export function ServiceSourcePicker({
                 value={image.registryCredentialId}
                 onValueChange={image.onRegistryCredentialChange}
                 description={t("services.createRegistryCredentialDescription")}
+                // Render's rules: a public image that deploys as it is needs
+                // no credential, and a check that failed with one marks it.
+                disabled={
+                  image.check?.state.status === "deployable" &&
+                  image.registryCredentialId === ""
+                }
+                invalid={
+                  image.check?.state.status === "failed" &&
+                  image.registryCredentialId !== ""
+                }
               />
             </div>
           </TabsContent>

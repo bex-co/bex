@@ -4128,6 +4128,62 @@ const deServices: Record<string, TranslationEntry> = {
     description:
       "Inline error under a Docker Image field naming a private registry host (w4/406)",
   },
+  "services.imageCheckHelper": {
+    message: "Ein Image aus einer Docker-Registry bereitstellen",
+    description: "Helper line under the Image URL field of the create form's Existing Image tab (Render's 'Deploy an image from a Docker registry', w1/m673)",
+  },
+  "services.imageCheckChecking": {
+    message: "Image wird geprüft",
+    description: "Accessible name of the spinner at the end of the Image URL field while bex reads the image from its registry (w1/m673)",
+  },
+  "services.imageCheckDoesNotExist": {
+    message: "Kein öffentliches Image gefunden. Vermutlich verwendest du ein privates Image – füge Zugangsdaten hinzu oder prüfe die Image-URL auf Fehler.",
+    description: "Under the Image URL field: the registry has no public image at this URL and no credential is chosen (Render's does_not_exist, w1/m673)",
+  },
+  "services.imageCheckDoesNotExistWithCredential": {
+    message: "Die angegebene Image-URL und die Registry-Zugangsdaten sind ungültig.",
+    description: "Under the Image URL field: with the chosen credential the registry still has no image at this URL (Render's does_not_exist with a credential, w1/m673)",
+  },
+  "services.imageCheckInvalidUrl": {
+    message: "Die angegebene Image-URL ist ungültig.",
+    description: "Under the Image URL field: the URL cannot name an image bex may pull (Render's invalid_input_url, w1/m673)",
+  },
+  "services.imageCheckInvalidCredential": {
+    message: "Die angegebenen Registry-Zugangsdaten sind ungültig.",
+    description: "Under the Image URL field: the registry refused the chosen credential (Render's invalid_registry_credential, w1/m673)",
+  },
+  "services.imageCheckUnsupportedPlatform": {
+    message: "Die angegebene Image-URL verweist auf ein Image mit einer ungültigen Plattform. Images müssen für die Plattform linux/amd64 gebaut sein.",
+    description: "Under the Image URL field: the image is not built for linux/amd64 (Render's unsupported_platform; keep 'linux/amd64' as is, w1/m673)",
+  },
+  "services.imageCheckTooLarge": {
+    message: "Die komprimierte Größe dieses Docker-Images überschreitet das zulässige Limit.",
+    description: "Under the Image URL field: the image's compressed size is over the 10 GB limit (Render's image_too_large, w1/m673)",
+  },
+  "services.imageCheckError": {
+    message: "Ein Fehler ist aufgetreten.",
+    description: "Under the Image URL field: the image check failed in a way none of the specific messages names (Render's 'An error occurred.', w1/m673)",
+  },
+  "services.imageCheckPublic": {
+    message: "Dies ist ein öffentliches Image, auf das ohne Zugangsdaten zugegriffen werden kann.",
+    description: "Settings > Update source, under the Image URL field: the image is public and deployable with no credential (w1/m673)",
+  },
+  "services.imageCheckAuthorized": {
+    message: "Der Zugriff auf dieses Image wurde mit den ausgewählten Zugangsdaten autorisiert.",
+    description: "Settings > Update source, under the Image URL field: the chosen credential can pull the image (w1/m673)",
+  },
+  "services.createBlockedImageChecking": {
+    message: "Das Image wird geprüft …",
+    description: "Create-wizard action bar: why Deploy is held while bex checks the image against its registry (w1/m673)",
+  },
+  "services.createBlockedImage": {
+    message: "Dieses Image kann nicht bereitgestellt werden. Prüfe die Image-URL und die Zugangsdaten.",
+    description: "Create-wizard action bar: why Deploy is held after the image check failed (w1/m673)",
+  },
+  "services.sourceCheckingImage": {
+    message: "Das Image wird geprüft …",
+    description: "Settings > Update source footer: why Connect is held while bex checks the image against its registry (w1/m673)",
+  },
   "services.createFieldPort": {
     message: "Port",
     description: "Create wizard: service port field label",

@@ -41,6 +41,7 @@ import (
 	"sync"
 	"time"
 
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/gqlerrors"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -80,6 +81,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/projects"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
+	"github.com/bex-co/bex/lego/backend/internal/registryread"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/router"
@@ -844,6 +846,10 @@ type Deps struct {
 	// credentials per workspace (default 50, 0 disables). Over-cap creates are
 	// refused with REGISTRY_CREDENTIAL_LIMIT across all surfaces.
 	MaxRegistryCredentialsPerWorkspace int
+	// ImagePlatform is the hosting node pool's image platform
+	// (BEX_IMAGE_PLATFORM), which isDeployableImage checks an image against
+	// (w1/m673). Zero is linux/amd64.
+	ImagePlatform v1.Platform
 	// CLITelemetryStore, when set (the control-plane store is wired), backs
 	// the CLI-telemetry ingest feature (w5/m92) — one row per
 	// `POST /v1/cli-telemetry-events` delivery. Concrete *store.PGStore (not
@@ -1020,6 +1026,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	rc := &registrycreds.Service{
 		Base: base, Store: d.RegistryCredsStore, Secret: d.Secrets,
 		MaxCredentials: d.MaxRegistryCredentialsPerWorkspace,
+		ImageCheck:     &registryread.Checker{Platform: d.ImagePlatform},
 	}
 	// The CLI-telemetry ingest service is always non-nil; its verb 503s until
 	// the control-plane store is wired (same convention as rc above).

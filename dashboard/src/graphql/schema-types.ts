@@ -2078,6 +2078,11 @@ export type EventUser = {
   id: Maybe<Scalars['String']['output']>;
 };
 
+export type ExternalImageReferenceInput = {
+  imageUrl: Scalars['String']['input'];
+  registryCredentialId?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type FailureReason = {
   __typename: 'FailureReason';
   earlyExit: Maybe<Scalars['Boolean']['output']>;
@@ -2173,6 +2178,13 @@ export type InstanceType = {
   planId: Scalars['String']['output'];
   unavailableReason: Scalars['String']['output'];
   usdPerMinute: Maybe<Scalars['String']['output']>;
+};
+
+export type IsDeployableImageResult = {
+  __typename: 'IsDeployableImageResult';
+  deployable: Scalars['Boolean']['output'];
+  failureCode: Maybe<UndeployableImageFailureCode>;
+  failureReason: Maybe<Scalars['String']['output']>;
 };
 
 export type Job = {
@@ -5129,6 +5141,7 @@ export type Query = {
   gitConnection: Maybe<GitConnection>;
   gitConnections: Maybe<Array<Maybe<GitConnection>>>;
   instanceTypes: Maybe<Array<Maybe<InstanceType>>>;
+  isDeployableImage: IsDeployableImageResult;
   job: Maybe<Job>;
   jobs: Maybe<Array<Maybe<Job>>>;
   keyValue: Maybe<KeyValue>;
@@ -5732,6 +5745,11 @@ export type QueryGitConnectionArgs = {
 
 export type QueryGitConnectionsArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryIsDeployableImageArgs = {
+  externalImageReference: ExternalImageReferenceInput;
 };
 
 
@@ -7138,6 +7156,14 @@ export enum ThemeSetting {
   LightHighContrast = 'LIGHT_HIGH_CONTRAST',
   System = 'SYSTEM',
   SystemHighContrast = 'SYSTEM_HIGH_CONTRAST'
+}
+
+export enum UndeployableImageFailureCode {
+  DoesNotExist = 'does_not_exist',
+  ImageTooLarge = 'image_too_large',
+  InvalidInputUrl = 'invalid_input_url',
+  InvalidRegistryCredential = 'invalid_registry_credential',
+  UnsupportedPlatform = 'unsupported_platform'
 }
 
 export type UpdateSandboxGroupCredentialInput = {

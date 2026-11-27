@@ -1,0 +1,11 @@
+# Render's image check before an image-backed service is created or switched
+# to (w1/m673; docs/render-artifacts/new-service-wizard.md § The image check):
+# bex-api reads the image from its registry with the chosen credential, as the
+# deploy will, and answers deployable or one of Render's five failure codes.
+query IsDeployableImage($externalImageReference: ExternalImageReferenceInput!) {
+  isDeployableImage(externalImageReference: $externalImageReference) {
+    deployable
+    failureCode
+    failureReason
+  }
+}

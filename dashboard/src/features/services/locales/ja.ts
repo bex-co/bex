@@ -4093,6 +4093,62 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "Inline error under a Docker Image field naming a private registry host (w4/406)",
   },
+  "services.imageCheckHelper": {
+    message: "Docker レジストリのイメージをデプロイします",
+    description: "Helper line under the Image URL field of the create form's Existing Image tab (Render's 'Deploy an image from a Docker registry', w1/m673)",
+  },
+  "services.imageCheckChecking": {
+    message: "イメージを確認しています",
+    description: "Accessible name of the spinner at the end of the Image URL field while bex reads the image from its registry (w1/m673)",
+  },
+  "services.imageCheckDoesNotExist": {
+    message: "公開イメージが見つかりません。非公開イメージを使用している可能性があります。認証情報を追加するか、イメージ URL に誤りがないか確認してください。",
+    description: "Under the Image URL field: the registry has no public image at this URL and no credential is chosen (Render's does_not_exist, w1/m673)",
+  },
+  "services.imageCheckDoesNotExistWithCredential": {
+    message: "指定されたイメージ URL とレジストリ認証情報が無効です。",
+    description: "Under the Image URL field: with the chosen credential the registry still has no image at this URL (Render's does_not_exist with a credential, w1/m673)",
+  },
+  "services.imageCheckInvalidUrl": {
+    message: "指定されたイメージ URL は無効です。",
+    description: "Under the Image URL field: the URL cannot name an image bex may pull (Render's invalid_input_url, w1/m673)",
+  },
+  "services.imageCheckInvalidCredential": {
+    message: "指定されたレジストリ認証情報は無効です。",
+    description: "Under the Image URL field: the registry refused the chosen credential (Render's invalid_registry_credential, w1/m673)",
+  },
+  "services.imageCheckUnsupportedPlatform": {
+    message: "指定されたイメージ URL のイメージは無効なプラットフォーム向けです。イメージは linux/amd64 プラットフォーム向けにビルドする必要があります。",
+    description: "Under the Image URL field: the image is not built for linux/amd64 (Render's unsupported_platform; keep 'linux/amd64' as is, w1/m673)",
+  },
+  "services.imageCheckTooLarge": {
+    message: "この Docker イメージの圧縮サイズが上限を超えています。",
+    description: "Under the Image URL field: the image's compressed size is over the 10 GB limit (Render's image_too_large, w1/m673)",
+  },
+  "services.imageCheckError": {
+    message: "エラーが発生しました。",
+    description: "Under the Image URL field: the image check failed in a way none of the specific messages names (Render's 'An error occurred.', w1/m673)",
+  },
+  "services.imageCheckPublic": {
+    message: "認証情報なしでアクセスできる公開イメージです。",
+    description: "Settings > Update source, under the Image URL field: the image is public and deployable with no credential (w1/m673)",
+  },
+  "services.imageCheckAuthorized": {
+    message: "選択した認証情報でこのイメージへのアクセスを確認できました。",
+    description: "Settings > Update source, under the Image URL field: the chosen credential can pull the image (w1/m673)",
+  },
+  "services.createBlockedImageChecking": {
+    message: "イメージを確認しています…",
+    description: "Create-wizard action bar: why Deploy is held while bex checks the image against its registry (w1/m673)",
+  },
+  "services.createBlockedImage": {
+    message: "このイメージはデプロイできません。イメージ URL と認証情報を確認してください。",
+    description: "Create-wizard action bar: why Deploy is held after the image check failed (w1/m673)",
+  },
+  "services.sourceCheckingImage": {
+    message: "イメージを確認しています…",
+    description: "Settings > Update source footer: why Connect is held while bex checks the image against its registry (w1/m673)",
+  },
   "services.createFieldPort": {
     message: "ポート",
     description: "Create wizard: service port field label",

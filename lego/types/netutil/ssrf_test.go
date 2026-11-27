@@ -18,6 +18,7 @@ package netutil_test
 
 import (
 	"context"
+	"errors"
 	"net"
 	"strings"
 	"testing"
@@ -224,5 +225,8 @@ func TestWebhookDashboardVectors(t *testing.T) {
 	_, err := netutil.SafeDialContext(time.Second)(context.Background(), "tcp", "127.0.0.1:80")
 	if err == nil || !strings.Contains(err.Error(), "destination resolves to a blocked address") {
 		t.Errorf("guard error = %v; the dashboard matches %q", err, "destination resolves to a blocked address")
+	}
+	if !errors.Is(err, netutil.ErrBlockedAddress) {
+		t.Errorf("guard error = %v; a caller tells the refusal apart with errors.Is(err, ErrBlockedAddress)", err)
 	}
 }

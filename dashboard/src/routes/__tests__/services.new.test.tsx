@@ -64,6 +64,18 @@ const instanceTypesState: {
   retrying: false,
 };
 
+// Render's image check (w1/m673) reads a registry through Apollo, which these
+// tests do not render; the stand-in answers at once.
+vi.mock(
+  "@/features/services/hooks/use-image-check",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@/features/services/hooks/use-image-check")
+    >()),
+    useImageCheck: (await import("@/test/image-check")).fakeUseImageCheck,
+  }),
+);
+
 vi.mock("@/features/services/hooks/use-instance-types", () => ({
   useInstanceTypes: () => instanceTypesState,
 }));
@@ -1207,6 +1219,51 @@ describe("NewServicePage", () => {
           plan: "starter",
           image: "ghcr.io/acme/private-web:latest",
           registryCredentialId: "rgc-added",
+        }),
+      );
+    });
+
+    // w1/m673: Render's create form connects an image only once its check
+    // says it is deployable; the bar says why Deploy waits.
+    it("holds Deploy while the image is checked and after it fails, then deploys once its credential reads it", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("tab", { name: /Existing Image/i }),
+      );
+      const field = screen.getByPlaceholderText(
+        "docker.io/library/nginx:latest",
+      );
+      await user.type(field, "ghcr.io/acme/slow-web:latest");
+      await user.type(screen.getByLabelText("Name"), "private-web");
+      const deploy = screen.getByRole("button", { name: /^Deploy / });
+      expect(deploy).toBeDisabled();
+      expect(deploy).toHaveAccessibleDescription("Checking the image…");
+
+      await user.clear(field);
+      await user.type(field, "ghcr.io/acme/private-web:latest");
+      expect(deploy).toBeDisabled();
+      expect(deploy).toHaveAccessibleDescription(
+        "This image can't be deployed. Check the image URL and credential.",
+      );
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /No public image found/,
+      );
+      await user.click(deploy);
+      expect(create).not.toHaveBeenCalled();
+
+      await user.click(
+        screen.getByRole("combobox", { name: /Registry credential/i }),
+      );
+      await user.click(
+        screen.getByRole("option", { name: /Private GHCR \(ghcr.io\)/i }),
+      );
+      expect(deploy).toBeEnabled();
+      await user.click(deploy);
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          image: "ghcr.io/acme/private-web:latest",
+          registryCredentialId: "rgc-private",
         }),
       );
     });

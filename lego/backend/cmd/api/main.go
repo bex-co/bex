@@ -1962,6 +1962,8 @@ func wireAgentSessions(deps *api.Deps, cfg *Config) {
 	deps.MaxWorkspacesPerGitInstallation = cfg.MaxWorkspacesPerGitInstallation
 	// codex-security geyRc8 F1: per-workspace registry-credential quota.
 	deps.MaxRegistryCredentialsPerWorkspace = cfg.MaxRegistryCredentialsPerWorkspace
+	// The image check before create reads what a deploy will (w1/m673).
+	deps.ImagePlatform = cfg.ImagePlatform
 	// codex-security round 18: custom-domain cardinality quotas (default 100
 	// per service — the round-12 #3 routes/headers scale — and 500 per
 	// workspace; 0 disables). Beyond either, claims are refused with

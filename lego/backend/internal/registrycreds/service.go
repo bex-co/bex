@@ -41,6 +41,7 @@ import (
 	"unicode"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/registryread"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -67,6 +68,10 @@ type Service struct {
 	Store          CredentialStore
 	Secret         core.SecretKV
 	MaxCredentials int
+	// ImageCheck reads an image before a service is created from it
+	// (IsDeployableImage, w1/m673); nil checks linux/amd64 through the dial
+	// guard.
+	ImageCheck *registryread.Checker
 }
 
 const (

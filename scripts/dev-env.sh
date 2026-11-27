@@ -663,6 +663,15 @@ start_api() {
     # localhost.
     BEX_OIDC_ISSUER_URL="http://oidc.localhost:$BEX_API_PORT"
   )
+  # The shared operator's image platform (mock-cluster.sh sets it to the
+  # nodes' architecture), so bex-api's image check before create wants what a
+  # deploy here resolves (w1/m673). Unset there stays unset: linux/amd64.
+  local image_platform
+  image_platform="$(kubectl -n bex-system get deploy bex-controller-manager \
+    -o jsonpath='{.spec.template.spec.containers[?(@.name=="manager")].env[?(@.name=="BEX_IMAGE_PLATFORM")].value}' 2>/dev/null || true)"
+  if [ -n "$image_platform" ]; then
+    env_args+=(BEX_IMAGE_PLATFORM="$image_platform")
+  fi
   # Prometheus-backed readers, the disk-usage sweeper among them, start only
   # with BEX_PROM_URL; set it only when ensure_prometheus ran, because a set
   # but dead Prometheus turns metrics reads into errors instead of fallbacks.
