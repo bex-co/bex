@@ -1,5 +1,6 @@
 import { getRouteApi } from "@tanstack/react-router";
 import { useOryFlow } from "@/common/hooks/use-ory-flow";
+import { useScrollToHashedCard } from "@/common/hooks/use-scroll-to-hashed-card";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ApiKeysPanel } from "@/features/api-keys/components/api-keys-panel";
@@ -18,6 +19,15 @@ import { SSHKeysPanel } from "@/features/ssh-keys/components/ssh-keys-panel";
 const settingsRoute = getRouteApi("/settings");
 
 /**
+ * Render's account anchor for a section this page names otherwise (w3/m707):
+ * its Account Security (password, sign-in methods, two-factor) is the Kratos
+ * flow's cards under bex's Account section.
+ */
+const ACCOUNT_HASH_ALIASES: Readonly<Record<string, string>> = {
+  "account-security": "account",
+};
+
+/**
  * Account settings — Kratos's settings flow (profile + password). This is
  * also where the recovery flow (forgot-password) lands once its code is
  * verified, since Kratos redirects a completed recovery straight to
@@ -27,6 +37,7 @@ export default function SettingsPage() {
   const search = settingsRoute.useSearch();
   const flow = useOryFlow("settings", search.flow);
   const { t } = useTranslations();
+  useScrollToHashedCard("/settings", true, ACCOUNT_HASH_ALIASES);
 
   return (
     <DashboardLayout>

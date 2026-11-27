@@ -1,7 +1,20 @@
-import { redirect, type ParsedLocation } from "@tanstack/react-router";
+import {
+  defaultStringifySearch,
+  redirect,
+  type ParsedLocation,
+} from "@tanstack/react-router";
 import { ServerDocument } from "@/graphql/definitions";
 import type { RouterContext } from "@/common/types/router-context";
 import { isCronType } from "@/features/services/lib/service-type";
+import { redirectPreservingSuffix } from "@/common/lib/render-alias";
+import {
+  serviceBaseForType,
+  type ServiceBase,
+} from "@/features/services/lib/service-base";
+import {
+  serviceSubpathLanding,
+  STATIC_SUBPATH_PAGES,
+} from "@/features/services/lib/service-subpaths";
 import {
   COMPUTE_SECTION_ANCHOR,
   redirectToComputePage,
@@ -159,6 +172,45 @@ export async function redirectPlanByType(
       replace: true,
     });
   }
+}
+
+/**
+ * Shared beforeLoad body for both service sub-path routes (`/services/<id>/$`
+ * and `/static/<id>/$`, w3/m707). A service under the other base goes to its
+ * own with the sub-path kept, where that tree's pages answer it, so
+ * `/static/<web-id>/logs` opens Logs. Otherwise a sub-path with no page of
+ * its own lands where serviceSubpathLanding sends it, query and hash kept;
+ * the root, and a page a static site has not, land on the type's primary
+ * tab.
+ */
+export async function redirectServiceSubpath(
+  client: RouterContext["client"],
+  serviceId: string,
+  splat: string | undefined,
+  base: ServiceBase,
+  location: ParsedLocation,
+): Promise<never> {
+  const type = await serviceType(client, serviceId);
+  const canonical = type === null ? base : serviceBaseForType(type);
+  if (canonical !== base) {
+    redirectPreservingSuffix(
+      `${canonical}/${encodeURIComponent(serviceId)}/${splat ?? ""}`,
+      location,
+    );
+  }
+  const { page, deployId = "", search } =
+    serviceSubpathLanding(serviceId, splat);
+  if (!page || (base === "/static" && !STATIC_SUBPATH_PAGES.has(page))) {
+    redirectServiceRoot(serviceId, type);
+  }
+  const path = page.replace("$deployId", encodeURIComponent(deployId));
+  const query = defaultStringifySearch({ ...location.search, ...search });
+  throw redirect({
+    href: `${base}/${encodeURIComponent(serviceId)}${path}${query}${
+      location.hash ? `#${location.hash}` : ""
+    }`,
+    replace: true,
+  });
 }
 
 /**

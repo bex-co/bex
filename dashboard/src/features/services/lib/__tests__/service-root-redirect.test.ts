@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isRedirect } from "@tanstack/react-router";
+import { isRedirect, type ParsedLocation } from "@tanstack/react-router";
 import {
   redirectBuildsByType,
   redirectCronCompute,
@@ -7,6 +7,7 @@ import {
   redirectPlanByType,
   redirectRunsByType,
   redirectServiceRoot,
+  redirectServiceSubpath,
 } from "../service-root-redirect";
 import type { RouterContext } from "@/common/types/router-context";
 
@@ -254,5 +255,142 @@ describe("a Plan URL (w3/105)", () => {
         },
       });
     }
+  });
+});
+
+/** A location whose query is already parsed, as beforeLoad hands it over. */
+function at(
+  href: string,
+  search: Record<string, unknown> = {},
+  hash = "",
+): ParsedLocation {
+  return { href, search, hash } as unknown as ParsedLocation;
+}
+
+describe("a service URL's sub-path with no page of its own (w3/m707)", () => {
+  it("lands Render's /disks on the Disk page, query and hash kept", async () => {
+    const error = await thrown(
+      redirectServiceSubpath(
+        clientFor("web_service"),
+        "srv-1",
+        "disks",
+        "/services",
+        at("/services/srv-1/disks?x=1#top", { x: 1 }, "top"),
+      ),
+    );
+    expect(isRedirect(error)).toBe(true);
+    expect(error).toMatchObject({
+      options: { href: "/services/srv-1/disk?x=1#top", replace: true },
+    });
+  });
+
+  it("sets the period's window over the link's own range", async () => {
+    expect(
+      await thrown(
+        redirectServiceSubpath(
+          clientFor("background_worker"),
+          "srv-1",
+          "metrics/1w",
+          "/services",
+          at("/services/srv-1/metrics/1w?range=1h", { range: "1h" }),
+        ),
+      ),
+    ).toMatchObject({ options: { href: "/services/srv-1/metrics?range=7d" } });
+  });
+
+  it("opens Shell on the named instance", async () => {
+    expect(
+      await thrown(
+        redirectServiceSubpath(
+          clientFor("private_service"),
+          "srv-1",
+          "shell/lqtnn",
+          "/services",
+          at("/services/srv-1/shell/lqtnn"),
+        ),
+      ),
+    ).toMatchObject({
+      options: { href: "/services/srv-1/shell?instance=srv-1-lqtnn" },
+    });
+  });
+
+  it("sends anything else to the type's primary tab", async () => {
+    expect(
+      await thrown(
+        redirectServiceSubpath(
+          clientFor("cron_job"),
+          "srv-1",
+          "jobs",
+          "/services",
+          at("/services/srv-1/jobs"),
+        ),
+      ),
+    ).toMatchObject({ options: { to: "/services/$serviceId/runs" } });
+  });
+
+  it("moves a service under the other base to its own, sub-path kept", async () => {
+    expect(
+      await thrown(
+        redirectServiceSubpath(
+          clientFor("web_service"),
+          "srv-1",
+          "logs",
+          "/static",
+          at("/static/srv-1/logs?level=error", { level: "error" }),
+        ),
+      ),
+    ).toMatchObject({ options: { href: "/services/srv-1/logs?level=error" } });
+    expect(
+      await thrown(
+        redirectServiceSubpath(
+          clientFor("static_site"),
+          "srv-2",
+          "disks",
+          "/services",
+          at("/services/srv-2/disks"),
+        ),
+      ),
+    ).toMatchObject({ options: { href: "/static/srv-2/disks" } });
+  });
+
+  it("opens a static site's own pages, and its Events for one it has not", async () => {
+    expect(
+      await thrown(
+        redirectServiceSubpath(
+          clientFor("static_site"),
+          "srv-2",
+          "metrics/24h",
+          "/static",
+          at("/static/srv-2/metrics/24h"),
+        ),
+      ),
+    ).toMatchObject({ options: { href: "/static/srv-2/metrics?range=24h" } });
+    for (const splat of ["disks", "shell/lqtnn", "logs", "scaling"]) {
+      expect(
+        await thrown(
+          redirectServiceSubpath(
+            clientFor("static_site"),
+            "srv-2",
+            splat,
+            "/static",
+            at(`/static/srv-2/${splat}`),
+          ),
+        ),
+      ).toMatchObject({ options: { to: "/static/$serviceId/events" } });
+    }
+  });
+
+  it("stays under the URL's base when the service cannot be read", async () => {
+    expect(
+      await thrown(
+        redirectServiceSubpath(
+          clientFor(null),
+          "srv-gone",
+          "metrics/1h",
+          "/static",
+          at("/static/srv-gone/metrics/1h"),
+        ),
+      ),
+    ).toMatchObject({ options: { href: "/static/srv-gone/metrics?range=1h" } });
   });
 });

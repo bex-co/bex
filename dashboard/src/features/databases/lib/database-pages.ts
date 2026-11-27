@@ -5,6 +5,10 @@ import {
   type DatabasePagePath,
 } from "@/features/databases/components/database-nav";
 import { splatParts } from "@/common/lib/render-alias";
+import {
+  metricsPeriodSearch,
+  type RangePresetID,
+} from "@/features/metrics/lib/range";
 
 /**
  * The old single page's section anchors whose cards left Info when it split
@@ -36,6 +40,8 @@ export interface DatabaseSubpathLanding {
   page: DatabasePagePath | null;
   /** The section to scroll to, unless the link carries a hash of its own. */
   hash?: string;
+  /** Search keys the landing sets over the link's own query. */
+  search?: { range: RangePresetID };
 }
 
 /**
@@ -43,21 +49,22 @@ export interface DatabaseSubpathLanding {
  * (docs/render-artifacts/postgres-dashboard.md): `/upgrade` replaces itself
  * with `/plan` on Render too; `/high-availability-upgrade`, which a primary's
  * Render also sends to `/plan`, lands on Plan's High Availability card;
- * `/metrics/<period>` is Render's other Metrics route. Anything else lands on
- * Info, as Render's `*` route shows Info. `/version-upgrade` is a page of its
- * own since w3/m676.
+ * `/metrics/<period>` is Render's other Metrics route, on the window its
+ * period table maps the period to (w3/m707). Anything else lands on Info, as
+ * Render's `*` route shows Info. `/version-upgrade` is a page of its own
+ * since w3/m676.
  */
 export function databaseSubpathLanding(
   splat: string | undefined,
 ): DatabaseSubpathLanding {
-  const [first] = splatParts(splat);
+  const [first, period] = splatParts(splat);
   switch (first) {
     case "upgrade":
       return { page: "/plan" };
     case "high-availability-upgrade":
       return { page: "/plan", hash: "high-availability" };
     case "metrics":
-      return { page: "/metrics" };
+      return { page: "/metrics", search: metricsPeriodSearch(period) };
     default:
       return { page: null };
   }

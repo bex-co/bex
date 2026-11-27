@@ -133,11 +133,14 @@ describe("metrics range search contract (w6/065)", () => {
   });
 
   it("rejects malformed values so the 12h default still applies", () => {
-    expect(validate({})).toStrictEqual(CLEARED_RANGE_SEARCH);
-    expect(validate({ range: "6h" })).toStrictEqual(CLEARED_RANGE_SEARCH); // retired id
-    expect(validate({ range: "custom" })).toStrictEqual(CLEARED_RANGE_SEARCH); // no bounds
-    // The Logs page's `r` Render alias is deliberately not honored here.
-    expect(validate({ r: "1h" })).toStrictEqual(CLEARED_RANGE_SEARCH);
+    // Render's `t` comes back too, as a tombstone (w3/m707).
+    const cleared = { ...CLEARED_RANGE_SEARCH, t: undefined };
+    expect(validate({})).toStrictEqual(cleared);
+    expect(validate({ range: "6h" })).toStrictEqual(cleared); // retired id
+    expect(validate({ range: "custom" })).toStrictEqual(cleared); // no bounds
+    // The Logs page's `r` Render alias is deliberately not honored here:
+    // Render's Metrics names its window `t`.
+    expect(validate({ r: "1h" })).toStrictEqual(cleared);
   });
 });
 

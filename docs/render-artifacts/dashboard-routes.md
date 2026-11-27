@@ -27,21 +27,64 @@ Render's API returns `dashboardUrl` values in these shapes, Render's official CL
 
 ## Service sub-tab map
 
-From live repo captures (w3/m3 metrics, w5/m13 settings, w9/m1 deploys) plus the m32 page-by-page walk ([dashboard-walk/services.md](dashboard-walk/services.md)):
+Render's service route table (its `v0` in `index-D5V4ZgbE.js`, read 2026-11-27) serves every service segment it routes, `/web`, `/pserv`, `/worker` and `/static`; a cron job has a table of its own ([cron-dashboard.md](cron-dashboard.md)). Each Render sub-path and the bex page it opens (w3/m707; earlier rows from the w3/m3, w5/m13 and w9/m1 captures and the m32 walk, [dashboard-walk/services.md](dashboard-walk/services.md)):
 
-| Render tab path | Evidence | bex route file | Note |
+| Render sub-path | Render's page | bex | Note |
 | --- | --- | --- | --- |
-| `/{seg}/{id}` (root = deploy history) | m32 walk | `services.$serviceId.index.tsx` (redirects to Deploys since w5/m36) | match |
-| `/deploys`, `/deploys/{dep-id}` | w9/m1 live URL | `services.$serviceId.deploys.index.tsx`, `…deploys.$deployId.tsx` | match |
-| `/events` | m32 walk (separate tab) | `services.$serviceId.events.tsx` | match |
-| `/logs` | m32 walk | `services.$serviceId.logs.tsx` | match |
-| `/env` | m32 walk (Environment tab) | `services.$serviceId.env.tsx` | match |
-| `/metrics` | w3/m3 live URL | `services.$serviceId.metrics.tsx` | match |
-| `/settings` | w5/m13 live URL | `services.$serviceId.settings.tsx` | match |
-| `/compute` | render.com/docs/compute-plans and /docs/scaling since 2026-08-26 ([compute-page.md](compute-page.md)) | `services.$serviceId.compute.tsx` | match (w6/m483): the compute plan, Autoscaling and Manual Scaling on one page |
-| `/scaling` | m32 walk (Render's Scaling tab before 2026-08-26) | `services.$serviceId.scaling.tsx` | redirects to `/compute#manual-scaling` (w6/m483); bex's bex-only `/plan` tab redirects to `/compute` |
+| (root) | Deploys | `services.$serviceId.index.tsx` → Deploys | match (w5/m36); a cron job's Runs, a static site's Events |
+| `*` (any other) | the root, or Settings for a member who may not view events | `services.$serviceId.$` → the type's primary tab | match (w3/m707) |
+| `events` | Events | `services.$serviceId.events.tsx` | match; `?et=` [below](#renders-deep-link-queries) |
+| `logs` | Logs | `services.$serviceId.logs.tsx` | match; `?t=`, `?q=`, `?l=`, `?r=` [below](#renders-deep-link-queries) |
+| `env` | Environment | `services.$serviceId.env.tsx` | match |
+| `headers`, `redirects` | a static site's Headers and Redirects/Rewrites | `…headers.tsx`, `…redirects.tsx` | match |
+| `shell` | Shell | `services.$serviceId.shell.tsx` | match (w2/m55) |
+| `shell/:instanceId` | Shell on that instance, named by its id's last segment | `/shell?instance=<service id>-<suffix>` | match (w3/m707): bex's `?instance=` takes the whole id |
+| `metrics` | Metrics | `services.$serviceId.metrics.tsx` | match; `?t=` [below](#renders-deep-link-queries) |
+| `metrics/:period` | Metrics, its path rewritten to `?t=<range>` from the period table below | `/metrics?range=<range>` | match (w3/m707) |
+| `settings` | Settings | `services.$serviceId.settings.tsx` | match |
+| `builds/:buildId` | the failed deploy of that build, else the root with `?et=DeployEnded` | `services.$serviceId.builds.$.tsx`: a cron job's deploy, another type's primary tab | match (w3/m554) |
+| `deploys` | Deploys | `services.$serviceId.deploys.index.tsx` | match |
+| `deploys/:deployId/*` | the deploy's page; `rollback` its Confirm Rollback | `…deploys.$deployId.tsx`, its `rollback` page; another sub-path the deploy's page | match (w1/m646, w3/m707) |
+| `disks` | Disk | `services.$serviceId.disk.tsx` | match (w3/m707): bex's path is singular |
+| `plan` | the plan chooser | `services.$serviceId.plan.tsx` → Compute; a cron job's own plan page | match (w6/m483, w3/105) |
+| `scaling` | Scaling | `services.$serviceId.scaling.tsx` → `/compute#manual-scaling` | match (w6/m483) |
+| `compute` | Compute | `services.$serviceId.compute.tsx` | match ([compute-page.md](compute-page.md)) |
+| `jobs` | One-Off Jobs | the service's root | non-goal (DO_NOT_DO: one-off jobs) |
+| `pulls`, `previews` | Previews | the service's root | non-goal (DO_NOT_DO: PR preview environments) |
+| `sharing` | Render's deprecated per-resource sharing | the service's root | flagged (`grandfather-owners-into-sharing`) |
 
-Because tab names already agree, the alias redirect needs **no segment renaming**: `/{web|worker|pserv|static|cron}/{srv-id}/<rest>` → `/services/{srv-id}/<rest>` verbatim (query string preserved). The bex-only `/plan` tab had no Render inbound shape; since w6/m483 it redirects to `/compute`.
+The aliases copy the sub-path, `/web/{srv-id}/<rest>` (and `worker`, `pserv`, `cron`) → `/services/{srv-id}/<rest>` with the query and hash, and the canonical tree maps the names that are not bex's: `services.$serviceId.$` and `static.$serviceId.$` land Render's `disks`, `metrics/:period`, `shell/:instanceId` and a deploy's sub-paths on bex's pages (`serviceSubpathLanding`), as a datastore's tree does (w3/m641, w3/m649). Until w3/m707 the alias relied on the names agreeing, and those four reached bex's not-found page. Render serves the same table under `/static/<id>`; bex's static-site tree has Events, Deploys, Environment, Headers, Redirects, Metrics and Settings, so `static.$serviceId.$` opens `metrics/:period` and a deploy's sub-paths there and lands any other page on the static site's Events, while a service of another type under `/static/` goes to its page under `/services`.
+
+### Render's legacy Metrics periods
+
+Render's `/metrics/:period` predates its `?t=` window. Its `xSe` replaces the period in the path with `?t=` from this table (`eC`, in its `service-metrics-utils` chunk), and drops a period the table lacks, which opens the default window (Last 12 hours). bex opens the same window on every Metrics page that has the route: a service's, a static site's, a Postgres database's and a Key Value instance's.
+
+| Period             | Window |
+| ------------------ | ------ |
+| `5m`, `15m`, `30m` | `30m`  |
+| `1h`               | `1h`   |
+| `4h`               | `4h`   |
+| `12h`              | `12h`  |
+| `24h`              | `24h`  |
+| `2d`               | `2d`   |
+| `1w`               | `7d`   |
+
+### Render's deep-link queries
+
+Render keeps a page's filters in its URL, under short keys (its `log-filters`, `src` and `serviceEventsPicker` chunks), and its own cards link them. bex reads them on entry; its own keys win when a link carries both, and Render's leave the URL at the page's first write (w7/m42, w3/m707).
+
+| Page | Render key | Value | bex |
+| --- | --- | --- | --- |
+| Logs | `t` | `all`, `app`, `request` | `type` (w7/m42) |
+| Logs | `q` | the search text | `text` (w3/m707) |
+| Logs | `l` | JSON `[[label, value], …]`, labels `INSTANCE`, `LEVEL`, `METHOD`, `STATUS_CODE`, `HOST`, `PATH` | `instance`, `level`, `method`, `statusCode`, `host`, `path`: each label's first value; another label is dropped (w3/m707) |
+| Logs | `r` | `live`, a preset, or `YYYY-MM-DD@HH:mm:ss~YYYY-MM-DD@HH:mm:ss` in UTC | `range`: Live tail (w3/m537), a preset (w7/m42), or the custom window (w3/m707) |
+| Logs | `m`, `c`, `p` | full-screen mode, and View in context's line id and time | not read: bex's View in context writes its own `contextLine` |
+| Metrics | `t` | a preset, or `<startMs>,<endMs>` | `range`, or the custom window, on every Metrics page (w3/m707) |
+| Metrics | `i`, `u`, `a`, `r`, `l`, `s`, `h`, `p`, `m` | instances, unit, aggregations, status codes, hosts, paths, selected metrics | not read: w3/161 |
+| Events | `et` | comma-separated GraphQL type names, `DeployEnded,ServerFailed` | the filter opens showing those types (`eventTypesHiddenBy`; Render's `ExtraInstancesChanged` is bex's `instance_count_changed`); bex does not write it back: w3/160 |
+
+Render's own links into them: an Instance failed event's Debug menu links `…/logs?l=[["INSTANCE","<instance id>"]]&r=<an hour before>~<a minute after>`, `…/metrics?i=<slug>-<suffix>&t=<startMs>,<endMs>` and `…/shell/<suffix>` (bex has no such menu: w3/162); a cron run links `…/logs?r=<its window>`, and Run now opens `…/logs?r=live`; Metrics' Open in logs carries its window into Logs' `r`. Postgres and Key Value Logs take bex's keys only: w3/163.
 
 ## Decision (w5/m39)
 
@@ -100,7 +143,7 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/:param/:param/definitions/*` | — | non-goal | a workflow's sidebar pattern; DO_NOT_DO: workflows & tasks |
 | `/:param/:param/deploys` | the service aliases → `/services/$serviceId/deploys` | matched | w5/m39 aliases (`common/lib/render-alias.ts`) |
 | `/:param/:param/deploys/:param` | the service aliases → `/services/$serviceId/deploys/$deployId` | matched | w5/m39 aliases (`common/lib/render-alias.ts`) |
-| `/:param/:param/deploys/:param/*` | the service aliases → `/services/$serviceId/deploys/$deployId/…` | matched | w5/m39 aliases (`common/lib/render-alias.ts`) |
+| `/:param/:param/deploys/:param/*` | the service aliases → `/services/$serviceId/deploys/$deployId/…` | matched | w5/m39 aliases (`common/lib/render-alias.ts`); a sub-path other than `rollback` opens the deploy's page, as Render's `deploys/:deployId/*` does (`serviceSubpathLanding`, w3/m707) |
 | `/:param/:param/deploys/:param/rollback` | the service aliases → `/services/$serviceId/deploys/$deployId/rollback` | matched | w5/m39 aliases (`common/lib/render-alias.ts`) |
 | `/:param/:param/logs` | the service aliases → `/services/$serviceId/logs` | matched | w5/m39 aliases (`common/lib/render-alias.ts`) |
 | `/:param/:param/runs/*` | — | non-goal | a workflow's sidebar pattern; DO_NOT_DO: workflows & tasks |
@@ -109,10 +152,10 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/:param/new` | `/web/new`, `/worker/new`, `/pserv/new`, `/static/new`, `/cron/new`; any other name `$serviceTypeSlug.new` → its create page | matched | `routes/_serviceCreate.*.new.tsx` (2026-11-22); Render's create slug table (`/postgres/new`, `/kv/new`, `/background-worker/new`, …) read case-insensitively, anything else → `/new`'s landing (`routes/$serviceTypeSlug.new.tsx`, w3/m705); `/workflow/new` has its own row |
 | `/billing` | `/billing` | matched | bex's Billing page (w5/m70) |
 | `/billing#credit-balance` | `/billing#credit-balance` | matched | `features/usage/components/usage-page.tsx` |
-| `/billing#free-usage` | `/billing` | gap | `w3/m707` |
+| `/billing#free-usage` | `/billing#free-usage` → the Included usage card | matched | `usage-page.tsx` (w3/m707): no card on Render's own page carries the id (its Monthly Included Usage card is `#included-usage`), so bex scrolls to the card the link names |
 | `/billing#invoice-history` | `/billing#invoice-history` | matched | `features/usage/components/usage-page.tsx` |
 | `/billing#payment-method` | `/billing#payment-method` | matched | `features/usage/components/usage-page.tsx` |
-| `/billing#unbilled-charges` | `/billing` | gap | `w3/m707` |
+| `/billing#unbilled-charges` | `/billing#unbilled-charges` → the Charges card | matched | `usage-page.tsx` (w3/m707): Render's Unbilled Charges card is bex's Charges |
 | `/billing/*` | `billing_.$first.$` → `/billing` | matched | w1/m45 |
 | `/billing/update-plan` | `billing_.$first.$` → the change-plan dialog | partial | Render's plan page: `w3/m708` |
 | `/billing/update-plan-confirm` | `billing_.$first.$` → `/billing` | gap | `w3/m708` |
@@ -149,14 +192,14 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/cron/:param/deploys/:param` | `cron.$` → `/services/$serviceId/deploys/$deployId` | matched | `services.$serviceId.deploys.$deployId.tsx` |
 | `/cron/:param/env` | `cron.$` → `/services/$serviceId/env` | matched | `services.$serviceId.env.tsx` |
 | `/cron/:param/events` | `cron.$` → `/services/$serviceId/events` | matched | `services.$serviceId.events.tsx` |
-| `/cron/:param/jobs` | — | non-goal | DO_NOT_DO: one-off jobs (ADR018 parity non-goals) |
+| `/cron/:param/jobs` | `cron.$` → `services.$serviceId.$` → the service's root, as Render's `*` route | non-goal | DO_NOT_DO: one-off jobs (ADR018 parity non-goals) |
 | `/cron/:param/logs` | `cron.$` → `/services/$serviceId/logs` | matched | `services.$serviceId.logs.tsx` |
 | `/cron/:param/metrics` | `cron.$` → `/services/$serviceId/metrics` | matched | `services.$serviceId.metrics.tsx` |
-| `/cron/:param/metrics/:param` | — | gap | the legacy period opens Metrics on its window: `w3/m707` |
+| `/cron/:param/metrics/:param` | `cron.$` → `services.$serviceId.$` → `/services/$serviceId/metrics?range=…` | matched | `serviceSubpathLanding` (w3/m707): the window Render's period table maps the period to |
 | `/cron/:param/plan` | `cron.$` → `/services/$serviceId/plan` | matched | `services.$serviceId.plan.tsx` lands on Compute (w6/m483) |
 | `/cron/:param/runs` | `cron.$` → `/services/$serviceId/runs` | matched | `services.$serviceId.runs.tsx` |
 | `/cron/:param/settings` | `cron.$` → `/services/$serviceId/settings` | matched | `services.$serviceId.settings.tsx` |
-| `/cron/:param/sharing` | — | flagged | Render's deprecated per-resource sharing, `grandfather-owners-into-sharing` |
+| `/cron/:param/sharing` | `cron.$` → `services.$serviceId.$` → the service's root, as Render's `*` route | flagged | Render's deprecated per-resource sharing, `grandfather-owners-into-sharing` |
 | `/cron/:param/shell` | — | non-goal | DO_NOT_DO: cron and ephemeral shells (ADR018 parity non-goals) |
 | `/cron/new` | `/cron/new` | matched | `routes/_serviceCreate.cron.new.tsx` (w1/m45) |
 | `/d/:param` | `d.$` → `/databases/$databaseId` | matched | w5/m39 alias; `databases.$databaseId.tsx` |
@@ -167,7 +210,7 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/d/:param/info` | `d.$` → `/databases/$databaseId/info` | matched | w3/m641 |
 | `/d/:param/logs` | `d.$` → `/databases/$databaseId/logs` | matched | w3/m641 |
 | `/d/:param/metrics` | `d.$` → `/databases/$databaseId/metrics` | matched | w3/m641 |
-| `/d/:param/metrics/:param` | `d.$` → `/databases/$databaseId/metrics` | matched | `databaseSubpathLanding` (w3/m641) |
+| `/d/:param/metrics/:param` | `d.$` → `/databases/$databaseId/metrics?range=…` | matched | `databaseSubpathLanding` (w3/m641), on the window Render's period table maps the period to (w3/m707) |
 | `/d/:param/plan` | `d.$` → `/databases/$databaseId/plan` | matched | w3/m641 |
 | `/d/:param/recovery` | `d.$` → `/databases/$databaseId/recovery` | matched | w3/m641 |
 | `/d/:param/recovery/new/database` | — | gap | Render's restore-to-a-new-database form; bex lands on Info: `w3/148` |
@@ -281,31 +324,31 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/pserv/:param/builds/:param` | `pserv.$` → `/services/$serviceId/builds/$` | matched | `services.$serviceId.builds.$.tsx` (w3/m554) |
 | `/pserv/:param/compute` | `pserv.$` → `/services/$serviceId/compute` | matched | `services.$serviceId.compute.tsx` (w6/m483) |
 | `/pserv/:param/deploys` | `pserv.$` → `/services/$serviceId/deploys` | matched | `services.$serviceId.deploys.index.tsx` |
-| `/pserv/:param/deploys/:param/*` | `pserv.$` → `/services/$serviceId/deploys/$deployId/…` | matched | `services.$serviceId.deploys.$deployId.tsx` and its `rollback` page |
-| `/pserv/:param/disks` | — | gap | bex's page is `/disk`: `w3/m707` |
+| `/pserv/:param/deploys/:param/*` | `pserv.$` → `/services/$serviceId/deploys/$deployId/…` | matched | `services.$serviceId.deploys.$deployId.tsx` and its `rollback` page; another sub-path opens the deploy's page (`serviceSubpathLanding`, w3/m707) |
+| `/pserv/:param/disks` | `pserv.$` → `services.$serviceId.$` → `/services/$serviceId/disk` | matched | `serviceSubpathLanding` (w3/m707), Render's `disks` is bex's Disk page |
 | `/pserv/:param/env` | `pserv.$` → `/services/$serviceId/env` | matched | `services.$serviceId.env.tsx` |
 | `/pserv/:param/events` | `pserv.$` → `/services/$serviceId/events` | matched | `services.$serviceId.events.tsx` |
 | `/pserv/:param/headers` | `pserv.$` → `/services/$serviceId/headers` | matched | `services.$serviceId.headers.tsx` |
-| `/pserv/:param/jobs` | — | non-goal | DO_NOT_DO: one-off jobs (ADR018 parity non-goals) |
+| `/pserv/:param/jobs` | `pserv.$` → `services.$serviceId.$` → the service's root, as Render's `*` route | non-goal | DO_NOT_DO: one-off jobs (ADR018 parity non-goals) |
 | `/pserv/:param/logs` | `pserv.$` → `/services/$serviceId/logs` | matched | `services.$serviceId.logs.tsx` |
 | `/pserv/:param/metrics` | `pserv.$` → `/services/$serviceId/metrics` | matched | `services.$serviceId.metrics.tsx` |
-| `/pserv/:param/metrics/:param` | — | gap | the legacy period opens Metrics on its window: `w3/m707` |
+| `/pserv/:param/metrics/:param` | `pserv.$` → `services.$serviceId.$` → `/services/$serviceId/metrics?range=…` | matched | `serviceSubpathLanding` (w3/m707): the window [Render's period table](#renders-legacy-metrics-periods) maps the period to |
 | `/pserv/:param/plan` | `pserv.$` → `/services/$serviceId/plan` | matched | `services.$serviceId.plan.tsx` lands on Compute (w6/m483) |
-| `/pserv/:param/previews` | — | non-goal | DO_NOT_DO: PR preview environments |
-| `/pserv/:param/pulls` | — | non-goal | DO_NOT_DO: PR preview environments |
+| `/pserv/:param/previews` | `pserv.$` → `services.$serviceId.$` → the service's root, as Render's `*` route | non-goal | DO_NOT_DO: PR preview environments |
+| `/pserv/:param/pulls` | `pserv.$` → `services.$serviceId.$` → the service's root, as Render's `*` route | non-goal | DO_NOT_DO: PR preview environments |
 | `/pserv/:param/redirects` | `pserv.$` → `/services/$serviceId/redirects` | matched | `services.$serviceId.redirects.tsx` |
 | `/pserv/:param/scaling` | `pserv.$` → `/services/$serviceId/scaling` | matched | `services.$serviceId.scaling.tsx` lands on Compute (w6/m483) |
 | `/pserv/:param/settings` | `pserv.$` → `/services/$serviceId/settings` | matched | `services.$serviceId.settings.tsx` |
-| `/pserv/:param/sharing` | — | flagged | Render's deprecated per-resource sharing, `grandfather-owners-into-sharing` |
+| `/pserv/:param/sharing` | `pserv.$` → `services.$serviceId.$` → the service's root, as Render's `*` route | flagged | Render's deprecated per-resource sharing, `grandfather-owners-into-sharing` |
 | `/pserv/:param/shell` | `pserv.$` → `/services/$serviceId/shell` | matched | `services.$serviceId.shell.tsx` (w2/m55) |
-| `/pserv/:param/shell/:param` | — | gap | Shell opens on that instance: `w3/m707` |
+| `/pserv/:param/shell/:param` | `pserv.$` → `services.$serviceId.$` → `/services/$serviceId/shell?instance=<service id>-<suffix>` | matched | `serviceSubpathLanding` (w3/m707): Render names the instance by its id's last segment |
 | `/pserv/new` | `/pserv/new` | matched | `routes/_serviceCreate.pserv.new.tsx` (w1/m45) |
 | `/r/:param` | `r.$` → `/keyvalue/$keyValueId` | matched | w5/m39 alias; w3/m649 |
 | `/r/:param/*` | `r.$` → `/keyvalue/$keyValueId/…` | matched | w5/m39 alias; w3/m649 |
 | `/r/:param/info` | `r.$` → `/keyvalue/$keyValueId/info` | matched | w5/m39 alias; w3/m649 |
 | `/r/:param/logs` | `r.$` → `/keyvalue/$keyValueId/logs` | matched | w5/m39 alias; w3/m649 |
 | `/r/:param/metrics` | `r.$` → `/keyvalue/$keyValueId/metrics` | matched | w5/m39 alias; w3/m649 |
-| `/r/:param/metrics/:param` | `r.$` → `/keyvalue/$keyValueId/metrics` | matched | w5/m39 alias; w3/m649 |
+| `/r/:param/metrics/:param` | `r.$` → `/keyvalue/$keyValueId/metrics?range=…` | matched | w5/m39 alias; w3/m649; on the window Render's period table maps the period to (w3/m707) |
 | `/r/:param/plan` | `r.$` → Info's plan card | partial | Render's full-page plan chooser: `w3/127` |
 | `/register` | `/register` → `/auth/sign-up` | matched | w1/m45; query and hash kept |
 | `/register-next` | — | n/a | Render's second variant of its sign-in pages (`auth_variant: next`), an experiment beside the classic path's row |
@@ -338,27 +381,27 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/sso` | — | non-goal | DO_NOT_DO: SSO / SAML (ADR018 § Identity, workspaces & account: SSO / SAML · SCIM (—)) |
 | `/start` | — | n/a | reached only from Render's own sign-in flow and account emails; bex's are its own (`/auth/*`, ADR012) |
 | `/static/:param/*` | `/static/$serviceId/…` | matched | bex's static-site pages, `routes/static.$serviceId*.tsx` (w5/m39) |
-| `/static/:param/builds/:param` | — | gap | Render serves every service type's sub-paths under `/static/<id>`; bex's static-site tree has no such page: `w3/m707` (t001 step 3, where a sub-path applies) |
-| `/static/:param/compute` | — | gap | Render serves every service type's sub-paths under `/static/<id>`; bex's static-site tree has no such page: `w3/m707` (t001 step 3, where a sub-path applies) |
+| `/static/:param/builds/:param` | `static.$serviceId.$` → a static site's Events; another type's page under `/services` | matched | Render serves every type's sub-paths under `/static/<id>`; a static site has no such page in Render's sidebar or bex's, so `redirectServiceSubpath` (w3/m707) lands it on its root, as Render's `*` route does |
+| `/static/:param/compute` | `static.$serviceId.$` → a static site's Events; another type's page under `/services` | matched | Render serves every type's sub-paths under `/static/<id>`; a static site has no such page in Render's sidebar or bex's, so `redirectServiceSubpath` (w3/m707) lands it on its root, as Render's `*` route does |
 | `/static/:param/deploys` | `/static/$serviceId/deploys` | matched | bex's static-site pages, `routes/static.$serviceId*.tsx` (w5/m39) |
 | `/static/:param/deploys/:param/*` | `/static/$serviceId/deploys/$deployId/…` | matched | bex's static-site pages, `routes/static.$serviceId*.tsx` (w5/m39) |
-| `/static/:param/disks` | — | gap | Render serves every service type's sub-paths under `/static/<id>`; bex's static-site tree has no such page: `w3/m707` (t001 step 3, where a sub-path applies) |
+| `/static/:param/disks` | `static.$serviceId.$` → a static site's Events; another type's page under `/services` | matched | Render serves every type's sub-paths under `/static/<id>`; a static site has no such page in Render's sidebar or bex's, so `redirectServiceSubpath` (w3/m707) lands it on its root, as Render's `*` route does |
 | `/static/:param/env` | `/static/$serviceId/env` | matched | bex's static-site pages, `routes/static.$serviceId*.tsx` (w5/m39) |
 | `/static/:param/events` | `/static/$serviceId/events` | matched | bex's static-site pages, `routes/static.$serviceId*.tsx` (w5/m39) |
 | `/static/:param/headers` | `/static/$serviceId/headers` | matched | bex's static-site pages, `routes/static.$serviceId*.tsx` (w5/m39) |
-| `/static/:param/jobs` | — | non-goal | DO_NOT_DO: one-off jobs (ADR018 parity non-goals) |
-| `/static/:param/logs` | — | gap | Render serves every service type's sub-paths under `/static/<id>`; bex's static-site tree has no such page: `w3/m707` (t001 step 3, where a sub-path applies) |
+| `/static/:param/jobs` | `static.$serviceId.$` → the static site's Events, as Render's `*` route | non-goal | DO_NOT_DO: one-off jobs (ADR018 parity non-goals) |
+| `/static/:param/logs` | `static.$serviceId.$` → a static site's Events; another type's page under `/services` | matched | Render serves every type's sub-paths under `/static/<id>`; a static site has no such page in Render's sidebar or bex's, so `redirectServiceSubpath` (w3/m707) lands it on its root, as Render's `*` route does |
 | `/static/:param/metrics` | `/static/$serviceId/metrics` | matched | bex's static-site pages, `routes/static.$serviceId*.tsx` (w5/m39) |
-| `/static/:param/metrics/:param` | — | gap | Render serves every service type's sub-paths under `/static/<id>`; bex's static-site tree has no such page: `w3/m707` (t001 step 3, where a sub-path applies) |
-| `/static/:param/plan` | — | gap | Render serves every service type's sub-paths under `/static/<id>`; bex's static-site tree has no such page: `w3/m707` (t001 step 3, where a sub-path applies) |
-| `/static/:param/previews` | — | non-goal | DO_NOT_DO: PR preview environments |
-| `/static/:param/pulls` | — | non-goal | DO_NOT_DO: PR preview environments |
+| `/static/:param/metrics/:param` | `static.$serviceId.$` → `/static/$serviceId/metrics?range=…` | matched | `serviceSubpathLanding` (w3/m707): the window Render's period table maps the period to |
+| `/static/:param/plan` | `static.$serviceId.$` → a static site's Events; another type's page under `/services` | matched | Render serves every type's sub-paths under `/static/<id>`; a static site has no such page in Render's sidebar or bex's, so `redirectServiceSubpath` (w3/m707) lands it on its root, as Render's `*` route does |
+| `/static/:param/previews` | `static.$serviceId.$` → the static site's Events, as Render's `*` route | non-goal | DO_NOT_DO: PR preview environments |
+| `/static/:param/pulls` | `static.$serviceId.$` → the static site's Events, as Render's `*` route | non-goal | DO_NOT_DO: PR preview environments |
 | `/static/:param/redirects` | `/static/$serviceId/redirects` | matched | bex's static-site pages, `routes/static.$serviceId*.tsx` (w5/m39) |
-| `/static/:param/scaling` | — | gap | Render serves every service type's sub-paths under `/static/<id>`; bex's static-site tree has no such page: `w3/m707` (t001 step 3, where a sub-path applies) |
+| `/static/:param/scaling` | `static.$serviceId.$` → a static site's Events; another type's page under `/services` | matched | Render serves every type's sub-paths under `/static/<id>`; a static site has no such page in Render's sidebar or bex's, so `redirectServiceSubpath` (w3/m707) lands it on its root, as Render's `*` route does |
 | `/static/:param/settings` | `/static/$serviceId/settings` | matched | bex's static-site pages, `routes/static.$serviceId*.tsx` (w5/m39) |
-| `/static/:param/sharing` | — | flagged | Render's deprecated per-resource sharing, `grandfather-owners-into-sharing` |
-| `/static/:param/shell` | — | gap | Render serves every service type's sub-paths under `/static/<id>`; bex's static-site tree has no such page: `w3/m707` (t001 step 3, where a sub-path applies) |
-| `/static/:param/shell/:param` | — | gap | Render serves every service type's sub-paths under `/static/<id>`; bex's static-site tree has no such page: `w3/m707` (t001 step 3, where a sub-path applies) |
+| `/static/:param/sharing` | `static.$serviceId.$` → the static site's Events, as Render's `*` route | flagged | Render's deprecated per-resource sharing, `grandfather-owners-into-sharing` |
+| `/static/:param/shell` | `static.$serviceId.$` → a static site's Events; another type's page under `/services` | matched | Render serves every type's sub-paths under `/static/<id>`; a static site has no such page in Render's sidebar or bex's, so `redirectServiceSubpath` (w3/m707) lands it on its root, as Render's `*` route does |
+| `/static/:param/shell/:param` | `static.$serviceId.$` → a static site's Events; another type's page under `/services` | matched | Render serves every type's sub-paths under `/static/<id>`; a static site has no such page in Render's sidebar or bex's, so `redirectServiceSubpath` (w3/m707) lands it on its root, as Render's `*` route does |
 | `/static/new` | `/static/new` | matched | `routes/_serviceCreate.static.new.tsx` (w1/m45) |
 | `/stripe-agentic-link` | — | n/a | Render's Stripe partner integrations: landing pages Stripe's own flows open |
 | `/stripe/connect/*` | — | n/a | Render's Stripe partner integrations: landing pages Stripe's own flows open |
@@ -375,12 +418,12 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/u/:param` | `u.$` → `/settings` | matched | w1/m45 |
 | `/u/:param/*` | `u.$` → `/settings` | matched | w1/m45 |
 | `/u/:param/settings` | `u.$` → `/settings` | matched | w1/m45 |
-| `/u/:param/settings#account-security` | `u.$` → `/settings` | gap | `w3/m707` |
+| `/u/:param/settings#account-security` | `u.$` → `/settings#account-security` → the Account section | matched | `settings-page/index.tsx` (w3/m707): Render's Account Security (password, sign-in methods, two-factor) is the Kratos flow's cards under bex's Account section |
 | `/u/:param/settings#build-pipeline` | `u.$` → `/settings` | gap | bex's build pipeline is a workspace setting: `w3/147` |
 | `/u/:param/settings#cli-tokens` | `u.$` → `/settings#cli-tokens` | matched | w1/m45; the hash is kept |
 | `/u/:param/settings/*` | `u.$` → `/settings` | matched | w1/m45 |
 | `/u/settings` | `u.$` → `/settings` | matched | w1/m45 |
-| `/u/settings#account-security` | `u.$` → `/settings` | gap | `w3/m707` |
+| `/u/settings#account-security` | `u.$` → `/settings#account-security` → the Account section | matched | `settings-page/index.tsx` (w3/m707): Render's Account Security (password, sign-in methods, two-factor) is the Kratos flow's cards under bex's Account section |
 | `/u/settings#build-pipeline` | `u.$` → `/settings` | gap | bex's build pipeline is a workspace setting: `w3/147` |
 | `/u/settings#cli-tokens` | `u.$` → `/settings#cli-tokens` | matched | w1/m45; the hash is kept |
 | `/u/settings/*` | `u.$` → `/settings` | matched | w1/m45 |
@@ -416,28 +459,28 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/web/:param/builds/:param` | `web.$` → `/services/$serviceId/builds/$` | matched | `services.$serviceId.builds.$.tsx` (w3/m554) |
 | `/web/:param/compute` | `web.$` → `/services/$serviceId/compute` | matched | `services.$serviceId.compute.tsx` (w6/m483) |
 | `/web/:param/deploys` | `web.$` → `/services/$serviceId/deploys` | matched | `services.$serviceId.deploys.index.tsx` |
-| `/web/:param/deploys/:param/*` | `web.$` → `/services/$serviceId/deploys/$deployId/…` | matched | `services.$serviceId.deploys.$deployId.tsx` and its `rollback` page |
-| `/web/:param/disks` | — | gap | bex's page is `/disk`: `w3/m707` |
+| `/web/:param/deploys/:param/*` | `web.$` → `/services/$serviceId/deploys/$deployId/…` | matched | `services.$serviceId.deploys.$deployId.tsx` and its `rollback` page; another sub-path opens the deploy's page (`serviceSubpathLanding`, w3/m707) |
+| `/web/:param/disks` | `web.$` → `services.$serviceId.$` → `/services/$serviceId/disk` | matched | `serviceSubpathLanding` (w3/m707), Render's `disks` is bex's Disk page |
 | `/web/:param/env` | `web.$` → `/services/$serviceId/env` | matched | `services.$serviceId.env.tsx` |
 | `/web/:param/events` | `web.$` → `/services/$serviceId/events` | matched | `services.$serviceId.events.tsx` |
 | `/web/:param/headers` | `web.$` → `/services/$serviceId/headers` | matched | `services.$serviceId.headers.tsx` |
-| `/web/:param/jobs` | — | non-goal | DO_NOT_DO: one-off jobs (ADR018 parity non-goals) |
+| `/web/:param/jobs` | `web.$` → `services.$serviceId.$` → the service's root, as Render's `*` route | non-goal | DO_NOT_DO: one-off jobs (ADR018 parity non-goals) |
 | `/web/:param/logs` | `web.$` → `/services/$serviceId/logs` | matched | `services.$serviceId.logs.tsx` |
 | `/web/:param/metrics` | `web.$` → `/services/$serviceId/metrics` | matched | `services.$serviceId.metrics.tsx` |
-| `/web/:param/metrics/:param` | — | gap | the legacy period opens Metrics on its window: `w3/m707` |
+| `/web/:param/metrics/:param` | `web.$` → `services.$serviceId.$` → `/services/$serviceId/metrics?range=…` | matched | `serviceSubpathLanding` (w3/m707): the window [Render's period table](#renders-legacy-metrics-periods) maps the period to |
 | `/web/:param/plan` | `web.$` → `/services/$serviceId/plan` | matched | `services.$serviceId.plan.tsx` lands on Compute (w6/m483) |
-| `/web/:param/previews` | — | non-goal | DO_NOT_DO: PR preview environments |
-| `/web/:param/pulls` | — | non-goal | DO_NOT_DO: PR preview environments |
+| `/web/:param/previews` | `web.$` → `services.$serviceId.$` → the service's root, as Render's `*` route | non-goal | DO_NOT_DO: PR preview environments |
+| `/web/:param/pulls` | `web.$` → `services.$serviceId.$` → the service's root, as Render's `*` route | non-goal | DO_NOT_DO: PR preview environments |
 | `/web/:param/redirects` | `web.$` → `/services/$serviceId/redirects` | matched | `services.$serviceId.redirects.tsx` |
 | `/web/:param/scaling` | `web.$` → `/services/$serviceId/scaling` | matched | `services.$serviceId.scaling.tsx` lands on Compute (w6/m483) |
 | `/web/:param/settings` | `web.$` → `/services/$serviceId/settings` | matched | `services.$serviceId.settings.tsx` |
-| `/web/:param/sharing` | — | flagged | Render's deprecated per-resource sharing, `grandfather-owners-into-sharing` |
+| `/web/:param/sharing` | `web.$` → `services.$serviceId.$` → the service's root, as Render's `*` route | flagged | Render's deprecated per-resource sharing, `grandfather-owners-into-sharing` |
 | `/web/:param/shell` | `web.$` → `/services/$serviceId/shell` | matched | `services.$serviceId.shell.tsx` (w2/m55) |
-| `/web/:param/shell/:param` | — | gap | Shell opens on that instance: `w3/m707` |
+| `/web/:param/shell/:param` | `web.$` → `services.$serviceId.$` → `/services/$serviceId/shell?instance=<service id>-<suffix>` | matched | `serviceSubpathLanding` (w3/m707): Render names the instance by its id's last segment |
 | `/web/new` | `/web/new` | matched | `routes/_serviceCreate.web.new.tsx` (w1/m45) |
 | `/webhook/:param` | `/webhook/$webhookId` | matched | `routes/webhook.$webhookId.tsx` |
 | `/webhook/:param/*` | `/webhook/$webhookId/…` | matched | `routes/webhook.$webhookId*.tsx` |
-| `/webhook/:param/activity` | — | gap | bex's Activity is the webhook's index: `w3/m707` |
+| `/webhook/:param/activity` | `/webhook/$webhookId/activity` | matched | `routes/webhook.$webhookId.activity.tsx` (w3/m707): Activity at Render's path, its tab linking there; the bare URL opens it too |
 | `/webhook/:param/settings` | `/webhook/$webhookId/settings` | matched | `routes/webhook.$webhookId.settings.tsx` |
 | `/webhooks` | `/webhooks` | matched | `routes/webhooks.tsx` |
 | `/webhooks/new` | `/webhooks/new` | matched | `routes/webhooks_.new.tsx` |
@@ -459,23 +502,23 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/worker/:param/builds/:param` | `worker.$` → `/services/$serviceId/builds/$` | matched | `services.$serviceId.builds.$.tsx` (w3/m554) |
 | `/worker/:param/compute` | `worker.$` → `/services/$serviceId/compute` | matched | `services.$serviceId.compute.tsx` (w6/m483) |
 | `/worker/:param/deploys` | `worker.$` → `/services/$serviceId/deploys` | matched | `services.$serviceId.deploys.index.tsx` |
-| `/worker/:param/deploys/:param/*` | `worker.$` → `/services/$serviceId/deploys/$deployId/…` | matched | `services.$serviceId.deploys.$deployId.tsx` and its `rollback` page |
-| `/worker/:param/disks` | — | gap | bex's page is `/disk`: `w3/m707` |
+| `/worker/:param/deploys/:param/*` | `worker.$` → `/services/$serviceId/deploys/$deployId/…` | matched | `services.$serviceId.deploys.$deployId.tsx` and its `rollback` page; another sub-path opens the deploy's page (`serviceSubpathLanding`, w3/m707) |
+| `/worker/:param/disks` | `worker.$` → `services.$serviceId.$` → `/services/$serviceId/disk` | matched | `serviceSubpathLanding` (w3/m707), Render's `disks` is bex's Disk page |
 | `/worker/:param/env` | `worker.$` → `/services/$serviceId/env` | matched | `services.$serviceId.env.tsx` |
 | `/worker/:param/events` | `worker.$` → `/services/$serviceId/events` | matched | `services.$serviceId.events.tsx` |
 | `/worker/:param/headers` | `worker.$` → `/services/$serviceId/headers` | matched | `services.$serviceId.headers.tsx` |
-| `/worker/:param/jobs` | — | non-goal | DO_NOT_DO: one-off jobs (ADR018 parity non-goals) |
+| `/worker/:param/jobs` | `worker.$` → `services.$serviceId.$` → the service's root, as Render's `*` route | non-goal | DO_NOT_DO: one-off jobs (ADR018 parity non-goals) |
 | `/worker/:param/logs` | `worker.$` → `/services/$serviceId/logs` | matched | `services.$serviceId.logs.tsx` |
 | `/worker/:param/metrics` | `worker.$` → `/services/$serviceId/metrics` | matched | `services.$serviceId.metrics.tsx` |
-| `/worker/:param/metrics/:param` | — | gap | the legacy period opens Metrics on its window: `w3/m707` |
+| `/worker/:param/metrics/:param` | `worker.$` → `services.$serviceId.$` → `/services/$serviceId/metrics?range=…` | matched | `serviceSubpathLanding` (w3/m707): the window [Render's period table](#renders-legacy-metrics-periods) maps the period to |
 | `/worker/:param/plan` | `worker.$` → `/services/$serviceId/plan` | matched | `services.$serviceId.plan.tsx` lands on Compute (w6/m483) |
-| `/worker/:param/previews` | — | non-goal | DO_NOT_DO: PR preview environments |
-| `/worker/:param/pulls` | — | non-goal | DO_NOT_DO: PR preview environments |
+| `/worker/:param/previews` | `worker.$` → `services.$serviceId.$` → the service's root, as Render's `*` route | non-goal | DO_NOT_DO: PR preview environments |
+| `/worker/:param/pulls` | `worker.$` → `services.$serviceId.$` → the service's root, as Render's `*` route | non-goal | DO_NOT_DO: PR preview environments |
 | `/worker/:param/redirects` | `worker.$` → `/services/$serviceId/redirects` | matched | `services.$serviceId.redirects.tsx` |
 | `/worker/:param/scaling` | `worker.$` → `/services/$serviceId/scaling` | matched | `services.$serviceId.scaling.tsx` lands on Compute (w6/m483) |
 | `/worker/:param/settings` | `worker.$` → `/services/$serviceId/settings` | matched | `services.$serviceId.settings.tsx` |
-| `/worker/:param/sharing` | — | flagged | Render's deprecated per-resource sharing, `grandfather-owners-into-sharing` |
+| `/worker/:param/sharing` | `worker.$` → `services.$serviceId.$` → the service's root, as Render's `*` route | flagged | Render's deprecated per-resource sharing, `grandfather-owners-into-sharing` |
 | `/worker/:param/shell` | `worker.$` → `/services/$serviceId/shell` | matched | `services.$serviceId.shell.tsx` (w2/m55) |
-| `/worker/:param/shell/:param` | — | gap | Shell opens on that instance: `w3/m707` |
+| `/worker/:param/shell/:param` | `worker.$` → `services.$serviceId.$` → `/services/$serviceId/shell?instance=<service id>-<suffix>` | matched | `serviceSubpathLanding` (w3/m707): Render names the instance by its id's last segment |
 | `/worker/new` | `/worker/new` | matched | `routes/_serviceCreate.worker.new.tsx` (w1/m45) |
 | `/workflow/new` | — | non-goal | DO_NOT_DO: workflows & tasks |

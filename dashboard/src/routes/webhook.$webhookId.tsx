@@ -1,5 +1,11 @@
 import { PageScroll } from "@/common/components/page-frame";
-import { Link, Outlet, createFileRoute } from "@tanstack/react-router";
+import {
+  Link,
+  Outlet,
+  createFileRoute,
+  useMatchRoute,
+} from "@tanstack/react-router";
+import { cn } from "@/common/lib/utils/utils";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { WebhookDetailShellSkeleton } from "@/common/components/route-skeletons";
@@ -89,6 +95,9 @@ function WebhookDetailShell() {
     detail.endpoint?.ownerId,
   );
   const endpoint = adopting ? null : detail.endpoint;
+  const atBareUrl = Boolean(
+    useMatchRoute()({ to: "/webhook/$webhookId", params: { webhookId } }),
+  );
   const creatorIdentity = useWorkspaceSubjectLabel(endpoint?.createdBy ?? "");
 
   // A dead id keeps its URL and draws Render's Page not found, and a refused
@@ -129,7 +138,13 @@ function WebhookDetailShell() {
             creatorIdentity={creatorIdentity}
           />
           <nav className="flex gap-4 border-b px-4 sm:px-6">
-            <TabLink to="/webhook/$webhookId" webhookId={webhookId} exact>
+            {/* Render's Activity entry links `/activity` and is also the bare
+                URL's (w3/m707). */}
+            <TabLink
+              to="/webhook/$webhookId/activity"
+              webhookId={webhookId}
+              alsoActive={atBareUrl}
+            >
               {t("webhooks.tabActivity")}
             </TabLink>
             <TabLink to="/webhook/$webhookId/settings" webhookId={webhookId}>
@@ -151,26 +166,29 @@ function WebhookDetailShell() {
   );
 }
 
+const TAB_CLASS =
+  "text-muted-foreground -mb-px border-b-2 border-transparent px-1 py-2 text-sm font-medium";
+const ACTIVE_TAB_CLASS = "border-primary text-foreground";
+
 function TabLink({
   to,
   webhookId,
-  exact,
+  alsoActive = false,
   children,
 }: {
   to: string;
   webhookId: string;
-  exact?: boolean;
+  /** Selected on another URL too, beside the router's own match. */
+  alsoActive?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <Link
       to={to}
       params={{ webhookId }}
-      activeOptions={{ exact: exact ?? false }}
-      className="text-muted-foreground -mb-px border-b-2 border-transparent px-1 py-2 text-sm font-medium"
-      activeProps={{
-        className: "border-primary text-foreground",
-      }}
+      className={cn(TAB_CLASS, alsoActive && ACTIVE_TAB_CLASS)}
+      aria-current={alsoActive ? "page" : undefined}
+      activeProps={{ className: ACTIVE_TAB_CLASS }}
     >
       {children}
     </Link>

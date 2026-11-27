@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ServiceMetricsPage } from "./services.$serviceId.metrics";
 import {
   DEFAULT_RANGE_PRESET,
-  parseRangeSearch,
+  parseMetricsRangeSearch,
   rangeFromSearch,
   rangeToSearch,
 } from "@/features/metrics/lib/range";
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/static/$serviceId/metrics")({
   component: RouteComponent,
   pendingComponent: StaticMetricsPending,
   // Same URL-persisted range as services.$serviceId.metrics (w6/065).
-  validateSearch: parseRangeSearch,
+  validateSearch: parseMetricsRangeSearch,
 });
 
 function StaticMetricsPending() {

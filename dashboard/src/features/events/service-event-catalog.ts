@@ -251,3 +251,52 @@ export function serviceEventFilterLabelKey(type: string): string {
 export function serviceEventHasExplicitLabel(type: string): boolean {
   return Object.hasOwn(LABEL_KEYS, type);
 }
+
+/** Every catalogued type, for membership checks. */
+export const CATALOG_TYPES: ReadonlySet<string> = new Set(SERVICE_EVENT_TYPES);
+
+// Render's names bex spells otherwise; every other Render name is bex's type
+// in PascalCase (DeployEnded is deploy_ended, MaintenanceModeURIUpdated is
+// maintenance_mode_uri_updated).
+const RENDER_EVENT_TYPE_NAMES: Readonly<Record<string, string>> = {
+  ExtraInstancesChanged: "instance_count_changed",
+};
+
+/** A Render event type name (or bex's own) as bex's wire type. */
+function bexEventType(name: string): string {
+  if (Object.hasOwn(RENDER_EVENT_TYPE_NAMES, name)) {
+    return RENDER_EVENT_TYPE_NAMES[name];
+  }
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .toLowerCase();
+}
+
+/**
+ * The types the Events filter hides for Render's `?et=` (w3/m707): its
+ * Events page keeps the types it shows in the URL, comma-separated by their
+ * GraphQL names (`et=DeployEnded,ServerFailed`; Render's
+ * `serviceEventsPicker`), so a link opens filtered to them. Every catalogued
+ * type the value does not name is hidden; a value naming no type bex has
+ * hides none, and the feed shows everything, as with no filter.
+ */
+export function eventTypesHiddenBy(value: string | undefined): Set<string> {
+  const shown = new Set(
+    (value ?? "")
+      .split(",")
+      .map((name) => bexEventType(name.trim()))
+      .filter((type) => CATALOG_TYPES.has(type)),
+  );
+  return shown.size === 0
+    ? new Set()
+    : new Set(SERVICE_EVENT_TYPES.filter((type) => !shown.has(type)));
+}
+
+/** The Events tab's search (w3/m707): Render's `et`, the event types a link
+ *  opens the filter on (eventTypesHiddenBy). */
+export function parseEventsSearch(search: Record<string, unknown>): {
+  et?: string;
+} {
+  return { et: typeof search.et === "string" ? search.et : undefined };
+}

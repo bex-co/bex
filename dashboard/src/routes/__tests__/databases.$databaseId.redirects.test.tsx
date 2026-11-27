@@ -158,7 +158,11 @@ describe("a Postgres database's old links and Render's sub-paths (w3/m641)", () 
     // The almost-full warning's link on Render (w3/m656).
     ["/plan#storage", "/plan", {}, "storage"],
     ["/high-availability-upgrade", "/plan", {}, "high-availability"],
+    // Render's period table has no 7d: the default window (w3/m707).
     ["/metrics/7d", "/metrics", {}, ""],
+    // Its `1w` is its 7-day window, kept over the link's own query.
+    ["/metrics/1w?range=1h", "/metrics", { range: "7d" }, ""],
+    ["/metrics/5m", "/metrics", { range: "30m" }, ""],
     ["/sharing", "", {}, ""],
     ["/no-such-page#connection", "", {}, "connection"],
   ])(

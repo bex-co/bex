@@ -942,6 +942,18 @@ export const ROUTE_SKELETON_MANIFEST = {
     to: "/services/$serviceId",
     reason: "data-dependent redirect",
   },
+  "/services/$serviceId/$": {
+    kind: "delegate",
+    owner: "routes/services.$serviceId.$.tsx",
+    to: "/services/$serviceId",
+    reason: "data-dependent redirect",
+  },
+  "/static/$serviceId/$": {
+    kind: "delegate",
+    owner: "routes/static.$serviceId.$.tsx",
+    to: "/static/$serviceId",
+    reason: "data-dependent redirect",
+  },
   "/services/$serviceId/builds/$": {
     kind: "delegate",
     owner: "routes/services.$serviceId.builds.$.tsx",
@@ -957,6 +969,12 @@ export const ROUTE_SKELETON_MANIFEST = {
   "/webhook/$webhookId/": {
     kind: "render",
     owner: "routes/webhook.$webhookId.index.tsx",
+    shape: "webhook-activity",
+    regions: ["deliveries"],
+  },
+  "/webhook/$webhookId/activity": {
+    kind: "render",
+    owner: "routes/webhook.$webhookId.activity.tsx",
     shape: "webhook-activity",
     regions: ["deliveries"],
   },

@@ -14,6 +14,7 @@ import { Route as KeyValueIndexRoute } from "../keyvalue.$keyValueId.index";
 import { Route as KeyValueLogsRoute } from "../keyvalue.$keyValueId.logs";
 import { Route as KeyValueMetricsRoute } from "../keyvalue.$keyValueId.metrics";
 import { Route as ServiceDeployRoute } from "../services.$serviceId.deploys.$deployId";
+import { Route as ServiceEventsRoute } from "../services.$serviceId.events";
 import { Route as ServiceLogsRoute } from "../services.$serviceId.logs";
 import { Route as ServiceMetricsRoute } from "../services.$serviceId.metrics";
 import { Route as ServiceShellRoute } from "../services.$serviceId.shell";
@@ -42,6 +43,8 @@ const NO_RANGE = {
   rangeStart: undefined,
   rangeEnd: undefined,
 };
+// A Metrics page's keys: the range, and Render's `t` as a tombstone (w3/m707).
+const NO_METRICS_RANGE = { ...NO_RANGE, t: undefined };
 // The datastore Logs tab's own keys (w4/228, w5/m139): range + text +
 // instance + level, and View in context's marked line (w3/m528).
 const NO_DATASTORE_LOG_FILTERS = {
@@ -54,6 +57,8 @@ const NO_DATASTORE_LOG_FILTERS = {
 const NO_LOG_FILTERS = {
   t: undefined,
   r: undefined,
+  l: undefined,
+  q: undefined,
   ...NO_RANGE,
   type: undefined,
   level: undefined,
@@ -144,7 +149,7 @@ describe.each([
     "/keyvalue/$keyValueId/metrics",
     KeyValueMetricsRoute,
     { range: "4h", rangeStart: "x", text: "boom" },
-    { ...NO_RANGE, range: "4h" },
+    { ...NO_METRICS_RANGE, range: "4h" },
   ],
   // A Postgres database's bare URL owns only the old ?tab=logs, which it
   // sends to the Logs page (w3/m641); the Logs and Metrics pages own their
@@ -165,7 +170,7 @@ describe.each([
     "/databases/$databaseId/metrics",
     DatabaseMetricsRoute,
     { range: "4h", rangeStart: "x", text: "boom" },
-    { ...NO_RANGE, range: "4h" },
+    { ...NO_METRICS_RANGE, range: "4h" },
   ],
   ["/", IndexRoute, { new: "bogus" }, { new: undefined }],
   // w3/m705: the create dialogs Render's URLs open.
@@ -228,7 +233,73 @@ describe.each([
     "/services/$serviceId/metrics",
     ServiceMetricsRoute,
     { range: "1h", rangeStart: "2026-10-01T00:00:00Z" },
-    { ...NO_RANGE, range: "1h" },
+    { ...NO_METRICS_RANGE, range: "1h" },
+  ],
+  // Render's Metrics `t` (w3/m707): a preset, or the `<startMs>,<endMs>`
+  // window its Instance failed card links; bex's own range wins.
+  [
+    "/services/$serviceId/metrics",
+    ServiceMetricsRoute,
+    { t: "7d" },
+    { ...NO_METRICS_RANGE, range: "7d" },
+  ],
+  [
+    "/services/$serviceId/metrics",
+    ServiceMetricsRoute,
+    { t: "1764237600000,1764241200000" },
+    {
+      ...NO_METRICS_RANGE,
+      range: "custom",
+      rangeStart: "2025-11-27T10:00:00.000Z",
+      rangeEnd: "2025-11-27T11:00:00.000Z",
+    },
+  ],
+  [
+    "/services/$serviceId/metrics",
+    ServiceMetricsRoute,
+    { range: "4h", t: "7d" },
+    { ...NO_METRICS_RANGE, range: "4h" },
+  ],
+  [
+    "/services/$serviceId/metrics",
+    ServiceMetricsRoute,
+    { t: "forever" },
+    NO_METRICS_RANGE,
+  ],
+  // Render's log link (w3/m707): its label filters, search text and a
+  // custom window, each read into bex's keys.
+  [
+    "/services/$serviceId/logs",
+    ServiceLogsRoute,
+    {
+      l: [
+        ["INSTANCE", "srv-web-abc"],
+        ["LEVEL", "error"],
+      ],
+      q: "timeout",
+      r: "2026-11-27@10:00:00~2026-11-27@11:00:00",
+    },
+    {
+      ...NO_LOG_FILTERS,
+      range: "custom",
+      rangeStart: "2026-11-27T10:00:00.000Z",
+      rangeEnd: "2026-11-27T11:00:00.000Z",
+      instance: "srv-web-abc",
+      level: "error",
+      text: "timeout",
+    },
+  ],
+  [
+    "/services/$serviceId/events",
+    ServiceEventsRoute,
+    { et: "DeployEnded", type: "deploy" },
+    { et: "DeployEnded" },
+  ],
+  [
+    "/services/$serviceId/events",
+    ServiceEventsRoute,
+    { et: 7 },
+    { et: undefined },
   ],
   [
     "/services/$serviceId/logs",

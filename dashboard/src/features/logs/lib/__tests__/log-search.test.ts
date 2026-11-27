@@ -234,6 +234,117 @@ describe("Render deep-link aliases (w7/m42/t003)", () => {
   });
 });
 
+describe("Render's log link: labels, search text and a custom window (w3/m707)", () => {
+  // Render's Instance failed card links its Logs filtered to the instance,
+  // over the hour before the failure.
+  const instanceFailed = {
+    l: [["INSTANCE", "srv-web-abc"]],
+    r: "2026-11-27@09:00:00~2026-11-27@10:01:00",
+  };
+
+  it("opens Render's instance filter and window", () => {
+    const search = parseLogSearch(instanceFailed);
+    expect(search).toEqual({
+      instance: "srv-web-abc",
+      range: "custom",
+      rangeStart: "2026-11-27T09:00:00.000Z",
+      rangeEnd: "2026-11-27T10:01:00.000Z",
+    });
+    expect(logFiltersFromSearch(search).instance).toBe("srv-web-abc");
+    expect(serviceLogRange(search)).toMatchObject({
+      id: "custom",
+      startTime: "2026-11-27T09:00:00.000Z",
+      endTime: "2026-11-27T10:01:00.000Z",
+    });
+  });
+
+  it("reads every label bex filters by, as JSON the router has not parsed too", () => {
+    expect(
+      parseLogSearch({
+        l: JSON.stringify([
+          ["LEVEL", "error"],
+          ["METHOD", "GET"],
+          ["STATUS_CODE", 404],
+          ["HOST", "api.example.com"],
+          ["PATH", "/health"],
+        ]),
+      }),
+    ).toEqual({
+      level: "error",
+      method: "GET",
+      statusCode: "404",
+      host: "api.example.com",
+      path: "/health",
+    });
+  });
+
+  it("keeps a label's first value, and drops labels bex has not and malformed pairs", () => {
+    expect(
+      parseLogSearch({
+        l: [
+          ["INSTANCE", "srv-web-a"],
+          ["INSTANCE", "srv-web-b"],
+          ["SUBJECT", "x"],
+          ["LEVEL"],
+          "LEVEL",
+          [7, "error"],
+        ],
+      }),
+    ).toEqual({ instance: "srv-web-a" });
+  });
+
+  it.each([
+    "[[",
+    "{}",
+    "INSTANCE",
+    "7",
+  ])("ignores an l value that is not Render's array (%j)", (l) => {
+    expect(parseLogSearch({ l })).toStrictEqual(CLEARED_LOG_SEARCH);
+  });
+
+  it("reads Render's q as the search text", () => {
+    expect(parseLogSearch({ q: "timeout" })).toEqual({ text: "timeout" });
+  });
+
+  it("lets bex's own keys win over Render's", () => {
+    expect(
+      parseLogSearch({
+        instance: "srv-web-mine",
+        l: [["INSTANCE", "srv-web-theirs"]],
+        text: "mine",
+        q: "theirs",
+        range: "4h",
+        r: instanceFailed.r,
+      }),
+    ).toEqual({ instance: "srv-web-mine", text: "mine", range: "4h" });
+  });
+
+  it.each([
+    "2026-11-27@10:00:00", // one bound
+    "2026-11-27@11:00:00~2026-11-27@10:00:00", // reversed
+    "2026-02-30@10:00:00~2026-03-01@10:00:00", // no such day
+    "2026-11-27 10:00:00~2026-11-27 11:00:00", // not Render's format
+    "2026-10-01@00:00:00~2026-11-27@00:00:00", // wider than 30 days
+    "a~b~c",
+  ])("opens the default range for a window it cannot read (%s)", (r) => {
+    const search = parseLogSearch({ r });
+    expect(search).toStrictEqual(CLEARED_LOG_SEARCH);
+    expect(serviceLogRange(search).id).toBe("1h");
+  });
+
+  it("clears Render's keys from the URL on the first write", () => {
+    expect(CLEARED_LOG_SEARCH).toMatchObject({
+      t: undefined,
+      r: undefined,
+      l: undefined,
+      q: undefined,
+    });
+    expect(Object.keys(CLEARED_LOG_SEARCH)).toEqual(
+      expect.arrayContaining(["t", "r", "l", "q"]),
+    );
+  });
+});
+
 describe("logSearchEquals (the route's skip-when-unchanged guard)", () => {
   it("treats a round-tripped state as equal so the mount sync never navigates", () => {
     const search = parseLogSearch({

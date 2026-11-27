@@ -1732,3 +1732,79 @@ describe("ServiceEventsPage — a deploy's trigger is named the way the Deploys 
     ).toBeInTheDocument();
   });
 });
+
+// w3/m707: Render's Events page keeps the types it shows in its URL
+// (`?et=DeployEnded`), so a link opens the filter on them.
+describe("ServiceEventsPage — Render's ?et= opens the filter on its types (w3/m707)", () => {
+  const feed = {
+    data: {
+      serviceEvents: [
+        deployEvent(),
+        {
+          id: "evt-domain",
+          type: "custom_domain_added",
+          timestamp: "2026-07-14T14:00:00Z",
+          cursor: "cursor-domain",
+          details: { actor: "dev@localhost" },
+        },
+      ],
+    },
+    loading: false,
+    refetch: vi.fn(),
+  };
+
+  function renderFiltered(eventTypes: string) {
+    const rootRoute = createRootRoute();
+    const eventsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/services/$serviceId/events",
+      component: () => (
+        <ServiceEventsPage serviceId="app" eventTypes={eventTypes} />
+      ),
+    });
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([eventsRoute]),
+      history: createMemoryHistory({
+        initialEntries: [
+          `/services/app/events?et=${encodeURIComponent(eventTypes)}`,
+        ],
+      }),
+      context: { client: {} as never, session: null },
+    });
+    render(<RouterProvider router={router} />);
+    return router;
+  }
+
+  it("shows only the types the link names", async () => {
+    mockUseQuery.mockReturnValue(feed);
+    renderFiltered("DeployEnded");
+
+    expect(await screen.findByText("Showing 1 of 2")).toBeInTheDocument();
+    expect(screen.queryByText("Custom domain added")).not.toBeInTheDocument();
+  });
+
+  it("shows everything for a link naming no type bex has", async () => {
+    mockUseQuery.mockReturnValue(feed);
+    renderFiltered("MaintenanceStarted,InitialDeployHookEnded");
+
+    expect(await screen.findByText("2 events")).toBeInTheDocument();
+    expect(screen.getByText("Custom domain added")).toBeInTheDocument();
+  });
+
+  it("drops a link's et from the URL at the first change", async () => {
+    mockUseQuery.mockReturnValue(feed);
+    const router = renderFiltered("DeployEnded");
+    expect(router.state.location.search).toEqual({ et: "DeployEnded" });
+
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("button", { name: /^(Filter events|Event types)/ }),
+    );
+    await user.click(screen.getByRole("checkbox", { name: "Configuration" }));
+
+    await vi.waitFor(() =>
+      expect(router.state.location.search).not.toHaveProperty("et"),
+    );
+    expect(router.state.location.pathname).toBe("/services/app/events");
+  });
+});

@@ -1,4 +1,5 @@
 import {
+  parseCustomRange,
   parseRangePreset,
   type RangePreset,
   type RangePresetID,
@@ -11,6 +12,7 @@ import {
   STRUCTURED_FILTER_KEYS,
   type LogFilters,
   type LogLine,
+  type StructuredFilterKey,
 } from "../types";
 import {
   DEFAULT_LOG_RANGE,
@@ -21,6 +23,7 @@ import {
   type LogRangeID,
   type LogRangeSearch,
 } from "./log-range";
+import { viewFieldLogLabel } from "./view-filters";
 
 // The Logs tab's URL search state (w7/m42): every filter round-trips through
 // the query string so a filtered view is shareable, bookmarkable, and
@@ -43,10 +46,13 @@ export interface LogSearch extends LogRangeSearch {
    * so a folded `t`/`r` alias would linger in the URL forever unless the
    * validated result explicitly overrides it with `undefined` (w7/m42/t003).
    * `live` is one too: the Live switch's `?live=0` (w3/m537), read now as
-   * the paused range it names, which is every range but Live tail.
+   * the paused range it names, which is every range but Live tail. Render's
+   * `l` (label filters) and `q` (search text) are aliases too (w3/m707).
    */
   t?: undefined;
   r?: undefined;
+  l?: undefined;
+  q?: undefined;
   live?: undefined;
 }
 
@@ -62,18 +68,21 @@ const SEARCH_KEYS = [
   "contextLine",
 ] as const;
 
+/** The inbound-only keys a Render log link carries, and the retired `live`. */
+const ALIAS_KEYS = ["t", "r", "l", "q", "live"] as const;
+
 /**
  * Explicit `undefined`s for every key this route owns plus the inbound-only
- * `t`/`r` aliases and the retired `live`: the router retains raw query params across navigations
+ * Render aliases and the retired `live`: the router retains raw query params across navigations
  * unless they are explicitly written as `undefined` (verified live, w7/m42 —
  * an omitted key lingers in the URL; stringification drops the undefineds).
  * Spread this first, then the keys to keep. Derived from SEARCH_KEYS so a new
  * filter field can't silently drift out of the clear-set.
  */
 export const CLEARED_LOG_SEARCH = Object.fromEntries(
-  ["t", "r", "live", ...SEARCH_KEYS].map((key) => [key, undefined]),
+  [...ALIAS_KEYS, ...SEARCH_KEYS].map((key) => [key, undefined]),
 ) as Partial<
-  Record<"t" | "r" | "live" | (typeof SEARCH_KEYS)[number], undefined>
+  Record<(typeof ALIAS_KEYS)[number] | (typeof SEARCH_KEYS)[number], undefined>
 >;
 
 // Render's `r` tokens without an exact bex preset (Render's grammar is
@@ -122,22 +131,83 @@ export function parseLogSearch(search: Record<string, unknown>): LogSearch {
   // Every owned key comes back, undefined when rejected: the router merges this
   // over the raw search, so an omitted `?type=bogus` would reach bex-api.
   //
-  // Render's logs URL keys `t` (type) and `r` (range) are accepted as
-  // inbound-only aliases so a Render-shaped deep link (`?t=app&r=1h`) prefills
-  // the view (w7/m42/t003). bex's canonical keys win when both are present,
-  // and the tombstones (see LogSearch) make the aliases leave the URL on the
-  // first write, so it self-heals to bex's shape (the w7/m39
+  // Render's logs URL keys are accepted as inbound-only aliases so a
+  // Render-shaped deep link prefills the view (w7/m42/t003, w3/m707): `t`
+  // (type), `r` (a preset, Live tail, or a custom window), `l` (label
+  // filters) and `q` (search text). bex's canonical keys win when both are
+  // present, and the tombstones (see LogSearch) make the aliases leave the URL
+  // on the first write, so it self-heals to bex's shape (the w7/m39
   // alias-normalization pattern).
   const out: LogSearch = {
     ...CLEARED_LOG_SEARCH,
     ...parseLogRangeSearch(search),
   };
   if (!out.range && search.range !== "custom") {
-    out.range = parseLogRangeAlias(search.r);
+    Object.assign(out, renderLogRange(search.r));
   }
   out.type = parseType(search.type) ?? parseType(search.t);
-  for (const key of TEXT_KEYS) out[key] = str(search[key]);
+  const labels = renderLogLabels(search.l);
+  for (const key of STRUCTURED_FILTER_KEYS) {
+    out[key] = str(search[key]) ?? labels[key];
+  }
+  out.text = str(search.text) ?? str(search.q);
   out.contextLine = str(search.contextLine);
+  return out;
+}
+
+/** Render's custom log window, `<start>~<end>` with each instant written
+ *  `YYYY-MM-DD@HH:mm:ss` in UTC (its log filters' `je`). */
+const RENDER_LOG_INSTANT = /^(\d{4}-\d{2}-\d{2})@(\d{2}:\d{2}:\d{2})$/;
+
+/** A Render `r` as the range keys: Live tail or a preset (parseLogRangeAlias),
+ *  or a custom window; anything else names none. */
+function renderLogRange(value: unknown): LogRangeSearch {
+  const range = parseLogRangeAlias(value);
+  if (range || typeof value !== "string") return { range };
+  const [start, end, ...rest] = value.split("~").map(renderLogInstant);
+  const custom = rest.length === 0 && parseCustomRange(start, end);
+  return custom
+    ? { range: "custom", rangeStart: custom.startTime, rangeEnd: custom.endTime }
+    : {};
+}
+
+/** One Render log instant as ISO, or undefined unless it is a real one. */
+function renderLogInstant(text: string): string | undefined {
+  const match = RENDER_LOG_INSTANT.exec(text);
+  if (!match) return undefined;
+  const iso = `${match[1]}T${match[2]}.000Z`;
+  const at = Date.parse(iso);
+  // Date.parse rolls 2026-02-30 over to March: only a round trip is real.
+  return !Number.isNaN(at) && new Date(at).toISOString() === iso
+    ? iso
+    : undefined;
+}
+
+/**
+ * Render's label filters, `l=[["INSTANCE","<id>"],["LEVEL","error"]]` (its
+ * log filters' `labels`), as bex's filter keys: the first value of each
+ * label bex filters by. The router hands the JSON over parsed; an unknown
+ * label, a second value and malformed JSON are dropped.
+ */
+function renderLogLabels(
+  value: unknown,
+): Partial<Record<StructuredFilterKey, string>> {
+  const out: Partial<Record<StructuredFilterKey, string>> = {};
+  let pairs: unknown = value;
+  if (typeof value === "string") {
+    try {
+      pairs = JSON.parse(value);
+    } catch {
+      return out;
+    }
+  }
+  if (!Array.isArray(pairs)) return out;
+  for (const pair of pairs) {
+    if (!Array.isArray(pair) || typeof pair[0] !== "string") continue;
+    const key = viewFieldLogLabel(pair[0]);
+    const filter = str(pair[1]);
+    if (key && filter && out[key] === undefined) out[key] = filter;
+  }
   return out;
 }
 

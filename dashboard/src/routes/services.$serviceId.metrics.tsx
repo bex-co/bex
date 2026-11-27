@@ -7,7 +7,7 @@ import { MetricsFilters } from "@/features/metrics/components/metrics-filters";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
 import {
   DEFAULT_RANGE_PRESET,
-  parseRangeSearch,
+  parseMetricsRangeSearch,
   rangeFromSearch,
   rangeToSearch,
   type RangeSelection,
@@ -37,7 +37,7 @@ export const Route = createFileRoute("/services/$serviceId/metrics")({
   // (`range`, `rangeStart`/`rangeEnd` — w6/065) so a picked window survives a
   // reload and can be linked to a teammate. No `r` alias here: that is a
   // Logs-specific Render-compatibility shim.
-  validateSearch: parseRangeSearch,
+  validateSearch: parseMetricsRangeSearch,
 });
 
 // The frame takes the page's shape from the service the parent loaded: a cron

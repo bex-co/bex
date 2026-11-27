@@ -18,7 +18,7 @@ export const Route = createFileRoute("/databases/$databaseId/$")({
         ? databasePageRoute(landing.page)
         : "/databases/$databaseId",
       params: { databaseId: params.databaseId },
-      search: true,
+      search: (prev) => ({ ...prev, ...landing.search }),
       hash: location.hash || landing.hash,
       replace: true,
     });

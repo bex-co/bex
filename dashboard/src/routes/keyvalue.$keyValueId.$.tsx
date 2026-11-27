@@ -17,7 +17,7 @@ export const Route = createFileRoute("/keyvalue/$keyValueId/$")({
         ? keyValuePageRoute(landing.page)
         : "/keyvalue/$keyValueId",
       params: { keyValueId: params.keyValueId },
-      search: true,
+      search: (prev) => ({ ...prev, ...landing.search }),
       hash: location.hash || landing.hash,
       replace: true,
     });

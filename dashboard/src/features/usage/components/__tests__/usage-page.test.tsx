@@ -63,6 +63,13 @@ vi.mock("@/features/usage/lib/period", () => ({
   periodLabel: vi.fn((period: string) => period),
 }));
 
+// The page scrolls Render's anchors to their cards through the router's hash;
+// these tests render it without a router (the anchors have their own test,
+// routes/__tests__/render-section-anchors.test.tsx).
+vi.mock("@/common/hooks/use-scroll-to-hashed-card", () => ({
+  useScrollToHashedCard: () => {},
+}));
+
 // DashboardLayout brings in the router and sidebar — stub it to a wrapper.
 vi.mock("@/common/components/dashboard-layout", () => ({
   DashboardLayout: ({ children }: { children: React.ReactNode }) => (

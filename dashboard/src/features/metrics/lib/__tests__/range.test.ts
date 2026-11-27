@@ -6,7 +6,9 @@ import {
   MAX_CUSTOM_RANGE_HOURS,
   boundFloorMs,
   makeCustomRange,
+  metricsPeriodSearch,
   parseCustomRange,
+  parseMetricsRangeSearch,
   parseRangePreset,
   parseRangeSearch,
   presetWithinBound,
@@ -224,5 +226,78 @@ describe("RangeBound", () => {
       notBeforeMs: now - 9 * DAY * 1000,
     };
     expect(boundFloorMs(kept, now)).toBe(now - 9 * DAY * 1000);
+  });
+});
+
+describe("Render's Metrics URL (w3/m707)", () => {
+  it("reads Render's t as a preset", () => {
+    expect(parseMetricsRangeSearch({ t: "14d" })).toStrictEqual({
+      ...CLEARED_RANGE_SEARCH,
+      range: "14d",
+      t: undefined,
+    });
+  });
+
+  it("reads Render's <startMs>,<endMs> as a custom window", () => {
+    expect(
+      parseMetricsRangeSearch({ t: "1764237600000,1764241200000" }),
+    ).toStrictEqual({
+      range: "custom",
+      rangeStart: "2025-11-27T10:00:00.000Z",
+      rangeEnd: "2025-11-27T11:00:00.000Z",
+      t: undefined,
+    });
+  });
+
+  it.each([
+    "1764241200000,1764237600000", // reversed
+    "1764237600000", // one bound
+    "1764237600000,1764241200000,1764244800000",
+    "1.5,2.5",
+    "-1,5",
+    "99999999999999999999,99999999999999999999", // past a Date's range
+    "1700000000000,1764241200000", // wider than 30 days
+    "6h", // a log preset, not Metrics'
+  ])("opens the default window for a t it cannot read (%s)", (t) => {
+    expect(parseMetricsRangeSearch({ t })).toStrictEqual({
+      ...CLEARED_RANGE_SEARCH,
+      t: undefined,
+    });
+  });
+
+  it("ignores a t the router parsed as a number", () => {
+    expect(parseMetricsRangeSearch({ t: 1764237600000 })).toStrictEqual({
+      ...CLEARED_RANGE_SEARCH,
+      t: undefined,
+    });
+  });
+
+  it("lets bex's own range win, even a custom one t would replace", () => {
+    expect(parseMetricsRangeSearch({ range: "1h", t: "7d" })).toMatchObject({
+      range: "1h",
+    });
+    expect(
+      parseMetricsRangeSearch({ range: "custom", t: "7d" }),
+    ).toStrictEqual({ ...CLEARED_RANGE_SEARCH, t: undefined });
+  });
+
+  it.each([
+    ["5m", "30m"],
+    ["15m", "30m"],
+    ["30m", "30m"],
+    ["1h", "1h"],
+    ["4h", "4h"],
+    ["12h", "12h"],
+    ["24h", "24h"],
+    ["2d", "2d"],
+    ["1w", "7d"],
+  ])("maps Render's legacy period %s to %s", (period, range) => {
+    expect(metricsPeriodSearch(period)).toEqual({ range });
+  });
+
+  it("maps no other period", () => {
+    for (const period of [undefined, "", "7d", "30d", "toString"]) {
+      expect(metricsPeriodSearch(period)).toBeUndefined();
+    }
   });
 });

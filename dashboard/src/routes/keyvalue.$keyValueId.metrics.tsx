@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { DatastoreMetricsSkeleton } from "@/common/components/route-skeletons";
 import {
   DEFAULT_RANGE_PRESET,
-  parseRangeSearch,
+  parseMetricsRangeSearch,
   rangeFromSearch,
   rangeToSearch,
 } from "@/features/metrics/lib/range";
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/keyvalue/$keyValueId/metrics")({
   head: keyValuePageHead("keyvalue.navMetrics"),
   component: RouteComponent,
   pendingComponent: KeyValueMetricsSkeleton,
-  validateSearch: parseRangeSearch,
+  validateSearch: parseMetricsRangeSearch,
 });
 
 function KeyValueMetricsSkeleton() {

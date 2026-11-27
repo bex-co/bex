@@ -48,6 +48,7 @@ import { PageFrame, PageHeader } from "@/common/components/page-frame";
 import { EmptyState } from "@/common/components/empty-state";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { cn } from "@/common/lib/utils/utils";
+import { useScrollToHashedCard } from "@/common/hooks/use-scroll-to-hashed-card";
 
 /**
  * The workspace billing page (`/billing`).
@@ -82,6 +83,18 @@ function buildMonthOptions(
 // Sentinel value for Radix Select (an empty string is not a legal item value).
 const CURRENT_MONTH_SENTINEL = "__current__";
 
+/**
+ * Render's billing anchors for a card this page gives another id (w3/m707):
+ * its Unbilled Charges card is bex's Charges, and the "remaining free usage"
+ * link on a free service's Settings goes to `#free-usage`, which no card on
+ * Render's own page carries (its Monthly Included Usage card is
+ * `#included-usage`), so bex opens the card the link names.
+ */
+const BILLING_HASH_ALIASES: Readonly<Record<string, string>> = {
+  "free-usage": "included-usage",
+  "unbilled-charges": "charges",
+};
+
 export function UsagePage() {
   const { t, i18n } = useTranslations();
   const monthOptions = useMemo(
@@ -99,6 +112,8 @@ export function UsagePage() {
     skip: billingDenied,
   });
   const billing = summary?.billing ?? null;
+  // Once the cards above it have their data, so the card stays in view.
+  useScrollToHashedCard("/billing", !loading, BILLING_HASH_ALIASES);
 
   if (billingDenied) {
     return (

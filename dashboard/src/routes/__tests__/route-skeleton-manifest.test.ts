@@ -25,7 +25,9 @@ describe("route skeleton manifest (w5/m79)", () => {
     const classified = Object.keys(ROUTE_SKELETON_MANIFEST).sort();
 
     expect(classified).toEqual(generated);
-    // 162: + Render's environment group, sandbox group, organization, create
+    // 165: + a service's and a static site's sub-path landing, and Render's
+    // webhook Activity path (w3/m707).
+    // 162 before them: + Render's environment group, sandbox group, organization, create
     // (`/new/…`, `/<slug>/new`, `/env-groups/new`), team settings, Network
     // Access, spend limit, `/resource/<id>` and build source Builds URLs
     // (w3/m705).
@@ -48,7 +50,7 @@ describe("route skeleton manifest (w5/m79)", () => {
     // 116 before them: + /build-sources/$buildSourceId detail layout, Builds index,
     // Build Detail, Services, Environment, and Settings routes (w2/m614).
     // 110 before them: + /build-sources and /build-sources/new (w2/m613).
-    expect(classified).toHaveLength(162);
+    expect(classified).toHaveLength(165);
   });
 
   it("points every classification at a real route owner", () => {

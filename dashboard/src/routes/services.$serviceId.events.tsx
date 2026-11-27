@@ -7,7 +7,7 @@ import {
 import { CommitSha } from "@/features/deploys/components/commit-sha";
 import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { useId, useMemo, useState, type ReactNode } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Activity,
   AlertCircle,
@@ -88,10 +88,12 @@ import {
 } from "@/features/events/hooks/use-service-events";
 import { ServiceEventFilter } from "@/features/events/components/service-event-filter";
 import {
+  CATALOG_TYPES,
+  eventTypesHiddenBy,
+  parseEventsSearch,
   SERVICE_EVENT_TYPES,
   serviceEventLabelKey,
 } from "@/features/events/service-event-catalog";
-const CATALOG_TYPES = new Set(SERVICE_EVENT_TYPES);
 import {
   ServiceEventRowsSkeleton,
   ServiceEventsSkeleton,
@@ -132,11 +134,13 @@ export const Route = createFileRoute("/services/$serviceId/events")({
   head: serviceTabHead("services.navEvents", "/services/$serviceId"),
   component: RouteComponent,
   pendingComponent: ServiceEventsSkeleton,
+  validateSearch: parseEventsSearch,
 });
 
 function RouteComponent() {
   const { serviceId } = Route.useParams();
-  return <ServiceEventsPage serviceId={serviceId} />;
+  const { et } = Route.useSearch();
+  return <ServiceEventsPage serviceId={serviceId} eventTypes={et} />;
 }
 
 // ServiceEventDetails.trigger is the Trigger object (boolean flags), a
@@ -168,16 +172,22 @@ function triggerKey(trigger: TriggerFlags): string | null {
   return null;
 }
 
+interface ServiceEventsPageProps {
+  serviceId: string;
+  /** Render's `et`: the types the filter opens showing (parseEventsSearch). */
+  eventTypes?: string;
+}
+
 /** The Events tab, behind the role's service-activity gate (w9/m621). */
-export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
+export function ServiceEventsPage(props: ServiceEventsPageProps) {
   return (
     <ActivityGate>
-      <ServiceEventsFeed serviceId={serviceId} />
+      <ServiceEventsFeed {...props} />
     </ActivityGate>
   );
 }
 
-function ServiceEventsFeed({ serviceId }: { serviceId: string }) {
+function ServiceEventsFeed({ serviceId, eventTypes }: ServiceEventsPageProps) {
   const { t } = useTranslations();
   // The service's createdAt bounds the history and autoDeploy words the
   // auto-deploy events; a cron job's runs have their own Runs page (w2/m360).
@@ -186,8 +196,23 @@ function ServiceEventsFeed({ serviceId }: { serviceId: string }) {
   // Hidden, not selected (w6/m122): seeding from the catalog made the feed render
   // `events ∩ catalog`, so any type the backend emits that the catalog omits was
   // invisible AND — the option list being catalog-derived too — unselectable. An
-  // empty exclusion set shows whatever the API returned.
-  const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(() => new Set());
+  // empty exclusion set shows whatever the API returned. A Render link's `et`
+  // opens it on the types it names (w3/m707).
+  const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(() =>
+    eventTypesHiddenBy(eventTypes),
+  );
+  // The filter is the page's own state after that, so a link's `et` leaves
+  // the URL at the first change.
+  const navigate = useNavigate();
+  const changeHiddenTypes = (next: Set<string>) => {
+    setHiddenTypes(next);
+    if (eventTypes === undefined) return;
+    void navigate({
+      to: ".",
+      search: (prev: Record<string, unknown>) => ({ ...prev, et: undefined }),
+      replace: true,
+    });
+  };
   const [historyWindow] = useState(() => {
     const end = Date.now();
     return {
@@ -277,7 +302,7 @@ function ServiceEventsFeed({ serviceId }: { serviceId: string }) {
           )}
           <ServiceEventFilter
             hidden={hiddenTypes}
-            onChange={setHiddenTypes}
+            onChange={changeHiddenTypes}
             extraTypes={uncataloguedTypes}
             // Nothing to filter until the first page lands.
             disabled={events.length === 0}
@@ -331,7 +356,7 @@ function ServiceEventsFeed({ serviceId }: { serviceId: string }) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setHiddenTypes(new Set())}
+                  onClick={() => changeHiddenTypes(new Set())}
                 >
                   {t("services.eventsFilterShowAll")}
                 </Button>

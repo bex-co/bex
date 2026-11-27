@@ -185,6 +185,72 @@ export function parseRangeSearch(search: Record<string, unknown>): RangeSearch {
   return { ...CLEARED_RANGE_SEARCH, range: parseRangePreset(search.range)?.id };
 }
 
+/**
+ * A Metrics page's search (w3/m707): bex's range keys, plus Render's `t`,
+ * which its Metrics URL names its window by (its metrics filters'
+ * `timeRange` key, Render's dashboard bundle, read 2026-11-27): a preset id
+ * (`?t=7d`), or a custom window as `<startMs>,<endMs>`, which Render's
+ * Instance failed card links. bex's own keys win; `t` comes back undefined
+ * so it leaves the URL on the page's first write, and a value bex cannot
+ * read is dropped, so the page opens on its default window.
+ */
+export interface MetricsRangeSearch extends RangeSearch {
+  t?: undefined;
+}
+
+export function parseMetricsRangeSearch(
+  search: Record<string, unknown>,
+): MetricsRangeSearch {
+  const own = parseRangeSearch(search);
+  const ownNamed = own.range !== undefined || search.range === "custom";
+  return { ...(ownNamed ? own : renderMetricsRange(search.t)), t: undefined };
+}
+
+/** Render's Metrics `t`: a preset id or `<startMs>,<endMs>`. */
+function renderMetricsRange(value: unknown): RangeSearch {
+  if (typeof value !== "string") return { ...CLEARED_RANGE_SEARCH };
+  const preset = parseRangePreset(value);
+  if (preset) return { ...CLEARED_RANGE_SEARCH, range: preset.id };
+  const bounds = /^(\d+),(\d+)$/.exec(value);
+  const custom = bounds && parseCustomRange(isoAt(bounds[1]), isoAt(bounds[2]));
+  return custom
+    ? { range: "custom", rangeStart: custom.startTime, rangeEnd: custom.endTime }
+    : { ...CLEARED_RANGE_SEARCH };
+}
+
+/** Epoch milliseconds as ISO, or null past a Date's range. */
+function isoAt(ms: string): string | null {
+  const date = new Date(Number(ms));
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+/**
+ * Render's older Metrics URL, `/metrics/<period>` (w3/m707): its `xSe`
+ * rewrites the path to `?t=<range>` from this table (`eC`, read 2026-11-27),
+ * and drops a period the table lacks, which opens the default window.
+ */
+const RENDER_METRICS_PERIODS: Readonly<Record<string, RangePresetID>> = {
+  "5m": "30m",
+  "15m": "30m",
+  "30m": "30m",
+  "1h": "1h",
+  "4h": "4h",
+  "12h": "12h",
+  "24h": "24h",
+  "2d": "2d",
+  "1w": "7d",
+};
+
+/** The range a Render `/metrics/<period>` opens on, as the search keys its
+ *  landing sets, or undefined for a period the table lacks (above). */
+export function metricsPeriodSearch(
+  period: string | undefined,
+): { range: RangePresetID } | undefined {
+  return period !== undefined && Object.hasOwn(RENDER_METRICS_PERIODS, period)
+    ? { range: RENDER_METRICS_PERIODS[period] }
+    : undefined;
+}
+
 /** Restores the selection a validated RangeSearch names, else the caller's
  *  surface default (absent/dropped params keep today's behavior). */
 export function rangeFromSearch(

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render } from "@testing-library/react";
-import { useState } from "react";
+import { StrictMode, useState } from "react";
 import {
   RouterProvider,
   createMemoryHistory,
@@ -27,13 +27,14 @@ function Page() {
   );
 }
 
-async function renderAt(href: string) {
+async function renderAt(href: string, strict = false) {
   const router = createRouter({
     routeTree: createRootRoute({ component: Page }),
     history: createMemoryHistory({ initialEntries: [href] }),
   });
   await router.load();
-  render(<RouterProvider router={router} />);
+  const app = <RouterProvider router={router} />;
+  render(strict ? <StrictMode>{app}</StrictMode> : app);
 }
 
 const scrolled: string[] = [];
@@ -69,5 +70,72 @@ describe("useScrollToHashedCard", () => {
     await renderAt("/");
     await act(async () => showLate());
     expect(scrolled).toEqual([]);
+  });
+
+  // w3/m707: cards above the target change height once their own reads land
+  // (Billing's plan and payment cards at 390px moved `#free-usage` 220px up).
+  describe("while the page above it settles", () => {
+    let resized: () => void = () => {};
+    let top = 0;
+    const realObserver = global.ResizeObserver;
+
+    beforeEach(() => {
+      resized = () => {};
+      top = 0;
+      global.ResizeObserver = class {
+        constructor(callback: ResizeObserverCallback) {
+          resized = () => callback([], this as unknown as ResizeObserver);
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {
+          resized = () => {};
+        }
+      } as unknown as typeof ResizeObserver;
+      vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+        () => ({ top }) as DOMRect,
+      );
+    });
+
+    afterEach(() => {
+      global.ResizeObserver = realObserver;
+      vi.restoreAllMocks();
+    });
+
+    it("scrolls the card back into view when the page moves it", async () => {
+      await renderAt("/#early");
+      scrolled.length = 0;
+
+      top = -220;
+      resized();
+      expect(scrolled).toEqual(["early"]);
+    });
+
+    it("keeps holding through React's development double run of effects", async () => {
+      await renderAt("/#early", true);
+      scrolled.length = 0;
+
+      top = -220;
+      resized();
+      expect(scrolled).toEqual(["early"]);
+    });
+
+    it("leaves a resize that did not move the card alone", async () => {
+      await renderAt("/#early");
+      scrolled.length = 0;
+
+      resized();
+      expect(scrolled).toEqual([]);
+    });
+
+    it("hands the scroll position back once the reader scrolls", async () => {
+      await renderAt("/#early");
+      scrolled.length = 0;
+
+      window.dispatchEvent(new Event("wheel"));
+      top = -220;
+      resized();
+      expect(scrolled).toEqual([]);
+    });
   });
 });

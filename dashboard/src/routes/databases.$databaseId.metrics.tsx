@@ -8,7 +8,7 @@ import { CardSkeleton } from "@/common/components/detail-skeletons";
 import { DeferredMount } from "@/common/components/deferred-mount";
 import {
   DEFAULT_RANGE_PRESET,
-  parseRangeSearch,
+  parseMetricsRangeSearch,
   rangeFromSearch,
   rangeToSearch,
   type RangeSelection,
@@ -40,7 +40,7 @@ export const Route = createFileRoute("/databases/$databaseId/metrics")({
   head: databasePageHead("databases.navMetrics"),
   component: RouteComponent,
   pendingComponent: DatabaseMetricsSkeleton,
-  validateSearch: parseRangeSearch,
+  validateSearch: parseMetricsRangeSearch,
 });
 
 function RouteComponent() {

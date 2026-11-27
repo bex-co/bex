@@ -4,6 +4,7 @@ import {
   LOG_TYPE_APP,
   LOG_TYPE_REQUEST,
   STRUCTURED_LABEL_KEYS,
+  type StructuredFilterKey,
 } from "../types";
 import { shortInstance } from "./log-rows";
 
@@ -109,9 +110,10 @@ export type ViewValueKind =
 /**
  * The log label a `discovered` field's values are read from, across the
  * project's view (w3/079, w3/084), as Render's editor reads `logValues` for
- * each line field.
+ * each line field. Render's log URL names its label filters by the same
+ * fields (`l=[["INSTANCE","…"]]`, w3/m707).
  */
-const VIEW_FIELD_LOG_LABELS: Partial<Record<ViewField, string>> = {
+const VIEW_FIELD_LOG_LABELS: Readonly<Record<string, StructuredFilterKey>> = {
   LEVEL: "level",
   INSTANCE: "instance",
   METHOD: "method",
@@ -121,7 +123,7 @@ const VIEW_FIELD_LOG_LABELS: Partial<Record<ViewField, string>> = {
 };
 
 export function viewValueKind(field: ViewField): ViewValueKind {
-  if (VIEW_FIELD_LOG_LABELS[field]) return "discovered";
+  if (viewFieldLogLabel(field)) return "discovered";
   switch (field) {
     case "ENVIRONMENT":
       return "environment";
@@ -136,9 +138,14 @@ export function viewValueKind(field: ViewField): ViewValueKind {
   }
 }
 
-/** The log label a `discovered` field reads its values from. */
-export function viewFieldLogLabel(field: ViewField): string | undefined {
-  return VIEW_FIELD_LOG_LABELS[field];
+/** The log label a `discovered` field reads its values from, or a Render
+ *  log URL's label filter names; undefined for any other field. */
+export function viewFieldLogLabel(
+  field: string,
+): StructuredFilterKey | undefined {
+  return Object.hasOwn(VIEW_FIELD_LOG_LABELS, field)
+    ? VIEW_FIELD_LOG_LABELS[field]
+    : undefined;
 }
 
 /** The log type a view of this type reads: its lines' `type`. */
