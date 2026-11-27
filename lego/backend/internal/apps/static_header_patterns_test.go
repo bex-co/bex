@@ -110,12 +110,19 @@ func TestStaticHeaderWildcardPersistenceAcrossAdapters(t *testing.T) {
 				for _, h := range headers {
 					manifest += fmt.Sprintf("      - path: %q\n        name: %q\n        value: %q\n", h.Path, h.Name, h.Value)
 				}
+				existing := staticHeaderViews(getApp(t, cl, "site").Spec.Headers)
 				stack := parseBlueprintStackForTest(t, manifest)
 				parsed := stack.services[0]
 				if _, err := applyServiceForTest(context.Background(), t, svc, parsed.req, parsed.fields); err != nil {
 					t.Fatal(err)
 				}
-				assertHeaders(t, staticHeaderViews(getApp(t, cl, "site").Spec.Headers))
+				// A sync keeps the site's own rules and appends the file's
+				// new ones after them, as Render's does (w4/m697).
+				got := staticHeaderViews(getApp(t, cl, "site").Spec.Headers)
+				if len(got) != len(existing)+len(headers) || !reflect.DeepEqual(got[:len(existing)], existing) {
+					t.Fatalf("headers=%+v, want %+v then the file's", got, existing)
+				}
+				assertHeaders(t, got[len(existing):])
 				return // Other declared Blueprint fields may legitimately redeploy.
 			}
 			saved := getApp(t, cl, "site")

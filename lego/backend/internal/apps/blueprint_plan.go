@@ -19,6 +19,7 @@ package apps
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"reflect"
 	"slices"
 	"strings"
@@ -316,8 +317,12 @@ var blueprintServiceFieldAppliers = []struct {
 		dst.Hosts = canonicalSlice(rest)
 	}},
 	{names: []string{"staticPublishPath"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.PublishPath = want.PublishPath }},
-	{names: []string{"routes"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Routes = canonicalSlice(want.Routes) }},
-	{names: []string{"headers"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Headers = canonicalSlice(want.Headers) }},
+	{names: []string{"routes"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+		dst.Routes = mergeBlueprintRules(dst.Routes, want.Routes, blueprintRouteKey)
+	}},
+	{names: []string{"headers"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+		dst.Headers = mergeBlueprintRules(dst.Headers, want.Headers, blueprintHeaderKey)
+	}},
 	{names: []string{"renderSubdomainPolicy"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 		dst.SubdomainPolicy = want.SubdomainPolicy
 	}},
@@ -376,6 +381,16 @@ func probeBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 		return false, &BlueprintFieldConflictError{
 			Path:    "disk.sizeGB",
 			Message: fmt.Sprintf("cannot shrink an existing disk (currently %dGB)", dst.Disk.SizeGB),
+		}
+	}
+	if applies("routes") {
+		if err := blueprintRuleBudget("routes", dst.Routes, want.Routes, blueprintRouteKey, maxStaticRoutes); err != nil {
+			return false, err
+		}
+	}
+	if applies("headers") {
+		if err := blueprintRuleBudget("headers", dst.Headers, want.Headers, blueprintHeaderKey, maxStaticHeaders); err != nil {
+			return false, err
 		}
 	}
 
@@ -521,6 +536,62 @@ func probeBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 	}
 
 	return !reflect.DeepEqual(before, *dst), nil
+}
+
+// mergeBlueprintRules is how a declared `routes` or `headers` list syncs onto a
+// static site. Render's Blueprint spec says the same of both: "You can modify
+// existing routing rules and add new ones. Render preserves any existing
+// routing rules that are not included in the Blueprint file." So a declared
+// rule replaces the live rule with its key where that rule stands, or is
+// appended after the live rules, and every live rule the file does not name
+// keeps its place: `routes: []` changes nothing (w4/m697). The n-th declared
+// rule with a key takes the n-th live rule with it, so a file that repeats a
+// key re-syncs as no change.
+func mergeBlueprintRules[T any, K comparable](live, declared []T, key func(T) K) []T {
+	slots := make(map[K][]int, len(live))
+	for i, rule := range live {
+		k := key(rule)
+		slots[k] = append(slots[k], i)
+	}
+	merged := slices.Clone(live)
+	for _, rule := range declared {
+		k := key(rule)
+		if at := slots[k]; len(at) > 0 {
+			merged[at[0]] = rule
+			slots[k] = at[1:]
+			continue
+		}
+		merged = append(merged, rule)
+	}
+	return canonicalSlice(merged)
+}
+
+// blueprintRouteKey matches a declared route to a live one by its source alone.
+// The static server answers with the first rule whose source matches, so a
+// later rule with the same source never runs: a file that turns a redirect
+// into a rewrite edits that rule rather than appending one it shadows.
+func blueprintRouteKey(route appv1alpha1.StaticRoute) string { return route.Source }
+
+// blueprintHeaderKey matches a declared header rule to a live one by its path
+// and its header name in any case, the name the static server sets
+// (http.Header.Set canonicalizes it), so the later of two such rules wins.
+func blueprintHeaderKey(header appv1alpha1.StaticHeader) [2]string {
+	return [2]string{header.Path, http.CanonicalHeaderKey(header.Name)}
+}
+
+// blueprintRuleBudget refuses a declared routes or headers list whose merge
+// would leave a static site more rules than its edge budget allows, at the
+// field, before anything is written: the live rules the file does not name
+// count too.
+func blueprintRuleBudget[T any, K comparable](field string, live, declared []T, key func(T) K, limit int) error {
+	if merged := len(mergeBlueprintRules(live, declared, key)); merged > limit {
+		return &BlueprintFieldConflictError{
+			Path: field,
+			Message: fmt.Sprintf("the sync would leave %d %s, more than the %d a static site can have: it keeps the service's %d and adds %d new ones from this file",
+				merged, field, limit, len(live), merged-len(live)),
+		}
+	}
+	return nil
 }
 
 // mergeBlueprintEnv replaces variables owned by the declared Blueprint while

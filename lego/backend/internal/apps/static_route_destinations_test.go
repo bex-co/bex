@@ -116,12 +116,19 @@ func TestStaticRouteDestinationPersistenceAcrossAdapters(t *testing.T) {
 				for _, h := range routes {
 					manifest += fmt.Sprintf("      - type: %q\n        source: %q\n        destination: %q\n", h.Type, h.Source, h.Destination)
 				}
+				existing := staticRouteViews(getApp(t, cl, "site").Spec.Routes)
 				stack := parseBlueprintStackForTest(t, manifest)
 				parsed := stack.services[0]
 				if _, err := applyServiceForTest(context.Background(), t, svc, parsed.req, parsed.fields); err != nil {
 					t.Fatal(err)
 				}
-				assertRoutes(t, staticRouteViews(getApp(t, cl, "site").Spec.Routes))
+				// A sync keeps the site's own rules and appends the file's
+				// new ones after them, as Render's does (w4/m697).
+				got := staticRouteViews(getApp(t, cl, "site").Spec.Routes)
+				if len(got) != len(existing)+len(routes) || !reflect.DeepEqual(got[:len(existing)], existing) {
+					t.Fatalf("routes=%+v, want %+v then the file's", got, existing)
+				}
+				assertRoutes(t, got[len(existing):])
 				return // Other declared Blueprint fields may legitimately redeploy.
 			}
 			saved := getApp(t, cl, "site")
