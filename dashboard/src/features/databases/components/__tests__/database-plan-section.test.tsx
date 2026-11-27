@@ -32,6 +32,8 @@ vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
         supportsConnectionPooling: false,
         maxReadReplicas: 0,
         supportsHighAvailability: false,
+        monthlyUsd: "0.00",
+        storageMonthlyUsdPerGB: "0.00",
       },
       {
         id: "starter",
@@ -44,6 +46,8 @@ vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
         supportsConnectionPooling: true,
         maxReadReplicas: 0,
         supportsHighAvailability: false,
+        monthlyUsd: "7.00",
+        storageMonthlyUsdPerGB: "0.21",
       },
       {
         id: "pro",
@@ -56,6 +60,22 @@ vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
         supportsConnectionPooling: true,
         maxReadReplicas: 5,
         supportsHighAvailability: true,
+        monthlyUsd: "55.00",
+        storageMonthlyUsdPerGB: "0.21",
+      },
+      {
+        id: "accelerated",
+        name: "Accelerated",
+        cpu: "2",
+        memory: "8Gi",
+        storageGB: 20,
+        maxStorageGB: 16384,
+        supportsDiskAutoscaling: true,
+        supportsConnectionPooling: true,
+        maxReadReplicas: 5,
+        supportsHighAvailability: true,
+        monthlyUsd: "110.00",
+        storageMonthlyUsdPerGB: "0.21",
       },
     ],
     loading: false,
@@ -87,9 +107,16 @@ const DATABASE: DatabaseDetailView = {
   backupsEnabled: false,
 };
 
+/** A plan review's lines as [label, figures, price], read off the dialog. */
+function reviewLines(dialog: HTMLElement) {
+  return [...dialog.querySelectorAll('[data-slot="review-line"]')].map((row) =>
+    [...row.children].map((cell) => cell.textContent),
+  );
+}
+
 beforeEach(() => {
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
-  updatePlan.mockReset().mockResolvedValue(true);
+  updatePlan.mockReset().mockResolvedValue({ ok: true });
   mutate.mockReset().mockResolvedValue({ data: {} });
 });
 
@@ -105,10 +132,13 @@ describe("DatabasePlanSection", () => {
     await user.click(screen.getByRole("radio", { name: /Starter/ }));
     await user.click(screen.getByRole("button", { name: "Save" }));
     const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Update compute" }),
+    );
 
     expect(updatePlan).toHaveBeenCalledWith("dpg-shop", "starter", "Starter");
     expect(onChanged).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 
   // Render gives a Contributor no configuration change, a plan included
@@ -270,20 +300,30 @@ describe("DatabasePlanSection", () => {
     expect(updatePlan).not.toHaveBeenCalled();
   });
 
-  it("retains the selected plan when the server refuses the update", async () => {
-    updatePlan.mockResolvedValue(false);
+  it("keeps the review open with the server's refusal, and the plan selected", async () => {
+    updatePlan.mockResolvedValue({
+      ok: false,
+      error: "Payment method required.",
+    });
     const onChanged = vi.fn();
     const user = userEvent.setup();
     render(<DatabasePlanSection database={DATABASE} onChanged={onChanged} />);
     await user.click(screen.getByRole("radio", { name: /Starter/ }));
     await user.click(screen.getByRole("button", { name: "Save" }));
     const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Update compute" }),
+    );
+    expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      "Payment method required.",
+    );
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    expect(onChanged).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
     expect(screen.getByRole("radio", { name: /Starter/ })).toHaveAttribute(
       "aria-checked",
       "true",
     );
-    expect(onChanged).not.toHaveBeenCalled();
   });
 
   it("fail-closes plan controls until capabilities are definitive", () => {
@@ -292,6 +332,135 @@ describe("DatabasePlanSection", () => {
     );
     render(<DatabasePlanSection database={DATABASE} onChanged={vi.fn()} />);
     expect(screen.getByRole("radio", { name: /Starter/ })).toBeDisabled();
+  });
+});
+
+// w3/m674: Render's review before a compute change applies. Each billed line
+// with its monthly price, the total, Render's downtime warning and its button.
+describe("DatabasePlanSection compute review", () => {
+  const HA_WITH_REPLICA: DatabaseDetailView = {
+    ...DATABASE,
+    plan: "pro",
+    diskSizeGB: 25,
+    highAvailabilityEnabled: true,
+    highAvailabilityRequested: true,
+    readReplicas: [{ name: "reader", connectionInfo: null }],
+  };
+
+  async function review(database: DatabaseDetailView, plan: RegExp) {
+    const user = userEvent.setup();
+    const onChanged = vi.fn();
+    render(
+      <>
+        <DatabasePlanSection database={database} onChanged={onChanged} />
+        <section id="high-availability">
+          <button type="button" role="switch" aria-checked="true">
+            High Availability
+          </button>
+        </section>
+      </>,
+    );
+    await user.click(screen.getByRole("radio", { name: plan }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const dialog = await screen.findByRole("alertdialog");
+    return { user, dialog, onChanged };
+  }
+
+  it("prices the plan, the standby, the replicas and their storage, then totals them", async () => {
+    const { user, dialog } = await review(HA_WITH_REPLICA, /Accelerated/);
+    expect(dialog).toHaveAccessibleName("Apply changes?");
+    expect(dialog).toHaveTextContent(
+      "Review your compute and storage selections.",
+    );
+    expect(reviewLines(dialog)).toEqual([
+      ["Compute plan", "2 CPU8 GB RAM", "$110.00/month"],
+      ["High Availability", "Enabled", "$110.00/month"],
+      ["Read replicas", "1 replica", "$110.00/month"],
+      // 25 GB on the primary, the standby and the replica at $0.21.
+      ["Storage", "25 GB (x3 instances)", "$15.75/month"],
+    ]);
+    expect(dialog).toHaveTextContent("Total$345.75/month");
+    expect(dialog).toHaveTextContent(
+      "Your database and its replicas will be unavailable for a few seconds while updating.",
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Update compute" }),
+    );
+    expect(updatePlan).toHaveBeenCalledWith(
+      "dpg-shop",
+      "accelerated",
+      "Accelerated",
+    );
+  });
+
+  it("lists one instance, and the storage a larger plan floor raises, without HA", async () => {
+    const { dialog } = await review(
+      { ...DATABASE, plan: "starter", diskSizeGB: 10 },
+      /Pro/,
+    );
+    expect(reviewLines(dialog)).toEqual([
+      ["Compute plan", "1 CPU4 GB RAM", "$55.00/month"],
+      // Pro's 20 GB floor is above the database's 10 GB.
+      ["Storage", "20 GB", "$4.20/month"],
+    ]);
+    expect(dialog).toHaveTextContent("Total$59.20/month");
+    expect(dialog).toHaveTextContent(
+      "Your database will be unavailable for a few minutes while updating.",
+    );
+  });
+
+  it("lists no storage on Free, whose storage is included", async () => {
+    const { dialog } = await review(
+      { ...DATABASE, plan: "starter", diskSizeGB: 1 },
+      /Free/,
+    );
+    expect(reviewLines(dialog)).toEqual([
+      ["Compute plan", "0.1 CPU256 MB RAM", "$0.00/month"],
+    ]);
+    expect(dialog).toHaveTextContent("Total$0.00/month");
+  });
+
+  it("returns to the picker with the choice kept from the plan's Edit", async () => {
+    const { user, dialog } = await review(HA_WITH_REPLICA, /Accelerated/);
+    await user.click(
+      within(dialog).getByRole("button", { name: "Edit compute plan" }),
+    );
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Accelerated/ })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(updatePlan).not.toHaveBeenCalled();
+  });
+
+  it("drops the change and goes to High Availability from its Edit", async () => {
+    const scroll = vi.mocked(Element.prototype.scrollIntoView);
+    scroll.mockClear();
+    const { user, dialog } = await review(HA_WITH_REPLICA, /Accelerated/);
+    await user.click(
+      within(dialog).getByRole("button", { name: "Edit high availability" }),
+    );
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(scroll.mock.contexts).toContain(
+      document.getElementById("high-availability"),
+    );
+    // As on Render, the plan goes back to the database's own.
+    expect(screen.getByRole("radio", { name: /Pro/ })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(updatePlan).not.toHaveBeenCalled();
+  });
+
+  it("applies nothing on Cancel", async () => {
+    const { user, dialog, onChanged } = await review(
+      HA_WITH_REPLICA,
+      /Accelerated/,
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(updatePlan).not.toHaveBeenCalled();
+    expect(onChanged).not.toHaveBeenCalled();
   });
 });
 
@@ -337,12 +506,67 @@ describe("DatabasePlanSection storage", () => {
     expect(save).toBeEnabled();
     await user.click(save);
 
+    // Save opens Render's storage review; nothing applies before it is
+    // confirmed (w3/m674).
+    const review = await screen.findByRole("alertdialog");
+    expect(mutate).not.toHaveBeenCalled();
+    expect(review).toHaveTextContent("Review your storage selection.");
+    expect(reviewLines(review)).toEqual([
+      ["Compute plan", "0.5 CPU1 GB RAM", "$7.00/month"],
+      ["Storage", "25 GB", "$5.25/month"],
+    ]);
+    expect(review).toHaveTextContent("Total$12.25/month");
+    // Render warns of no downtime for a storage change.
+    expect(review).not.toHaveTextContent("unavailable");
+    await user.click(
+      within(review).getByRole("button", { name: "Update storage" }),
+    );
+
     expect(mutate).toHaveBeenCalledWith({
       variables: { id: "dpg-shop", diskSizeGB: 25 },
     });
     expect(onChanged).toHaveBeenCalledOnce();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
+
+  it("prices the new size on every instance the database bills", async () => {
+    const { user, save, enter } = await openStorage({
+      ...STARTER,
+      plan: "pro",
+      diskSizeGB: 20,
+      highAvailabilityEnabled: true,
+      highAvailabilityRequested: true,
+      readReplicas: [{ name: "reader", connectionInfo: null }],
+    });
+    await enter("25");
+    await user.click(save);
+    const review = await screen.findByRole("alertdialog");
+    expect(reviewLines(review)).toEqual([
+      ["Compute plan", "1 CPU4 GB RAM", "$55.00/month"],
+      ["High Availability", "Enabled", "$55.00/month"],
+      ["Read replicas", "1 replica", "$55.00/month"],
+      ["Storage", "25 GB (x3 instances)", "$15.75/month"],
+    ]);
+    expect(review).toHaveTextContent("Total$180.75/month");
+  });
+
+  it.each(["Edit storage", "Cancel"])(
+    "returns to the field with the size kept from the review's %s",
+    async (button) => {
+      const { user, save, enter } = await openStorage();
+      await enter("25");
+      await user.click(save);
+      const review = await screen.findByRole("alertdialog");
+      await user.click(within(review).getByRole("button", { name: button }));
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+      const dialog = await screen.findByRole("dialog");
+      expect(
+        within(dialog).getByRole("spinbutton", { name: "Storage (GB)" }),
+      ).toHaveValue(25);
+      expect(mutate).not.toHaveBeenCalled();
+    },
+  );
 
   // Render's almost-full warning links `/plan#storage` (w3/m656).
   it("is Render's #storage anchor", () => {
@@ -476,18 +700,22 @@ describe("DatabasePlanSection storage", () => {
     expect(pending.textContent).not.toContain("GB");
   });
 
-  it("shows the server's refusal in the dialog and keeps it open", async () => {
+  it("shows the server's refusal in the review and keeps it open", async () => {
     mutate.mockRejectedValueOnce(
       uncodedGraphQLError(
         "bad request: Postgres storage is grow-only: requested 15 GB is below the allocated 20 GB",
       ),
     );
-    const { user, dialog, save, onChanged } = await openStorage();
+    const { user, save, onChanged } = await openStorage();
     await user.click(save);
-    expect(within(dialog).getByRole("alert")).toHaveTextContent(
+    const review = await screen.findByRole("alertdialog");
+    await user.click(
+      within(review).getByRole("button", { name: "Update storage" }),
+    );
+    expect(within(review).getByRole("alert")).toHaveTextContent(
       "Postgres storage is grow-only: requested 15 GB is below the allocated 20 GB",
     );
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
     expect(onChanged).not.toHaveBeenCalled();
   });
 });

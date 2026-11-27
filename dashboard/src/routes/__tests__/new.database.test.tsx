@@ -82,6 +82,7 @@ const FREE: DatabaseInstanceTypeView = {
   readReplicaMinStorageGB: 10,
   supportsHighAvailability: false,
   monthlyUsd: "0.00",
+  storageMonthlyUsdPerGB: "0.00",
 };
 const BASIC: DatabaseInstanceTypeView = {
   id: "basic-1gb",
@@ -96,6 +97,7 @@ const BASIC: DatabaseInstanceTypeView = {
   readReplicaMinStorageGB: 10,
   supportsHighAvailability: false,
   monthlyUsd: "14.00",
+  storageMonthlyUsdPerGB: "0.21",
 };
 
 function renderPage() {

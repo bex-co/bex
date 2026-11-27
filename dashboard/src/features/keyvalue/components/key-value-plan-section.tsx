@@ -8,7 +8,8 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
-import { ConfirmDialog } from "@/common/components/confirm-dialog";
+import { ReviewChangesDialog } from "@/common/components/review-changes-dialog";
+import { useComputePlanFigures } from "@/common/hooks/use-compute-plan-figures";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
@@ -16,6 +17,7 @@ import { useKeyValueInstanceTypes } from "@/features/keyvalue/hooks/use-key-valu
 import { useSetKeyValuePersistenceMode } from "@/features/keyvalue/hooks/use-set-key-value-persistence-mode";
 import { useUpdateKeyValuePlan } from "@/features/keyvalue/hooks/use-update-key-value-plan";
 import { ComputePlanList } from "@/common/components/compute-plan-list";
+import { planPriceLabel } from "@/common/lib/plan-list";
 import {
   KEY_VALUE_PLAN_SLOTS,
   PlanTierSlots,
@@ -49,7 +51,9 @@ export function KeyValuePlanSection({
     !keyValue.suspended && !persistenceKeepsData(persistenceMode);
   const currentPlan = keyValue.plan ?? "free";
   const [selected, setSelected] = useState<string>(currentPlan);
-  const [confirming, setConfirming] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const figures = useComputePlanFigures();
 
   // Render: "It is not currently possible to downgrade a Key Value instance"
   // (w8/249), and bex-api refuses the change. A smaller plan is one with less
@@ -73,16 +77,24 @@ export function KeyValuePlanSection({
     selected !== keyValue.plan && selectedType?.available !== false;
 
   async function handleConfirm() {
-    if (createDenied) return;
-    setConfirming(false);
-    if (!selectedType) return;
-    const ok = await updatePlan(
+    if (createDenied || !selectedType) return;
+    setReviewError(null);
+    const result = await updatePlan(
       keyValue.id,
       selectedType.id,
       selectedType.name,
     );
-    if (ok) onChanged();
+    if (result.ok) {
+      setReviewing(false);
+      onChanged();
+    } else {
+      setReviewError(result.error ?? null);
+    }
   }
+
+  // Render's Key Value review lists the plan alone, as the plan list prices
+  // it: Render bills no Key Value storage line.
+  const price = (selectedType && planPriceLabel(selectedType, false, t)) ?? "—";
 
   return (
     <Card>
@@ -126,7 +138,9 @@ export function KeyValuePlanSection({
             <Button
               disabled={!canSave || busy || createDenied}
               onClick={() => {
-                if (!createDenied) setConfirming(true);
+                if (createDenied) return;
+                setReviewError(null);
+                setReviewing(true);
               }}
             >
               {t("keyvalue.planPickerSave")}
@@ -135,41 +149,46 @@ export function KeyValuePlanSection({
         </div>
       </CardContent>
 
-      <ConfirmDialog
-        open={confirming && !createDenied}
-        onOpenChange={(open) => {
-          if (!createDenied) setConfirming(open);
-        }}
-        title={
-          selectedType
-            ? t("keyvalue.planPickerConfirmTitle", { name: selectedType.name })
-            : ""
-        }
-        description={[
-          t("keyvalue.planPickerConfirmBody"),
-          losesData
-            ? t(
-                persistenceMode === "off"
-                  ? "keyvalue.restartConfirmDataLoss"
-                  : "keyvalue.restartConfirmDataLossUnknown",
-                { name: keyValue.name },
-              )
-            : "",
-          selectedType?.monthlyUsd
-            ? t("keyvalue.planPickerConfirmPrice", {
-                price: selectedType.monthlyUsd,
-              })
-            : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        phrase={losesData ? keyValueClearPhrase(keyValue.name) : undefined}
-        cancelLabel={t("keyvalue.planPickerCancel")}
-        confirmLabel={t("keyvalue.planPickerSave")}
-        // Destructive only when the restart empties a Persistence Off store.
-        destructive={losesData}
-        onConfirm={() => void handleConfirm()}
-      />
+      {selectedType ? (
+        <ReviewChangesDialog
+          open={reviewing && !createDenied}
+          description={t("keyvalue.reviewComputeLead")}
+          lineItems={[
+            {
+              id: "compute-plan",
+              label: t("keyvalue.planTitle"),
+              values: figures(selectedType),
+              price,
+              // Edit returns to the picker with the choice kept.
+              onEdit: () => setReviewing(false),
+              editLabel: t("common.reviewEditComputePlan"),
+            },
+          ]}
+          total={price}
+          confirmLabel={t("keyvalue.reviewUpgradeCompute")}
+          // Render's warning, and bex's data-loss sentence whenever the
+          // restart empties the store: Render's Free instances have no
+          // persistence, bex's lose data only with Persistence Off (ADR021).
+          warning={[
+            t("keyvalue.reviewUnavailable"),
+            losesData
+              ? t(
+                  persistenceMode === "off"
+                    ? "keyvalue.restartConfirmDataLoss"
+                    : "keyvalue.restartConfirmDataLossUnknown",
+                  { name: keyValue.name },
+                )
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          phrase={losesData ? keyValueClearPhrase(keyValue.name) : undefined}
+          pending={busy}
+          error={reviewError}
+          onConfirm={() => void handleConfirm()}
+          onClose={() => setReviewing(false)}
+        />
+      ) : null}
     </Card>
   );
 }

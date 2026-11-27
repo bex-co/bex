@@ -1438,19 +1438,74 @@ const deDatabases: Record<string, TranslationEntry> = {
     message: "Abbrechen",
     description: "Database plan-picker cancel / reset button",
   },
-  "databases.planPickerConfirmTitle": {
-    message: "Auf {name} wechseln?",
-    description: "Database plan-picker confirm dialog title",
-  },
-  "databases.planPickerConfirmBody": {
-    message:
-      "Die Datenbank wird neu gestartet, um den neuen Compute-Plan anzuwenden, und ist ein bis zwei Minuten nicht verfügbar. Verbindungen brechen ab. Deine Daten bleiben erhalten.",
-    description: "Database plan-picker confirm dialog body",
-  },
-  "databases.planPickerConfirmPrice": {
-    message: "Der neue Tarif kostet ${price}/Monat.",
+  "databases.reviewComputeLead": {
+    message: "Prüfe deine Auswahl für Compute und Speicher.",
     description:
-      "Plan-change confirm: the new plan's monthly price, from the API's price sheet (w4/156)",
+      "Postgres plan review: the lead of a compute plan change's review (Render's copy)",
+  },
+  "databases.reviewStorageLead": {
+    message: "Prüfe deine Speicherauswahl.",
+    description:
+      "Postgres plan review: the lead of a storage change's review (Render's copy)",
+  },
+  "databases.reviewEditHighAvailability": {
+    message: "Hochverfügbarkeit bearbeiten",
+    description:
+      "Postgres plan review: accessible name of the High availability line's Edit button, which goes to the High Availability section",
+  },
+  "databases.reviewReplicaCount_one": {
+    message: "{count} Replikat",
+    description:
+      "Postgres plan review: the Read replicas line's figure, the database's replica count",
+  },
+  "databases.reviewReplicaCount_other": {
+    message: "{count} Replikate",
+    description:
+      "Postgres plan review: the Read replicas line's figure, the database's replica count",
+  },
+  "databases.reviewStorageInstances_one": {
+    message: "{size} GB (x{count} Instanz)",
+    description:
+      'Postgres plan review: the Storage line\'s figure when the size is billed on several instances (primary, HA standby, read replicas); Render writes "GB (x3 instances)"',
+  },
+  "databases.reviewStorageInstances_other": {
+    message: "{size} GB (x{count} Instanzen)",
+    description:
+      'Postgres plan review: the Storage line\'s figure when the size is billed on several instances (primary, HA standby, read replicas); Render writes "GB (x3 instances)"',
+  },
+  "databases.reviewUnavailableSeconds": {
+    message:
+      "Deine Datenbank ist während der Aktualisierung einige Sekunden lang nicht verfügbar.",
+    description:
+      "Postgres plan review warning: a database with high availability fails over to its standby, so the outage is seconds (Render's copy)",
+  },
+  "databases.reviewUnavailableMinutes": {
+    message:
+      "Deine Datenbank ist während der Aktualisierung einige Minuten lang nicht verfügbar.",
+    description:
+      "Postgres plan review warning: a database without high availability restarts its only instance, so the outage is minutes (Render's copy)",
+  },
+  "databases.reviewUnavailableReplicasSeconds": {
+    message:
+      "Deine Datenbank und ihre Replikate sind während der Aktualisierung einige Sekunden lang nicht verfügbar.",
+    description:
+      "Postgres plan review warning: as reviewUnavailableSeconds, for a database with read replicas, which restart too (Render's copy)",
+  },
+  "databases.reviewUnavailableReplicasMinutes": {
+    message:
+      "Deine Datenbank und ihre Replikate sind während der Aktualisierung einige Minuten lang nicht verfügbar.",
+    description:
+      "Postgres plan review warning: as reviewUnavailableMinutes, for a database with read replicas, which restart too (Render's copy)",
+  },
+  "databases.reviewUpdateCompute": {
+    message: "Compute aktualisieren",
+    description:
+      "Postgres plan review: the button that applies a compute plan change (Render's copy)",
+  },
+  "databases.reviewUpdateStorage": {
+    message: "Speicher aktualisieren",
+    description:
+      "Postgres plan review: the button that applies a storage change (Render's copy)",
   },
   "databases.planPickerSuccess": {
     message: "Tarif wird auf {name} geändert…",

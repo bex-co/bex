@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { useRef, useState } from "react";
 import { PlanCatalogUnavailable } from "@/common/components/plan-catalog-unavailable";
 import {
   Card,
@@ -19,7 +18,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/common/components/ui/dialog";
-import { ConfirmDialog } from "@/common/components/confirm-dialog";
+import {
+  ReviewChangesDialog,
+  type ReviewLineItem,
+} from "@/common/components/review-changes-dialog";
+import { useComputePlanFigures } from "@/common/hooks/use-compute-plan-figures";
 import { ComputePlanList } from "@/common/components/compute-plan-list";
 import {
   PlanTierSlots,
@@ -39,6 +42,11 @@ import {
   storageGrowProblem,
 } from "@/features/databases/lib/storage";
 import { highAvailabilityRequested } from "@/features/databases/lib/status";
+import {
+  centsToUsd,
+  databaseReviewPricing,
+  usdToCents,
+} from "@/features/databases/lib/plan-review";
 import type {
   DatabaseDetailView,
   DatabaseInstanceTypeView,
@@ -60,7 +68,10 @@ export function DatabasePlanSection({
     useDatabaseInstanceTypes();
   const { updatePlan, busy } = useUpdateDatabasePlan();
   const [selected, setSelected] = useState<string | null>(database.plan);
-  const [confirming, setConfirming] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const reviewLines = useDatabaseReviewLines(database);
+  const haEdit = useEditHighAvailability();
 
   const selectedType = instanceTypes.find((it) => it.id === selected);
   const dirty = selected != null && selected !== database.plan;
@@ -105,16 +116,47 @@ export function DatabasePlanSection({
   const canSave = dirty && selectedType != null && planError == null;
 
   async function handleConfirm() {
-    if (createDenied || !canSave) return;
-    setConfirming(false);
-    if (!selectedType) return;
-    const ok = await updatePlan(
+    if (createDenied || !canSave || !selectedType) return;
+    setReviewError(null);
+    const result = await updatePlan(
       database.id,
       selectedType.id,
       selectedType.name,
     );
-    if (ok) onChanged();
+    if (result.ok) {
+      setReviewing(false);
+      onChanged();
+    } else {
+      setReviewError(result.error ?? null);
+    }
   }
+
+  const currentType = instanceTypes.find((it) => it.id === database.plan);
+  // Render's review of a compute change (w3/m674): the new plan, the standby
+  // and replicas it also prices, and the storage the change leaves, which a
+  // plan's larger floor raises (EffectiveStorageGB). A plan whose storage is
+  // included (Free) has no Storage line.
+  const review =
+    selectedType &&
+    reviewLines({
+      plan: selectedType,
+      storageGB:
+        usdToCents(selectedType.storageMonthlyUsdPerGB) === 0
+          ? null
+          : Math.max(
+              database.diskSizeGB ?? currentType?.storageGB ?? 0,
+              selectedType.storageGB,
+            ),
+      // Edit returns to the picker with the choice kept.
+      onEditPlan: () => setReviewing(false),
+      onEditHighAvailability: () =>
+        haEdit.edit(() => {
+          setSelected(database.plan);
+          setReviewing(false);
+        }),
+    });
+  const replicas = database.readReplicas.length > 0;
+  const seconds = highAvailabilityRequested(database);
 
   return (
     <Card>
@@ -164,7 +206,10 @@ export function DatabasePlanSection({
             <Button
               disabled={!canSave || busy || createDenied}
               onClick={() => {
-                if (!createDenied) setConfirming(true);
+                if (createDenied) return;
+                setReviewError(null);
+                haEdit.clear();
+                setReviewing(true);
               }}
             >
               {t("databases.planPickerSave")}
@@ -183,27 +228,31 @@ export function DatabasePlanSection({
         />
       </CardContent>
 
-      <ConfirmDialog
-        open={confirming && !createDenied}
-        onOpenChange={(open) => {
-          if (!createDenied) setConfirming(open);
-        }}
-        title={
-          selectedType
-            ? t("databases.planPickerConfirmTitle", { name: selectedType.name })
-            : ""
-        }
-        description={
-          selectedType?.monthlyUsd
-            ? `${t("databases.planPickerConfirmBody")} ${t("databases.planPickerConfirmPrice", { price: selectedType.monthlyUsd })}`
-            : t("databases.planPickerConfirmBody")
-        }
-        cancelLabel={t("databases.planPickerCancel")}
-        confirmLabel={t("databases.planPickerSave")}
-        // Changing plan is the primary action, not a destructive one.
-        destructive={false}
-        onConfirm={() => void handleConfirm()}
-      />
+      {review ? (
+        <ReviewChangesDialog
+          open={reviewing && !createDenied}
+          description={t("databases.reviewComputeLead")}
+          lineItems={review.lines}
+          total={review.total}
+          confirmLabel={t("databases.reviewUpdateCompute")}
+          // Render's warning: seconds when a standby takes over, minutes when
+          // the only instance restarts; the replicas restart too.
+          warning={t(
+            replicas
+              ? seconds
+                ? "databases.reviewUnavailableReplicasSeconds"
+                : "databases.reviewUnavailableReplicasMinutes"
+              : seconds
+                ? "databases.reviewUnavailableSeconds"
+                : "databases.reviewUnavailableMinutes",
+          )}
+          pending={busy}
+          error={reviewError}
+          onConfirm={() => void handleConfirm()}
+          onClose={() => setReviewing(false)}
+          returnFocusRef={haEdit.returnFocusRef}
+        />
+      ) : null}
     </Card>
   );
 }
@@ -229,8 +278,11 @@ function StorageRow({
     useCapabilityGate("canCreate");
   const { updateDiskSize, busy } = useUpdateDatabaseDiskSize();
   const [editing, setEditing] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
   const [value, setValue] = useState("");
-  const [serverError, setServerError] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const reviewLines = useDatabaseReviewLines(database);
+  const haEdit = useEditHighAvailability();
 
   const current = plan
     ? databaseStorageGB(database, plan)
@@ -251,26 +303,52 @@ function StorageRow({
               max: max ?? "",
             })
           : undefined;
-  const error = fieldError ?? serverError;
   // The smallest size it accepts, which also anchors the field's step.
   const next = (Math.floor(current / STORAGE_STEP_GB) + 1) * STORAGE_STEP_GB;
 
   function startEditing() {
     setValue(max == null || next <= max ? String(next) : "");
-    setServerError(null);
+    setEditing(true);
+  }
+
+  // Save opens Render's storage review; Edit storage and Cancel return to
+  // the field with the size kept.
+  function review() {
+    if (!canSave) return;
+    setReviewError(null);
+    haEdit.clear();
+    setEditing(false);
+    setReviewing(true);
+  }
+
+  function resumeEditing() {
+    setReviewing(false);
     setEditing(true);
   }
 
   async function save() {
     if (!canSave) return;
+    setReviewError(null);
     const message = await updateDiskSize(database.id, Number(value));
     if (message) {
-      setServerError(message);
+      setReviewError(message);
       return;
     }
-    setEditing(false);
+    setReviewing(false);
     onChanged();
   }
+
+  // Render's storage review (w3/m674): the plan as it stands, the standby and
+  // replicas, and the new size on every instance the database bills.
+  const storageReview =
+    plan && canSave
+      ? reviewLines({
+          plan,
+          storageGB: Number(value),
+          onEditStorage: resumeEditing,
+          onEditHighAvailability: () => haEdit.edit(() => setReviewing(false)),
+        })
+      : undefined;
 
   return (
     // `#storage` is Render's anchor for this control: its almost-full
@@ -304,12 +382,7 @@ function StorageRow({
         </Button>
       </PermissionTooltip>
 
-      <Dialog
-        open={editing}
-        onOpenChange={(open) => {
-          if (!busy) setEditing(open);
-        }}
-      >
+      <Dialog open={editing} onOpenChange={setEditing}>
         <DialogContent>
           {/* noValidate: the field's own messages explain a refusal, in the
               user's language, instead of the browser's constraint bubble. */}
@@ -317,7 +390,7 @@ function StorageRow({
             noValidate
             onSubmit={(e) => {
               e.preventDefault();
-              void save();
+              review();
             }}
             className="space-y-4"
           >
@@ -344,22 +417,19 @@ function StorageRow({
                 max={max ?? undefined}
                 step={STORAGE_STEP_GB}
                 value={value}
-                onChange={(e) => {
-                  setValue(e.target.value);
-                  setServerError(null);
-                }}
-                aria-invalid={error != null}
+                onChange={(e) => setValue(e.target.value)}
+                aria-invalid={fieldError != null}
                 aria-describedby={
-                  error ? "database-storage-size-error" : undefined
+                  fieldError ? "database-storage-size-error" : undefined
                 }
               />
-              {error ? (
+              {fieldError ? (
                 <p
                   id="database-storage-size-error"
                   className="text-destructive text-sm"
                   role="alert"
                 >
-                  {error}
+                  {fieldError}
                 </p>
               ) : null}
             </div>
@@ -367,19 +437,140 @@ function StorageRow({
               <Button
                 type="button"
                 variant="outline"
-                disabled={busy}
                 onClick={() => setEditing(false)}
               >
                 {t("common.cancel")}
               </Button>
-              <Button type="submit" disabled={!canSave || busy}>
-                {busy ? <Loader2 className="animate-spin" /> : null}
+              <Button type="submit" disabled={!canSave}>
                 {t("databases.storageEditSave")}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      {storageReview ? (
+        <ReviewChangesDialog
+          open={reviewing}
+          description={t("databases.reviewStorageLead")}
+          lineItems={storageReview.lines}
+          total={storageReview.total}
+          confirmLabel={t("databases.reviewUpdateStorage")}
+          pending={busy}
+          error={reviewError}
+          onConfirm={() => void save()}
+          onClose={resumeEditing}
+          returnFocusRef={haEdit.returnFocusRef}
+        />
+      ) : null}
     </div>
   );
+}
+
+/**
+ * The lines of Render's Postgres review (w3/m674): Compute plan, High
+ * availability when it is on, Read replicas when there are any, and Storage
+ * when the plan bills it, each priced by databaseReviewPricing, then the
+ * Total. An `onEdit…` puts the Edit beside its line.
+ */
+function useDatabaseReviewLines(database: DatabaseDetailView) {
+  const { t } = useTranslations();
+  const figures = useComputePlanFigures();
+  // "—" for a plan the sheet does not price.
+  const price = (cents: number | null) =>
+    cents == null
+      ? "—"
+      : t("common.pricePerMonth", { price: centsToUsd(cents) });
+  return ({
+    plan,
+    storageGB,
+    onEditPlan,
+    onEditHighAvailability,
+    onEditStorage,
+  }: {
+    plan: DatabaseInstanceTypeView;
+    storageGB: number | null;
+    onEditPlan?: () => void;
+    onEditHighAvailability: () => void;
+    onEditStorage?: () => void;
+  }) => {
+    const highAvailability = highAvailabilityRequested(database);
+    const readReplicas = database.readReplicas.length;
+    const pricing = databaseReviewPricing({
+      planMonthlyUsd: plan.monthlyUsd,
+      storageMonthlyUsdPerGB: plan.storageMonthlyUsdPerGB,
+      highAvailability,
+      readReplicas,
+      storageGB,
+    });
+    const lines: ReviewLineItem[] = [
+      {
+        id: "compute-plan",
+        label: t("databases.planTitle"),
+        values: figures(plan),
+        price: price(pricing.planCents),
+        onEdit: onEditPlan,
+        editLabel: t("common.reviewEditComputePlan"),
+      },
+    ];
+    if (highAvailability) {
+      lines.push({
+        id: "high-availability",
+        label: t("databases.haTitle"),
+        values: [t("databases.haEnabled")],
+        price: price(pricing.highAvailabilityCents),
+        onEdit: onEditHighAvailability,
+        editLabel: t("databases.reviewEditHighAvailability"),
+      });
+    }
+    if (readReplicas > 0) {
+      lines.push({
+        id: "read-replicas",
+        label: t("databases.haReadReplicas"),
+        values: [t("databases.reviewReplicaCount", { count: readReplicas })],
+        price: price(pricing.readReplicasCents),
+      });
+    }
+    if (storageGB != null) {
+      lines.push({
+        id: "storage",
+        label: t("databases.storageTitle"),
+        values: [
+          pricing.billedInstances > 1
+            ? t("databases.reviewStorageInstances", {
+                size: storageGB,
+                count: pricing.billedInstances,
+              })
+            : t("databases.storageSize", { size: storageGB }),
+        ],
+        price: price(pricing.storageCents),
+        onEdit: onEditStorage,
+        editLabel: t("databases.storageEditAria"),
+      });
+    }
+    return { lines, total: price(pricing.totalCents) };
+  };
+}
+
+/**
+ * The High availability line's Edit, as on Render: it drops the change under
+ * review and goes to the High Availability section below, whose switch takes
+ * the focus the closing dialog hands back. Opening a review calls `clear`,
+ * so any other close returns focus to its opener.
+ */
+function useEditHighAvailability() {
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  return {
+    returnFocusRef,
+    clear() {
+      returnFocusRef.current = null;
+    },
+    edit(close: () => void) {
+      const section = document.getElementById("high-availability");
+      returnFocusRef.current =
+        section?.querySelector<HTMLElement>('[role="switch"]') ?? null;
+      close();
+      section?.scrollIntoView({ behavior: "smooth" });
+    },
+  };
 }

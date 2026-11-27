@@ -1430,19 +1430,74 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Cancel",
     description: "Database plan-picker cancel / reset button",
   },
-  "databases.planPickerConfirmTitle": {
-    message: "Change to {name}?",
-    description: "Database plan-picker confirm dialog title",
-  },
-  "databases.planPickerConfirmBody": {
-    message:
-      "The database restarts to apply the new compute plan and is unavailable for a minute or two. Connections drop. Your data is kept.",
-    description: "Database plan-picker confirm dialog body",
-  },
-  "databases.planPickerConfirmPrice": {
-    message: "The new plan costs ${price}/month.",
+  "databases.reviewComputeLead": {
+    message: "Review your compute and storage selections.",
     description:
-      "Plan-change confirm: the new plan's monthly price, from the API's price sheet (w4/156)",
+      "Postgres plan review: the lead of a compute plan change's review (Render's copy)",
+  },
+  "databases.reviewStorageLead": {
+    message: "Review your storage selection.",
+    description:
+      "Postgres plan review: the lead of a storage change's review (Render's copy)",
+  },
+  "databases.reviewEditHighAvailability": {
+    message: "Edit high availability",
+    description:
+      "Postgres plan review: accessible name of the High availability line's Edit button, which goes to the High Availability section",
+  },
+  "databases.reviewReplicaCount_one": {
+    message: "{count} replica",
+    description:
+      "Postgres plan review: the Read replicas line's figure, the database's replica count",
+  },
+  "databases.reviewReplicaCount_other": {
+    message: "{count} replicas",
+    description:
+      "Postgres plan review: the Read replicas line's figure, the database's replica count",
+  },
+  "databases.reviewStorageInstances_one": {
+    message: "{size} GB (x{count} instance)",
+    description:
+      'Postgres plan review: the Storage line\'s figure when the size is billed on several instances (primary, HA standby, read replicas); Render writes "GB (x3 instances)"',
+  },
+  "databases.reviewStorageInstances_other": {
+    message: "{size} GB (x{count} instances)",
+    description:
+      'Postgres plan review: the Storage line\'s figure when the size is billed on several instances (primary, HA standby, read replicas); Render writes "GB (x3 instances)"',
+  },
+  "databases.reviewUnavailableSeconds": {
+    message:
+      "Your database will be unavailable for a few seconds while updating.",
+    description:
+      "Postgres plan review warning: a database with high availability fails over to its standby, so the outage is seconds (Render's copy)",
+  },
+  "databases.reviewUnavailableMinutes": {
+    message:
+      "Your database will be unavailable for a few minutes while updating.",
+    description:
+      "Postgres plan review warning: a database without high availability restarts its only instance, so the outage is minutes (Render's copy)",
+  },
+  "databases.reviewUnavailableReplicasSeconds": {
+    message:
+      "Your database and its replicas will be unavailable for a few seconds while updating.",
+    description:
+      "Postgres plan review warning: as reviewUnavailableSeconds, for a database with read replicas, which restart too (Render's copy)",
+  },
+  "databases.reviewUnavailableReplicasMinutes": {
+    message:
+      "Your database and its replicas will be unavailable for a few minutes while updating.",
+    description:
+      "Postgres plan review warning: as reviewUnavailableMinutes, for a database with read replicas, which restart too (Render's copy)",
+  },
+  "databases.reviewUpdateCompute": {
+    message: "Update compute",
+    description:
+      "Postgres plan review: the button that applies a compute plan change (Render's copy)",
+  },
+  "databases.reviewUpdateStorage": {
+    message: "Update storage",
+    description:
+      "Postgres plan review: the button that applies a storage change (Render's copy)",
   },
   "databases.planPickerSuccess": {
     message: "Updating plan to {name}…",

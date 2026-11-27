@@ -581,14 +581,20 @@ const jaKeyValue: Record<string, TranslationEntry> = {
     message: "キャンセル",
     description: "Key Value plan-picker cancel / reset button",
   },
-  "keyvalue.planPickerConfirmTitle": {
-    message: "{name} に変更しますか？",
-    description: "Key Value plan-picker confirm dialog title",
+  "keyvalue.reviewComputeLead": {
+    message: "コンピュートの選択内容を確認してください。",
+    description:
+      "Key Value plan review: the lead of a compute plan change's review (Render's copy)",
   },
-  "keyvalue.planPickerConfirmBody": {
-    message:
-      "新しいコンピュートプランを適用するためにストアが再起動され、1〜2 分間利用できなくなります。接続は切断されます。",
-    description: "Key Value plan-picker confirm dialog body",
+  "keyvalue.reviewUnavailable": {
+    message: "更新中、Key Value インスタンスは利用できなくなります。",
+    description:
+      "Key Value plan review warning: the store restarts to apply the plan (Render's copy); the data-loss sentence follows it when persistence is Off",
+  },
+  "keyvalue.reviewUpgradeCompute": {
+    message: "コンピュートをアップグレード",
+    description:
+      "Key Value plan review: the button that applies a plan change (Render's copy; Key Value plans only go up)",
   },
   "keyvalue.restartConfirmDataLoss": {
     message:
@@ -601,11 +607,6 @@ const jaKeyValue: Record<string, TranslationEntry> = {
       "このストアの永続化モードは不明です。オフの場合、再起動すると {name} のすべてのキーが削除されます。この操作は元に戻せません。",
     description:
       "Restart confirm when the persistence mode could not be read: the typed phrase is still required",
-  },
-  "keyvalue.planPickerConfirmPrice": {
-    message: "新しいプランの料金は月額 ${price} です。",
-    description:
-      "Plan-change confirm: the new plan's monthly price, from the API's price sheet (w4/156)",
   },
   "keyvalue.planPickerSuccess": {
     message: "プランを {name} に更新しています…",

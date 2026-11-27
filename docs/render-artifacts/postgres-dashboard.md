@@ -120,3 +120,25 @@ Read 2026-11-25 from Render's public dashboard bundle, without sign-in: `index-D
 - Render's "update your custom compute plan": bex has no custom plans.
 - Render's "contact support" opens its chat; bex's is text, as bex has no support channel to link.
 - Render disables Create export above 1 TB used; bex does not ([w3/130](../../.pm/w3/130.md)).
+
+## Plan review (w3/m674)
+
+Read 2026-11-26 from Render's public dashboard bundle, without sign-in: `index-D5V4ZgbE.js` (sha256 `8d15889ace2d…`) holds the review component and the three pages that open it, `PlanPickerAddOns__Repricing-qgrymlMa.js` (`c8f0ec934566…`) the add-on price ratios, and `PlanSpec-DBr3UJW1.js` (`c0767418c043…`) the price format. Find the component by "Review your compute and storage selections." and its arithmetic by `billedInstances`.
+
+- **One component** (`BN` in that build), a large modal: the title "Apply changes?", the lead, the line items, a rule, "Total" and its price, then an inline warning when the page passes one and an inline error when the change failed, and the footer's Cancel and the change's button. Each line has a small caps label, its figures (a plan's CPU and RAM, plus its connection limit where it has one), an Edit icon beside the last figure when the line has one, and its monthly price. Cancel and the close button return to editing with the choice kept (`resumeEditing`). Services' and cron jobs' compute changes open it too.
+- **Compute change** (the Plan page's Compute section, Save): lead "Review your compute and storage selections."; lines **Compute plan** (the new plan, Edit "Edit compute plan" back to the picker), **High availability** when it is on ("Enabled", Edit "Edit high availability", which resets the change and scrolls to `#high-availability`), **Read replicas** when there are any ("1 replica", "2 replicas") and **Storage** unless the new plan is Free ("25 GB", or "25 GB (x3 instances)" when more than one instance bills); button **Update compute**; warning "Your database[ and its replicas] will be unavailable for a few seconds|minutes while updating.", seconds when high availability is on.
+- **Storage change** (the Storage section, Save): lead "Review your storage selection."; the same lines priced at the new size, Compute plan without Edit, Storage with Edit "Edit storage" back to the field; button **Update storage**; no warning.
+- **Arithmetic** (`WP`): billed instances = 1 + (HA ? 1 : 0) + replicas. The HA line is ⌊plan price × the HA ratio⌋, 1 in that chunk; replicas are count × plan price; storage is GB × the storage ratio ($0.30 per GB) × billed instances; the total is their sum. Prices print as `$<amount> / month`, with two decimals only when the amount has cents.
+
+### What bex does (w3/m674)
+
+- `ReviewChangesDialog` (`dashboard/src/common/components/review-changes-dialog.tsx`) draws Render's component on the dashboard's `ConfirmDialog`. A Postgres plan change, a Postgres storage change and a Key Value plan change open it in place of the old confirm and the old direct Save. A failed change shows its error in the dialog and keeps it open.
+- Every price comes from bex-api's price sheet through the plan catalogue: `monthlyUsd` for Compute plan, and `storageMonthlyUsdPerGB`, added to GraphQL's `DatabaseInstanceType` for this, for Storage ($0.21, ADR030; "0.00" for Free's included storage). An HA standby is priced like the primary because it meters like one (ADR030), and each read replica's instance and volume meter like the primary's (ADR009), which is Render's arithmetic at bex's prices. `dashboard/src/features/databases/lib/plan-review.ts` computes the lines in whole cents, so they add up to the total they show.
+- A compute change's Storage line is the size the change leaves: the larger of the database's storage and the new plan's floor (`EffectiveStorageGB`), so moving from a 5 GB plan to a 10 GB one prices 10 GB. Like every other bex storage estimate, it prices the provisioned size while bex meters used bytes (ADR030).
+- Render's copy, buttons, warnings and Edit targets, in all eight languages. Cancel on the storage review returns to the size field with the size kept, as Render's does.
+
+### Still apart
+
+- Render's prices print as `$55 / month`; bex's as `$55.00/month`, as its plan cards do.
+- Render shows the plan picker read-only until Edit; bex's picker is always open, with its own Cancel and Save.
+- Services' and cron jobs' compute changes still confirm without the review ([w3/132](../../.pm/w3/132.md)).

@@ -61,6 +61,11 @@ type DatabaseInstanceType struct {
 	// unlisted tier. The plan picker showed none, so a paid datastore was
 	// chosen blind (w4/156).
 	MonthlyUSD string
+	// StorageMonthlyUSDPerGB is one GB of one instance's storage a month on
+	// this plan, from the same sheet ("0.21"; "0.00" for Free's included
+	// storage). The dashboard's plan review prices the Storage line with it,
+	// times the storage size and every instance the database bills (w3/m674).
+	StorageMonthlyUSDPerGB string
 }
 
 // InstanceTypes lists every plan in the shared Postgres catalog, in ladder
@@ -77,6 +82,7 @@ func (s *Service) InstanceTypes(ctx context.Context) ([]DatabaseInstanceType, er
 		monthlyUSD, _ := pricing.Default.InstanceMonthlyUSD(id, store.ResourceKindPostgres)
 		out[i] = DatabaseInstanceType{
 			MonthlyUSD:                monthlyUSD,
+			StorageMonthlyUSDPerGB:    pricing.Default.StorageMonthlyUSDPerGB(id, store.ResourceKindPostgres),
 			ID:                        t.ID,
 			Name:                      TierDisplayName(id),
 			CPU:                       t.CPU,

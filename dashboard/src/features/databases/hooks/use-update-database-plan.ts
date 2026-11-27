@@ -8,11 +8,16 @@ import { usePaymentRequiredGate } from "@/features/usage/context/payment-require
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 
 export interface UseUpdateDatabasePlanResult {
+  /**
+   * Applies the plan. `ok` when accepted (a success toast says so); otherwise
+   * `error` is the message the plan review shows in place, absent when the
+   * user closed the payment-method step themselves (w3/m674).
+   */
   updatePlan: (
     id: string,
     plan: string,
     displayName: string,
-  ) => Promise<boolean>;
+  ) => Promise<{ ok: boolean; error?: string }>;
   busy: boolean;
 }
 
@@ -28,13 +33,13 @@ export function useUpdateDatabasePlan(): UseUpdateDatabasePlanResult {
       try {
         await paymentGate.run(() => mutate({ variables: { id, plan } }));
         toast.success(t("databases.planPickerSuccess", { name: displayName }));
-        return true;
+        return { ok: true };
       } catch (error) {
-        if (isPaymentOnboardingCancelled(error)) return false;
-        toast.error(
-          mutationErrorMessage(error, t("databases.planPickerError")),
-        );
-        return false;
+        if (isPaymentOnboardingCancelled(error)) return { ok: false };
+        return {
+          ok: false,
+          error: mutationErrorMessage(error, t("databases.planPickerError")),
+        };
       } finally {
         setBusy(false);
       }

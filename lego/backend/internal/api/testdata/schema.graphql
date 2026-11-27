@@ -1365,6 +1365,7 @@ type DatabaseInstanceType {
   name: String
   readReplicaMinStorageGB: Int
   storageGB: Int
+  storageMonthlyUsdPerGB: String
   supportsConnectionPooling: Boolean
   supportsDiskAutoscaling: Boolean
   supportsHighAvailability: Boolean

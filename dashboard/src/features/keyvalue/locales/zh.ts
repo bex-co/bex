@@ -574,14 +574,20 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "取消",
     description: "Key Value plan-picker cancel / reset button",
   },
-  "keyvalue.planPickerConfirmTitle": {
-    message: "切换至 {name}？",
-    description: "Key Value plan-picker confirm dialog title",
+  "keyvalue.reviewComputeLead": {
+    message: "检查你选择的计算。",
+    description:
+      "Key Value plan review: the lead of a compute plan change's review (Render's copy)",
   },
-  "keyvalue.planPickerConfirmBody": {
-    message:
-      "存储将重启以应用新的计算套餐，期间约一到两分钟不可用，连接会中断。",
-    description: "Key Value plan-picker confirm dialog body",
+  "keyvalue.reviewUnavailable": {
+    message: "更新期间，你的 Key Value 实例将不可用。",
+    description:
+      "Key Value plan review warning: the store restarts to apply the plan (Render's copy); the data-loss sentence follows it when persistence is Off",
+  },
+  "keyvalue.reviewUpgradeCompute": {
+    message: "升级计算",
+    description:
+      "Key Value plan review: the button that applies a plan change (Render's copy; Key Value plans only go up)",
   },
   "keyvalue.restartConfirmDataLoss": {
     message: "持久化为“关闭”，重启会删除 {name} 中的所有键，且无法撤销。",
@@ -593,11 +599,6 @@ const zhKeyValue: Record<string, TranslationEntry> = {
       "无法确认此存储的持久化模式。若持久化为“关闭”，重启会删除 {name} 中的所有键，且无法撤销。",
     description:
       "Restart confirm when the persistence mode could not be read: the typed phrase is still required",
-  },
-  "keyvalue.planPickerConfirmPrice": {
-    message: "新套餐每月 ${price}。",
-    description:
-      "Plan-change confirm: the new plan's monthly price, from the API's price sheet (w4/156)",
   },
   "keyvalue.planPickerSuccess": {
     message: "正在更新规格至 {name}……",

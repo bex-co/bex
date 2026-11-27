@@ -47,6 +47,23 @@ func (s *Sheet) DiskMonthlyUSD(sizeGB int32) string {
 	return formatDecimal(float64(sizeGB)*s.disk*MonthSeconds, 3, 2)
 }
 
+// StorageMonthlyUSDPerGB returns what one GB of a datastore instance's storage
+// costs a month on tier ("0.21" for a paid Postgres, ADR030), the rate
+// MonthlyEstimate prices a datastore's storage line at. A Free tier's fixed
+// storage is included at $0 (w4/427), so it answers "0.00", and so does a
+// resource kind with no storage meter. A plan review multiplies it by the
+// storage size and by every instance the database bills (w3/m674).
+func (s *Sheet) StorageMonthlyUSDPerGB(tier, resourceKind string) string {
+	if s == nil {
+		return "0.00"
+	}
+	rate := s.rateFor(store.UsageKindStorageGBSeconds, tier, resourceKind)
+	if rate <= 0 {
+		return "0.00"
+	}
+	return formatDecimal(rate*MonthSeconds, 3, 2)
+}
+
 // InstanceUSDPerMinute returns one catalog instance tier's rate per minute of
 // run time, to two significant digits ("0.00011"): the price of a cron job,
 // which is billed per second only while a run executes (w4/546, VariableCron),

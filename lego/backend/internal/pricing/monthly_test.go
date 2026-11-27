@@ -44,6 +44,35 @@ func TestInstanceMonthlyUSD(t *testing.T) {
 	}
 }
 
+// A plan review prices a datastore's storage per GB-month (w3/m674): the
+// storage meter's rate over one pricing month, ADR030's $0.21 for paid
+// Postgres and Key Value, and $0 for a Free tier's included storage (w4/427)
+// or a kind the storage meter does not price.
+func TestStorageMonthlyUSDPerGB(t *testing.T) {
+	for _, tt := range []struct {
+		tier, kind, want string
+	}{
+		{"basic-1gb", store.ResourceKindPostgres, "0.21"},
+		{"1c-2g", store.ResourceKindPostgres, "0.21"},
+		{"starter", store.ResourceKindKeyValue, "0.21"},
+		{"free", store.ResourceKindPostgres, "0.00"},
+		{"starter", store.ResourceKindService, "0.00"},
+	} {
+		if got := Default.StorageMonthlyUSDPerGB(tt.tier, tt.kind); got != tt.want {
+			t.Errorf("StorageMonthlyUSDPerGB(%q, %q) = %q, want %q", tt.tier, tt.kind, got, tt.want)
+		}
+	}
+	// The same rate MonthlyEstimate prices a datastore's storage line at.
+	est := Default.MonthlyEstimate([]MonthlyResource{{Name: "db", ResourceKind: store.ResourceKindPostgres, Tier: "basic-1gb", StorageGB: 100}})
+	if got := est.Lines[0].StorageUSD; got != "21.00" {
+		t.Errorf("100 GB storage line = %q, want 100 × 0.21 = 21.00", got)
+	}
+	var nilSheet *Sheet
+	if got := nilSheet.StorageMonthlyUSDPerGB("basic-1gb", store.ResourceKindPostgres); got != "0.00" {
+		t.Errorf("nil sheet = %q, want 0.00", got)
+	}
+}
+
 // A cron job's price is per minute of run time (w4/546): Starter's per-second
 // rate × 60, to two significant digits.
 func TestInstanceUSDPerMinute(t *testing.T) {

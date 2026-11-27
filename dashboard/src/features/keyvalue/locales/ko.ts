@@ -573,14 +573,20 @@ const koKeyValue: Record<string, TranslationEntry> = {
     message: "취소",
     description: "Key Value plan-picker cancel / reset button",
   },
-  "keyvalue.planPickerConfirmTitle": {
-    message: "{name}(으)로 변경할까요?",
-    description: "Key Value plan-picker confirm dialog title",
+  "keyvalue.reviewComputeLead": {
+    message: "컴퓨팅 선택 사항을 검토하세요.",
+    description:
+      "Key Value plan review: the lead of a compute plan change's review (Render's copy)",
   },
-  "keyvalue.planPickerConfirmBody": {
-    message:
-      "새 컴퓨팅 플랜을 적용하기 위해 스토어가 다시 시작되며 1~2분간 사용할 수 없습니다. 연결이 끊어집니다.",
-    description: "Key Value plan-picker confirm dialog body",
+  "keyvalue.reviewUnavailable": {
+    message: "업데이트하는 동안 Key Value 인스턴스를 사용할 수 없습니다.",
+    description:
+      "Key Value plan review warning: the store restarts to apply the plan (Render's copy); the data-loss sentence follows it when persistence is Off",
+  },
+  "keyvalue.reviewUpgradeCompute": {
+    message: "컴퓨팅 업그레이드",
+    description:
+      "Key Value plan review: the button that applies a plan change (Render's copy; Key Value plans only go up)",
   },
   "keyvalue.restartConfirmDataLoss": {
     message:
@@ -593,11 +599,6 @@ const koKeyValue: Record<string, TranslationEntry> = {
       "이 스토어의 영속성 모드를 알 수 없습니다. 끔이라면 다시 시작할 때 {name}의 모든 키가 삭제됩니다. 이 작업은 되돌릴 수 없습니다.",
     description:
       "Restart confirm when the persistence mode could not be read: the typed phrase is still required",
-  },
-  "keyvalue.planPickerConfirmPrice": {
-    message: "새 요금제는 월 ${price}입니다.",
-    description:
-      "Plan-change confirm: the new plan's monthly price, from the API's price sheet (w4/156)",
   },
   "keyvalue.planPickerSuccess": {
     message: "{name}(으)로 요금제를 업데이트하는 중…",

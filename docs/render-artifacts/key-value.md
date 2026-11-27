@@ -107,6 +107,19 @@ Every card of bex's former single Key Value page goes to Info, in the order of i
 - Render folds Maxmemory Policy and Persistence Mode into General; bex keeps them as cards of their own beside it.
 - Render's document title has no page name; bex's names the page first, as its service tabs do.
 
+## Plan review (w3/m674, 2026-11-26)
+
+Read from Render's public dashboard bundle `index-D5V4ZgbE.js` (sha256 `8d15889ace2d…`), without sign-in. Info's Compute section opens Render's one review component ([postgres-dashboard.md § Plan review](postgres-dashboard.md#plan-review-w3m674)) on Save:
+
+- Lead "Review your compute selection."; one line, **Compute plan**: the new plan's CPU, RAM and connection limit, Edit "Edit compute plan" back to the picker, and its monthly price. Total is the plan's price: Render lists no Key Value storage line.
+- Warning "Your Key Value instance will be unavailable while updating.", followed by " Free instances have no persistence, so all existing data will be deleted." when the instance has no disk (`planSpec.diskGiB === 0`, a Free instance).
+- Button **Upgrade compute**. Smaller plans are disabled in the picker ("Currently, we don't support downgrading Key Value instances.").
+
+### What bex does (w3/m674)
+
+- Info's plan card opens `ReviewChangesDialog` with Render's lead, the Compute plan line (CPU, RAM, connections and the catalogue's `monthlyUsd`), the Total, Render's warning and Upgrade compute. A refused change shows its error in the dialog and keeps it open.
+- The data-loss sentence follows bex's condition, not Render's: bex's Free tier has a disk and persistence ([ADR021](../ADR021-keyvalue-management.md), w6/m127), so a plan change deletes data only when Persistence is Off (or unread), whatever the plan. Then the warning adds bex's sentence ("Persistence is Off, so the restart deletes every key in ‹name›. This cannot be undone.") and Upgrade compute waits for `sudo clear key value <name>`, as every bex confirmation that deletes data does (dashboard AGENTS.md § Destructive confirmations, w4/m263). A persisted Free instance keeps its data, so its review has Render's warning alone.
+
 ## Where Render shows the connection limit (w6/m459 t001, 2026-11-17)
 
 Read from Render's docs and their screenshots on 2026-11-17; no live Render session was available (the repository holds no Render dashboard login), so the 2026-07-09 capture above was not re-walked.

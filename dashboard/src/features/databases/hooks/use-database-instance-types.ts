@@ -44,6 +44,7 @@ export function useDatabaseInstanceTypes(): UseDatabaseInstanceTypesResult {
           readReplicaMinStorageGB: t.readReplicaMinStorageGB ?? 0,
           supportsHighAvailability: t.supportsHighAvailability ?? false,
           monthlyUsd: t.monthlyUsd ?? "",
+          storageMonthlyUsdPerGB: t.storageMonthlyUsdPerGB ?? "",
           maxConnections: t.maxConnections > 0 ? t.maxConnections : undefined,
         })),
     [data],

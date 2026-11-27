@@ -1438,19 +1438,84 @@ const ptDatabases: Record<string, TranslationEntry> = {
     message: "Cancelar",
     description: "Database plan-picker cancel / reset button",
   },
-  "databases.planPickerConfirmTitle": {
-    message: "Mudar para {name}?",
-    description: "Database plan-picker confirm dialog title",
-  },
-  "databases.planPickerConfirmBody": {
-    message:
-      "O banco de dados reinicia para aplicar o novo plano de computação e fica indisponível por um ou dois minutos. As conexões caem. Seus dados são mantidos.",
-    description: "Database plan-picker confirm dialog body",
-  },
-  "databases.planPickerConfirmPrice": {
-    message: "O novo plano custa ${price}/mês.",
+  "databases.reviewComputeLead": {
+    message: "Revise suas seleções de computação e armazenamento.",
     description:
-      "Plan-change confirm: the new plan's monthly price, from the API's price sheet (w4/156)",
+      "Postgres plan review: the lead of a compute plan change's review (Render's copy)",
+  },
+  "databases.reviewStorageLead": {
+    message: "Revise sua seleção de armazenamento.",
+    description:
+      "Postgres plan review: the lead of a storage change's review (Render's copy)",
+  },
+  "databases.reviewEditHighAvailability": {
+    message: "Editar alta disponibilidade",
+    description:
+      "Postgres plan review: accessible name of the High availability line's Edit button, which goes to the High Availability section",
+  },
+  "databases.reviewReplicaCount_one": {
+    message: "{count} réplica",
+    description:
+      "Postgres plan review: the Read replicas line's figure, the database's replica count",
+  },
+  "databases.reviewReplicaCount_many": {
+    message: "{count} de réplicas",
+    description:
+      "Postgres plan review: the Read replicas line's figure, the database's replica count",
+  },
+  "databases.reviewReplicaCount_other": {
+    message: "{count} réplicas",
+    description:
+      "Postgres plan review: the Read replicas line's figure, the database's replica count",
+  },
+  "databases.reviewStorageInstances_one": {
+    message: "{size} GB (x{count} instância)",
+    description:
+      'Postgres plan review: the Storage line\'s figure when the size is billed on several instances (primary, HA standby, read replicas); Render writes "GB (x3 instances)"',
+  },
+  "databases.reviewStorageInstances_many": {
+    message: "{size} GB (x{count} de instâncias)",
+    description:
+      'Postgres plan review: the Storage line\'s figure when the size is billed on several instances (primary, HA standby, read replicas); Render writes "GB (x3 instances)"',
+  },
+  "databases.reviewStorageInstances_other": {
+    message: "{size} GB (x{count} instâncias)",
+    description:
+      'Postgres plan review: the Storage line\'s figure when the size is billed on several instances (primary, HA standby, read replicas); Render writes "GB (x3 instances)"',
+  },
+  "databases.reviewUnavailableSeconds": {
+    message:
+      "Seu banco de dados ficará indisponível por alguns segundos durante a atualização.",
+    description:
+      "Postgres plan review warning: a database with high availability fails over to its standby, so the outage is seconds (Render's copy)",
+  },
+  "databases.reviewUnavailableMinutes": {
+    message:
+      "Seu banco de dados ficará indisponível por alguns minutos durante a atualização.",
+    description:
+      "Postgres plan review warning: a database without high availability restarts its only instance, so the outage is minutes (Render's copy)",
+  },
+  "databases.reviewUnavailableReplicasSeconds": {
+    message:
+      "Seu banco de dados e suas réplicas ficarão indisponíveis por alguns segundos durante a atualização.",
+    description:
+      "Postgres plan review warning: as reviewUnavailableSeconds, for a database with read replicas, which restart too (Render's copy)",
+  },
+  "databases.reviewUnavailableReplicasMinutes": {
+    message:
+      "Seu banco de dados e suas réplicas ficarão indisponíveis por alguns minutos durante a atualização.",
+    description:
+      "Postgres plan review warning: as reviewUnavailableMinutes, for a database with read replicas, which restart too (Render's copy)",
+  },
+  "databases.reviewUpdateCompute": {
+    message: "Atualizar computação",
+    description:
+      "Postgres plan review: the button that applies a compute plan change (Render's copy)",
+  },
+  "databases.reviewUpdateStorage": {
+    message: "Atualizar armazenamento",
+    description:
+      "Postgres plan review: the button that applies a storage change (Render's copy)",
   },
   "databases.planPickerSuccess": {
     message: "Atualizando o plano para {name}…",

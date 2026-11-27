@@ -975,6 +975,15 @@ func TestInstanceTypesArePricedFromTheSheet(t *testing.T) {
 		if it.MonthlyUSD != want {
 			t.Errorf("%s monthlyUsd = %q, want the sheet's %q", it.ID, it.MonthlyUSD, want)
 		}
+		// The plan review's Storage line rate (w3/m674): the sheet's, with
+		// Free's included storage at $0.
+		wantStorage := "0.21"
+		if it.ID == "free" {
+			wantStorage = "0.00"
+		}
+		if it.StorageMonthlyUSDPerGB != wantStorage || it.StorageMonthlyUSDPerGB != pricing.Default.StorageMonthlyUSDPerGB(it.ID, store.ResourceKindPostgres) {
+			t.Errorf("%s storageMonthlyUsdPerGB = %q, want the sheet's %q", it.ID, it.StorageMonthlyUSDPerGB, wantStorage)
+		}
 	}
 	byID := map[string]string{}
 	for _, it := range tt {

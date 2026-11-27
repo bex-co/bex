@@ -1404,19 +1404,62 @@ const koDatabases: Record<string, TranslationEntry> = {
     message: "취소",
     description: "Database plan-picker cancel / reset button",
   },
-  "databases.planPickerConfirmTitle": {
-    message: "{name}(으)로 변경할까요?",
-    description: "Database plan-picker confirm dialog title",
-  },
-  "databases.planPickerConfirmBody": {
-    message:
-      "새 컴퓨팅 플랜을 적용하기 위해 데이터베이스가 다시 시작되며 1~2분간 사용할 수 없습니다. 연결이 끊어집니다. 데이터는 보존됩니다.",
-    description: "Database plan-picker confirm dialog body",
-  },
-  "databases.planPickerConfirmPrice": {
-    message: "새 요금제는 월 ${price}입니다.",
+  "databases.reviewComputeLead": {
+    message: "컴퓨팅 및 스토리지 선택 사항을 검토하세요.",
     description:
-      "Plan-change confirm: the new plan's monthly price, from the API's price sheet (w4/156)",
+      "Postgres plan review: the lead of a compute plan change's review (Render's copy)",
+  },
+  "databases.reviewStorageLead": {
+    message: "스토리지 선택 사항을 검토하세요.",
+    description:
+      "Postgres plan review: the lead of a storage change's review (Render's copy)",
+  },
+  "databases.reviewEditHighAvailability": {
+    message: "고가용성 편집",
+    description:
+      "Postgres plan review: accessible name of the High availability line's Edit button, which goes to the High Availability section",
+  },
+  "databases.reviewReplicaCount_other": {
+    message: "복제본 {count}개",
+    description:
+      "Postgres plan review: the Read replicas line's figure, the database's replica count",
+  },
+  "databases.reviewStorageInstances_other": {
+    message: "{size} GB (인스턴스 {count}개)",
+    description:
+      'Postgres plan review: the Storage line\'s figure when the size is billed on several instances (primary, HA standby, read replicas); Render writes "GB (x3 instances)"',
+  },
+  "databases.reviewUnavailableSeconds": {
+    message: "업데이트하는 동안 데이터베이스를 몇 초간 사용할 수 없습니다.",
+    description:
+      "Postgres plan review warning: a database with high availability fails over to its standby, so the outage is seconds (Render's copy)",
+  },
+  "databases.reviewUnavailableMinutes": {
+    message: "업데이트하는 동안 데이터베이스를 몇 분간 사용할 수 없습니다.",
+    description:
+      "Postgres plan review warning: a database without high availability restarts its only instance, so the outage is minutes (Render's copy)",
+  },
+  "databases.reviewUnavailableReplicasSeconds": {
+    message:
+      "업데이트하는 동안 데이터베이스와 복제본을 몇 초간 사용할 수 없습니다.",
+    description:
+      "Postgres plan review warning: as reviewUnavailableSeconds, for a database with read replicas, which restart too (Render's copy)",
+  },
+  "databases.reviewUnavailableReplicasMinutes": {
+    message:
+      "업데이트하는 동안 데이터베이스와 복제본을 몇 분간 사용할 수 없습니다.",
+    description:
+      "Postgres plan review warning: as reviewUnavailableMinutes, for a database with read replicas, which restart too (Render's copy)",
+  },
+  "databases.reviewUpdateCompute": {
+    message: "컴퓨팅 업데이트",
+    description:
+      "Postgres plan review: the button that applies a compute plan change (Render's copy)",
+  },
+  "databases.reviewUpdateStorage": {
+    message: "스토리지 업데이트",
+    description:
+      "Postgres plan review: the button that applies a storage change (Render's copy)",
   },
   "databases.planPickerSuccess": {
     message: "{name}(으)로 요금제를 업데이트하는 중…",

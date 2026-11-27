@@ -49,6 +49,7 @@ const PLAN: DatabaseInstanceTypeView = {
   readReplicaMinStorageGB: 10,
   supportsHighAvailability: false,
   monthlyUsd: "13.30",
+  storageMonthlyUsdPerGB: "0.21",
 };
 
 describe("readReplicaAddBlock", () => {

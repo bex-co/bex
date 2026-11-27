@@ -75,7 +75,7 @@ beforeEach(() => {
   catalog.instanceTypes = catalog.defaultTiers;
   persistence.mode = "journal-snapshot";
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
-  updatePlan.mockReset().mockResolvedValue(true);
+  updatePlan.mockReset().mockResolvedValue({ ok: true });
 });
 
 describe("KeyValuePlanSection", () => {
@@ -167,7 +167,9 @@ describe("KeyValuePlanSection", () => {
     await user.click(screen.getByRole("radio", { name: /Starter/ }));
     await user.click(screen.getByRole("button", { name: "Save" }));
     const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Upgrade compute" }),
+    );
 
     expect(updatePlan).toHaveBeenCalledWith(
       "red-sessions",
@@ -175,10 +177,13 @@ describe("KeyValuePlanSection", () => {
       "Starter",
     );
     expect(onChanged).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 
   // w4/156: a free store became a paid one in two clicks with no cost shown.
-  it("prices every plan card and states the new price before the change", async () => {
+  // w3/m674: Render's review lists the plan with its figures and price, then
+  // the total.
+  it("prices every plan card and reviews the plan and total before the change", async () => {
     const user = userEvent.setup();
     render(<KeyValuePlanSection keyValue={KEY_VALUE} onChanged={vi.fn()} />);
 
@@ -187,9 +192,54 @@ describe("KeyValuePlanSection", () => {
     );
     await user.click(screen.getByRole("radio", { name: /Starter/ }));
     await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(await screen.findByRole("alertdialog")).toHaveTextContent(
-      "The new plan costs $7.00/month.",
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveAccessibleName("Apply changes?");
+    expect(dialog).toHaveTextContent("Review your compute selection.");
+    const lines = [...dialog.querySelectorAll('[data-slot="review-line"]')].map(
+      (row) => [...row.children].map((cell) => cell.textContent),
     );
+    expect(lines).toEqual([
+      ["Compute plan", "0.5 CPU1 GB RAM250 connections", "$7.00/month"],
+    ]);
+    expect(dialog).toHaveTextContent("Total$7.00/month");
+    expect(dialog).toHaveTextContent(
+      "Your Key Value instance will be unavailable while updating.",
+    );
+  });
+
+  it("returns to the picker with the choice kept from the plan's Edit", async () => {
+    const user = userEvent.setup();
+    render(<KeyValuePlanSection keyValue={KEY_VALUE} onChanged={vi.fn()} />);
+    await user.click(screen.getByRole("radio", { name: /Starter/ }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Edit compute plan" }),
+    );
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Starter/ })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(updatePlan).not.toHaveBeenCalled();
+  });
+
+  it("keeps the review open with the server's refusal", async () => {
+    updatePlan.mockResolvedValue({ ok: false, error: "Plan unavailable." });
+    const onChanged = vi.fn();
+    const user = userEvent.setup();
+    render(<KeyValuePlanSection keyValue={KEY_VALUE} onChanged={onChanged} />);
+    await user.click(screen.getByRole("radio", { name: /Starter/ }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Upgrade compute" }),
+    );
+    expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      "Plan unavailable.",
+    );
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    expect(onChanged).not.toHaveBeenCalled();
   });
 
   // Render gives a Contributor no configuration change, a plan included
@@ -228,7 +278,7 @@ describe("KeyValuePlanSection", () => {
     await user.click(screen.getByRole("radio", { name: /Starter/ }));
     await user.click(screen.getByRole("button", { name: "Save" }));
     const dialog = await screen.findByRole("alertdialog");
-    expect(dialog).toHaveTextContent("restarts");
+    expect(dialog).toHaveTextContent("unavailable while updating");
     expect(dialog).not.toHaveTextContent("deletes every key");
     expect(within(dialog).queryByRole("textbox")).toBeNull();
   });
@@ -241,8 +291,13 @@ describe("KeyValuePlanSection", () => {
     await user.click(screen.getByRole("radio", { name: /Starter/ }));
     await user.click(screen.getByRole("button", { name: "Save" }));
     const dialog = await screen.findByRole("alertdialog");
-    expect(dialog).toHaveTextContent("deletes every key in sessions");
-    const confirm = within(dialog).getByRole("button", { name: "Save" });
+    // Leaving Free with Persistence Off: Render's warning, then the data loss.
+    expect(dialog).toHaveTextContent(
+      "Your Key Value instance will be unavailable while updating. Persistence is Off, so the restart deletes every key in sessions.",
+    );
+    const confirm = within(dialog).getByRole("button", {
+      name: "Upgrade compute",
+    });
     expect(confirm).toBeDisabled();
     await user.type(
       within(dialog).getByRole("textbox"),

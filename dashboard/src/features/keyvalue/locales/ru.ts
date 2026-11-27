@@ -579,14 +579,20 @@ const ruKeyValue: Record<string, TranslationEntry> = {
     message: "Отмена",
     description: "Key Value plan-picker cancel / reset button",
   },
-  "keyvalue.planPickerConfirmTitle": {
-    message: "Перейти на {name}?",
-    description: "Key Value plan-picker confirm dialog title",
+  "keyvalue.reviewComputeLead": {
+    message: "Проверьте выбранные параметры вычислений.",
+    description:
+      "Key Value plan review: the lead of a compute plan change's review (Render's copy)",
   },
-  "keyvalue.planPickerConfirmBody": {
-    message:
-      "Хранилище перезапустится для применения нового тарифа вычислений и будет недоступно минуту-две. Подключения прервутся.",
-    description: "Key Value plan-picker confirm dialog body",
+  "keyvalue.reviewUnavailable": {
+    message: "Во время обновления инстанс Key Value будет недоступен.",
+    description:
+      "Key Value plan review warning: the store restarts to apply the plan (Render's copy); the data-loss sentence follows it when persistence is Off",
+  },
+  "keyvalue.reviewUpgradeCompute": {
+    message: "Повысить тариф вычислений",
+    description:
+      "Key Value plan review: the button that applies a plan change (Render's copy; Key Value plans only go up)",
   },
   "keyvalue.restartConfirmDataLoss": {
     message:
@@ -599,11 +605,6 @@ const ruKeyValue: Record<string, TranslationEntry> = {
       "Режим сохранения данных этого хранилища неизвестен. Если сохранение выключено, при перезапуске будут удалены все ключи в {name}. Это действие нельзя отменить.",
     description:
       "Restart confirm when the persistence mode could not be read: the typed phrase is still required",
-  },
-  "keyvalue.planPickerConfirmPrice": {
-    message: "Новый тариф стоит ${price}/месяц.",
-    description:
-      "Plan-change confirm: the new plan's monthly price, from the API's price sheet (w4/156)",
   },
   "keyvalue.planPickerSuccess": {
     message: "Обновление тарифа до {name}…",

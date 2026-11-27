@@ -101,6 +101,21 @@ const deCommon: Record<string, TranslationEntry> = {
     description:
       "Monthly USD price shown on a resource plan card; price is an API-supplied decimal without the currency symbol",
   },
+  "common.reviewChangesTitle": {
+    message: "Änderungen übernehmen?",
+    description:
+      "Title of Render's plan review dialog, shown before a compute or storage change applies (w3/m674)",
+  },
+  "common.reviewChangesTotal": {
+    message: "Gesamt",
+    description:
+      "Plan review dialog: the label of the monthly total under the priced lines",
+  },
+  "common.reviewEditComputePlan": {
+    message: "Compute-Plan bearbeiten",
+    description:
+      "Plan review dialog: accessible name of the Compute plan line's Edit button, which returns to the plan picker",
+  },
   "common.planUnavailable": {
     message: "Nicht verfügbar",
     description:

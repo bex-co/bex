@@ -591,14 +591,21 @@ const deKeyValue: Record<string, TranslationEntry> = {
     message: "Abbrechen",
     description: "Key Value plan-picker cancel / reset button",
   },
-  "keyvalue.planPickerConfirmTitle": {
-    message: "Auf {name} wechseln?",
-    description: "Key Value plan-picker confirm dialog title",
+  "keyvalue.reviewComputeLead": {
+    message: "Prüfe deine Compute-Auswahl.",
+    description:
+      "Key Value plan review: the lead of a compute plan change's review (Render's copy)",
   },
-  "keyvalue.planPickerConfirmBody": {
+  "keyvalue.reviewUnavailable": {
     message:
-      "Der Store wird neu gestartet, um den neuen Compute-Plan anzuwenden, und ist ein bis zwei Minuten nicht verfügbar. Verbindungen brechen ab.",
-    description: "Key Value plan-picker confirm dialog body",
+      "Deine Key-Value-Instanz ist während der Aktualisierung nicht verfügbar.",
+    description:
+      "Key Value plan review warning: the store restarts to apply the plan (Render's copy); the data-loss sentence follows it when persistence is Off",
+  },
+  "keyvalue.reviewUpgradeCompute": {
+    message: "Compute upgraden",
+    description:
+      "Key Value plan review: the button that applies a plan change (Render's copy; Key Value plans only go up)",
   },
   "keyvalue.restartConfirmDataLoss": {
     message:
@@ -611,11 +618,6 @@ const deKeyValue: Record<string, TranslationEntry> = {
       "Der Persistenzmodus dieses Stores ist unbekannt. Wenn er „Aus“ ist, löscht der Neustart jeden Key in {name}. Das kann nicht rückgängig gemacht werden.",
     description:
       "Restart confirm when the persistence mode could not be read: the typed phrase is still required",
-  },
-  "keyvalue.planPickerConfirmPrice": {
-    message: "Der neue Tarif kostet ${price}/Monat.",
-    description:
-      "Plan-change confirm: the new plan's monthly price, from the API's price sheet (w4/156)",
   },
   "keyvalue.planPickerSuccess": {
     message: "Tarif wird auf {name} geändert…",

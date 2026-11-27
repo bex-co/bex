@@ -585,14 +585,21 @@ const esKeyValue: Record<string, TranslationEntry> = {
     message: "Cancelar",
     description: "Key Value plan-picker cancel / reset button",
   },
-  "keyvalue.planPickerConfirmTitle": {
-    message: "¿Cambiar a {name}?",
-    description: "Key Value plan-picker confirm dialog title",
+  "keyvalue.reviewComputeLead": {
+    message: "Revisa tu selección de cómputo.",
+    description:
+      "Key Value plan review: the lead of a compute plan change's review (Render's copy)",
   },
-  "keyvalue.planPickerConfirmBody": {
+  "keyvalue.reviewUnavailable": {
     message:
-      "El almacén se reinicia para aplicar el nuevo plan de cómputo y no está disponible durante uno o dos minutos. Las conexiones se interrumpen.",
-    description: "Key Value plan-picker confirm dialog body",
+      "Tu instancia de Key Value no estará disponible mientras se actualiza.",
+    description:
+      "Key Value plan review warning: the store restarts to apply the plan (Render's copy); the data-loss sentence follows it when persistence is Off",
+  },
+  "keyvalue.reviewUpgradeCompute": {
+    message: "Mejorar cómputo",
+    description:
+      "Key Value plan review: the button that applies a plan change (Render's copy; Key Value plans only go up)",
   },
   "keyvalue.restartConfirmDataLoss": {
     message:
@@ -605,11 +612,6 @@ const esKeyValue: Record<string, TranslationEntry> = {
       "Se desconoce el modo de persistencia de este almacén. Si está desactivada, el reinicio elimina todas las claves de {name}. Esta acción no se puede deshacer.",
     description:
       "Restart confirm when the persistence mode could not be read: the typed phrase is still required",
-  },
-  "keyvalue.planPickerConfirmPrice": {
-    message: "El nuevo plan cuesta ${price}/mes.",
-    description:
-      "Plan-change confirm: the new plan's monthly price, from the API's price sheet (w4/156)",
   },
   "keyvalue.planPickerSuccess": {
     message: "Actualizando el plan a {name}…",

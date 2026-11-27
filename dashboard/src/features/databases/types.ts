@@ -130,6 +130,11 @@ export interface DatabaseInstanceTypeView {
   /** Always-on monthly price ("14.00"), "" when the sheet lists none (w4/156). */
   monthlyUsd: string;
   /**
+   * One GB of one instance's storage a month on this plan ("0.21"; "0.00" for
+   * Free's included storage), the plan review's Storage line rate (w3/m674).
+   */
+  storageMonthlyUsdPerGB: string;
+  /**
    * The plan's connection limit, the "Limit" Render's Active Connections
    * chart reads beside its title (w6/138); undefined when the catalog has
    * none.
@@ -148,10 +153,7 @@ export type DatabaseStatusKey =
   | "unknown";
 
 export type DatabaseBadgeVariant =
-  | "default"
-  | "secondary"
-  | "outline"
-  | "destructive";
+  "default" | "secondary" | "outline" | "destructive";
 
 export interface DatabaseStatus {
   key: DatabaseStatusKey;

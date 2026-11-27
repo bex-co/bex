@@ -101,6 +101,21 @@ const koCommon: Record<string, TranslationEntry> = {
     description:
       "Monthly USD price shown on a resource plan card; price is an API-supplied decimal without the currency symbol",
   },
+  "common.reviewChangesTitle": {
+    message: "변경 사항을 적용할까요?",
+    description:
+      "Title of Render's plan review dialog, shown before a compute or storage change applies (w3/m674)",
+  },
+  "common.reviewChangesTotal": {
+    message: "합계",
+    description:
+      "Plan review dialog: the label of the monthly total under the priced lines",
+  },
+  "common.reviewEditComputePlan": {
+    message: "컴퓨팅 플랜 편집",
+    description:
+      "Plan review dialog: accessible name of the Compute plan line's Edit button, which returns to the plan picker",
+  },
   "common.planUnavailable": {
     message: "사용 불가",
     description:

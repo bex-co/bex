@@ -1676,6 +1676,7 @@ export type DatabaseInstanceType = {
   name: Maybe<Scalars['String']['output']>;
   readReplicaMinStorageGB: Maybe<Scalars['Int']['output']>;
   storageGB: Maybe<Scalars['Int']['output']>;
+  storageMonthlyUsdPerGB: Maybe<Scalars['String']['output']>;
   supportsConnectionPooling: Maybe<Scalars['Boolean']['output']>;
   supportsDiskAutoscaling: Maybe<Scalars['Boolean']['output']>;
   supportsHighAvailability: Maybe<Scalars['Boolean']['output']>;
