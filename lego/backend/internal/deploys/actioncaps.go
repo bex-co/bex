@@ -90,19 +90,21 @@ func RollbackActionable(a *appv1alpha1.App, d store.Deploy) bool {
 	if selected := a.ActiveReleaseConfig(); selected != nil {
 		return d.Generation != selected.Generation
 	}
+	if d.Generation > 0 {
+		if requested, _ := strconv.ParseInt(a.Annotations[appv1alpha1.AnnotationReleaseGeneration], 10, 64); requested > d.Generation {
+			return true
+		}
+	}
 	if directStaticTarget(a, d) {
 		// An unknown pin ("" — a trigger without a commitId resets it, and
 		// no rollback, restart or source change re-stamps it) proves no
-		// drift, so the live deploy is already what is running: fail closed,
-		// like the image and repo arms below, which both refuse when their
-		// saved side cannot name a different release.
+		// drift when no newer release was requested, so the live deploy is
+		// already what is running: fail closed, like the image and repo
+		// arms below.
 		return a.Spec.BuildCommit != "" && d.Commit != a.Spec.BuildCommit
 	}
 	if d.Generation <= 0 {
 		return d.ResolvedImage != a.Spec.Image
-	}
-	if requested, _ := strconv.ParseInt(a.Annotations[appv1alpha1.AnnotationReleaseGeneration], 10, 64); requested > d.Generation {
-		return true
 	}
 	// d.Image is the saved image the deploy was created from; a repository
 	// build is created from an empty one and keeps it.

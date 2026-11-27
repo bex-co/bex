@@ -992,6 +992,12 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 	for {
 		payload, done, err := readSSEData(reader, maxSSEPartBytes)
 		if err != nil && !errors.Is(err, errPartTooLarge) {
+			if ctx.Err() != nil {
+				// Client disconnected, session timed out, or revalidation
+				// revoked the stream: stop forwarding quietly rather than
+				// logging a false driver cut or emitting an error terminator.
+				return
+			}
 			log.Printf("agent turn: driver stream cut without [DONE] (session=%s): %v", sessionID, err)
 			cut = true
 			break

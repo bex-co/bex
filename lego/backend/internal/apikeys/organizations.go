@@ -85,6 +85,14 @@ func (s *Service) organizationKeys() (OrganizationKeyStore, error) {
 // can_manage, a write relation that OpenFGA is asked uncached, and the
 // caller's role in the source of truth.
 func (s *Service) authorizeOrganizationKeys(ctx context.Context, orgID string) (OrganizationKeyStore, error) {
+	// Check the verb's own OAuth capability before OpenFGA can_view so a
+	// narrowed token lacking can_manage gets insufficient_scope without
+	// probing whether the org exists, matching core.authorizeAuditLog.
+	if id, ok := core.IdentityFrom(ctx); ok {
+		if err := id.RequireCapability(core.RelCanManage); err != nil {
+			return nil, s.AuthorizeOn(ctx, core.RelCanManage, core.OrganizationObject(orgID))
+		}
+	}
 	if err := s.AuthorizeOn(ctx, core.RelCanView, core.OrganizationObject(orgID)); err != nil {
 		if core.IsLoginRefusal(err) || !errors.Is(err, core.ErrForbidden) {
 			return nil, err

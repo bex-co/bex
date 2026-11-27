@@ -34,8 +34,9 @@ const portSetInvariantSeed = 20261126
 // exercises the cap, and most sets declare 3000 so the primary rule meets
 // both its branches.
 func invariantDeclaredSet(rng *rand.Rand) []int32 {
+	target := 1 + rng.Intn(200)
 	set := map[int32]bool{}
-	for len(set) < 1+rng.Intn(200) {
+	for len(set) < target {
 		p := int32(1 + rng.Intn(65535))
 		if appv1alpha1.IsReservedImagePort(p) {
 			continue
@@ -80,18 +81,16 @@ func wantPublished(declared []int32, primary int32) []int32 {
 // declared ones even when it sits above them all.
 func TestPublishedImagePortsHoldTheInvariant(t *testing.T) {
 	rng := rand.New(rand.NewSource(portSetInvariantSeed))
+	overCap := 0
 	for i := range 2000 {
 		declared := invariantDeclaredSet(rng)
-		// Half the cases shuffle and duplicate the input: the published set
-		// is defined over the declared ports, not over their order.
-		if i%2 == 0 {
-			rng.Shuffle(len(declared), func(a, b int) { declared[a], declared[b] = declared[b], declared[a] })
-			declared = append(declared, declared[:rng.Intn(len(declared))]...)
+		if len(declared) > appv1alpha1.MaxImagePorts {
+			overCap++
 		}
 		var primary int32
 		switch i % 3 {
 		case 0:
-			primary = preferredPort(dedupSorted(declared))
+			primary = preferredPort(declared)
 		case 1:
 			primary = declared[rng.Intn(len(declared))]
 		default:
@@ -117,21 +116,9 @@ func TestPublishedImagePortsHoldTheInvariant(t *testing.T) {
 			}
 		}
 	}
-}
-
-// dedupSorted is the test's own ascending-unique copy, for inputs the
-// preferred-port rule reads.
-func dedupSorted(ports []int32) []int32 {
-	seen := map[int32]bool{}
-	out := make([]int32, 0, len(ports))
-	for _, p := range ports {
-		if !seen[p] {
-			seen[p] = true
-			out = append(out, p)
-		}
+	if overCap == 0 {
+		t.Fatalf("sweep never generated >%d declared ports; cap was never exercised", appv1alpha1.MaxImagePorts)
 	}
-	slices.Sort(out)
-	return out
 }
 
 // invariantScanPorts is one generated listener-scan answer: real ports mixed

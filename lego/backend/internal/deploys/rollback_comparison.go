@@ -405,22 +405,20 @@ func recordedSnapshot(a *appv1alpha1.App, spec appv1alpha1.ReleaseRecordSpec, pr
 }
 
 // previewInstanceCount is the instance count a release from spec's record
-// runs under a's current saved state. It mirrors the operator's selection
-// guard (projectRuntimeApp in release_config_selection.go): the record's
-// count runs unless an explicit scale stamped this release, or the saved
-// count moved on since the record was written — then the saved count wins.
-// A side that never materializes through that guard keeps the record's
-// count, as do records that predate SavedReplicas. Zero is the default: one
-// instance (the operator's effectiveReplicas).
+// runs under a's current saved state. A normal (unselected) live deploy runs
+// the App's current saved count directly when Scale() moved it past the
+// record's SavedReplicas; a selected release (rollback/restart) mirrors the
+// operator's selection guard (projectRuntimeApp in release_config_selection.go):
+// the record's count runs unless an explicit scale stamped this release, or the
+// saved count moved on since the record was written — then the saved count wins.
+// Legacy records that predate SavedReplicas keep the record's count. Zero is
+// the default: one instance (the operator's effectiveReplicas).
 func previewInstanceCount(a *appv1alpha1.App, spec appv1alpha1.ReleaseRecordSpec, preview previewInstances) int32 {
 	count := int32(1)
 	if spec.Replicas != nil {
 		count = max(*spec.Replicas, 1)
 	}
-	if !preview.selected {
-		return count
-	}
-	if preview.scaledRelease > 0 &&
+	if preview.selected && preview.scaledRelease > 0 &&
 		a.Annotations[appv1alpha1.AnnotationReleaseConfigScaled] == strconv.FormatInt(preview.scaledRelease, 10) {
 		return max(a.Spec.Replicas, 1)
 	}

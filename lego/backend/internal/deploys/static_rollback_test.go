@@ -245,6 +245,27 @@ func TestRollbackToLiveStaticDeployRecoversADriftedPin(t *testing.T) {
 	}
 }
 
+// A failed newer branch-HEAD or config deploy clears spec.buildCommit to ""
+// and bumps AnnotationReleaseGeneration past the live deploy's generation.
+// The live deploy must remain a recovery target, matching built static sites
+// and web services.
+func TestRollbackToLiveStaticDeployRecoversAfterFailedNewerGeneration(t *testing.T) {
+	ctx := context.Background()
+	ds := newFakeStore()
+	_, live := liveStaticDeploys(t, ds)
+	app := staticSite()
+	app.Spec.BuildCommit = ""
+	app.Annotations = map[string]string{appv1alpha1.AnnotationReleaseGeneration: "3"}
+	svc, _ := newService(ds, app, staticRecord(app, 2, "tea-1/site/rev-2/"))
+
+	if !RollbackActionable(app, live) {
+		t.Fatal("a live static deploy superseded by a failed newer release generation must stay actionable")
+	}
+	if _, err := svc.Rollback(ctx, "site", live.ID); err != nil {
+		t.Fatalf("rollback to live static deploy after failed newer generation: err = %v, want it opened", err)
+	}
+}
+
 // The capability projection answers what the verb will do: a static site with
 // an earlier published commit has a rollback target.
 func TestStaticSiteRollbackCapabilityMatchesTheVerb(t *testing.T) {

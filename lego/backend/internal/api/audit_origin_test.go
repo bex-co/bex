@@ -79,6 +79,9 @@ func TestEverySurfaceRecordsWhereTheCallerActedFrom(t *testing.T) {
 	}
 	for _, s := range surfaces {
 		t.Run(s.name, func(t *testing.T) {
+			// Ensure the service is running before each suspend so every
+			// surface executes a real state transition rather than a no-op.
+			call(traefikPod, http.MethodPost, "/v1/services/web/resume", "", edge(bearer))
 			sink.events = nil
 			call(traefikPod, s.method, s.path, s.body, s.headers)
 			if len(sink.events) == 0 {
@@ -97,6 +100,7 @@ func TestEverySurfaceRecordsWhereTheCallerActedFrom(t *testing.T) {
 
 	// A peer outside the trusted proxies (reaching bex-api past the edge) is
 	// recorded as itself, whatever forwarding headers it sends.
+	call(traefikPod, http.MethodPost, "/v1/services/web/resume", "", edge(bearer))
 	sink.events = nil
 	call("192.0.2.1:443", http.MethodPost, "/v1/services/web/suspend", "", edge(bearer))
 	if len(sink.events) == 0 || sink.events[0].SourceIP != "192.0.2.1" {

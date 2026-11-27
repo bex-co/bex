@@ -143,10 +143,16 @@ check "an anonymous operation fails and names its chunk" 1 "anonymous query in B
   run "$(bundle_with anonymous-op assets/Billing-B1ll-ng0.js 's#^export{A};#var B=new Qe(V`query { anonThing }`);export{A,B};#')" "$ledger"
 check "an anonymous operation with variables fails" 1 "anonymous subscription in index" \
   run "$(bundle_with anonymous-sub assets/index-Ent1y-_A.js 's#query server#subscription($x: String!) { anonSub } query server#')" "$ledger"
+check "an anonymous operation with directives fails" 1 "anonymous query in Billing" \
+  run "$(bundle_with anonymous-dir assets/Billing-B1ll-ng0.js 's#^export{A};#var B=new Qe(V`query @client { anonDir }`);export{A,B};#')" "$ledger"
 check "a nested subscription field is not an anonymous operation" 1 "no row: query nestedOp" \
   run "$(bundle_with nested-sub assets/Billing-B1ll-ng0.js 's#^export{A};#var B=new Qe(V`query nestedOp { subscription { x } }`);export{A,B};#')" "$ledger"
+check "a fragment holding a subscription field is not an anonymous operation" 0 "every operation and flag has a row" \
+  run "$(bundle_with frag-sub assets/Billing-B1ll-ng0.js 's#^export{A};#var F=V`fragment AccountSub on Account { subscription { id } }`;export{A};#')" "$ledger"
 check "a JS call shaped like an operation is not one" 0 "every operation and flag has a row" \
   run "$(bundle_with js-call assets/Billing-B1ll-ng0.js 's#^export{A};#var q=query({a:1});export{A};#')" "$ledger"
+check "a JS method named query or mutation is not an anonymous operation" 0 "every operation and flag has a row" \
+  run "$(bundle_with js-method assets/Billing-B1ll-ng0.js 's#^export{A};#class X{query(){return}mutation(x){foo}}export{A};#')" "$ledger"
 check "an operation whose selection set does not parse fails" 1 "query server in index: no selection set" \
   run "$(bundle_with bad-op assets/index-Ent1y-_A.js 's#query server($id: String!) {#query server($id: String!) [#')" "$ledger"
 check "a selection set that ends early fails" 1 "query server in index: unexpected" \

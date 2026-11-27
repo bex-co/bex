@@ -183,6 +183,19 @@ func TestOrganizationKeyRefusals(t *testing.T) {
 	if _, err := s.ProvisionOrganizationAuditLogToken(machine, "org-a", "x"); err == nil {
 		t.Error("an API key minted an org key")
 	}
+	// A narrowed human OAuth token lacking can_manage must fail on capability
+	// before OpenFGA is consulted, so it gets insufficient_scope (not
+	// ORGANIZATION_NOT_FOUND) even for a stranger or an unknown org.
+	readOnly := core.WithIdentity(context.Background(), core.Identity{
+		Subject:         "stranger",
+		Method:          core.MethodOAuth2,
+		Human:           true,
+		CanonicalScopes: core.ScopeRead,
+	})
+	var coded *core.CodedError
+	if _, err := s.ListOrganizationAPITokens(readOnly, "org-missing"); !errors.As(err, &coded) || coded.Code != core.InsufficientScopeCode {
+		t.Errorf("read-only OAuth token on unknown org = %v, want %s", err, core.InsufficientScopeCode)
+	}
 	if _, err := s.ProvisionOrganizationAuditLogToken(session("owner"), "org-a", "   "); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("a blank label = %v", err)
 	}

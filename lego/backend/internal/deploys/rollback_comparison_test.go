@@ -689,10 +689,56 @@ func TestRollbackComparisonSelectedLiveShowsTheRunningCount(t *testing.T) {
 	}
 }
 
-// previewInstanceCount mirrors the operator's selection guard cell for cell:
-// the record's count runs unless an explicit scale stamped this release or
-// the saved count moved on since the record was written, and a side that
-// never materializes through the guard keeps the record's count.
+// In-place scaling (apps.Service.Scale) updates spec.replicas without opening
+// a new deploy. When an unselected live deploy was scaled from 2 to 4, both
+// live and the rollback target run 4, so Confirm Rollback must not fabricate
+// a -2/+4 diff.
+func TestRollbackComparisonUnselectedLiveFollowsInPlaceScale(t *testing.T) {
+	ctx := context.Background()
+	ds := newFakeStore()
+	d1, _ := ds.CreateDeploy(ctx, "srv-1", "create", "", 1, store.CommitInfo{}, "")
+	if _, err := ds.CloseDeploy(ctx, d1.ID, store.DeployLive, "web@sha256:1"); err != nil {
+		t.Fatal(err)
+	}
+	d2, _ := ds.CreateDeploy(ctx, "srv-1", "manual", "", 2, store.CommitInfo{}, "")
+	if _, err := ds.CloseDeploy(ctx, d2.ID, store.DeployLive, "web@sha256:2"); err != nil {
+		t.Fatal(err)
+	}
+	same := map[string]string{"KEEP": "same-value"}
+	var objs []client.Object
+	for gen := int64(1); gen <= 2; gen++ {
+		objs = append(objs, releaseObjects("web", gen, comparisonRelease{
+			spec: appv1alpha1.ReleaseRecordSpec{Version: 1, StartCommand: "./run", HealthCheckPath: new("/healthz"),
+				Replicas: new(int32(2)), SavedReplicas: new(int32(2)), EnvFromSecret: "web-env"},
+			env: same,
+		})...)
+	}
+	app := sampleApp("web", "srv-1")
+	app.Spec.Image = ""
+	app.Spec.Runtime = "node"
+	app.Spec.Tier = "starter"
+	app.Spec.Replicas = 4 // scaled in-place after D2 went live
+	objs = append(objs, app)
+	svc, _ := newService(ds, objs...)
+	got, err := svc.RollbackComparison(ctx, "web", d1.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := *got.CurrentLiveDeploy.Snapshot.Instances; n != 4 {
+		t.Errorf("live instances = %d, want 4: in-place scale moved live to the saved count", n)
+	}
+	if n := *got.Deploy.Snapshot.Instances; n != 4 {
+		t.Errorf("target instances = %d, want 4: rollback keeps the saved count", n)
+	}
+	if !reflect.DeepEqual(*got.Deploy.Snapshot, *got.CurrentLiveDeploy.Snapshot) {
+		t.Errorf("target compared as %+v against live %+v, want no differences", *got.Deploy.Snapshot, *got.CurrentLiveDeploy.Snapshot)
+	}
+}
+
+// previewInstanceCount mirrors the operator's runtime count cell for cell:
+// the record's count runs unless an explicit scale stamped this selected
+// release or the saved count moved on since the record was written (including
+// an in-place Scale on an unselected live deploy).
 func TestPreviewInstanceCountMirrorsTheSelectionGuard(t *testing.T) {
 	app := func(saved int32, scaled string) *appv1alpha1.App {
 		a := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Replicas: saved}}
@@ -711,8 +757,9 @@ func TestPreviewInstanceCountMirrorsTheSelectionGuard(t *testing.T) {
 		preview previewInstances
 		want    int32
 	}{
-		{"an unselected side keeps the record", app(4, ""), record(1, new(int32(1))), previewInstances{}, 1},
-		{"an unselected side ignores a later saved scale", app(4, ""), record(1, new(int32(4))), previewInstances{}, 1},
+		{"an unselected side follows an in-place saved scale", app(4, ""), record(1, new(int32(1))), previewInstances{}, 4},
+		{"an unselected side keeps the record while saved matches", app(4, ""), record(4, new(int32(4))), previewInstances{}, 4},
+		{"an unselected legacy record without saved replicas keeps the record", app(4, ""), record(3, nil), previewInstances{}, 3},
 		{"a selection keeps the record while saved matches", app(1, ""), record(1, new(int32(1))), previewInstances{selected: true}, 1},
 		{"a selection follows a later saved scale", app(4, ""), record(1, new(int32(1))), previewInstances{selected: true}, 4},
 		{"a selection follows an explicit scale", app(4, "2"), record(1, new(int32(1))), previewInstances{selected: true, scaledRelease: 2}, 4},

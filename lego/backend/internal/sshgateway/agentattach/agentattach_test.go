@@ -18,11 +18,13 @@ package agentattach
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -1023,6 +1025,75 @@ func TestAgentTurnCutMidTurnEndsWithErrorNotSilentDone(t *testing.T) {
 	}
 	if err := json.Unmarshal([]byte(payloads[1]), &errPart); err != nil || errPart.Type != "error" || errPart.ErrorText == "" {
 		t.Fatalf("cut turn ends with %q, want an error part saying the turn is incomplete", payloads[1])
+	}
+}
+
+// A client that cancels mid-turn must stop forwarding quietly rather than
+// logging a false driver cut or trying to write an error terminator.
+func TestAgentTurnClientCancelDoesNotLogDriverCut(t *testing.T) {
+	secret := []byte("shell-ticket-secret")
+	session := "ags-000000000000000000cnl"
+	st := newFakeAttachStore()
+	partSent := make(chan struct{})
+	releaseDriver := make(chan struct{})
+	driverMux := http.NewServeMux()
+	driverMux.HandleFunc("/turn", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, "data: {\"type\":\"start\"}\n\n")
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+		close(partSent)
+		select {
+		case <-r.Context().Done():
+		case <-releaseDriver:
+		}
+	})
+	driver := httptest.NewServer(driverMux)
+	defer func() {
+		close(releaseDriver)
+		driver.Close()
+	}()
+	host, portString, _ := net.SplitHostPort(strings.TrimPrefix(driver.URL, "http://"))
+	port, _ := strconv.Atoi(portString)
+
+	gw := newAttachGateway(st, fixedPodIP{ip: host}, secret, port)
+	gw.HeartbeatInterval = -1
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+
+	var logBuf bytes.Buffer
+	origOut := log.Writer()
+	log.SetOutput(&logBuf)
+	defer log.SetOutput(origOut)
+
+	reqCtx, cancel := context.WithCancel(context.Background())
+	req, _ := http.NewRequestWithContext(reqCtx, http.MethodPost, srv.URL, strings.NewReader(`{"prompt":"go"}`))
+	req.Header.Set(TicketHeader, turnTicket(t, secret, session))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-partSent
+	reader := bufio.NewReader(resp.Body)
+	if _, err := reader.ReadString('\n'); err != nil {
+		t.Fatal(err)
+	}
+	cancel()
+	resp.Body.Close()
+	// Wait briefly for the handler goroutine to unwind and flush any log line.
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		st.mu.Lock()
+		done := len(st.ended) > 0
+		st.mu.Unlock()
+		if done {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if strings.Contains(logBuf.String(), "driver stream cut") {
+		t.Fatalf("client cancel logged a false driver cut:\n%s", logBuf.String())
 	}
 }
 

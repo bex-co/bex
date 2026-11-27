@@ -65,14 +65,23 @@ MAX_BYTES = 32 * 1024 * 1024
 CHUNK = r"[A-Za-z0-9_$.-]+-[A-Za-z0-9_-]{8}\.js"
 CHUNK_REF = re.compile(r"[\"'`](?:\./|/?assets/)(" + CHUNK + r")[\"'`]")
 ENTRY_SCRIPT = re.compile(r"<script\b[^>]*\bsrc=[\"']([^\"']*?assets/index-[A-Za-z0-9_-]{8}\.js)[\"']")
-# The name must be followed by its variables or its selection set, so prose
-# such as "a `next` query param" is not an operation.
-OPERATION = re.compile(r"(?<![\w$.])(query|mutation|subscription)\s+([A-Za-z_]\w*)\s*(?=[({])")
-# An operation without a name (query { … }, subscription($x: …) { … }):
-# GraphQL allows them, the ledger cannot row them (rows are keyed by name),
-# and the named pattern above cannot see them, so each one validated below is
-# a loud failure naming its chunk, never a silent miss.
-ANONYMOUS_OPERATION = re.compile(r"(?<![\w$.])(query|mutation|subscription)\s*(?=[({])")
+# The name must be followed by its variables, directives, or selection set,
+# so prose such as "a `next` query param" is not an operation.
+OPERATION = re.compile(r"(?<![\w$.])(query|mutation|subscription)\s+([A-Za-z_]\w*)\s*(?=[(@{])")
+# Named GraphQL fragments: their bodies can hold fields named `query`,
+# `mutation`, or `subscription` (e.g. `fragment F on Account { subscription { id } }`)
+# which must be excluded from anonymous-operation detection just like fields
+# inside named operations.
+FRAGMENT = re.compile(r"(?<![\w$.])fragment\s+[A-Za-z_]\w*\s+on\s+[A-Za-z_]\w*\s*(?=[@{])")
+# An operation without a name (query { … }, query @client { … },
+# subscription($x: …) { … }): GraphQL allows them, the ledger cannot row them
+# (rows are keyed by name), and the named pattern above cannot see them, so
+# each one validated below is a loud failure naming its chunk, never a silent
+# miss.
+ANONYMOUS_OPERATION = re.compile(r"(?<![\w$.])(query|mutation|subscription)\s*(?=[(@{])")
+# GraphQL variable definitions always begin with `$name: Type`; requiring this
+# after `(` rules out JS methods like `query() { return }` and `mutation(x) { foo }`.
+GQL_VAR_START = re.compile(r"\s*\$[A-Za-z_]\w*\s*:")
 NAME = re.compile(r"[A-Za-z_]\w*")
 # One binding of an import or export clause: `name` or `name as other`.
 BINDING = re.compile(r"\s*([\w$]+)(?:\s+as\s+([\w$]+))?\s*")
@@ -367,9 +376,18 @@ def inventory(page_url: str) -> dict:
             op = operations.setdefault(key, {"kind": key[0], "name": key[1], "fields": [], "families": set()})
             op["fields"] = sorted(set(op["fields"]) | set(fields))
             op["families"].add(family(name))
+        for match in FRAGMENT.finditer(text):
+            try:
+                _, end = root_fields(text, match.end())
+            except (ValueError, AttributeError):
+                continue
+            spans.append((match.start(), end))
         for match in ANONYMOUS_OPERATION.finditer(text):
             if any(start <= match.start() < end for start, end in spans):
-                continue  # a nested field of a named operation, not an operation
+                continue  # a nested field of a named operation or fragment, not an operation
+            pos = _skip_space(text, match.end())
+            if text.startswith("(", pos) and not GQL_VAR_START.match(text, pos + 1):
+                continue  # a JS method/call like `query() { return }` or `mutation(x) { foo }`
             try:
                 fields, _ = root_fields(text, match.end())
             except (ValueError, AttributeError):
