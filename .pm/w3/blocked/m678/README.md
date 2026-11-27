@@ -1,6 +1,6 @@
 # w3 · m678 — Every Blueprint sync has its own page, and Manual sync opens it for review and Approve, as Render's does
 
-**Worker:** worker3 **Goal:** each sync opens at `/blueprints/<id>/sync/<syncId>` with its commit, its state, the actions it planned and their states, and **Approve** while it waits; Syncs lists Render's sync cards linking there; Manual sync plans a sync and opens its page; every sync `dashboardUrl` bex-api emits opens that sync's page. **Status:** todo (t001–t007 and t009–t011 done; t008 walked locally)
+**Worker:** worker3 **Goal:** each sync opens at `/blueprints/<id>/sync/<syncId>` with its commit, its state, the actions it planned and their states, and **Approve** while it waits; Syncs lists Render's sync cards linking there; Manual sync plans a sync and opens its page; every sync `dashboardUrl` bex-api emits opens that sync's page. **Status:** blocked (t001–t007 and t009–t011 done; t008 walked locally, its production walk waits for a pin carrying `30d75225ff`)
 
 ## Tasks (in order)
 
@@ -39,7 +39,7 @@ Verified 2026-11-25 on main `c196617a8b`.
 - Only a planned sync stores its actions: `blueprint_syncs.plan_actions` (migration 0187) is written by `lego/backend/internal/store/blueprint_plans.go`. A manual, automatic or first sync records commit, state, times, error and note only, and no sync records its commit message (deploys do, migrations 0026 and 0040).
 - GraphQL `BlueprintSync` is `commitId, completedAt, errorMessage, id, note, startedAt, state`; `blueprintPlannedSync(id)` reads only the waiting plan; `planBlueprintSync(id)` plans; `approveBlueprint(id, manualEnvVars, ownerId, syncId)` applies a plan and takes no `confirm`.
 - bex-api's sync links (`apps/blueprint_onboarding.go`, the planned and the approved sync) point at the Blueprint, at `/blueprint/<id>` once w3/m677 lands.
-- [ADR049 § Approving from the dashboard](../../../docs/ADR049-render-yaml-parity.md) says "a CLI-created Blueprint on render.com's dashboard was not walked live"; the bundle now shows the page Render links.
+- [ADR049 § Approving from the dashboard](../../../../docs/ADR049-render-yaml-parity.md) says "a CLI-created Blueprint on render.com's dashboard was not walked live"; the bundle now shows the page Render links.
 
 ## Definition of done
 
@@ -54,7 +54,7 @@ Verified 2026-11-25 on main `c196617a8b`.
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm one aspect of render parity to w3` (2026-11-25), item 2, verified the same day against Render's bundle, its `IACSyncCard` chunk and the pinned Render CLI.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)). The sync `dashboardUrl` is part of Render's Blueprint API that bex serves on REST and MCP, and the review page is where Render's plan-then-approve flow (w5/m283) sends a person.
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). The sync `dashboardUrl` is part of Render's Blueprint API that bex serves on REST and MCP, and the review page is where Render's plan-then-approve flow (w5/m283) sends a person.
 - **Expected outcome:** a link printed by the CLI, MCP or an agent opens the sync it names; a person reviews a plan and approves it on the page Render uses; the sync history shows what each sync did.
 - **Why now:** plan-then-approve is how Render's MCP server and CLI create and change Blueprints, so every agent-driven plan prints a link that today lands on the Blueprint, not the plan. It builds on w3/m677's routes and comes before Settings (w3/m679), whose saves may open a sync.
 - **Render parity task:** included (t009): GraphQL gains a read, the dashboard gains pages, and the `dashboardUrl` REST, GraphQL and MCP emit changes.
@@ -67,3 +67,7 @@ Walked in headless Chromium against `yarn local-bex` (port 8499) behind a throwa
 - A sync's page: `Sync: <short sha>`, its card, the actions with their states; the failed sync's error under "There was a problem syncing with your Blueprint:"; the failed plan's two located notices under "There were a few problems …" with no actions card; the older sync's "recorded before syncs kept their actions" line; the detachment note; an unknown id says it does not exist and links Syncs.
 - Manual sync on the in-sync Blueprint opened the new plan's page with Approve; Approve turned it Running and the page followed it to Success without a reload. The waiting plan's Approve stayed disabled until its `API_TOKEN` field had a value. The refused plan showed the Sync Error banner with the server's reason, and its close button removed it. The no-change plan opened `/blueprints/<id>/sync` reading Resources already up to date, and a reload kept it (the browser keeps the navigation's state, as on Render).
 - Pending against ready, with the sync and the syncs reads held on a client navigation: the heading (28 px), the sync's card (48 px at 1440, 76 px at 390) and Syncs' three cards (70 px, 100 px) matched to the pixel; the actions card follows its plan's length (94 px framed for two plain rows, 112 px for the walked plan whose second row lists changed fields). No horizontal overflow at 390, and no page error once the handed-over state waited for hydration (fixed in the walk).
+
+## Parked (2026-11-27)
+
+Shipped in `30d75225ff`. Everything but the production walk is done: once the newest `chore(deploy): pin platform images to <sha>` carries `30d75225ff`, t008 step 2 walks production as the QA user in `bex-canary` with a Blueprint created for the walk from a public repository (disposable), at 1440 and 390: Manual sync to Approve, a plan with no changes, a failed file, Syncs and its paging, and `bex ea blueprints plan`, whose Review in Dashboard link opens the sync's page. Then it deletes the Blueprint, and t012 closes the milestone if every point of the definition of done holds. Nothing is needed from the user.
