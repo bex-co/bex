@@ -1172,6 +1172,27 @@ describe("each Blueprint page's pending frame (w3/m677)", () => {
     expect(await pending(href)).toEqual(readyShape);
   });
 
+  // w3/m680: a wrapping header put Manual sync on a second line only under a
+  // long name, which the frame cannot know, so most ready headers on a phone
+  // stood 40px taller than the frame. Its rows are fixed per breakpoint.
+  it.each(["api", "a-blueprint-name-long-enough-to-truncate-on-any-phone"])(
+    "lays the header out without regard to the name %s",
+    async (name) => {
+      blueprintDetailState.blueprint = bp({ name });
+      const readyShape = await ready(SYNCS);
+      blueprintDetailState.blueprint = null;
+      blueprintDetailState.loading = true;
+      const pendingShape = await pending(SYNCS);
+
+      expect(pendingShape.header).toEqual(readyShape.header);
+      const row = readyShape.header.row.split(" ");
+      expect(row).toEqual(
+        expect.arrayContaining(["flex-col", "sm:flex-row", "sm:items-center"]),
+      );
+      expect(row).not.toContain("flex-wrap");
+    },
+  );
+
   // A sync's page heads itself (w3/m678): its frame holds the heading's line,
   // the sync's card without View details and the card of its actions.
   it("frames a sync's page in its ready shape", async () => {

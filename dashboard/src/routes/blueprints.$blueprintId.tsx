@@ -23,6 +23,7 @@ import {
 } from "@/common/components/ui/alert";
 import { Button } from "@/common/components/ui/button";
 import {
+  BLUEPRINT_HEADER_ROW,
   BlueprintHeaderSkeleton,
   BlueprintResourcesSkeleton,
   BlueprintSettingsSkeleton,
@@ -170,7 +171,8 @@ function BlueprintDetailLayout({
         data-route-skeleton={!blueprint ? "blueprint-detail" : undefined}
       >
         {blueprint ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6">
+          // The frame's row (BlueprintHeaderSkeleton), whatever the name.
+          <div className={BLUEPRINT_HEADER_ROW}>
             <div className="flex min-w-0 max-w-full items-center gap-2">
               <h1 className="truncate text-xl font-semibold">
                 {blueprint.name}

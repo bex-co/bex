@@ -1073,6 +1073,15 @@ export function BlueprintsTableSkeleton() {
 }
 
 /**
+ * The Blueprint layout's header row, ready and pending alike (w3/m680):
+ * Manual sync under the name on a phone and beside it from sm, where the name
+ * truncates. A wrapping row's height followed the name's length, which the
+ * frame cannot know before the Blueprint is read.
+ */
+export const BLUEPRINT_HEADER_ROW =
+  "flex flex-col items-start gap-3 border-b px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6";
+
+/**
  * A Blueprint layout's header while its Blueprint loads (w3/m677): the name
  * and status, then Manual sync's reserved box, at the ready header's sizes.
  */
@@ -1081,16 +1090,15 @@ export function BlueprintHeaderSkeleton() {
   return (
     <div
       data-skeleton-region="resource-header"
-      className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6"
+      className={BLUEPRINT_HEADER_ROW}
     >
       <div
         data-skeleton-region="resource-title"
         className="flex min-w-0 max-w-full items-center gap-2"
       >
         {/* The h1's text-xl line box is 28px (w4/m209); the status badge is
-            22px. Narrower on a phone, where a typical name and Manual sync
-            share the ready header's one row (w3/m680). */}
-        <Skeleton className="h-7 w-32 sm:w-48" />
+            22px. */}
+        <Skeleton className="h-7 w-48" />
         <Skeleton className="h-[22px] w-16" />
       </div>
       <div
