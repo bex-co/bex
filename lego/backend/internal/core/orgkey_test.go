@@ -217,6 +217,19 @@ func TestAuthorizeOrganizationAuditLogRefusalMatrix(t *testing.T) {
 	if _, err := b.AuthorizeWorkspaceAuditLog(as("stranger"), "tea-a"); !errors.Is(err, ErrForbidden) || notFound(err) {
 		t.Errorf("a stranger on a workspace log: %v, want plain FORBIDDEN", err)
 	}
+	// A narrowed human OAuth token lacking can_manage must fail on capability
+	// before OpenFGA is consulted, so it gets insufficient_scope (not
+	// ORGANIZATION_NOT_FOUND) even for a stranger or an unknown org.
+	readOnly := WithIdentity(context.Background(), Identity{
+		Subject:         "stranger",
+		Method:          MethodOAuth2,
+		Human:           true,
+		CanonicalScopes: ScopeRead,
+	})
+	var coded *CodedError
+	if _, err := b.AuthorizeOrganizationAuditLog(readOnly, "org-missing"); !errors.As(err, &coded) || coded.Code != InsufficientScopeCode {
+		t.Errorf("read-only OAuth token on unknown org: %v, want %s", err, InsufficientScopeCode)
+	}
 }
 
 func second[T any](_ T, err error) error { return err }

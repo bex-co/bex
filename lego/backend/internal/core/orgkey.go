@@ -87,19 +87,19 @@ func (b *Base) authorizeAuditLog(ctx context.Context, object, verb string, resol
 		// An org's own log names who is told it was not found, exactly as the
 		// org's key management does (apikeys.authorizeOrganizationKeys): a
 		// caller who cannot view the org learns nothing from its id, while a
-		// Member or Guest the org holds is refused FORBIDDEN. The funnel below
-		// only checks can_manage, so without this a stranger is told
-		// FORBIDDEN where the keys verbs answer ORGANIZATION_NOT_FOUND.
+		// Member or Guest the org holds is refused FORBIDDEN. Check the verb's
+		// own OAuth capability first so a narrowed token lacking can_manage
+		// never reaches OpenFGA or learns whether the org exists, and route
+		// every refusal through authorizeAndAudit so denials stay audited.
 		if target, isOrg := strings.CutPrefix(object, OrganizationObjectPrefix); isOrg && resolveErr == nil {
-			if verr := b.checkAuthz(ctx, RelCanView, object); verr != nil {
-				if IsLoginRefusal(verr) || !errors.Is(verr, ErrForbidden) {
-					return false, verr
+			if checkCapability(ctx, RelCanManage) == nil {
+				if verr := b.checkAuthz(ctx, RelCanView, object); verr != nil {
+					if !IsLoginRefusal(verr) && errors.Is(verr, ErrForbidden) {
+						resolveErr = NewOrganizationNotFoundError(target)
+					} else {
+						resolveErr = verr
+					}
 				}
-				nferr := NewOrganizationNotFoundError(target)
-				if auditsDenial(RelCanManage) {
-					b.emit(ctx, verb, RelCanManage, object, "", nferr)
-				}
-				return false, nferr
 			}
 		}
 		return false, b.authorizeAndAudit(ctx, RelCanManage, object, "", verb, resolveErr)
