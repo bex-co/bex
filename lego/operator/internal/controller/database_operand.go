@@ -46,13 +46,21 @@ import (
 // to cnpgExportImages and its upstream projection (one more restart). A
 // re-adoption after it moves each cluster as the first adoption should have,
 // with no pod deleted by hand (holdConnectionPreload).
+//
+// 16, 17 and 18 re-adopted 2026-11-27 (w3/m702) from pg-operand-image.yml run
+// 45989504801 (a884bdf1a0), gated on both architectures: pg_duckdb.so finds
+// libduckdb.so beside itself ($ORIGIN), so CloudNativePG's major-upgrade copy
+// of a 16 or 17 source starts on the target's image. 18 moves with them so no
+// source runs an extension library newer than its target's (that run's PGDG
+// packages are newer than the 2026-11-23 18's: pg_partman 5.5.1 for 5.5.0).
+// 13-15 carry no pg_duckdb and keep their digests.
 var bexOperandImages = map[string]string{
 	"13": "ghcr.io/bex-co/bex-operator:13.22-postgres-6c11b6b0f678b9db48bcba9fc3c2c8891e073c11@sha256:95f569d5374831da375b3238a36399b9724dbe8a084b694c1ef15bb679a04e1f",
 	"14": "ghcr.io/bex-co/bex-operator:14.25-postgres-6c11b6b0f678b9db48bcba9fc3c2c8891e073c11@sha256:da5906d9eae2658f5505bbf9bf18cf0dd953d8d677395d674176259b13a433d5",
 	"15": "ghcr.io/bex-co/bex-operator:15.20-postgres-6c11b6b0f678b9db48bcba9fc3c2c8891e073c11@sha256:4f6dc525a354a0eb3d1164bc294915505649bf70abe94abf4be69b5de4f7d9a3",
-	"16": "ghcr.io/bex-co/bex-operator:16.16-postgres-6c11b6b0f678b9db48bcba9fc3c2c8891e073c11@sha256:ee398edf10728f3fb0df46025a9fdf22361b41247aa3cd70541be61c00ffd1f0",
-	"17": "ghcr.io/bex-co/bex-operator:17.12-postgres-6c11b6b0f678b9db48bcba9fc3c2c8891e073c11@sha256:8a68db3ece72a3a34d5f79c7fe7a98c96c423f83f731d5dd0c9924a5418ceefa",
-	"18": "ghcr.io/bex-co/bex-operator:18.7-postgres-6c11b6b0f678b9db48bcba9fc3c2c8891e073c11@sha256:be9029d668214614cbec665c3c5f9de9d526295cdb4b4201a3890787490fd8fc",
+	"16": "ghcr.io/bex-co/bex-operator:16.16-postgres-a884bdf1a03a838fff8d106d8c754eaa30c9a87d@sha256:1ae9dced5ff1683ca83e1a79cf788f827dd626f14a41ca658bedfb1fa11a1096",
+	"17": "ghcr.io/bex-co/bex-operator:17.12-postgres-a884bdf1a03a838fff8d106d8c754eaa30c9a87d@sha256:e998f2b8565c477d5254cedac3aa31e1458de9ea15b17582338ba169ce53c4a6",
+	"18": "ghcr.io/bex-co/bex-operator:18.7-postgres-a884bdf1a03a838fff8d106d8c754eaa30c9a87d@sha256:3b8a707acf3c0e061ac6fde065ff973bf6a91fd790e0c1ed951b8a35be4bd89d",
 }
 
 const (
