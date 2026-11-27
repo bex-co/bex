@@ -319,12 +319,12 @@ describe("ServiceComputePage scaling sections (w7/m43, w6/m483)", () => {
     "preserves the paid %s editor and its 1–100 instance range",
     async (type) => {
       serverState.service = svc({ type, plan: "starter" });
+      // The editor shows while autoscaling is on, as Render's does (w4/m696).
+      autoscalingState.enabled = true;
+      autoscalingState.targetMemoryPercent = 70;
       renderCompute();
 
-      fireEvent.click(
-        await screen.findByRole("switch", { name: "Autoscaling off" }),
-      );
-      const maximum = screen.getByRole("spinbutton", {
+      const maximum = await screen.findByRole("spinbutton", {
         name: "Maximum instances",
       });
       expect(maximum).toHaveAttribute("max", "100");
@@ -351,11 +351,40 @@ describe("ServiceComputePage scaling sections (w7/m43, w6/m483)", () => {
           minInstances: 1,
           maxInstances: 100,
           targetCPUPercent: 60,
-          targetMemoryPercent: null,
+          targetMemoryPercent: 70,
         }),
       );
     },
   );
+
+  // w4/m696: Render's enable asks first with its billing note, then scales
+  // from the service's own instance count up to twice it.
+  it("confirms an enable, then scales from the service's instance count", async () => {
+    serverState.service = svc({ plan: "starter", replicas: 2 });
+    autoscalingState.minInstances = 0;
+    autoscalingState.maxInstances = 0;
+    renderCompute();
+
+    fireEvent.click(
+      await screen.findByRole("switch", { name: "Autoscaling off" }),
+    );
+    expect(
+      await screen.findByText(
+        "When your service scales up, each running instance uses the same compute plan and is billed accordingly.",
+      ),
+    ).toBeInTheDocument();
+    expect(autoscalingState.save).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Enable" }));
+    await waitFor(() =>
+      expect(autoscalingState.save).toHaveBeenCalledWith({
+        minInstances: 2,
+        maxInstances: 4,
+        targetCPUPercent: 60,
+        targetMemoryPercent: 60,
+      }),
+    );
+  });
 
   it("shows Autoscaling + Manual Scaling + Recent Metrics when autoscaling is off", async () => {
     renderCompute();
@@ -537,7 +566,7 @@ describe("ServiceComputePage scaling sections (w7/m43, w6/m483)", () => {
       await screen.findByRole("switch", { name: "Autoscaling on" }),
     );
     // Render's disable dialog: the fixed Manual Scaling count takes over.
-    expect(await screen.findByText("Disable autoscaling?")).toBeInTheDocument();
+    expect(await screen.findByText("Disable Autoscaling?")).toBeInTheDocument();
     expect(autoscalingState.disable).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Disable" }));

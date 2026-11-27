@@ -639,11 +639,6 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "最少实例数必须 ≤ 最多实例数。",
     description: "Autoscaling form validation when min exceeds max",
   },
-  "services.scalingValidationTargets": {
-    message: "必须启用至少一个利用率目标（CPU 或内存）。",
-    description:
-      "Autoscaling form validation when both CPU and memory targets are off",
-  },
   "services.scalingSave": {
     message: "保存",
     description: "Autoscaling form save button",
@@ -750,6 +745,30 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.scalingDisableConfirmAction": {
     message: "关闭",
     description: "Autoscaling disable confirmation dialog confirm button",
+  },
+  "services.scalingEnableConfirmTitle": {
+    message: "开启自动扩缩容？",
+    description:
+      "Autoscaling enable confirmation dialog title, Render's (w4/m696)",
+  },
+  "services.scalingEnableConfirmBody": {
+    message: "服务扩容时，每个运行中的实例都使用相同的计算套餐并按此计费。",
+    description:
+      "Autoscaling enable confirmation dialog body: the billing note, Render's wording (w4/m696)",
+  },
+  "services.scalingEnableConfirmAction": {
+    message: "开启",
+    description: "Autoscaling enable confirmation dialog confirm button",
+  },
+  "services.scalingDisableCPUConfirmBody": {
+    message: "关闭基于 CPU 的自动扩缩容将完全关闭此服务的自动扩缩容。确定吗？",
+    description:
+      "Autoscaling disable confirmation dialog body when the user turns off Target CPU while Target Memory is already off (w4/m696)",
+  },
+  "services.scalingDisableMemoryConfirmBody": {
+    message: "关闭基于内存的自动扩缩容将完全关闭此服务的自动扩缩容。确定吗？",
+    description:
+      "Autoscaling disable confirmation dialog body when the user turns off Target Memory while Target CPU is already off (w4/m696)",
   },
   "services.scalingManualTitle": {
     message: "手动扩缩容",

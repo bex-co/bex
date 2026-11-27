@@ -654,11 +654,6 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Min instances must be ≤ max instances.",
     description: "Autoscaling form validation when min exceeds max",
   },
-  "services.scalingValidationTargets": {
-    message: "At least one utilization target (CPU or memory) must be enabled.",
-    description:
-      "Autoscaling form validation when both CPU and memory targets are off",
-  },
   "services.scalingSave": {
     message: "Save",
     description: "Autoscaling form save button",
@@ -757,7 +752,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Autoscaling form save-changes button",
   },
   "services.scalingDisableConfirmTitle": {
-    message: "Disable autoscaling?",
+    message: "Disable Autoscaling?",
     description: "Autoscaling disable confirmation dialog title (w7/m43)",
   },
   "services.scalingDisableConfirmBody": {
@@ -768,6 +763,33 @@ const enServices: Record<string, TranslationEntry> = {
   "services.scalingDisableConfirmAction": {
     message: "Disable",
     description: "Autoscaling disable confirmation dialog confirm button",
+  },
+  "services.scalingEnableConfirmTitle": {
+    message: "Enable Autoscaling?",
+    description:
+      "Autoscaling enable confirmation dialog title, Render's (w4/m696)",
+  },
+  "services.scalingEnableConfirmBody": {
+    message:
+      "When your service scales up, each running instance uses the same compute plan and is billed accordingly.",
+    description:
+      "Autoscaling enable confirmation dialog body: the billing note, Render's wording (w4/m696)",
+  },
+  "services.scalingEnableConfirmAction": {
+    message: "Enable",
+    description: "Autoscaling enable confirmation dialog confirm button",
+  },
+  "services.scalingDisableCPUConfirmBody": {
+    message:
+      "Disabling CPU-driven autoscaling will disable autoscaling entirely for this service. Are you sure?",
+    description:
+      "Autoscaling disable confirmation dialog body when the user turns off Target CPU while Target Memory is already off (w4/m696)",
+  },
+  "services.scalingDisableMemoryConfirmBody": {
+    message:
+      "Disabling memory-driven autoscaling will disable autoscaling entirely for this service. Are you sure?",
+    description:
+      "Autoscaling disable confirmation dialog body when the user turns off Target Memory while Target CPU is already off (w4/m696)",
   },
   "services.scalingManualTitle": {
     message: "Manual Scaling",

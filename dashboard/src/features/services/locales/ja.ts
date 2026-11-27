@@ -659,12 +659,6 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "最小インスタンス数は最大インスタンス数以下にしてください。",
     description: "Autoscaling form validation when min exceeds max",
   },
-  "services.scalingValidationTargets": {
-    message:
-      "使用率の目標（CPU またはメモリ）を少なくとも 1 つ有効にしてください。",
-    description:
-      "Autoscaling form validation when both CPU and memory targets are off",
-  },
   "services.scalingSave": {
     message: "保存",
     description: "Autoscaling form save button",
@@ -776,6 +770,33 @@ const jaServices: Record<string, TranslationEntry> = {
   "services.scalingDisableConfirmAction": {
     message: "無効にする",
     description: "Autoscaling disable confirmation dialog confirm button",
+  },
+  "services.scalingEnableConfirmTitle": {
+    message: "オートスケーリングを有効にしますか？",
+    description:
+      "Autoscaling enable confirmation dialog title, Render's (w4/m696)",
+  },
+  "services.scalingEnableConfirmBody": {
+    message:
+      "サービスがスケールアップすると、実行中の各インスタンスは同じコンピュートプランを使用し、それに応じて課金されます。",
+    description:
+      "Autoscaling enable confirmation dialog body: the billing note, Render's wording (w4/m696)",
+  },
+  "services.scalingEnableConfirmAction": {
+    message: "有効にする",
+    description: "Autoscaling enable confirmation dialog confirm button",
+  },
+  "services.scalingDisableCPUConfirmBody": {
+    message:
+      "CPU に基づくオートスケーリングを無効にすると、このサービスのオートスケーリングは完全に無効になります。よろしいですか？",
+    description:
+      "Autoscaling disable confirmation dialog body when the user turns off Target CPU while Target Memory is already off (w4/m696)",
+  },
+  "services.scalingDisableMemoryConfirmBody": {
+    message:
+      "メモリに基づくオートスケーリングを無効にすると、このサービスのオートスケーリングは完全に無効になります。よろしいですか？",
+    description:
+      "Autoscaling disable confirmation dialog body when the user turns off Target Memory while Target CPU is already off (w4/m696)",
   },
   "services.scalingManualTitle": {
     message: "手動スケーリング",

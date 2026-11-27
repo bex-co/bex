@@ -83,13 +83,13 @@ describe("AutoscalingSection after a disable (w4/597)", () => {
       maxInstances: 4,
       targetCPUPercent: 70,
     });
-    render(<AutoscalingSection autoscaling={as} plan="starter" />);
+    render(
+      <AutoscalingSection autoscaling={as} instances={5} plan="starter" />,
+    );
 
     expect(screen.getByText("Autoscaling off")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("switch"));
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Save Changes" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "Enable" }));
     expect(as.save).toHaveBeenCalledWith({
       minInstances: 2,
       maxInstances: 4,
@@ -229,7 +229,7 @@ describe("AutoscalingSection on a Hobby workspace (w7/m429)", () => {
       expect(toggle).toBeEnabled();
       fireEvent.click(toggle);
       expect(
-        screen.getByRole("button", { name: "Save Changes" }),
+        screen.getByRole("alertdialog", { name: "Enable Autoscaling?" }),
       ).toBeInTheDocument();
       unmount();
     }
@@ -251,5 +251,183 @@ describe("AutoscalingSection on a Hobby workspace (w7/m429)", () => {
     expect(
       screen.queryByText(notice, { exact: false }),
     ).not.toBeInTheDocument();
+  });
+});
+
+// w4/m696: Render's switch saves nothing by itself. Turning autoscaling on asks
+// first with the billing note, and turning off the last utilization target
+// asks to turn autoscaling off, as Render's docs say ("If you enable neither
+// toggle, autoscaling is disabled"), where bex used to refuse the save
+// (Render's dashboard bundle, docs/render-artifacts/manual-scaling.md).
+describe("AutoscalingSection's confirmations (w4/m696)", () => {
+  const enableBody =
+    "When your service scales up, each running instance uses the same compute plan and is billed accordingly.";
+
+  // A service that never configured autoscaling reads zero bounds and no
+  // target (autoscalingView of a nil spec.autoscaling).
+  function neverConfigured(): UseAutoscalingResult {
+    return storedFreeConfig({
+      enabled: false,
+      minInstances: 0,
+      maxInstances: 0,
+      targetCPUPercent: null,
+    });
+  }
+
+  function running(overrides: Partial<UseAutoscalingResult> = {}) {
+    return storedFreeConfig({ maxInstances: 3, ...overrides });
+  }
+
+  it("asks before turning autoscaling on, and Cancel saves nothing", async () => {
+    const as = neverConfigured();
+    render(
+      <AutoscalingSection autoscaling={as} instances={3} plan="starter" />,
+    );
+
+    fireEvent.click(screen.getByRole("switch"));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Enable Autoscaling?",
+    });
+    expect(within(dialog).getByText(enableBody)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    expect(
+      screen.queryByRole("alertdialog", { name: "Enable Autoscaling?" }),
+    ).not.toBeInTheDocument();
+    expect(as.save).not.toHaveBeenCalled();
+    expect(screen.getByText("Autoscaling off")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Save Changes" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("enables from the instance count up to twice it, CPU and memory at 60%", async () => {
+    const as = neverConfigured();
+    render(
+      <AutoscalingSection autoscaling={as} instances={3} plan="starter" />,
+    );
+
+    fireEvent.click(screen.getByRole("switch"));
+    fireEvent.click(await screen.findByRole("button", { name: "Enable" }));
+    expect(as.save).toHaveBeenCalledWith({
+      minInstances: 3,
+      maxInstances: 6,
+      targetCPUPercent: 60,
+      targetMemoryPercent: 60,
+    });
+  });
+
+  it("holds a first enable's maximum to 100 instances", async () => {
+    const as = neverConfigured();
+    render(
+      <AutoscalingSection autoscaling={as} instances={70} plan="starter" />,
+    );
+
+    fireEvent.click(screen.getByRole("switch"));
+    fireEvent.click(await screen.findByRole("button", { name: "Enable" }));
+    expect(as.save).toHaveBeenCalledWith(
+      expect.objectContaining({ minInstances: 70, maxInstances: 100 }),
+    );
+  });
+
+  it("asks to turn autoscaling off when the last target goes off, and Disable does", async () => {
+    const as = running({ targetCPUPercent: 70, targetMemoryPercent: null });
+    render(<AutoscalingSection autoscaling={as} plan="starter" />);
+
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Target CPU Utilization" }),
+    );
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Disable Autoscaling?",
+    });
+    expect(
+      within(dialog).getByText(
+        "Disabling CPU-driven autoscaling will disable autoscaling entirely for this service. Are you sure?",
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Disable" }));
+
+    expect(as.disable).toHaveBeenCalledOnce();
+    expect(as.save).not.toHaveBeenCalled();
+    expect(screen.queryByText(/At least one utilization target/)).toBeNull();
+  });
+
+  it("names memory when memory was the last target", async () => {
+    const as = running({ targetCPUPercent: null, targetMemoryPercent: 80 });
+    render(<AutoscalingSection autoscaling={as} plan="starter" />);
+
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Target Memory Utilization" }),
+    );
+    expect(
+      await screen.findByText(
+        "Disabling memory-driven autoscaling will disable autoscaling entirely for this service. Are you sure?",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the last target on when the disable is cancelled", async () => {
+    const as = running({ targetCPUPercent: 70, targetMemoryPercent: null });
+    render(<AutoscalingSection autoscaling={as} plan="starter" />);
+
+    const cpu = screen.getByRole("switch", { name: "Target CPU Utilization" });
+    fireEvent.click(cpu);
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+
+    expect(as.disable).not.toHaveBeenCalled();
+    expect(cpu).toBeChecked();
+    expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
+  });
+
+  it("saves one of two targets turned off as an edit, with no dialog", () => {
+    const as = running({ targetCPUPercent: 70, targetMemoryPercent: 80 });
+    render(<AutoscalingSection autoscaling={as} plan="starter" />);
+
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Target CPU Utilization" }),
+    );
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    expect(as.save).toHaveBeenCalledWith({
+      minInstances: 1,
+      maxInstances: 3,
+      targetCPUPercent: null,
+      targetMemoryPercent: 80,
+    });
+  });
+
+  it("asks before turning autoscaling off from the switch", async () => {
+    const as = running();
+    render(<AutoscalingSection autoscaling={as} plan="starter" />);
+
+    fireEvent.click(screen.getByRole("switch", { name: "Autoscaling on" }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Disable Autoscaling?",
+    });
+    expect(
+      within(dialog).getByText(
+        "Your service will run the fixed number of instances specified under Manual Scaling.",
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Disable" }));
+    expect(as.disable).toHaveBeenCalledOnce();
+  });
+
+  it("waits for a change before Save Changes, and shows Cancel only then", () => {
+    const as = running();
+    render(<AutoscalingSection autoscaling={as} plan="starter" />);
+
+    expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Cancel" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Maximum instances"), {
+      target: { value: "5" },
+    });
+    expect(screen.getByRole("button", { name: "Save Changes" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
+    expect(as.save).not.toHaveBeenCalled();
   });
 });

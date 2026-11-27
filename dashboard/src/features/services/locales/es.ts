@@ -661,12 +661,6 @@ const esServices: Record<string, TranslationEntry> = {
     message: "El mínimo de instancias debe ser ≤ el máximo de instancias.",
     description: "Autoscaling form validation when min exceeds max",
   },
-  "services.scalingValidationTargets": {
-    message:
-      "Debe activarse al menos un objetivo de utilización (CPU o memoria).",
-    description:
-      "Autoscaling form validation when both CPU and memory targets are off",
-  },
   "services.scalingSave": {
     message: "Guardar",
     description: "Autoscaling form save button",
@@ -778,6 +772,33 @@ const esServices: Record<string, TranslationEntry> = {
   "services.scalingDisableConfirmAction": {
     message: "Desactivar",
     description: "Autoscaling disable confirmation dialog confirm button",
+  },
+  "services.scalingEnableConfirmTitle": {
+    message: "¿Activar el escalado automático?",
+    description:
+      "Autoscaling enable confirmation dialog title, Render's (w4/m696)",
+  },
+  "services.scalingEnableConfirmBody": {
+    message:
+      "Cuando tu servicio escala, cada instancia en ejecución usa el mismo plan de cómputo y se factura en consecuencia.",
+    description:
+      "Autoscaling enable confirmation dialog body: the billing note, Render's wording (w4/m696)",
+  },
+  "services.scalingEnableConfirmAction": {
+    message: "Activar",
+    description: "Autoscaling enable confirmation dialog confirm button",
+  },
+  "services.scalingDisableCPUConfirmBody": {
+    message:
+      "Desactivar el escalado automático por CPU desactivará por completo el escalado automático de este servicio. ¿Seguro?",
+    description:
+      "Autoscaling disable confirmation dialog body when the user turns off Target CPU while Target Memory is already off (w4/m696)",
+  },
+  "services.scalingDisableMemoryConfirmBody": {
+    message:
+      "Desactivar el escalado automático por memoria desactivará por completo el escalado automático de este servicio. ¿Seguro?",
+    description:
+      "Autoscaling disable confirmation dialog body when the user turns off Target Memory while Target CPU is already off (w4/m696)",
   },
   "services.scalingManualTitle": {
     message: "Escalado manual",

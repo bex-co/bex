@@ -659,12 +659,6 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "Мин. число инстансов не должно превышать макс. число.",
     description: "Autoscaling form validation when min exceeds max",
   },
-  "services.scalingValidationTargets": {
-    message:
-      "Должна быть включена хотя бы одна целевая загрузка (CPU или память).",
-    description:
-      "Autoscaling form validation when both CPU and memory targets are off",
-  },
   "services.scalingSave": {
     message: "Сохранить",
     description: "Autoscaling form save button",
@@ -775,6 +769,33 @@ const ruServices: Record<string, TranslationEntry> = {
   "services.scalingDisableConfirmAction": {
     message: "Отключить",
     description: "Autoscaling disable confirmation dialog confirm button",
+  },
+  "services.scalingEnableConfirmTitle": {
+    message: "Включить автомасштабирование?",
+    description:
+      "Autoscaling enable confirmation dialog title, Render's (w4/m696)",
+  },
+  "services.scalingEnableConfirmBody": {
+    message:
+      "Когда сервис масштабируется вверх, каждый работающий инстанс использует тот же тариф вычислений и оплачивается соответственно.",
+    description:
+      "Autoscaling enable confirmation dialog body: the billing note, Render's wording (w4/m696)",
+  },
+  "services.scalingEnableConfirmAction": {
+    message: "Включить",
+    description: "Autoscaling enable confirmation dialog confirm button",
+  },
+  "services.scalingDisableCPUConfirmBody": {
+    message:
+      "Отключение автомасштабирования по CPU полностью отключит автомасштабирование этого сервиса. Вы уверены?",
+    description:
+      "Autoscaling disable confirmation dialog body when the user turns off Target CPU while Target Memory is already off (w4/m696)",
+  },
+  "services.scalingDisableMemoryConfirmBody": {
+    message:
+      "Отключение автомасштабирования по памяти полностью отключит автомасштабирование этого сервиса. Вы уверены?",
+    description:
+      "Autoscaling disable confirmation dialog body when the user turns off Target Memory while Target CPU is already off (w4/m696)",
   },
   "services.scalingManualTitle": {
     message: "Ручное масштабирование",

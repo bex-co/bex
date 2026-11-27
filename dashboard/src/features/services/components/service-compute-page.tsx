@@ -64,6 +64,7 @@ export function ServiceComputePage({ serviceId }: { serviceId: string }) {
         <>
           <AutoscalingSection
             autoscaling={autoscaling}
+            instances={service.replicas ?? 1}
             plan={service.plan}
             workspacePlan={currentWorkspace?.plan}
           />

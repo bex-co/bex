@@ -22,7 +22,10 @@ import { Card, CardContent } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
-import type { UseAutoscalingResult } from "@/features/services/hooks/use-autoscaling";
+import type {
+  AutoscalingFormValues,
+  UseAutoscalingResult,
+} from "@/features/services/hooks/use-autoscaling";
 
 // Render uses 1–100 for instance count and 1–90 for utilization targets, with
 // 60% as the first-enable default target (live capture 2026-07-16, w7/m43).
@@ -43,19 +46,24 @@ interface FormState {
   targetMemoryPercent: number;
 }
 
-type ValidationKey =
-  "services.scalingValidationMinMax" | "services.scalingValidationTargets";
+// Render's disable dialog names why autoscaling goes off: the switch, or the
+// last utilization target turned off (its dashboard bundle, w4/m696).
+type DisableBodyKey =
+  | "services.scalingDisableConfirmBody"
+  | "services.scalingDisableCPUConfirmBody"
+  | "services.scalingDisableMemoryConfirmBody";
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
 }
 
-function validate(form: FormState): ValidationKey | null {
-  if (form.minInstances > form.maxInstances)
-    return "services.scalingValidationMinMax";
-  if (!form.cpuEnabled && !form.memEnabled)
-    return "services.scalingValidationTargets";
-  return null;
+function formValues(form: FormState): AutoscalingFormValues {
+  return {
+    minInstances: form.minInstances,
+    maxInstances: form.maxInstances,
+    targetCPUPercent: form.cpuEnabled ? form.targetCPUPercent : null,
+    targetMemoryPercent: form.memEnabled ? form.targetMemoryPercent : null,
+  };
 }
 
 // A slider + numeric input pair sharing the same value. Exported for the
@@ -197,10 +205,13 @@ function RangeSliderInput({
 // instance would carry its own (divergent) `saving` state (w7/m43 simplify).
 export function AutoscalingSection({
   autoscaling: as,
+  instances = 1,
   plan,
   workspacePlan,
 }: {
   autoscaling: UseAutoscalingResult;
+  /** The service's instance count: a first enable scales from it. */
+  instances?: number;
   /** Render offers autoscaling on paid plans only; free caps at one instance. */
   plan?: string | null;
   /**
@@ -216,16 +227,20 @@ export function AutoscalingSection({
   // Every control of the card is held while a save runs or the role denies.
   const inert = as.saving || createDenied;
 
-  // null = no local edits; fall through to server state. A draft's existence
-  // is what keeps the card open, so a draft is always "enabled" — the old
-  // separate enabled flag was invariantly true (w7/m43 simplify).
+  // null = no local edits; fall through to server state. The form shows only
+  // while autoscaling is on, so a draft only ever edits a running policy.
   const [draft, setDraft] = useState<FormState | null>(null);
-  const [validationError, setValidationError] = useState<ValidationKey | null>(
-    null,
-  );
-  // Disabling reverts the service to its fixed Manual Scaling instance count —
-  // confirm first with that explanation (Render's disable dialog, w7/m43).
+  const [minMaxError, setMinMaxError] = useState(false);
+  // As on Render, the switch saves nothing by itself: turning autoscaling on
+  // confirms the billing first, and turning it off — from the switch or by
+  // turning off the last utilization target — confirms the revert to the
+  // fixed Manual Scaling count (its dashboard bundle, w4/m696; w7/m43).
+  const [confirmEnable, setConfirmEnable] = useState(false);
   const [confirmDisable, setConfirmDisable] = useState(false);
+  // Kept apart from the open flag so the body survives the close animation.
+  const [disableBody, setDisableBody] = useState<DisableBodyKey>(
+    "services.scalingDisableConfirmBody",
+  );
 
   const serverForm = useMemo<FormState>(
     () => ({
@@ -264,60 +279,89 @@ export function AutoscalingSection({
   // settings, and the switch can only turn it off.
   const { eligible, planGated, locked } = autoscalingLock(plan, workspacePlan);
   const storedLocked = locked && as.enabled;
-  const enabled = !locked && (draft != null || as.enabled);
+  const enabled = !locked && as.enabled;
   const form = draft ?? serverForm;
+  const dirty =
+    draft != null &&
+    (Object.keys(draft) as (keyof FormState)[]).some(
+      (k) => draft[k] !== serverForm[k],
+    );
 
   function patch(partial: Partial<FormState>) {
     setDraft({ ...form, ...partial });
-    setValidationError(null);
+    setMinMaxError(false);
   }
 
+  function askDisable(body: DisableBodyKey) {
+    setDisableBody(body);
+    setConfirmDisable(true);
+  }
+
+  // The switch reads as.enabled, and is disabled while locked and off: on
+  // free, or below Pro, it can only turn a stored config off.
   function handleMainToggle(checked: boolean) {
     if (createDenied) return;
-    if (locked) {
-      // On free, or below Pro, the switch can only turn a stored config off.
-      if (!checked && as.enabled) setConfirmDisable(true);
+    if (!checked) askDisable("services.scalingDisableConfirmBody");
+    else if (!locked) setConfirmEnable(true);
+  }
+
+  // Turning off the last utilization target turns autoscaling off, as
+  // Render's docs say ("If you enable neither toggle, autoscaling is
+  // disabled"), so it asks as the switch does instead of leaving a form no
+  // save can take.
+  function handleTargetToggle(target: "cpu" | "memory", on: boolean) {
+    const otherOn = target === "cpu" ? form.memEnabled : form.cpuEnabled;
+    if (!on && !otherOn) {
+      askDisable(
+        target === "cpu"
+          ? "services.scalingDisableCPUConfirmBody"
+          : "services.scalingDisableMemoryConfirmBody",
+      );
       return;
     }
-    if (checked) {
-      setDraft(form);
-    } else if (as.enabled) {
-      // A server-enabled config asks for confirmation before disabling…
-      setConfirmDisable(true);
-    } else {
-      // …while toggling off a merely-drafted enable just discards the draft.
-      handleCancel();
-    }
+    patch(target === "cpu" ? { cpuEnabled: on } : { memEnabled: on });
+  }
+
+  // An enable starts from the settings a disable kept (w4/597) or, never
+  // configured (no stored target), from Render's first-enable defaults: the
+  // current instance count up to twice it, CPU and memory both at 60%.
+  function enableValues(): AutoscalingFormValues {
+    if (as.targetCPUPercent != null || as.targetMemoryPercent != null)
+      return formValues(serverForm);
+    const min = clamp(instances, INSTANCE_MIN, INSTANCE_MAX);
+    return {
+      minInstances: min,
+      maxInstances: Math.min(min * 2, INSTANCE_MAX),
+      targetCPUPercent: DEFAULT_TARGET_PERCENT,
+      targetMemoryPercent: DEFAULT_TARGET_PERCENT,
+    };
+  }
+
+  async function handleEnableConfirmed() {
+    setConfirmEnable(false);
+    await as.save(enableValues());
   }
 
   async function handleDisableConfirmed() {
     setConfirmDisable(false);
     const ok = await as.disable();
-    if (ok) setDraft(null);
+    if (ok) handleCancel();
   }
 
   async function handleSave() {
     if (createDenied) return;
-    const err = validate(form);
-    if (err) {
-      setValidationError(err);
+    if (form.minInstances > form.maxInstances) {
+      setMinMaxError(true);
       return;
     }
-    const ok = await as.save({
-      minInstances: form.minInstances,
-      maxInstances: form.maxInstances,
-      targetCPUPercent: form.cpuEnabled ? form.targetCPUPercent : null,
-      targetMemoryPercent: form.memEnabled ? form.targetMemoryPercent : null,
-    });
+    const ok = await as.save(formValues(form));
     if (ok) setDraft(null);
   }
 
   function handleCancel() {
     setDraft(null);
-    setValidationError(null);
+    setMinMaxError(false);
   }
-
-  const switchedOn = enabled || storedLocked;
 
   // A stored policy the switch can only turn off: its settings, read-only.
   const storedSummary = (
@@ -345,13 +389,13 @@ export function AutoscalingSection({
             <PermissionTooltip reason={createReason}>
               <Switch
                 id="autoscaling-enabled"
-                checked={switchedOn}
+                checked={as.enabled}
                 disabled={inert || (locked && !as.enabled)}
                 onCheckedChange={handleMainToggle}
               />
             </PermissionTooltip>
             <Label htmlFor="autoscaling-enabled" className="text-sm">
-              {switchedOn ? t("services.scalingOn") : t("services.scalingOff")}
+              {as.enabled ? t("services.scalingOn") : t("services.scalingOff")}
             </Label>
           </>
         }
@@ -446,7 +490,7 @@ export function AutoscalingSection({
                   id="cpu-enabled"
                   checked={form.cpuEnabled}
                   disabled={inert}
-                  onCheckedChange={(v) => patch({ cpuEnabled: v })}
+                  onCheckedChange={(v) => handleTargetToggle("cpu", v)}
                   aria-label={t("services.scalingCPUTitle")}
                 />
               </div>
@@ -481,7 +525,7 @@ export function AutoscalingSection({
                   id="mem-enabled"
                   checked={form.memEnabled}
                   disabled={inert}
-                  onCheckedChange={(v) => patch({ memEnabled: v })}
+                  onCheckedChange={(v) => handleTargetToggle("memory", v)}
                   aria-label={t("services.scalingMemoryTitle")}
                 />
               </div>
@@ -501,21 +545,31 @@ export function AutoscalingSection({
               )}
             </div>
 
-            {validationError ? (
-              <p className="text-sm text-destructive">{t(validationError)}</p>
+            {minMaxError ? (
+              <p className="text-sm text-destructive">
+                {t("services.scalingValidationMinMax")}
+              </p>
             ) : null}
 
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={as.saving}
-                onClick={handleCancel}
-              >
-                {t("services.scalingCancel")}
-              </Button>
+              {/* Render's Cancel shows once a value changes, and Save
+                  Changes waits for one. */}
+              {dirty && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={as.saving}
+                  onClick={handleCancel}
+                >
+                  {t("services.scalingCancel")}
+                </Button>
+              )}
               <PermissionTooltip reason={createReason}>
-                <Button size="sm" disabled={inert} onClick={handleSave}>
+                <Button
+                  size="sm"
+                  disabled={inert || !dirty}
+                  onClick={handleSave}
+                >
                   {t("services.scalingSaveChanges")}
                 </Button>
               </PermissionTooltip>
@@ -524,13 +578,25 @@ export function AutoscalingSection({
         </CardContent>
       )}
 
+      {/* Render styles both confirmations primary, not destructive. */}
+      <ConfirmDialog
+        open={confirmEnable}
+        onOpenChange={setConfirmEnable}
+        title={t("services.scalingEnableConfirmTitle")}
+        description={t("services.scalingEnableConfirmBody")}
+        cancelLabel={t("services.scalingCancel")}
+        confirmLabel={t("services.scalingEnableConfirmAction")}
+        destructive={false}
+        onConfirm={() => void handleEnableConfirmed()}
+      />
       <ConfirmDialog
         open={confirmDisable}
         onOpenChange={setConfirmDisable}
         title={t("services.scalingDisableConfirmTitle")}
-        description={t("services.scalingDisableConfirmBody")}
+        description={t(disableBody)}
         cancelLabel={t("services.scalingCancel")}
         confirmLabel={t("services.scalingDisableConfirmAction")}
+        destructive={false}
         onConfirm={() => void handleDisableConfirmed()}
       />
     </Card>

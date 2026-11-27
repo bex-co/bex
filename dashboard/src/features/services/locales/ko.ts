@@ -656,11 +656,6 @@ const koServices: Record<string, TranslationEntry> = {
     message: "최소 인스턴스는 최대 인스턴스 이하여야 합니다.",
     description: "Autoscaling form validation when min exceeds max",
   },
-  "services.scalingValidationTargets": {
-    message: "사용률 목표(CPU 또는 메모리)를 하나 이상 활성화해야 합니다.",
-    description:
-      "Autoscaling form validation when both CPU and memory targets are off",
-  },
   "services.scalingSave": {
     message: "저장",
     description: "Autoscaling form save button",
@@ -769,6 +764,33 @@ const koServices: Record<string, TranslationEntry> = {
   "services.scalingDisableConfirmAction": {
     message: "비활성화",
     description: "Autoscaling disable confirmation dialog confirm button",
+  },
+  "services.scalingEnableConfirmTitle": {
+    message: "자동 확장을 활성화하시겠습니까?",
+    description:
+      "Autoscaling enable confirmation dialog title, Render's (w4/m696)",
+  },
+  "services.scalingEnableConfirmBody": {
+    message:
+      "서비스가 확장되면 실행 중인 각 인스턴스는 같은 컴퓨팅 플랜을 사용하며 그에 따라 요금이 청구됩니다.",
+    description:
+      "Autoscaling enable confirmation dialog body: the billing note, Render's wording (w4/m696)",
+  },
+  "services.scalingEnableConfirmAction": {
+    message: "활성화",
+    description: "Autoscaling enable confirmation dialog confirm button",
+  },
+  "services.scalingDisableCPUConfirmBody": {
+    message:
+      "CPU 기반 자동 확장을 비활성화하면 이 서비스의 자동 확장이 완전히 비활성화됩니다. 계속하시겠습니까?",
+    description:
+      "Autoscaling disable confirmation dialog body when the user turns off Target CPU while Target Memory is already off (w4/m696)",
+  },
+  "services.scalingDisableMemoryConfirmBody": {
+    message:
+      "메모리 기반 자동 확장을 비활성화하면 이 서비스의 자동 확장이 완전히 비활성화됩니다. 계속하시겠습니까?",
+    description:
+      "Autoscaling disable confirmation dialog body when the user turns off Target Memory while Target CPU is already off (w4/m696)",
   },
   "services.scalingManualTitle": {
     message: "수동 확장",

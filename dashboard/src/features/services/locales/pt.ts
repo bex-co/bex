@@ -659,12 +659,6 @@ const ptServices: Record<string, TranslationEntry> = {
     message: "O mín. de instâncias deve ser ≤ ao máx. de instâncias.",
     description: "Autoscaling form validation when min exceeds max",
   },
-  "services.scalingValidationTargets": {
-    message:
-      "Pelo menos uma meta de utilização (CPU ou memória) deve estar ativada.",
-    description:
-      "Autoscaling form validation when both CPU and memory targets are off",
-  },
   "services.scalingSave": {
     message: "Salvar",
     description: "Autoscaling form save button",
@@ -776,6 +770,33 @@ const ptServices: Record<string, TranslationEntry> = {
   "services.scalingDisableConfirmAction": {
     message: "Desativar",
     description: "Autoscaling disable confirmation dialog confirm button",
+  },
+  "services.scalingEnableConfirmTitle": {
+    message: "Ativar o escalonamento automático?",
+    description:
+      "Autoscaling enable confirmation dialog title, Render's (w4/m696)",
+  },
+  "services.scalingEnableConfirmBody": {
+    message:
+      "Quando seu serviço escalar, cada instância em execução usará o mesmo plano de computação e será cobrada de acordo.",
+    description:
+      "Autoscaling enable confirmation dialog body: the billing note, Render's wording (w4/m696)",
+  },
+  "services.scalingEnableConfirmAction": {
+    message: "Ativar",
+    description: "Autoscaling enable confirmation dialog confirm button",
+  },
+  "services.scalingDisableCPUConfirmBody": {
+    message:
+      "Desativar o escalonamento automático por CPU desativará completamente o escalonamento automático deste serviço. Tem certeza?",
+    description:
+      "Autoscaling disable confirmation dialog body when the user turns off Target CPU while Target Memory is already off (w4/m696)",
+  },
+  "services.scalingDisableMemoryConfirmBody": {
+    message:
+      "Desativar o escalonamento automático por memória desativará completamente o escalonamento automático deste serviço. Tem certeza?",
+    description:
+      "Autoscaling disable confirmation dialog body when the user turns off Target Memory while Target CPU is already off (w4/m696)",
   },
   "services.scalingManualTitle": {
     message: "Escalonamento manual",

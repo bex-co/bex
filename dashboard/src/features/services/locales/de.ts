@@ -663,12 +663,6 @@ const deServices: Record<string, TranslationEntry> = {
     message: "Min. Instanzen müssen ≤ max. Instanzen sein.",
     description: "Autoscaling form validation when min exceeds max",
   },
-  "services.scalingValidationTargets": {
-    message:
-      "Mindestens ein Auslastungsziel (CPU oder Arbeitsspeicher) muss aktiviert sein.",
-    description:
-      "Autoscaling form validation when both CPU and memory targets are off",
-  },
   "services.scalingSave": {
     message: "Speichern",
     description: "Autoscaling form save button",
@@ -780,6 +774,33 @@ const deServices: Record<string, TranslationEntry> = {
   "services.scalingDisableConfirmAction": {
     message: "Deaktivieren",
     description: "Autoscaling disable confirmation dialog confirm button",
+  },
+  "services.scalingEnableConfirmTitle": {
+    message: "Autoscaling aktivieren?",
+    description:
+      "Autoscaling enable confirmation dialog title, Render's (w4/m696)",
+  },
+  "services.scalingEnableConfirmBody": {
+    message:
+      "Wenn dein Service hochskaliert, nutzt jede laufende Instanz denselben Compute-Plan und wird entsprechend abgerechnet.",
+    description:
+      "Autoscaling enable confirmation dialog body: the billing note, Render's wording (w4/m696)",
+  },
+  "services.scalingEnableConfirmAction": {
+    message: "Aktivieren",
+    description: "Autoscaling enable confirmation dialog confirm button",
+  },
+  "services.scalingDisableCPUConfirmBody": {
+    message:
+      "Wenn du das CPU-gesteuerte Autoscaling deaktivierst, wird Autoscaling für diesen Service vollständig deaktiviert. Bist du sicher?",
+    description:
+      "Autoscaling disable confirmation dialog body when the user turns off Target CPU while Target Memory is already off (w4/m696)",
+  },
+  "services.scalingDisableMemoryConfirmBody": {
+    message:
+      "Wenn du das arbeitsspeichergesteuerte Autoscaling deaktivierst, wird Autoscaling für diesen Service vollständig deaktiviert. Bist du sicher?",
+    description:
+      "Autoscaling disable confirmation dialog body when the user turns off Target Memory while Target CPU is already off (w4/m696)",
   },
   "services.scalingManualTitle": {
     message: "Manuelle Skalierung",
