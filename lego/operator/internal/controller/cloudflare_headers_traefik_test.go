@@ -31,9 +31,10 @@ import (
 // the deployed Traefik release, with the entrypoints configured as in
 // production, an app receives the Cloudflare headers a Render app receives
 // whatever the caller sent, every answer reads "server: cloudflare" with the
-// request's cf-ray, and a caller's own CF-Connecting-IP gets Cloudflare's 403
-// "error code: 1000" without reaching the app, on HTTPS and plain HTTP alike.
-// Opt-in: needs Docker.
+// request's cf-ray, a caller's own CF-Connecting-IP is replaced (bex's edge
+// does not refuse it as Render's does, w4/m687 t004), and a CDN-Loop past 16
+// gets Cloudflare's 403 "error code: 1000" without reaching the app, on HTTPS
+// and plain HTTP alike. Opt-in: needs Docker.
 func TestCloudflareHeadersOnTheDeployedTraefik(t *testing.T) {
 	if os.Getenv("BEX_TRAEFIK_INTEGRATION") == "" {
 		t.Skip("set BEX_TRAEFIK_INTEGRATION=1 to run the Cloudflare headers on the deployed Traefik release")
@@ -75,7 +76,7 @@ func TestCloudflareHeadersOnTheDeployedTraefik(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resp, body := send(t, tc.url+"/", http.Header{
 				"Cf-Ipcountry": {"KP"}, "Cf-Ray": {"0000000000000000-AAA"}, "Cf-Visitor": {`{"scheme":"gopher"}`},
-				"Cdn-Loop": {"forged"}, "Cf-Connecting-Ipv6": {"2001:db8::9"},
+				"Cdn-Loop": {"forged"}, "Cf-Connecting-Ipv6": {"2001:db8::9"}, "Cf-Connecting-Ip": {"203.0.113.9"},
 			})
 			var seen http.Header
 			if err := json.Unmarshal(body, &seen); err != nil {
@@ -84,7 +85,7 @@ func TestCloudflareHeadersOnTheDeployedTraefik(t *testing.T) {
 			client := seen.Get("True-Client-Ip")
 			ray := seen.Get("Cf-Ray")
 			for name, ok := range map[string]bool{
-				"Cf-Connecting-Ip":   client != "" && seen.Get("Cf-Connecting-Ip") == client,
+				"Cf-Connecting-Ip":   client != "" && !strings.HasPrefix(client, "203.0.113.") && seen.Get("Cf-Connecting-Ip") == client,
 				"Cf-Ipcountry":       len(seen.Values("Cf-Ipcountry")) == 1 && seen.Get("Cf-Ipcountry") != "KP" && len(seen.Get("Cf-Ipcountry")) == 2,
 				"Cf-Ray":             len(seen.Values("Cf-Ray")) == 1 && cfRayShape.MatchString(ray),
 				"Cf-Visitor":         seen.Get("Cf-Visitor") == `{"scheme":"`+tc.scheme+`"}`,
@@ -107,8 +108,8 @@ func TestCloudflareHeadersOnTheDeployedTraefik(t *testing.T) {
 
 	before := reached.Load()
 	for _, tc := range []struct{ name, url string }{{"HTTPS", tlsBase}, {"plain HTTP", base}} {
-		t.Run("a forged CF-Connecting-IP over "+tc.name, func(t *testing.T) {
-			resp, body := send(t, tc.url+"/", http.Header{"Cf-Connecting-Ip": {"203.0.113.9"}})
+		t.Run("a CDN-Loop past 16 over "+tc.name, func(t *testing.T) {
+			resp, body := send(t, tc.url+"/", http.Header{"Cdn-Loop": {"cloudflare; loops=16"}})
 			if resp.StatusCode != http.StatusForbidden || string(body) != "error code: 1000\n" {
 				t.Fatalf("answer %d %q, want 403 %q", resp.StatusCode, body, "error code: 1000\n")
 			}

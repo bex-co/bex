@@ -19,7 +19,7 @@ deployment:
     - name: bex-client-ip-headers-plugin
       configMap:
         # Content-hashed like the egress plugin above (w8/m123).
-        name: bex-client-ip-headers-plugin-cc4m45b4mc
+        name: bex-client-ip-headers-plugin-g74ch757dc
     - name: bex-s3-metadata-case-plugin
       configMap:
         # Content-hashed like the two above (w21/113): the S3 gateway's route
@@ -74,9 +74,8 @@ securityContext:
 # CF-Connecting-IP, CF-IPCountry or X-Client-IP, and True-Client-IP always names
 # the real client, as on Render behind Cloudflare. From a non-Cloudflare peer it
 # sets the Cloudflare headers a Render app receives, CF-Connecting-IP,
-# CF-IPCountry, CF-Ray, CF-Visitor and CDN-Loop, and answers a forged
-# CF-Connecting-IP with Cloudflare's 403 "error code: 1000" (w4/m687,
-# docs/render-artifacts/edge-headers.md). Ahead of it, bex-edge-headers names
+# CF-IPCountry, CF-Ray, CF-Visitor and CDN-Loop, replacing a caller's own
+# (w4/m687, docs/render-artifacts/edge-headers.md). Ahead of it, bex-edge-headers names
 # the edge "cloudflare" in every answer's Server header, as Render's edge does;
 # a web service's own Server moves to X-Render-Origin-Server first (w8/321).
 # Both Middlewares ship in this release (extraObjects below), so they exist

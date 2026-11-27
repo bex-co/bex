@@ -200,63 +200,68 @@ func TestCDNLoop(t *testing.T) {
 	}
 }
 
-// w4/m687: a caller's own CF-Connecting-IP from outside Cloudflare gets
-// Render's 403 byte for byte (captured 2026-11-27) and never reaches the app;
-// an empty one, the underscore spelling and a Cloudflare peer's pass, as on
-// Render.
-func TestForgedConnectingIPIsRefused(t *testing.T) {
+// w4/m687 t004: Render's edge refuses a caller's own CF-Connecting-IP from
+// outside Cloudflare, but bex's replaces it with the peer, because tenants'
+// reverse proxies on bex forward Cloudflare's header to other bex services.
+// A Cloudflare peer's own passes.
+func TestForgedConnectingIPIsReplaced(t *testing.T) {
 	for _, tc := range []struct {
 		name, url, peer string
 		header          http.Header
-		refused         bool
+		want            string
 	}{
-		{"an address", "https://web.onbex.co/", "198.51.100.20:1", http.Header{"Cf-Connecting-Ip": {"203.0.113.9"}}, true},
-		{"not an address", "https://web.onbex.co/", "198.51.100.20:1", http.Header{"Cf-Connecting-Ip": {"hello"}}, true},
-		{"plain HTTP, before any redirect", "http://web.onbex.co/", "198.51.100.20:1", http.Header{"Cf-Connecting-Ip": {"203.0.113.9"}}, true},
-		{"an IPv6 peer", "https://web.onbex.co/", "[2001:db8::20]:1", http.Header{"Cf-Connecting-Ip": {"203.0.113.9"}}, true},
-		{"an unparseable peer", "https://web.onbex.co/", "@unix", http.Header{"Cf-Connecting-Ip": {"203.0.113.9"}}, true},
-		{"empty", "https://web.onbex.co/", "198.51.100.20:1", http.Header{"Cf-Connecting-Ip": {""}}, false},
-		{"the underscore spelling", "https://web.onbex.co/", "198.51.100.20:1", http.Header{"Cf_connecting_ip": {"203.0.113.9"}}, false},
-		{"a Cloudflare peer", "https://web.onbex.co/", "104.16.0.1:1", http.Header{"Cf-Connecting-Ip": {"203.0.113.9"}}, false},
+		{"an address", "https://web.onbex.co/", "198.51.100.20:1", http.Header{"Cf-Connecting-Ip": {"203.0.113.9"}}, "198.51.100.20"},
+		{"not an address", "https://web.onbex.co/", "198.51.100.20:1", http.Header{"Cf-Connecting-Ip": {"hello"}}, "198.51.100.20"},
+		{"plain HTTP", "http://web.onbex.co/", "198.51.100.20:1", http.Header{"Cf-Connecting-Ip": {"203.0.113.9"}}, "198.51.100.20"},
+		{"an IPv6 peer", "https://web.onbex.co/", "[2001:db8::20]:1", http.Header{"Cf-Connecting-Ip": {"203.0.113.9"}}, "2001:db8::20"},
+		{"the underscore spelling", "https://web.onbex.co/", "198.51.100.20:1", http.Header{"Cf_connecting_ip": {"203.0.113.9"}}, "198.51.100.20"},
+		{"an unparseable peer", "https://web.onbex.co/", "@unix", http.Header{"Cf-Connecting-Ip": {"203.0.113.9"}}, ""},
+		{"a Cloudflare peer", "https://web.onbex.co/", "104.16.0.1:1", http.Header{"Cf-Connecting-Ip": {"203.0.113.9"}}, "203.0.113.9"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			res := throughEdge(t, CreateConfig(), tc.url, tc.peer, tc.header)
-			if !tc.refused {
-				if res.app == nil {
-					t.Fatalf("refused with %d, want the app reached", res.resp.Code)
-				}
-				if v := res.app.Get("CF-Connecting-IP"); v == "203.0.113.9" && tc.peer != "104.16.0.1:1" || res.app["Cf_connecting_ip"] != nil {
-					t.Errorf("the caller's CF-Connecting-IP reached the app: %q", res.app)
-				}
-				return
+			if res.app == nil {
+				t.Fatalf("refused with %d %q, want the app reached", res.resp.Code, res.resp.Body.String())
 			}
-			if res.app != nil {
-				t.Fatal("a forged CF-Connecting-IP reached the app")
+			if got := res.app.Values("CF-Connecting-IP"); tc.want == "" && len(got) != 0 || tc.want != "" && (len(got) != 1 || got[0] != tc.want) {
+				t.Errorf("CF-Connecting-IP = %q, want %q", got, tc.want)
 			}
-			resp := res.resp
-			if resp.Code != http.StatusForbidden || resp.Body.String() != "error code: 1000\n" {
-				t.Errorf("answer %d %q, want 403 %q", resp.Code, resp.Body.String(), "error code: 1000\n")
-			}
-			for name, want := range map[string]string{
-				"Content-Type":    "text/plain; charset=UTF-8",
-				"Content-Length":  "17",
-				"Cache-Control":   "private, max-age=0, no-store, no-cache, must-revalidate, post-check=0, pre-check=0",
-				"Expires":         "Thu, 01 Jan 1970 00:00:01 GMT",
-				"Referrer-Policy": "same-origin",
-				"X-Frame-Options": "SAMEORIGIN",
-			} {
-				only(t, resp.Header(), name, want)
-			}
-			// Cloudflare refuses before Render's edge sees the request: no
-			// Rndr-Id on the answer, but the access log's line has one, and
-			// the answer's cf-ray names it.
-			if v, ok := resp.Header()["Rndr-Id"]; ok {
-				t.Errorf("the refusal carries Rndr-Id %q", v)
-			}
-			m := rayShape.FindStringSubmatch(resp.Header().Get("Cf-Ray"))
-			if m == nil || strings.ReplaceAll(res.logged.Get("Rndr-Id"), "-", "") != m[1] {
-				t.Errorf("cf-ray %q does not name the logged Rndr-Id %q", resp.Header().Get("Cf-Ray"), res.logged.Get("Rndr-Id"))
+			if v, ok := res.app["Cf_connecting_ip"]; ok {
+				t.Errorf("Cf_connecting_ip = %q reached the app", v)
 			}
 		})
+	}
+}
+
+// A refusal (a CDN-Loop past 16) is Render's 403 byte for byte (captured
+// 2026-11-27) and never reaches the app.
+func TestRefusalIsRendersAnswer(t *testing.T) {
+	res := throughEdge(t, CreateConfig(), "https://web.onbex.co/", "198.51.100.20:1", http.Header{"Cdn-Loop": {"cloudflare; loops=16"}})
+	if res.app != nil {
+		t.Fatal("a refused request reached the app")
+	}
+	resp := res.resp
+	if resp.Code != http.StatusForbidden || resp.Body.String() != "error code: 1000\n" {
+		t.Errorf("answer %d %q, want 403 %q", resp.Code, resp.Body.String(), "error code: 1000\n")
+	}
+	for name, want := range map[string]string{
+		"Content-Type":    "text/plain; charset=UTF-8",
+		"Content-Length":  "17",
+		"Cache-Control":   "private, max-age=0, no-store, no-cache, must-revalidate, post-check=0, pre-check=0",
+		"Expires":         "Thu, 01 Jan 1970 00:00:01 GMT",
+		"Referrer-Policy": "same-origin",
+		"X-Frame-Options": "SAMEORIGIN",
+	} {
+		only(t, resp.Header(), name, want)
+	}
+	// Cloudflare refuses before Render's edge sees the request: no Rndr-Id
+	// on the answer, but the access log's line has one, and the answer's
+	// cf-ray names it.
+	if v, ok := resp.Header()["Rndr-Id"]; ok {
+		t.Errorf("the refusal carries Rndr-Id %q", v)
+	}
+	m := rayShape.FindStringSubmatch(resp.Header().Get("Cf-Ray"))
+	if m == nil || strings.ReplaceAll(res.logged.Get("Rndr-Id"), "-", "") != m[1] {
+		t.Errorf("cf-ray %q does not name the logged Rndr-Id %q", resp.Header().Get("Cf-Ray"), res.logged.Get("Rndr-Id"))
 	}
 }

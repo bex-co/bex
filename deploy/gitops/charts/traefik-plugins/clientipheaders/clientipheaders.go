@@ -25,9 +25,10 @@
 // A request from any other peer gets the Cloudflare headers a Render app
 // receives (w4/m687, docs/render-artifacts/edge-headers.md): CF-Connecting-IP,
 // CF-IPCountry (country.go), CF-Ray, CF-Visitor and CDN-Loop, whatever the
-// caller sent, and its answer carries the same cf-ray. A caller that sends its
-// own CF-Connecting-IP from outside Cloudflare gets Cloudflare's 403 "error
-// code: 1000", as on Render, and never reaches the app.
+// caller sent, and its answer carries the same cf-ray. Render's edge refuses a
+// caller's own CF-Connecting-IP from outside Cloudflare with 403 "error code:
+// 1000"; this edge replaces it, because tenants' reverse proxies on bex pass
+// Cloudflare's header on to other bex services (w4/m687 t004).
 //
 // It also gives every request Render's Rndr-Id (w8/m125): a fresh id on the
 // request to the app and on the response, which the access log keeps, so a
@@ -184,9 +185,11 @@ func (s *sanitizer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if fromCloudflare {
 		client = net.ParseIP(claimed)
 	}
-	// Cloudflare refuses a request that claims to have come through it from
-	// anywhere else.
-	refused := claimed != "" && !fromCloudflare
+	// Render's edge also refuses a CF-Connecting-IP from outside Cloudflare.
+	// This one replaces it: a tenant's Caddy in front of other bex services
+	// forwards Cloudflare's header, and refusing it took those sites down on
+	// 2026-11-27 (w4/m687 t004, parked for the user's decision).
+	refused := false
 	for name := range h {
 		key := strings.ToLower(strings.ReplaceAll(name, "_", "-"))
 		// A trusted edge's CF-* stay only in Cloudflare's own hyphenated form.
@@ -232,9 +235,9 @@ func (s *sanitizer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if ray != "" {
 		w.Header().Set("Cf-Ray", ray)
 	}
-	// Cloudflare refuses before Render's edge sees the request, so its answer
-	// has no Rndr-Id. The access log still records the request's, and the
-	// answer's cf-ray carries the same hex.
+	// Cloudflare refuses a loop before Render's edge sees the request, so its
+	// answer has no Rndr-Id. The access log still records the request's, and
+	// the answer's cf-ray carries the same hex.
 	if refused {
 		refuse(w)
 		return
@@ -247,8 +250,8 @@ func (s *sanitizer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // error 1000, byte for byte as Render's edge sent it (captured 2026-11-27).
 const refusalBody = "error code: 1000\n"
 
-// refuse answers as Render's edge answered a forged CF-Connecting-IP: 403,
-// plain text, never cached. Traefik's entrypoint pre-sets a nil Content-Type
+// refuse answers as Render's edge answered a CDN-Loop past maxCDNLoops (and a
+// forged CF-Connecting-IP): 403, plain text, never cached. Traefik's entrypoint pre-sets a nil Content-Type
 // to stop net/http's sniffing, which Set replaces.
 func refuse(w http.ResponseWriter) {
 	h := w.Header()
