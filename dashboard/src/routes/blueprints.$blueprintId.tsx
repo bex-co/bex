@@ -38,6 +38,8 @@ import {
 } from "@/features/blueprints/components/blueprint-nav";
 import { BlueprintDetailProvider } from "@/features/blueprints/lib/blueprint-detail";
 import { canonicalBlueprintLinkId } from "@/features/blueprints/lib/link-id";
+import { blueprintResourceTables } from "@/features/blueprints/lib/resource-tables";
+import type { BlueprintView } from "@/features/blueprints/types";
 import { useBlueprint } from "@/features/blueprints/hooks/use-blueprint";
 import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import { BlueprintDocument } from "@/graphql/definitions";
@@ -234,6 +236,7 @@ function BlueprintDetailLayout({
               <BlueprintPageSkeleton
                 labelKey={pageLabelKey}
                 syncPage={syncPage}
+                loaded={loaded}
               />
             )}
           </div>
@@ -250,9 +253,13 @@ function BlueprintDetailLayout({
 function BlueprintPageSkeleton({
   labelKey,
   syncPage,
+  loaded,
 }: {
   labelKey: ReturnType<typeof blueprintPageLabelKey>;
   syncPage: boolean;
+  /** The Blueprint already read, while its workspace is adopted or the
+   *  title loader runs: Resources' frame draws its tables (w3/m680). */
+  loaded: BlueprintView | null;
 }) {
   if (syncPage) return <BlueprintSyncPageSkeleton />;
   switch (labelKey) {
@@ -261,6 +268,12 @@ function BlueprintPageSkeleton({
     case "blueprints.navSettings":
       return <BlueprintSettingsSkeleton />;
     default:
-      return <BlueprintResourcesSkeleton />;
+      return (
+        <BlueprintResourcesSkeleton
+          tables={
+            loaded ? blueprintResourceTables(loaded.resources) : undefined
+          }
+        />
+      );
   }
 }

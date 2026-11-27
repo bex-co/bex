@@ -1,6 +1,14 @@
 import { useRef } from "react";
 import { InvitationFrame } from "@/features/invites/invitation-frame";
 import { EnvGroupsTableHeader } from "@/features/env-groups/components/env-groups-table-header";
+import { ResourceColumnHeads } from "@/features/projects/components/resource-column-heads";
+import { useOptionalBlueprintDetail } from "@/features/blueprints/lib/blueprint-detail";
+import {
+  blueprintResourceTables,
+  blueprintResourcesShape,
+  type BlueprintResourceTables,
+  type BlueprintResourcesShape,
+} from "@/features/blueprints/lib/resource-tables";
 import { WebhooksTableHeader } from "@/features/webhooks/components/webhooks-table-header";
 import { EnvironmentSectionHeader } from "@/features/environments/components/environment-section-header";
 import { EnvironmentSettingsNavigation } from "@/features/environments/components/environment-settings-navigation";
@@ -87,6 +95,7 @@ import {
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { EditableFieldRowPreview } from "@/features/services/components/editable-field-row";
 import {
+  ReservedBadge,
   ReservedButton,
   ReservedOryButton,
   ReservedText,
@@ -621,20 +630,28 @@ export function OverviewEmptySkeleton() {
  */
 function SelectionToolbarSkeleton({
   touch = false,
+  move = true,
 }: {
   /** In a touch region (a project's environment card, w3/099): the picker
    *  and Move are 44px below 64rem or on a coarse pointer. */
   touch?: boolean;
+  /** False where the list has no Move (a Blueprint's Resources, w3/m680):
+   *  the count alone, on the toolbar's 32px row. */
+  move?: boolean;
 }) {
   const touchHeight = touch && TOUCH_TARGET_HEIGHT;
   return (
     <div
       data-skeleton-item="selection-toolbar"
-      className="flex flex-wrap items-center gap-2"
+      className="flex min-h-8 flex-wrap items-center gap-2"
     >
       <Skeleton className="h-3.5 w-[4.5625rem]" />
-      <Skeleton className={cn("h-9 w-48", touchHeight)} />
-      <Skeleton className={cn("h-8 w-[3.875rem]", touchHeight)} />
+      {move ? (
+        <>
+          <Skeleton className={cn("h-9 w-48", touchHeight)} />
+          <Skeleton className={cn("h-8 w-[3.875rem]", touchHeight)} />
+        </>
+      ) : null}
     </div>
   );
 }
@@ -1067,8 +1084,9 @@ export function BlueprintHeaderSkeleton() {
         className="flex min-w-0 max-w-full items-center gap-2"
       >
         {/* The h1's text-xl line box is 28px (w4/m209); the status badge is
-            22px. */}
-        <Skeleton className="h-7 w-48" />
+            22px. Narrower on a phone, where a typical name and Manual sync
+            share the ready header's one row (w3/m680). */}
+        <Skeleton className="h-7 w-32 sm:w-48" />
         <Skeleton className="h-[22px] w-16" />
       </div>
       <div
@@ -1082,33 +1100,6 @@ export function BlueprintHeaderSkeleton() {
         </ReservedButton>
       </div>
     </div>
-  );
-}
-
-/** A table's rows of text placeholders, each as tall as its ready row. */
-function BlueprintTableRowsSkeleton({
-  rows,
-  cells,
-}: {
-  rows: number;
-  /** Each cell's placeholder classes, in column order. */
-  cells: readonly string[];
-}) {
-  return (
-    <TableBody aria-hidden="true">
-      {Array.from({ length: rows }, (_, row) => (
-        <TableRow key={row}>
-          {cells.map((cell, column) => (
-            <TableCell key={column}>
-              {/* A text line is 20px. */}
-              <span className="flex min-h-5 items-center">
-                <Skeleton className={cn("max-w-full", cell)} />
-              </span>
-            </TableCell>
-          ))}
-        </TableRow>
-      ))}
-    </TableBody>
   );
 }
 
@@ -1165,38 +1156,200 @@ export function BlueprintSyncCardsSkeleton() {
   );
 }
 
+/** Before the Blueprint is read: its services in one table of three rows. */
+const UNREAD_BLUEPRINT_RESOURCES: BlueprintResourcesShape = {
+  resources: 3,
+  buildSources: 0,
+  envGroups: 0,
+};
+
 /**
- * A Blueprint's Resources page while it loads (w3/m677): the Managed
- * Resources card, its Name and Type header and two rows.
+ * A Blueprint's Resources page while it loads (w3/m680): the tables that
+ * Blueprint has, each with its rows, from the Blueprint the layout already
+ * holds (`tables`, or the open page's on a page switch); before the Blueprint
+ * is read, one resource table of three rows.
  */
-export function BlueprintResourcesSkeleton() {
-  const { t } = useTranslations();
+export function BlueprintResourcesSkeleton({
+  tables,
+}: {
+  tables?: BlueprintResourceTables;
+}) {
+  const detail = useOptionalBlueprintDetail();
+  const known =
+    tables ??
+    (detail ? blueprintResourceTables(detail.blueprint.resources) : null);
   return (
-    <PendingFrame route="blueprint-resources" className="space-y-6">
-      <Region name="resources">
+    <PendingFrame route="blueprint-resources">
+      <BlueprintResourcesFrame
+        shape={
+          known ? blueprintResourcesShape(known) : UNREAD_BLUEPRINT_RESOURCES
+        }
+      />
+    </PendingFrame>
+  );
+}
+
+/**
+ * The Resources page's frame for `shape`, the route's pending frame and the
+ * page's own while its reads answer: each table the page will draw, in its
+ * order and with its rows, or Render's empty card.
+ */
+export function BlueprintResourcesFrame({
+  shape,
+}: {
+  shape: BlueprintResourcesShape;
+}) {
+  const { t } = useTranslations();
+  if (shape.resources + shape.buildSources + shape.envGroups === 0) {
+    return (
+      <Region name="resources" aria-hidden="true">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">
-              {t("blueprints.resourcesTitle")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("blueprints.colName")}</TableHead>
-                  <TableHead>{t("blueprints.colType")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <BlueprintTableRowsSkeleton
-                rows={2}
-                cells={["h-4 w-32", "h-4 w-24"]}
-              />
-            </Table>
+          <CardContent className="text-sm">
+            <span className="relative">
+              <ReservedText>{t("blueprints.resourcesEmpty")}</ReservedText>
+            </span>
           </CardContent>
         </Card>
       </Region>
-    </PendingFrame>
+    );
+  }
+  return (
+    <Region name="resources" className="space-y-8">
+      {shape.resources > 0 ? (
+        <BlueprintResourceTableFrame rows={shape.resources} />
+      ) : null}
+      {shape.buildSources > 0 ? (
+        <BlueprintBuildSourcesFrame rows={shape.buildSources} />
+      ) : null}
+      {shape.envGroups > 0 ? (
+        <BlueprintEnvGroupsFrame rows={shape.envGroups} />
+      ) : null}
+    </Region>
+  );
+}
+
+/**
+ * The resource table of a Blueprint's services and datastores while it loads
+ * (w3/m680): the selection toolbar's count (no Move), then the table's own
+ * columns (`ResourceColumnHeads`, operational metadata) and its rows, each as
+ * tall as a ready row: the name over its type badge, the status badge, the
+ * menu.
+ */
+export function BlueprintResourceTableFrame({ rows }: { rows: number }) {
+  const { t } = useTranslations();
+  return (
+    <Region name="resource-table" aria-hidden="true" className="space-y-3">
+      <SelectionToolbarSkeleton move={false} />
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-10">
+              <Skeleton className="size-4 rounded-[4px]" />
+            </TableHead>
+            <TableHead>{t("projects.colName")}</TableHead>
+            <ResourceColumnHeads projectMetadata />
+            <TableHead className="w-0 text-right">
+              <span className="sr-only">{t("projects.colActions")}</span>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: rows }, (_, row) => (
+            <TableRow key={row}>
+              <TableCell className="w-10">
+                <Skeleton className="size-4 rounded-[4px]" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-5 w-32 max-w-40" />
+                <div className="mt-1">
+                  <ReservedBadge variant="outline">
+                    {t("services.typeWeb")}
+                  </ReservedBadge>
+                </div>
+              </TableCell>
+              <TableCell>
+                <ReservedBadge variant="secondary">
+                  {t("services.statusRunning")}
+                </ReservedBadge>
+              </TableCell>
+              <TableCell className="hidden md:table-cell">
+                <Skeleton className="h-4 w-16" />
+              </TableCell>
+              <TableCell className="hidden lg:table-cell">
+                <Skeleton className="h-4 w-16" />
+              </TableCell>
+              <TableCell className="hidden sm:table-cell">
+                <Skeleton className="h-4 w-10" />
+              </TableCell>
+              <TableCell className="text-right">
+                <Skeleton className="ml-auto size-8" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Region>
+  );
+}
+
+/**
+ * A Blueprint's Build Sources table while it loads (w3/m680): its columns,
+ * one project's row and the build sources' rows under it.
+ */
+export function BlueprintBuildSourcesFrame({ rows }: { rows: number }) {
+  const { t } = useTranslations();
+  return (
+    <Region name="build-sources" aria-hidden="true">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t("blueprints.colBuildSourceName")}</TableHead>
+            <TableHead>{t("buildSources.colSource")}</TableHead>
+            <TableHead className="hidden sm:table-cell">
+              {t("buildSources.colUpdated")}
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell colSpan={3}>
+              <span className="flex h-5 items-center gap-2">
+                <Skeleton className="size-4" />
+                <Skeleton className="h-4 w-24" />
+              </span>
+            </TableCell>
+          </TableRow>
+          {Array.from({ length: rows }, (_, row) => (
+            <TableRow key={row}>
+              <TableCell className="pl-8">
+                <span className="flex min-h-[22px] items-center gap-2">
+                  <Skeleton className="size-4" />
+                  <Skeleton className="h-4 w-32" />
+                </span>
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-40" />
+              </TableCell>
+              <TableCell className="hidden sm:table-cell">
+                <Skeleton className="h-4 w-10" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Region>
+  );
+}
+
+/** A Blueprint's Environment Groups table while it loads (w3/m680). */
+export function BlueprintEnvGroupsFrame({ rows }: { rows: number }) {
+  return (
+    <Region name="env-groups" aria-hidden="true">
+      <Table>
+        <EnvGroupsTableHeader />
+        <EnvGroupsTableRowsSkeleton rows={rows} />
+      </Table>
+    </Region>
   );
 }
 
@@ -1448,32 +1601,41 @@ export function EnvGroupsContentSkeleton() {
         <div className="rounded-md border">
           <Table>
             <EnvGroupsTableHeader />
-            <TableBody>
-              {Array.from({ length: 3 }, (_, row) => (
-                <TableRow key={row}>
-                  <TableCell className="min-w-48">
-                    <Skeleton className="h-5 w-32" />
-                    <Skeleton className="mt-0.5 h-4 w-48" />
-                  </TableCell>
-                  <TableCell className="min-w-40">
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="ml-auto h-5 w-4" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="ml-auto h-5 w-4" />
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    <Skeleton className="ml-auto h-5 w-28" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
+            <EnvGroupsTableRowsSkeleton rows={3} />
           </Table>
         </div>
       </Region>
     </div>
+  );
+}
+
+/** The Environment Groups table's rows (`EnvGroupsTable`), each as tall as
+ *  its ready row: the name's 20px line over its 16px id line, then four
+ *  one-line cells. */
+function EnvGroupsTableRowsSkeleton({ rows }: { rows: number }) {
+  return (
+    <TableBody>
+      {Array.from({ length: rows }, (_, row) => (
+        <TableRow key={row}>
+          <TableCell className="min-w-48">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-4 w-48" />
+          </TableCell>
+          <TableCell className="min-w-40">
+            <Skeleton className="h-5 w-24" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="ml-auto h-5 w-4" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="ml-auto h-5 w-4" />
+          </TableCell>
+          <TableCell className="whitespace-nowrap">
+            <Skeleton className="ml-auto h-5 w-28" />
+          </TableCell>
+        </TableRow>
+      ))}
+    </TableBody>
   );
 }
 

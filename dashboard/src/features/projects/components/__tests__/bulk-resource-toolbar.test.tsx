@@ -10,6 +10,7 @@ import {
 } from "@/graphql/definitions";
 import { BulkResourceToolbar } from "@/features/projects/components/bulk-resource-toolbar";
 import { useResourceSelection } from "@/features/projects/hooks/use-resource-selection";
+import { MoveDisabledContext } from "@/features/projects/lib/move-disabled";
 import {
   resourceSelectionKey,
   type ResourceRow,
@@ -382,6 +383,23 @@ describe("BulkResourceToolbar Suspend and Resume (w4/m550)", () => {
     } else {
       expect(picker).toBeEnabled();
     }
+  });
+
+  // A Blueprint's Resources page (w3/m680): Render's action bar there has
+  // Resume and Suspend and no Move (disableMove).
+  it("offers Resume and Suspend and no Move in a list whose rows are not moved", async () => {
+    const user = userEvent.setup();
+    render(
+      <MoveDisabledContext.Provider value>
+        <MoveHarness rows={[web, worker]} />
+      </MoveDisabledContext.Provider>,
+    );
+    await user.click(screen.getByRole("button", { name: "select all" }));
+    expect(screen.getByText("Selected: 2")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Suspend" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Resume" })).toBeEnabled();
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Move" })).toBeNull();
   });
 
   it("asks an Admin in a protected environment once, for the whole selection", async () => {

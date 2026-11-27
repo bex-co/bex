@@ -45,7 +45,7 @@ Under the layout, one `*` child (the header shell) holds the pages:
 
 ## Pages
 
-- **Resources** has no title of its own: its tables of services and datastores, Build Sources and Environment Groups (w3/m680), or `No resources managed by this Blueprint`.
+- **Resources** has no title of its own: its tables of services and datastores, Build Sources and Environment Groups, or `No resources managed by this Blueprint` ([§ Resources](#resources-w3m680)).
 - **Syncs** opens with the title "Syncs", then the sync cards, newest first, each linking to its page (w3/m678), or `No syncs yet.`.
 - **Settings** is one card titled "Settings": Name, Auto Sync, Sync Hook (when the Blueprint has a sync key), Branch, Blueprint Path, Git Credentials (w3/m679). Below the card, **Disconnect Blueprint** (a critical button, behind the same tooltip without `updateBlueprint`).
 
@@ -138,6 +138,37 @@ Below the card, a critical **Disconnect Blueprint** button (disabled behind the 
 
 **Cancel** (secondary) and a critical **Disconnect Blueprint** (`deleteIACExecutionSource(id)`, loading while it runs). A refusal shows its message in an error callout inside the modal, which stays open; success removes the Blueprint from the list's cache and opens `/blueprints`.
 
+## Resources (w3/m680)
+
+Read 2026-11-27 for w3/m680 from the same bundle, without sign-in: `index-D5V4ZgbE.js` (sha256 `8d15889ace2d…`, unchanged since 2026-11-25) holds the page and its three tables, `iac-D9RnC10j.js` (`be64bc010544…`) its query, and `artifact-sources-table-utils-B6M4NPij.js` (`d5c90c8f06f4…`) the Build Sources table's grouping. Find the page by `No resources managed by this Blueprint`, the Build Sources table by `Build Source Name`. No signed-in Render session was available, so this too is bundle-only.
+
+### What Render reads
+
+The page runs `executionSourceResources(id)` network-only: `iacExecutionSource.resources`, each a full object (`Server`, `CronJob`, `Database`, `Redis`, `EnvGroup`, `WorkflowService`, `ArtifactSource`). It splits them three ways: the environment groups, the build sources (`ArtifactSource`), and everything else.
+
+- **The file has problems.** When the query fails with a validation error, the page draws one card instead of the tables: "There was a problem syncing with your Blueprint file:" ("There were a few problems" for several), each error's path and message in the critical color, then the Blueprint file at the branch with the erroring lines marked. A payment error opens the payment modals instead.
+- **The repository is out of reach.** When the query fails with `not found`, the page draws "Render cannot access the following repo:", the repository's URL, and "Please make sure the repository exists, or if this is a private repository, connect your Git provider to Render."
+- **Nothing to list.** A card reading **No resources managed by this Blueprint**.
+
+### The three tables
+
+Each table is drawn only when it has rows, in this order, 32 px apart, with no heading of its own:
+
+| Table | Columns | Rows |
+| --- | --- | --- |
+| The resource table (`ServicesTable`, the Overview's and a project environment's) | a type icon (its type as a tooltip), **Service Name** (linked, with the Blueprint badge), **Status**, **Runtime** (a pill), **Region**, **Updated** (relative), the row menu | the services, Postgres, Key Value and workflows; sortable; selectable into the action bar |
+| Build Sources | **Build Source Name** (an icon, the name linked to the build source, **Unlinked** while no service builds from it), **Latest build** (its status icon and id, which opens the build's drawer), **Source** (the repository and branch, or the image), **Updated** (the latest build's time) | grouped by project: a row per group, the ungrouped build sources first as **Ungrouped**, then each project by name, each group open and collapsible |
+| Env Groups | **Env Group Name**, **Environment**, **Env Vars**, **Secret Files** (a count column is left out when no group has any), **Updated** | sortable |
+
+- **The row menu** is the Overview's with Move left out (`disableMove`): Metrics, Settings, Generate Blueprint (w3/m681), then Suspend or Resume.
+- **The action bar** floats at the bottom of the screen while rows are selected: "N services selected:", then Generate Blueprint, Resume and Suspend, and no Move (the page's provider is `disableMove`). The selection clears when the route changes and when the workspace does.
+
+### How bex reads the page (t001)
+
+- **The rows come from the workspace's own lists**, filtered to the Blueprint's `resources` ids: services, Postgres and Key Value as the Overview reads them, build sources as `/build-sources` does, environment groups as `/env-groups` does. Each row is the Overview's own, with its live status, its menu and its lifecycle actions, and the page makes no read per row. GraphQL `Blueprint.resources` stays `{id, name, type}`, where Render's query resolves full objects.
+- **The file's problems come from the newest sync.** bex-api resolves a Blueprint's resources from its last applied file, not the file at the branch, so the page reads the newest sync: when it failed with errors located in the file (at a line or a field), they replace the tables under Render's sentence, as Render's page does while its file does not validate. A sync that failed otherwise (a deploy, a busy Blueprint, an unreachable repository) leaves the tables.
+- **bex's three empty messages give way to Render's one.** "No resources yet — sync the Blueprint", "approve the planned sync" and "the last sync failed", and their Go to Syncs link, are gone: Render has none of them, and Syncs, where the waiting plan and the failed sync are, is one click away in the sidebar.
+
 ## Page map (bex, w3/m677)
 
 Every card and control of bex's former single page (`routes/blueprints.$blueprintId.tsx`), moved unchanged to the page Render puts its counterpart on. What has no Render counterpart goes with the page it belongs to.
@@ -146,7 +177,7 @@ Every card and control of bex's former single page (`routes/blueprints.$blueprin
 | --- | --- | --- |
 | Name, `BlueprintResourceSuffix`, `BlueprintStatusBadge` | the layout's header | the resource header (Render's has no suffix or status badge: bex extras) |
 | **Sync** and its dialog (preview, reviewed commit, `BlueprintConfirmationDialog`) | the header, as **Manual sync** | Manual sync |
-| Managed Resources (Name, Type) | Resources | the resource tables (w3/m680) |
+| Managed Resources (Name, Type) | Resources: Render's three tables since w3/m680 | the resource tables |
 | `PlannedSyncPanel` (a waiting plan, Approve, Plan again) | Syncs, 1st | a waiting sync's page (w3/m678) |
 | Sync History (Commit, State, Started, Completed, Details) | Syncs, 2nd | the sync cards (w3/m678) |
 | The metadata card: Name, Manifest path, Branch, Auto-sync | Settings, 1st: Render's Settings card since w3/m679 | the Settings card's Blueprint Name, Auto Sync, Branch, Blueprint Path |
@@ -155,7 +186,7 @@ Every card and control of bex's former single page (`routes/blueprints.$blueprin
 | Validate (`ValidatePanel`) | Settings, 3rd | none: a bex extra |
 | **Disconnect** and its dialog | Settings, last | Disconnect Blueprint, with Render's words and modal since w3/m679 |
 
-## What bex does (w3/m677, w3/m678, w3/m679)
+## What bex does (w3/m677, w3/m678, w3/m679, w3/m680)
 
 - A Blueprint's pages swap the workspace nav for this sidebar: the **Blueprints** back link, the name, then Resources, Syncs and Settings, with the open page highlighted (Resources on the bare URL, Syncs on `/sync` and `/sync/<id>`).
 - Each page is its own URL under `/blueprints/<id>`: the bare URL and `/resources`, then `/syncs`, a sync's `/sync/<syncId>`, and `/settings`. Any other sub-path lands on Resources, and a path past a sync's page on Syncs.
@@ -165,6 +196,7 @@ Every card and control of bex's former single page (`routes/blueprints.$blueprin
 - A sync's page draws `Sync: <short sha>`, its card, its actions with their states, **Resources already up to date**, Render's critical line, the errors and **Approve** as Render's does, with a field per `sync: false` value the plan needs (bex-api's approve requires them; Render's page asks for none). It reads the sync until it settles. A sync recorded before syncs kept their actions (migration 0353) says so; an id that is not one of this Blueprint's syncs (a plan deleted after 24 hours) says it does not exist and links Syncs (w3/m678).
 - bex-api's Blueprint links use Render's shape: a planned and an approved sync's `dashboardUrl` is the sync's page, `<dashboard>/blueprint/<exs-id>/sync/<exe-id>` (w3/m678), and the sync-failure email links `<dashboard>/blueprint/<exs-id>`.
 - The breadcrumb is **Blueprints** → the name.
+- Resources draws Render's tables (w3/m680), each only when it has rows: the Blueprint's services, Postgres and Key Value in the Overview's resource table (Name over the type, Status, Runtime, Region, Updated, the row's menu), whose selection toolbar offers Resume and Suspend and whose row menus offer no Move; its build sources under **Build Source Name**, **Unlinked** on one no service builds from, Source and Updated, a row per project above that project's; its environment groups in the Env Groups table. A Blueprint managing nothing reads **No resources managed by this Blueprint**; one whose newest sync failed on its file lists the located errors under "There was a problem syncing with your Blueprint file:" ("were a few problems" for several) instead of the tables. The pending frame draws the tables the Blueprint already read has, each with its rows.
 - Settings is Render's card (w3/m679): **Blueprint Name**, **Auto Sync** (Yes / No, No while paused), **Branch** (the repository's branches, typed or picked) and **Blueprint Path**, each with Render's help, saving only its own field through GraphQL `updateBlueprint`. **Required**, **Name already in use**, Render's branch and file sentences, the server's reason, or **Failed to update Blueprint. Please try again.** read under the row, which stays open and saves nothing. A role without `can_create` sees the rows read-only with the reason. Below it come bex's extras: the Details card (Repository, Created, Last synced), the render.yaml manifest and Validate. **Disconnect Blueprint** is last, a critical button opening Render's modal, its three sentences with the name in bold; a refusal stays in the modal, and a disconnect opens `/blueprints`.
 - bex-api refuses what Render's `update-blueprint` refuses, on REST, GraphQL and MCP alike (w8/418, w3/m679): a path whose file is not on the unchanged branch (404), and a new branch without the file at the path (400). Neither is saved, and a change plans nothing.
 
@@ -183,4 +215,7 @@ Every card and control of bex's former single page (`routes/blueprints.$blueprin
 - **Settings has no Sync Hook row or Git Credentials row.** The Sync Hook shows only for a Blueprint with a sync key, which Render's docs do not mention and bex has none of; Git Credentials is #GIT-WORKSPACE-OWNED.
 - **The Branch row is a combobox over the repository's branches** (bex's shared Branch row) and the Path row a text field, where Render's Path row browses the repository's files. A branch the repository lacks reads Render's sentence from bex-api's refusal at Save, not from a lookup as it is typed.
 - **Below the Settings card come bex's extras** (Details, the manifest, Validate) before Disconnect Blueprint, which Render's page has right under the card.
-- The two-column table stands in for Render's resource tables until w3/m680.
+- **Resources' resource table is the Overview's.** Its name column reads Name, with the type as a badge under the name, where Render's reads Service Name beside a type icon and a Blueprint badge; the rows are in the file's order, not sortable; each row's menu is the Overview's (Suspend, Restart, Delete), without Render's Metrics and Settings ([w3/144](../../.pm/w3/144.md)); Generate Blueprint comes with w3/m681; and the selection toolbar sits above the table, as on the Overview, where Render's floats at the bottom of the screen.
+- **The Build Sources table has no Latest build column,** its Updated is the build source's own change, not its latest build's, and its project rows do not collapse ([w3/142](../../.pm/w3/142.md)).
+- **A repository bex cannot reach leaves the tables.** Render's page says "Render cannot access the following repo:" ([w3/143](../../.pm/w3/143.md)).
+- **The file's problems are a list with their line and column,** as on a sync's page: Render also draws the file at the branch with the erroring lines marked ([w3/137](../../.pm/w3/137.md) for both pages).

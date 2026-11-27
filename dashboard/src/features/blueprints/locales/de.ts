@@ -724,27 +724,37 @@ const deBlueprints: Record<string, TranslationEntry> = {
     description:
       "Disconnect Blueprint modal: the question, with the Blueprint's name in bold (Render's copy, w3/m679)",
   },
-  "blueprints.resourcesTitle": {
-    message: "Verwaltete Ressourcen",
-    description:
-      "Blueprint detail section heading listing services/databases managed by this blueprint",
-  },
   "blueprints.resourcesEmpty": {
-    message:
-      "Noch keine Ressourcen — synchronisiere den Blueprint, um deine render.yaml anzuwenden.",
-    description: "Blueprint managed-resources empty state (never synced)",
-  },
-  "blueprints.resourcesEmptyAwaitingApproval": {
-    message:
-      "Noch keine Ressourcen — genehmige die geplante Synchronisierung, um die Ressourcen in deiner render.yaml zu erstellen.",
+    message: "Keine Ressourcen von diesem Blueprint verwaltet",
     description:
-      "Blueprint managed-resources empty state while the Blueprint awaits approval of its planned sync",
+      "A Blueprint's Resources page when it manages nothing, Render's words (w3/m680)",
   },
-  "blueprints.resourcesEmptyAfterError": {
+  "blueprints.resourcesFileProblems_one": {
     message:
-      "Keine beanspruchten Ressourcen. Die letzte Synchronisierung ist fehlgeschlagen — prüfe den Sync-Verlauf auf den Fehler und versuche es nach der Korrektur des Blueprints erneut.",
+      "Beim Synchronisieren mit deiner Blueprint-Datei ist ein Problem aufgetreten:",
     description:
-      "Blueprint managed-resources empty state when status is error after a sync",
+      "A Blueprint's Resources page when its newest sync failed on its file: the line above the file's errors, Render's 'There was a problem' / 'There were a few problems' (w3/m680)",
+  },
+  "blueprints.resourcesFileProblems_other": {
+    message:
+      "Beim Synchronisieren mit deiner Blueprint-Datei sind einige Probleme aufgetreten:",
+    description:
+      "A Blueprint's Resources page when its newest sync failed on its file: the line above the file's errors, Render's 'There was a problem' / 'There were a few problems' (w3/m680)",
+  },
+  "blueprints.colBuildSourceName": {
+    message: "Name der Build-Quelle",
+    description:
+      "A Blueprint's Resources page: the Build Sources table's name column, Render's 'Build Source Name' (w3/m680)",
+  },
+  "blueprints.buildSourceUnlinked": {
+    message: "Nicht verknüpft",
+    description:
+      "A Blueprint's Build Sources table: badge on a build source no service builds from, Render's 'Unlinked' (w3/m680)",
+  },
+  "blueprints.buildSourcesUngrouped": {
+    message: "Nicht gruppiert",
+    description:
+      "A Blueprint's Build Sources table: the row over the build sources in no project, Render's 'Ungrouped' (w3/m680)",
   },
   "blueprints.syncHistoryEmpty": {
     message: "Noch keine Synchronisierungen.",
@@ -928,11 +938,6 @@ const deBlueprints: Record<string, TranslationEntry> = {
     message: "Einstellungen",
     description:
       "Blueprint sidebar entry and page heading for the Blueprint's settings (Render's Settings, /blueprints/<id>/settings, w3/m677)",
-  },
-  "blueprints.colType": {
-    message: "Typ",
-    description:
-      "Blueprint Resources table column header for a managed resource's type",
   },
   "blueprints.resourcesViewSyncs": {
     message: "Zu den Synchronisierungen",

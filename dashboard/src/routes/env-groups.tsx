@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { EnvGroupsTableHeader } from "@/features/env-groups/components/env-groups-table-header";
+import { EnvGroupsTable } from "@/features/env-groups/components/env-groups-table";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   EnvGroupsContentSkeleton,
   EnvGroupsListPageSkeleton,
@@ -23,20 +23,12 @@ import { PageFrame, PageHeader } from "@/common/components/page-frame";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableRow,
-} from "@/common/components/ui/table";
 import { NewEnvGroupDialog } from "@/features/env-groups/components/new-env-group-dialog";
 import { useEnvGroups } from "@/features/env-groups/hooks/use-env-groups";
 import { classifySecretStoreError } from "@/features/services/lib/secret-store";
 import { useServices } from "@/features/services/hooks/use-services";
 import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
-import { LocalDateTime } from "@/common/components/local-time";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
-import { environmentNameIn } from "@/features/env-groups/lib/scope";
 
 export const Route = createFileRoute("/env-groups")({
   staticData: { chrome: true },
@@ -107,13 +99,6 @@ export function EnvGroupsPage() {
         group.name.toLocaleLowerCase().includes(normalizedSearch),
       )
     : groups;
-  const environmentLabel = (environmentId: string | null) => {
-    if (!environmentId) return t("envGroups.workspaceScope");
-    return (
-      environmentNameIn(scope, environmentId) ??
-      t("envGroups.unknownEnvironment", { id: environmentId })
-    );
-  };
 
   return (
     <DashboardLayout>
@@ -221,42 +206,7 @@ export function EnvGroupsPage() {
               </div>
             ) : (
               <div className="rounded-md border">
-                <Table>
-                  <EnvGroupsTableHeader />
-                  <TableBody>
-                    {visibleGroups.map((group) => (
-                      <TableRow key={group.id}>
-                        <TableCell className="min-w-48">
-                          <Link
-                            to="/env-groups/$groupId"
-                            params={{ groupId: group.id }}
-                            className="font-medium hover:underline"
-                          >
-                            {group.name}
-                          </Link>
-                          <p className="max-w-64 truncate font-mono text-xs text-muted-foreground">
-                            {group.id} ·{" "}
-                            {t("envGroups.serviceCount", {
-                              count: group.serviceLinks.length,
-                            })}
-                          </p>
-                        </TableCell>
-                        <TableCell className="min-w-40">
-                          {environmentLabel(group.environmentId)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {group.envVarKeys.length}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {group.secretFileNames.length}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-right text-muted-foreground">
-                          <LocalDateTime value={group.updatedAt} />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <EnvGroupsTable groups={visibleGroups} scope={scope} />
               </div>
             )}
           </div>

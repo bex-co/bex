@@ -690,26 +690,30 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description:
       "Disconnect Blueprint modal: the question, with the Blueprint's name in bold (Render's copy, w3/m679)",
   },
-  // --- Resources section ---
-  "blueprints.resourcesTitle": {
-    message: "托管资源",
-    description:
-      "Blueprint detail section heading listing services/databases managed by this blueprint",
-  },
   "blueprints.resourcesEmpty": {
-    message: "暂无资源——请同步蓝图以应用你的 render.yaml。",
-    description: "Blueprint managed-resources empty state (never synced)",
-  },
-  "blueprints.resourcesEmptyAwaitingApproval": {
-    message: "暂无资源——批准计划同步后即会创建 render.yaml 中的资源。",
+    message: "此 Blueprint 未管理任何资源",
     description:
-      "Blueprint managed-resources empty state while the Blueprint awaits approval of its planned sync",
+      "A Blueprint's Resources page when it manages nothing, Render's words (w3/m680)",
   },
-  "blueprints.resourcesEmptyAfterError": {
-    message:
-      "没有归属此蓝图的资源。上次同步失败——请查看同步历史中的错误，修复蓝图后再重试。",
+  "blueprints.resourcesFileProblems_other": {
+    message: "与你的 Blueprint 文件同步时出现问题：",
     description:
-      "Blueprint managed-resources empty state when status is error after a sync",
+      "A Blueprint's Resources page when its newest sync failed on its file: the line above the file's errors, Render's 'There was a problem' / 'There were a few problems' (w3/m680)",
+  },
+  "blueprints.colBuildSourceName": {
+    message: "构建源名称",
+    description:
+      "A Blueprint's Resources page: the Build Sources table's name column, Render's 'Build Source Name' (w3/m680)",
+  },
+  "blueprints.buildSourceUnlinked": {
+    message: "未关联",
+    description:
+      "A Blueprint's Build Sources table: badge on a build source no service builds from, Render's 'Unlinked' (w3/m680)",
+  },
+  "blueprints.buildSourcesUngrouped": {
+    message: "未分组",
+    description:
+      "A Blueprint's Build Sources table: the row over the build sources in no project, Render's 'Ungrouped' (w3/m680)",
   },
   // --- Syncs (w3/m678) ---
   "blueprints.syncHistoryEmpty": {
@@ -894,11 +898,6 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "设置",
     description:
       "Blueprint sidebar entry and page heading for the Blueprint's settings (Render's Settings, /blueprints/<id>/settings, w3/m677)",
-  },
-  "blueprints.colType": {
-    message: "类型",
-    description:
-      "Blueprint Resources table column header for a managed resource's type",
   },
   "blueprints.resourcesViewSyncs": {
     message: "前往同步记录",

@@ -19,6 +19,7 @@ import {
   type BulkMoveTarget,
 } from "@/features/projects/hooks/use-bulk-move";
 import type { ResourceSelection } from "@/features/projects/hooks/use-resource-selection";
+import { useMoveDisabled } from "@/features/projects/lib/move-disabled";
 import {
   bulkLifecycleReason,
   lifecycleTargets,
@@ -29,8 +30,9 @@ import {
 
 export interface BulkResourceToolbarProps {
   selection: ResourceSelection;
-  /** The environments the selection may move into. */
-  moveTargets: BulkMoveTarget[];
+  /** The environments the selection may move into; none in a list whose
+   *  rows are not moved from it (`MoveDisabledContext`). */
+  moveTargets?: BulkMoveTarget[];
   /** Why Move is unavailable for this list as a whole, or undefined. */
   moveReason?: string;
   /** The list is a protected environment's: lifecycle actions are Admins'. */
@@ -44,14 +46,16 @@ export interface BulkResourceToolbarProps {
  * resource is suspended and Suspend while one is running, both in a mixed
  * selection, as on Render; a refusal disables the action with its reason
  * rather than dropping rows (docs/render-artifacts/service-list-bulk-actions.md).
+ * A Blueprint's Resources page has no Move, as Render's `disableMove` (w3/m680).
  */
 export function BulkResourceToolbar({
   selection,
-  moveTargets,
+  moveTargets = NO_MOVE_TARGETS,
   moveReason,
   protectedEnvironment = false,
 }: BulkResourceToolbarProps) {
   const { t } = useTranslations();
+  const moveDisabled = useMoveDisabled();
   const capabilities = useCapabilities();
   const placement = useProtectedPlacement();
   const bulkMove = useBulkMove(
@@ -106,56 +110,69 @@ export function BulkResourceToolbar({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2" aria-live="polite">
+      {/* As tall as Resume and Suspend, so where no Move picker holds the
+          row open their appearing does not push the table down. */}
+      <div
+        className="flex min-h-8 flex-wrap items-center gap-2"
+        aria-live="polite"
+      >
         <span className="text-sm text-muted-foreground">
           {t("projects.selectedCount", { count })}
         </span>
-        <Select value={moveTargetId} onValueChange={setMoveTargetId}>
-          <SelectTrigger
-            className="w-48"
-            aria-label={t("projects.moveTargetLabel")}
-            disabled={
-              moveTargets.length === 0 || moving || moveBlocked !== undefined
-            }
-          >
-            <SelectValue placeholder={t("projects.moveTargetPlaceholder")} />
-          </SelectTrigger>
-          <SelectContent>
-            {moveTargets.map(({ environment, label }) =>
-              placement.restricts(environment) ? (
-                <SelectItem
-                  key={environment.id}
-                  value={environment.id}
-                  disabled
-                >
-                  {t("environments.protectedOptionAdminOnly", {
-                    environment: label,
-                  })}
-                </SelectItem>
-              ) : (
-                <SelectItem key={environment.id} value={environment.id}>
-                  {label}
-                </SelectItem>
-              ),
-            )}
-          </SelectContent>
-        </Select>
-        <PermissionTooltip reason={moveBlocked}>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={
-              count === 0 ||
-              !moveTargetId ||
-              moving ||
-              moveBlocked !== undefined
-            }
-            onClick={() => void bulkMove.move(moveTargetId)}
-          >
-            {moving ? <Loader2 className="animate-spin" /> : null}
-            {t("projects.moveSelected")}
-          </Button>
-        </PermissionTooltip>
+        {moveDisabled ? null : (
+          <>
+            <Select value={moveTargetId} onValueChange={setMoveTargetId}>
+              <SelectTrigger
+                className="w-48"
+                aria-label={t("projects.moveTargetLabel")}
+                disabled={
+                  moveTargets.length === 0 ||
+                  moving ||
+                  moveBlocked !== undefined
+                }
+              >
+                <SelectValue
+                  placeholder={t("projects.moveTargetPlaceholder")}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {moveTargets.map(({ environment, label }) =>
+                  placement.restricts(environment) ? (
+                    <SelectItem
+                      key={environment.id}
+                      value={environment.id}
+                      disabled
+                    >
+                      {t("environments.protectedOptionAdminOnly", {
+                        environment: label,
+                      })}
+                    </SelectItem>
+                  ) : (
+                    <SelectItem key={environment.id} value={environment.id}>
+                      {label}
+                    </SelectItem>
+                  ),
+                )}
+              </SelectContent>
+            </Select>
+            <PermissionTooltip reason={moveBlocked}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={
+                  count === 0 ||
+                  !moveTargetId ||
+                  moving ||
+                  moveBlocked !== undefined
+                }
+                onClick={() => void bulkMove.move(moveTargetId)}
+              >
+                {moving ? <Loader2 className="animate-spin" /> : null}
+                {t("projects.moveSelected")}
+              </Button>
+            </PermissionTooltip>
+          </>
+        )}
         {lifecycleButton("resume")}
         {lifecycleButton("suspend")}
       </div>
@@ -185,3 +202,5 @@ export function BulkResourceToolbar({
     </>
   );
 }
+
+const NO_MOVE_TARGETS: BulkMoveTarget[] = [];

@@ -697,27 +697,30 @@ const jaBlueprints: Record<string, TranslationEntry> = {
     description:
       "Disconnect Blueprint modal: the question, with the Blueprint's name in bold (Render's copy, w3/m679)",
   },
-  "blueprints.resourcesTitle": {
-    message: "管理対象のリソース",
-    description:
-      "Blueprint detail section heading listing services/databases managed by this blueprint",
-  },
   "blueprints.resourcesEmpty": {
-    message:
-      "リソースはまだありません。render.yaml を適用するには、Blueprint を同期してください。",
-    description: "Blueprint managed-resources empty state (never synced)",
-  },
-  "blueprints.resourcesEmptyAwaitingApproval": {
-    message:
-      "リソースはまだありません。render.yaml のリソースを作成するには、計画された同期を承認してください。",
+    message: "この Blueprint が管理するリソースはありません",
     description:
-      "Blueprint managed-resources empty state while the Blueprint awaits approval of its planned sync",
+      "A Blueprint's Resources page when it manages nothing, Render's words (w3/m680)",
   },
-  "blueprints.resourcesEmptyAfterError": {
-    message:
-      "管理対象のリソースはありません。前回の同期が失敗しました。同期履歴でエラーを確認し、Blueprint を修正してから再試行してください。",
+  "blueprints.resourcesFileProblems_other": {
+    message: "Blueprint ファイルとの同期中に問題が発生しました:",
     description:
-      "Blueprint managed-resources empty state when status is error after a sync",
+      "A Blueprint's Resources page when its newest sync failed on its file: the line above the file's errors, Render's 'There was a problem' / 'There were a few problems' (w3/m680)",
+  },
+  "blueprints.colBuildSourceName": {
+    message: "ビルドソース名",
+    description:
+      "A Blueprint's Resources page: the Build Sources table's name column, Render's 'Build Source Name' (w3/m680)",
+  },
+  "blueprints.buildSourceUnlinked": {
+    message: "未リンク",
+    description:
+      "A Blueprint's Build Sources table: badge on a build source no service builds from, Render's 'Unlinked' (w3/m680)",
+  },
+  "blueprints.buildSourcesUngrouped": {
+    message: "未グループ",
+    description:
+      "A Blueprint's Build Sources table: the row over the build sources in no project, Render's 'Ungrouped' (w3/m680)",
   },
   "blueprints.syncHistoryEmpty": {
     message: "同期はまだありません。",
@@ -900,11 +903,6 @@ const jaBlueprints: Record<string, TranslationEntry> = {
     message: "設定",
     description:
       "Blueprint sidebar entry and page heading for the Blueprint's settings (Render's Settings, /blueprints/<id>/settings, w3/m677)",
-  },
-  "blueprints.colType": {
-    message: "種類",
-    description:
-      "Blueprint Resources table column header for a managed resource's type",
   },
   "blueprints.resourcesViewSyncs": {
     message: "同期履歴へ移動",

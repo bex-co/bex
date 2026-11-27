@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
 import { MoveToProjectMenu } from "@/features/projects/components/move-to-project-menu";
+import { MoveDisabledContext } from "@/features/projects/lib/move-disabled";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
 
@@ -152,5 +153,40 @@ describe("MoveToProjectMenu protected placement (w3/m281)", () => {
     renderMenu();
     await choose(user, "Second");
     expect(moveTo).toHaveBeenCalledWith("srv-1", "web", "prj-2");
+  });
+});
+
+// A Blueprint's Resources page has no Move, as Render's disableMove (w3/m680).
+describe("MoveToProjectMenu in a list without Move (w3/m680)", () => {
+  it("offers Move to project where the list allows it", async () => {
+    const user = userEvent.setup();
+    renderMenu();
+    await user.click(screen.getByText("open"));
+    expect(
+      await screen.findByRole("menuitem", { name: "Move to project" }),
+    ).toBeInTheDocument();
+  });
+
+  it("is gone from a list whose rows are not moved from it", async () => {
+    const user = userEvent.setup();
+    render(
+      <MoveDisabledContext.Provider value>
+        <DropdownMenu>
+          <DropdownMenuTrigger>
+            <span>open</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <MoveToProjectMenu
+              kind="service"
+              resourceId="srv-1"
+              resourceName="web"
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </MoveDisabledContext.Provider>,
+    );
+    await user.click(screen.getByText("open"));
+    expect(await screen.findByRole("menu")).toBeInTheDocument();
+    expect(screen.queryByText("Move to project")).not.toBeInTheDocument();
   });
 });

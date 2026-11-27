@@ -1,4 +1,5 @@
 import { serviceBaseForType } from "@/features/services/lib/service-base";
+import { isBlueprintServiceType } from "@/features/blueprints/lib/resource-tables";
 
 /**
  * The detail-page path for one of a blueprint's managed resources, or `null`
@@ -32,13 +33,9 @@ export function blueprintResourceHref(
       return `/keyvalue/${id}`;
     case "environment_group":
       return `/env-groups/${id}`;
-    case "web_service":
-    case "private_service":
-    case "background_worker":
-    case "cron_job":
-    case "static_site":
-      return `${serviceBaseForType(type)}/${id}`;
     default:
-      return null;
+      return type && isBlueprintServiceType(type)
+        ? `${serviceBaseForType(type)}/${id}`
+        : null;
   }
 }

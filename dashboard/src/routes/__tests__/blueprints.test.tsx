@@ -37,6 +37,12 @@ import {
 } from "@/test/mocks/capabilities";
 import { datastoreHeaderGeometry } from "@/test/datastore-pages";
 import { BlueprintSyncPageSkeleton } from "@/common/components/route-skeletons";
+import { useMoveDisabled } from "@/features/projects/lib/move-disabled";
+import type { ServiceView } from "@/features/services/types";
+import type { DatabaseView } from "@/features/databases/types";
+import type { KeyValueView } from "@/features/keyvalue/types";
+import type { BuildSourceView } from "@/features/build-sources/types";
+import type { EnvGroupView } from "@/features/env-groups/types";
 
 // The page's own chrome is the shell's; a Blueprint's pages render inside it.
 vi.mock("@/common/components/dashboard-layout", () => ({
@@ -160,6 +166,126 @@ const blueprintSyncsState: {
 };
 vi.mock("@/features/blueprints/hooks/use-blueprint-syncs", () => ({
   useBlueprintSyncs: () => ({ ...blueprintSyncsState, loadMore }),
+}));
+
+// --- the workspace lists a Blueprint's Resources reads its rows from (w3/m680) ---
+const lists: {
+  services: ServiceView[];
+  databases: DatabaseView[];
+  keyValues: KeyValueView[];
+  buildSources: BuildSourceView[];
+  envGroups: EnvGroupView[];
+  projects: Array<{ id: string; name: string }>;
+  loading: boolean;
+} = {
+  services: [],
+  databases: [],
+  keyValues: [],
+  buildSources: [],
+  envGroups: [],
+  projects: [],
+  loading: false,
+};
+const listRead = <T,>(rows: () => T[]) => ({
+  loading: lists.loading,
+  error: undefined,
+  refetch: vi.fn(async () => rows()),
+  startPolling: vi.fn(),
+  stopPolling: vi.fn(),
+});
+vi.mock("@/features/services/hooks/use-services", () => ({
+  useServices: () => ({
+    services: lists.loading ? [] : lists.services,
+    ...listRead(() => lists.services),
+  }),
+}));
+vi.mock("@/features/databases/hooks/use-databases", () => ({
+  useDatabases: () => ({
+    databases: lists.loading ? [] : lists.databases,
+    ...listRead(() => lists.databases),
+  }),
+}));
+vi.mock("@/features/keyvalue/hooks/use-key-values", () => ({
+  useKeyValues: () => ({
+    keyValues: lists.loading ? [] : lists.keyValues,
+    ...listRead(() => lists.keyValues),
+  }),
+}));
+vi.mock("@/features/build-sources/hooks/use-build-sources-list", () => ({
+  useBuildSourcesList: () => ({
+    buildSources: lists.loading ? [] : lists.buildSources,
+    ...listRead(() => lists.buildSources),
+  }),
+}));
+vi.mock("@/features/env-groups/hooks/use-env-groups", () => ({
+  useEnvGroups: () => ({
+    groups: lists.loading ? [] : lists.envGroups,
+    ...listRead(() => lists.envGroups),
+  }),
+}));
+vi.mock("@/features/env-groups/hooks/use-env-group-scope-index", () => ({
+  useEnvGroupScopeIndex: () => ({
+    byId: new Map([["evm-prod", { name: "production", projectId: "prj-1" }]]),
+    projects: [{ id: "prj-1", name: "shop" }],
+    environments: [],
+  }),
+}));
+vi.mock("@/features/projects/hooks/use-projects", async (orig) => ({
+  ...(await orig<typeof import("@/features/projects/hooks/use-projects")>()),
+  useProjects: () => ({
+    projects: lists.projects,
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+  }),
+}));
+vi.mock("@/features/services/hooks/use-service-lifecycle", async (orig) => ({
+  ...(await orig<
+    typeof import("@/features/services/hooks/use-service-lifecycle")
+  >()),
+  useServiceLifecycle: () => ({ pending: null, run: vi.fn() }),
+}));
+vi.mock("@/features/projects/hooks/use-bulk-move", () => ({
+  useBulkMove: () => ({
+    move: vi.fn(),
+    movingTo: () => false,
+    strandedPrompt: null,
+    confirmStranded: vi.fn(),
+    dismissStranded: vi.fn(),
+  }),
+}));
+const refetchQueries = vi.fn();
+vi.mock("@apollo/client/react", async (orig) => ({
+  ...(await orig<typeof import("@apollo/client/react")>()),
+  useApolloClient: () => ({ refetchQueries }),
+}));
+// Each row's menu is the Overview's own (tested with it); here it says
+// whether its list lets it offer Move.
+function RowMenu({ name }: { name: string }) {
+  return (
+    <button>
+      {name} menu {useMoveDisabled() ? "without Move" : "with Move"}
+    </button>
+  );
+}
+vi.mock("@/features/services/components/service-row-actions", () => ({
+  ServiceRowActions: ({ service }: { service: ServiceView }) => (
+    <RowMenu name={service.name} />
+  ),
+}));
+vi.mock("@/features/databases/components/database-row-actions", () => ({
+  DatabaseRowActionsWithCapabilities: ({
+    database,
+  }: {
+    database: DatabaseView;
+  }) => <RowMenu name={database.name} />,
+}));
+vi.mock("@/features/keyvalue/components/key-value-row-actions", () => ({
+  KeyValueRowActionsWithCapabilities: ({
+    keyValue,
+  }: {
+    keyValue: KeyValueView;
+  }) => <RowMenu name={keyValue.name} />,
 }));
 
 function bp(overrides: Partial<BlueprintView> = {}): BlueprintView {
@@ -341,6 +467,14 @@ beforeEach(() => {
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   plan.mockReset();
   plan.mockResolvedValue({ status: "planned", syncId: "exe-planned" });
+  lists.services = [];
+  lists.databases = [];
+  lists.keyValues = [];
+  lists.buildSources = [];
+  lists.envGroups = [];
+  lists.projects = [];
+  lists.loading = false;
+  refetchQueries.mockClear();
 });
 
 describe("BlueprintsPage (list)", () => {
@@ -439,8 +573,16 @@ const SETTINGS = "/blueprints/exs-abc123/settings";
 
 describe("a Blueprint's pages (w3/m677)", () => {
   it.each([
-    ["/blueprints/exs-abc123", "Resources", "Managed Resources"],
-    ["/blueprints/exs-abc123/resources", "Resources", "Managed Resources"],
+    [
+      "/blueprints/exs-abc123",
+      "Resources",
+      "No resources managed by this Blueprint",
+    ],
+    [
+      "/blueprints/exs-abc123/resources",
+      "Resources",
+      "No resources managed by this Blueprint",
+    ],
     [SYNCS, "Syncs", "No syncs yet."],
     [SETTINGS, "Settings", "render.yaml manifest"],
   ])(
@@ -455,7 +597,7 @@ describe("a Blueprint's pages (w3/m677)", () => {
       expect(screen.getByText(card)).toBeInTheDocument();
       // The stacked page is gone: each page holds only its own cards.
       const others = [
-        "Managed Resources",
+        "No resources managed by this Blueprint",
         "No syncs yet.",
         "render.yaml manifest",
       ].filter((other) => other !== card);
@@ -530,32 +672,391 @@ describe("a Blueprint's pages (w3/m677)", () => {
       0,
     );
   });
+});
 
-  it("links a waiting Blueprint's empty Resources to Syncs, where its plan is", async () => {
-    blueprintDetailState.blueprint = bp({ status: "created", resources: [] });
-    blueprintSyncsState.syncs = [run({ id: "exe-planned", state: "created" })];
-    const user = userEvent.setup();
-    const router = renderDetailPage();
+// w3/m680: Resources draws Render's tables (docs/render-artifacts/
+// blueprint-pages.md): the Overview's resource table for services, Postgres
+// and Key Value, with the selection toolbar and row menus offering no Move;
+// Build Sources; Environment Groups; each only with rows.
+describe("a Blueprint's Resources (w3/m680)", () => {
+  const api = {
+    id: "srv-api",
+    name: "api",
+    type: "web_service",
+    runtime: "go",
+    region: "oregon",
+    phase: "Running",
+    suspended: false,
+    createdAt: "2026-11-01T00:00:00Z",
+    updatedAt: "2026-11-02T00:00:00Z",
+  } as ServiceView;
+  const db = {
+    id: "dpg-orders",
+    name: "orders",
+    status: "available",
+    version: "16",
+    region: "oregon",
+    createdAt: "2026-11-01T00:00:00Z",
+    updatedAt: "2026-11-02T00:00:00Z",
+    suspended: "not_suspended",
+  } as DatabaseView;
+  const cache = {
+    id: "red-cache",
+    name: "cache",
+    status: "available",
+    version: "8",
+    region: "oregon",
+    createdAt: "2026-11-01T00:00:00Z",
+    updatedAt: "2026-11-02T00:00:00Z",
+    suspended: false,
+  } as KeyValueView;
+  const image = (
+    id: string,
+    name: string,
+    projectId: string | null,
+    serviceLinks: string[],
+  ) =>
+    ({
+      id,
+      name,
+      projectId,
+      kind: "image",
+      git: null,
+      image: { imageUrl: `docker.io/acme/${name}:latest` },
+      serviceLinks: serviceLinks.map((link) => ({ id: link, name: link })),
+      updatedAt: "2026-11-02T00:00:00Z",
+    }) as unknown as BuildSourceView;
+  const shared = {
+    id: "evg-shared",
+    name: "shared",
+    environmentId: "evm-prod",
+    serviceLinks: ["srv-api"],
+    envVarKeys: ["A", "B"],
+    secretFileNames: [],
+    updatedAt: "2026-11-02T00:00:00Z",
+  } as unknown as EnvGroupView;
+  const managed = [
+    { id: "srv-api", name: "api", type: "web_service" },
+    { id: "dpg-orders", name: "orders", type: "postgres" },
+    { id: "red-cache", name: "cache", type: "key_value" },
+    { id: "bds-web", name: "web-image", type: "build_source" },
+    { id: "bds-tools", name: "tools", type: "build_source" },
+    { id: "evg-shared", name: "shared", type: "environment_group" },
+  ];
+  beforeEach(() => {
+    lists.services = [
+      api,
+      { ...api, id: "srv-other", name: "not-managed" } as ServiceView,
+    ];
+    lists.databases = [db];
+    lists.keyValues = [cache];
+    lists.buildSources = [
+      image("bds-web", "web-image", "prj-1", ["srv-api"]),
+      image("bds-tools", "tools", null, []),
+    ];
+    lists.envGroups = [shared];
+    lists.projects = [{ id: "prj-1", name: "shop" }];
+  });
 
-    await user.click(await screen.findByRole("link", { name: "Go to Syncs" }));
-    expect(router.state.location.pathname).toBe(SYNCS);
-    expect(
-      await screen.findByRole("img", { name: "Awaiting approval" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "View details" })).toHaveAttribute(
+  /** Each table's column labels and its rows' text, in page order. */
+  async function tables() {
+    await screen.findByRole("heading", { level: 2, name: "Resources" });
+    return screen.getAllByRole("table").map((table) => ({
+      columns: within(table)
+        .queryAllByRole("columnheader")
+        .map((th) => th.textContent),
+      rows: within(table)
+        .getAllByRole("row")
+        .slice(1)
+        .map((row) => row.textContent),
+    }));
+  }
+
+  it("draws its services and datastores in the Overview's table, with each row's menu offering no Move", async () => {
+    blueprintDetailState.blueprint = bp({ resources: managed.slice(0, 3) });
+    renderDetailPage();
+
+    const [resources, ...others] = await tables();
+    expect(others).toEqual([]);
+    expect(resources.columns).toEqual([
+      "",
+      "Name",
+      "Status",
+      "Runtime",
+      "Region",
+      "Updated",
+      "Actions",
+    ]);
+    // The file's resources only, in its order, each linked to its page.
+    expect(resources.rows).toHaveLength(3);
+    expect(screen.getByRole("link", { name: "api" })).toHaveAttribute(
       "href",
-      "/blueprints/exs-abc123/sync/exe-planned",
+      "/services/srv-api",
+    );
+    expect(screen.getByRole("link", { name: "orders" })).toHaveAttribute(
+      "href",
+      "/databases/dpg-orders",
+    );
+    expect(screen.getByRole("link", { name: "cache" })).toHaveAttribute(
+      "href",
+      "/keyvalue/red-cache",
+    );
+    expect(screen.queryByText("not-managed")).not.toBeInTheDocument();
+    expect(screen.getByText("PostgreSQL 16")).toBeInTheDocument();
+    for (const name of ["api", "orders", "cache"]) {
+      expect(
+        screen.getByRole("button", { name: `${name} menu without Move` }),
+      ).toBeInTheDocument();
+    }
+  });
+
+  it("offers Suspend for a selected service, and no Move", async () => {
+    blueprintDetailState.blueprint = bp({ resources: managed.slice(0, 3) });
+    const user = userEvent.setup();
+    renderDetailPage();
+
+    await user.click(
+      await screen.findByRole("checkbox", { name: "Select api" }),
+    );
+    expect(screen.getByText("Selected: 1")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Suspend" })).toBeEnabled();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Move" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("draws its build sources under Build Source Name, a row per project, the unused one Unlinked", async () => {
+    blueprintDetailState.blueprint = bp({ resources: managed.slice(3, 5) });
+    renderDetailPage();
+
+    expect(await tables()).toEqual([
+      {
+        columns: ["Build Source Name", "Source", "Updated"],
+        rows: [
+          "Ungrouped",
+          expect.stringMatching(/^toolsUnlinkeddocker\.io\/acme\/tools/),
+          "shop",
+          expect.stringMatching(/^web-imagedocker\.io\/acme\/web-image/),
+        ],
+      },
+    ]);
+    expect(screen.getByRole("link", { name: "web-image" })).toHaveAttribute(
+      "href",
+      "/build-sources/bds-web",
     );
   });
 
-  it("offers no Syncs link on a never-synced Blueprint's empty Resources", async () => {
-    blueprintDetailState.blueprint = bp({ resources: [] });
+  it("draws its environment groups in the Env Groups table", async () => {
+    blueprintDetailState.blueprint = bp({ resources: managed.slice(5) });
     renderDetailPage();
 
-    expect(await screen.findByText(/sync the Blueprint/i)).toBeInTheDocument();
+    const [groups, ...others] = await tables();
+    expect(others).toEqual([]);
+    expect(groups.columns).toEqual([
+      "Env Group Name",
+      "Environment",
+      "Env Vars",
+      "Secret Files",
+      "Updated",
+    ]);
+    expect(groups.rows).toEqual([
+      expect.stringMatching(
+        /^sharedevg-shared · 1 linked serviceshop \/ production20November 2, 2026/,
+      ),
+    ]);
+    expect(screen.getByRole("link", { name: "shared" })).toHaveAttribute(
+      "href",
+      "/env-groups/evg-shared",
+    );
+  });
+
+  it("draws its three tables in Render's order", async () => {
+    blueprintDetailState.blueprint = bp({ resources: managed });
+    renderDetailPage();
+
+    expect((await tables()).map((table) => table.columns[1] ?? "")).toEqual([
+      "Name",
+      "Source",
+      "Environment",
+    ]);
+  });
+
+  it.each([
+    ["new", bp({ resources: null })],
+    ["awaiting approval", bp({ status: "created", resources: [] })],
+    [
+      "whose last sync failed",
+      bp({ status: "error", lastSync: "2026-08-26T10:26:53Z", resources: [] }),
+    ],
+  ])(
+    "reads Render's sentence for a Blueprint %s managing nothing",
+    async (_label, blueprint) => {
+      blueprintDetailState.blueprint = blueprint;
+      renderDetailPage();
+
+      expect(
+        await screen.findByText("No resources managed by this Blueprint"),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("table")).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Go to Syncs" })).toBeNull();
+    },
+  );
+
+  const fileErrors = [
+    {
+      code: "",
+      error: 'unknown plan "huge"',
+      line: 4,
+      column: 11,
+      path: "services[0].plan",
+    },
+    {
+      code: "",
+      error: "a name is required",
+      line: 9,
+      column: 5,
+      path: "databases[0]",
+    },
+  ];
+
+  it.each([
+    [fileErrors, "There were a few problems syncing with your Blueprint file:"],
+    [
+      fileErrors.slice(0, 1),
+      "There was a problem syncing with your Blueprint file:",
+    ],
+  ])(
+    "lists the file's located errors in place of the tables when the newest sync failed on it",
+    async (errors, sentence) => {
+      blueprintDetailState.blueprint = bp({ resources: managed });
+      blueprintSyncsState.syncs = [
+        run({ id: "exe-failed", state: "error" }),
+        run(),
+      ];
+      blueprintSyncState.sync = detail({
+        id: "exe-failed",
+        state: "error",
+        actions: [],
+        errors,
+      });
+      renderDetailPage();
+
+      const problems = await screen.findByTestId("blueprint-file-problems");
+      expect(readSync).toHaveBeenCalledWith("exs-abc123", "exe-failed");
+      expect(within(problems).getByText(sentence)).toBeInTheDocument();
+      expect(
+        within(problems).getByText("line 4, column 11 · services[0].plan"),
+      ).toBeInTheDocument();
+      expect(
+        within(problems).getByText('unknown plan "huge"', { exact: false }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    },
+  );
+
+  it("keeps its tables when the newest sync failed after planning", async () => {
+    blueprintDetailState.blueprint = bp({ resources: managed.slice(0, 1) });
+    blueprintSyncsState.syncs = [run({ id: "exe-failed", state: "error" })];
+    blueprintSyncState.sync = detail({
+      id: "exe-failed",
+      state: "error",
+      errors: [
+        {
+          code: "",
+          error: "deploy of api failed",
+          line: 0,
+          column: 0,
+          path: "",
+        },
+      ],
+    });
+    renderDetailPage();
+
+    expect(await screen.findByRole("link", { name: "api" })).toBeVisible();
     expect(
-      screen.queryByRole("link", { name: "Go to Syncs" }),
+      screen.queryByTestId("blueprint-file-problems"),
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps its tables once a newer sync succeeded, reading no failed sync", async () => {
+    blueprintDetailState.blueprint = bp({ resources: managed.slice(0, 1) });
+    blueprintSyncsState.syncs = [
+      run(),
+      run({ id: "exe-failed", state: "error" }),
+    ];
+    renderDetailPage();
+
+    expect(await screen.findByRole("link", { name: "api" })).toBeVisible();
+    expect(readSync).not.toHaveBeenCalled();
+  });
+
+  /** The page's tables as a frame and a ready page share them. */
+  function frameShape(page: Element) {
+    return {
+      toolbars: page.querySelectorAll(".min-h-8").length,
+      tables: [...page.querySelectorAll("table")].map((table) => ({
+        columns: [...table.querySelectorAll("th")].map((th) => th.textContent),
+        columnClasses: [...table.querySelectorAll("th")].map(
+          (th) => th.className,
+        ),
+        rows: table.querySelectorAll("tbody tr").length,
+      })),
+      gaps: [...page.querySelectorAll(".space-y-8")].length,
+    };
+  }
+  const pageUnderHeading = async () =>
+    (
+      await screen.findByRole("heading", { level: 2, name: "Resources" })
+    ).closest(".max-w-5xl")!;
+
+  // The frame reserves one project's row over the build sources: a Blueprint
+  // whose build sources share a project (or none) pends in its exact shape.
+  const oneProject = () => [
+    image("bds-web", "web-image", "prj-1", ["srv-api"]),
+    image("bds-tools", "tools", "prj-1", []),
+  ];
+
+  it("pends in the shape of its three tables, from the Blueprint already read", async () => {
+    lists.buildSources = oneProject();
+    blueprintDetailState.blueprint = bp({ resources: managed });
+    renderDetailPage();
+    await screen.findByRole("link", { name: "shared" });
+    const ready = frameShape(await pageUnderHeading());
+    cleanup();
+
+    // The layout is still adopting the Blueprint's workspace or running its
+    // title loader: the Blueprint is read, its page not yet drawn.
+    renderDetailPage("/blueprints/exs-abc123", { pending: true });
+    const page = await pageUnderHeading();
+    expect(
+      page.querySelector('[data-route-skeleton="blueprint-resources"]'),
+    ).not.toBeNull();
+    expect(frameShape(page)).toEqual(ready);
+  });
+
+  it("frames its tables while the workspace's lists load", async () => {
+    lists.buildSources = oneProject();
+    blueprintDetailState.blueprint = bp({ resources: managed });
+    renderDetailPage();
+    await screen.findByRole("link", { name: "shared" });
+    const ready = frameShape(await pageUnderHeading());
+    cleanup();
+
+    lists.loading = true;
+    renderDetailPage();
+    const page = await pageUnderHeading();
+    expect(page.querySelector('[data-skeleton-region="resources"]')).toBeNull();
+    expect(screen.queryByRole("link", { name: "api" })).not.toBeInTheDocument();
+    expect(frameShape(page)).toEqual(ready);
+  });
+
+  it("pends as Render's empty card for a Blueprint that manages nothing", async () => {
+    blueprintDetailState.blueprint = bp({ resources: [] });
+    renderDetailPage("/blueprints/exs-abc123", { pending: true });
+    const page = await pageUnderHeading();
+    expect(page.querySelectorAll("[data-slot=card]")).toHaveLength(1);
+    expect(page.querySelector("table")).toBeNull();
   });
 });
 
@@ -642,19 +1143,9 @@ describe("each Blueprint page's pending frame (w3/m677)", () => {
     };
   }
 
-  it.each([
-    [
-      "/blueprints/exs-abc123",
-      [{ id: "srv-1", name: "api", type: "web_service" }],
-    ],
-    [
-      "/blueprints/exs-abc123/resources",
-      [{ id: "srv-1", name: "api", type: "web_service" }],
-    ],
-    [SYNCS, null],
-    [SETTINGS, null],
-  ])("%s pends in its ready shape", async (href, resources) => {
-    blueprintDetailState.blueprint = bp({ resources });
+  // Resources' frame draws the Blueprint's tables (w3/m680, below).
+  it.each([SYNCS, SETTINGS])("%s pends in its ready shape", async (href) => {
+    blueprintDetailState.blueprint = bp();
     // Syncs' frame holds three sync cards.
     blueprintSyncsState.syncs = ["exe-3", "exe-2", "exe-1"].map((id) =>
       run({ id }),
@@ -1095,41 +1586,6 @@ describe("BlueprintDetailPage", () => {
     const suffix = screen.getByTitle("Resource name suffix");
     expect(suffix).toHaveTextContent("-ab12");
     expect(heading.parentElement).toContainElement(suffix);
-  });
-
-  it("does not tell a failed empty blueprint to sync (w4/065)", async () => {
-    blueprintDetailState.blueprint = bp({
-      status: "error",
-      lastSync: "2026-08-26T10:26:53Z",
-      resources: [],
-    });
-    renderDetailPage();
-
-    expect(
-      await screen.findByText(/the last sync failed/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText(/sync the Blueprint to apply/i),
-    ).not.toBeInTheDocument();
-    // The failed sync is on Syncs now (w3/m677).
-    expect(screen.getByRole("link", { name: "Go to Syncs" })).toHaveAttribute(
-      "href",
-      SYNCS,
-    );
-  });
-
-  it("tells a Blueprint awaiting approval to approve, not sync (w2/m256 t013)", async () => {
-    blueprintDetailState.blueprint = bp({ status: "created", resources: [] });
-    renderDetailPage();
-
-    expect(
-      await screen.findByText(/approve the planned sync/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText(/sync the Blueprint to apply/i),
-    ).not.toBeInTheDocument();
-    expect(screen.getAllByText("Awaiting approval").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Queued")).not.toBeInTheDocument();
   });
 
   it("redirects a dead blueprint id home (w9/m55)", async () => {

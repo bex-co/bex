@@ -24,6 +24,7 @@ import { KeyValueStatusBadge } from "@/features/keyvalue/components/key-value-st
 import { KeyValueRowActionsWithCapabilities } from "@/features/keyvalue/components/key-value-row-actions";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { ResourceTypeBadge } from "@/features/projects/components/resource-type-badge";
+import { ResourceColumnHeads } from "@/features/projects/components/resource-column-heads";
 import {
   resourceSelectionKey,
   type ResourceRow,
@@ -168,41 +169,6 @@ export function ResourceTable({
             })}
       </TableBody>
     </Table>
-  );
-}
-
-function ResourceColumnHeads({
-  projectMetadata,
-}: {
-  projectMetadata: boolean;
-}) {
-  const { t } = useTranslations();
-  return (
-    <>
-      {!projectMetadata ? (
-        <TableHead className="hidden sm:table-cell">
-          {t("projects.colType")}
-        </TableHead>
-      ) : null}
-      <TableHead>{t("projects.colStatus")}</TableHead>
-      {projectMetadata ? (
-        <>
-          <TableHead className="hidden md:table-cell">
-            {t("projects.colRuntime")}
-          </TableHead>
-          <TableHead className="hidden lg:table-cell">
-            {t("projects.colRegion")}
-          </TableHead>
-          <TableHead className="hidden sm:table-cell">
-            {t("projects.colUpdated")}
-          </TableHead>
-        </>
-      ) : (
-        <TableHead className="hidden md:table-cell">
-          {t("projects.colCreated")}
-        </TableHead>
-      )}
-    </>
   );
 }
 

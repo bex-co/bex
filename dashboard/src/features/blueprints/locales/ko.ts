@@ -698,27 +698,30 @@ const koBlueprints: Record<string, TranslationEntry> = {
     description:
       "Disconnect Blueprint modal: the question, with the Blueprint's name in bold (Render's copy, w3/m679)",
   },
-  "blueprints.resourcesTitle": {
-    message: "관리 중인 리소스",
-    description:
-      "Blueprint detail section heading listing services/databases managed by this blueprint",
-  },
   "blueprints.resourcesEmpty": {
-    message:
-      "아직 리소스가 없습니다. Blueprint를 동기화하여 render.yaml을 적용하세요.",
-    description: "Blueprint managed-resources empty state (never synced)",
-  },
-  "blueprints.resourcesEmptyAwaitingApproval": {
-    message:
-      "아직 리소스가 없습니다. 계획된 동기화를 승인하면 render.yaml의 리소스가 생성됩니다.",
+    message: "이 Blueprint가 관리하는 리소스가 없습니다",
     description:
-      "Blueprint managed-resources empty state while the Blueprint awaits approval of its planned sync",
+      "A Blueprint's Resources page when it manages nothing, Render's words (w3/m680)",
   },
-  "blueprints.resourcesEmptyAfterError": {
-    message:
-      "확보된 리소스가 없습니다. 마지막 동기화가 실패했습니다. 동기화 기록에서 오류를 확인하고 Blueprint를 수정한 후 다시 시도하세요.",
+  "blueprints.resourcesFileProblems_other": {
+    message: "Blueprint 파일과 동기화하는 중에 문제가 발생했습니다:",
     description:
-      "Blueprint managed-resources empty state when status is error after a sync",
+      "A Blueprint's Resources page when its newest sync failed on its file: the line above the file's errors, Render's 'There was a problem' / 'There were a few problems' (w3/m680)",
+  },
+  "blueprints.colBuildSourceName": {
+    message: "빌드 소스 이름",
+    description:
+      "A Blueprint's Resources page: the Build Sources table's name column, Render's 'Build Source Name' (w3/m680)",
+  },
+  "blueprints.buildSourceUnlinked": {
+    message: "연결되지 않음",
+    description:
+      "A Blueprint's Build Sources table: badge on a build source no service builds from, Render's 'Unlinked' (w3/m680)",
+  },
+  "blueprints.buildSourcesUngrouped": {
+    message: "그룹 없음",
+    description:
+      "A Blueprint's Build Sources table: the row over the build sources in no project, Render's 'Ungrouped' (w3/m680)",
   },
   "blueprints.syncHistoryEmpty": {
     message: "아직 동기화 기록이 없습니다.",
@@ -901,11 +904,6 @@ const koBlueprints: Record<string, TranslationEntry> = {
     message: "설정",
     description:
       "Blueprint sidebar entry and page heading for the Blueprint's settings (Render's Settings, /blueprints/<id>/settings, w3/m677)",
-  },
-  "blueprints.colType": {
-    message: "유형",
-    description:
-      "Blueprint Resources table column header for a managed resource's type",
   },
   "blueprints.resourcesViewSyncs": {
     message: "동기화 기록으로 이동",

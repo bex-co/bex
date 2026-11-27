@@ -21,9 +21,18 @@ export const BlueprintDetailProvider = BlueprintDetailContext.Provider;
 
 /** The open Blueprint, for a page under `/blueprints/$blueprintId`. */
 export function useBlueprintDetail(): BlueprintDetail {
-  const detail = useContext(BlueprintDetailContext);
+  const detail = useOptionalBlueprintDetail();
   if (!detail) {
     throw new Error("useBlueprintDetail outside the Blueprint layout");
   }
   return detail;
+}
+
+/**
+ * The open Blueprint once its layout has it, else null: a page's pending
+ * frame, which also paints while the layout is still reading it, sizes
+ * itself from it when it can (w3/m680).
+ */
+export function useOptionalBlueprintDetail(): BlueprintDetail | null {
+  return useContext(BlueprintDetailContext);
 }

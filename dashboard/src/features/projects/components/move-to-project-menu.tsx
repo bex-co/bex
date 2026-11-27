@@ -13,6 +13,7 @@ import {
   type ProjectResourceKind,
 } from "@/features/projects/hooks/use-move-to-project";
 import type { ProjectResourceFamily } from "@/features/projects/lib/resource-filter";
+import { useMoveDisabled } from "@/features/projects/lib/move-disabled";
 import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
 import { placementIndex } from "@/features/environments/lib/placement";
 import { useProtectedPlacement } from "@/features/environments/hooks/use-protected-placement";
@@ -46,9 +47,15 @@ export interface MoveToProjectMenuProps {
  * when the resource is currently assigned to one, a "Remove from project"
  * entry — self-contained around useMoveToProject so each row-actions component
  * only needs to render this one item. Renders nothing when the workspace has
- * no projects yet.
+ * no projects yet, or in a list whose rows are not moved from it
+ * (`MoveDisabledContext`, a Blueprint's Resources page).
  */
 export function MoveToProjectMenu(props: MoveToProjectMenuProps) {
+  if (useMoveDisabled()) return null;
+  return <MoveToProjectMenuWithProjects {...props} />;
+}
+
+function MoveToProjectMenuWithProjects(props: MoveToProjectMenuProps) {
   const moves = useMoveToProject(props.kind);
   if (moves.projects.length === 0) return null;
   return <MoveToProjectItems {...props} moves={moves} />;
