@@ -1,0 +1,30 @@
+name: Cloudflare ranges drift
+
+# The edge trusts Cloudflare's CF-Connecting-IP, CF-IPCountry and CF-Ray only
+# from a peer inside cloudflareRanges, a list fetched once (2026-10-02) that
+# gitops-validate.sh only checks against its backend copy. Every day this fails,
+# naming each range and both files, when Cloudflare's published lists differ
+# from them (w4/737; scripts/cloudflare-ranges-drift.sh says why it matters).
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 4 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  cloudflare-ranges-drift:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
+      - name: Cloudflare's published ranges match cloudflareRanges
+        run: scripts/cloudflare-ranges-drift.sh

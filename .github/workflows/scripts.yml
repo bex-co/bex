@@ -392,6 +392,10 @@ jobs:
       # the plugin manifest, hooks and CI pass; an unreadable or missing pin fails.
       - name: render-oss/skills drift unit tests
         run: bash scripts/render-skills-drift.test.sh
+      # w4/737: a range Cloudflare adds or removes fails naming it and both
+      # cloudflareRanges files; a list or file the script cannot read fails.
+      - name: Cloudflare edge ranges drift unit tests
+        run: bash scripts/cloudflare-ranges-drift.test.sh
       - name: Render examples corpus fetch unit tests
         run: bash scripts/render-examples-corpus.test.sh
       # w6/m644: outcome and stage reporting, the plan guard that never approves a
@@ -432,6 +436,7 @@ jobs:
           scripts/render-version-drift.sh scripts/render-version-drift.test.sh
           scripts/render-pricing-drift.sh scripts/render-pricing-drift.test.sh
           scripts/render-skills-drift.sh scripts/render-skills-drift.test.sh
+          scripts/cloudflare-ranges-drift.sh scripts/cloudflare-ranges-drift.test.sh
           scripts/render-examples-corpus.sh scripts/render-examples-corpus.test.sh
           scripts/render-examples-live.sh scripts/render-examples-live.test.sh
           scripts/dev-env.sh scripts/dev-env.test.sh
