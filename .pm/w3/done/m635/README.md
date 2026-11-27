@@ -1,6 +1,6 @@
 # w3 · m635 — Build toolchain pins are fresh again and #201 closes
 
-**Worker:** worker3 **Goal:** every pinned build-toolchain image equals its upstream at review time, the native Bun 1.4 and Ruby 3.3 / 3.4 / 4.0 lines carry the current patches, and the freshness monitor closes #201 on its own run. **Status:** blocked (t001–t005, t007, t008 done; t006 and t009 wait for a production deploy carrying `bef3a32083`)
+**Worker:** worker3 **Goal:** every pinned build-toolchain image equals its upstream at review time, the native Bun 1.4 and Ruby 3.3 / 3.4 / 4.0 lines carry the current patches, and the freshness monitor closes #201 on its own run. **Status:** done (2026-11-27)
 
 ## Tasks (in order)
 
@@ -11,10 +11,10 @@
 | t003 | [Refresh the Paketo builder and stack images](done/t003.md) — **DONE** | 45m | t001 |
 | t004 | [Adopt the rebuilt native-common-bookworm image](done/t004.md) — **DONE** | 30m | t001 |
 | t005 | [Qualify the new images on dev-3](done/t005.md) — **DONE** | 60m | t002, t003, t004 |
-| t006 | [Production check and #201 closes](t006.md) | 30m | t005 |
+| t006 | [Production check and #201 closes](done/t006.md) — **DONE** | 30m | t005 |
 | t007 | [Simplify](done/t007.md) — **DONE** | 15m | t006 |
 | t008 | [Test coverage](done/t008.md) — **DONE** | 30m | t006 |
-| t009 | [Closeout](t009.md) | 10m | t008 |
+| t009 | [Closeout](done/t009.md) — **DONE** | 10m | t008 |
 
 ## Definition of done
 
@@ -90,3 +90,15 @@ Every official image above was rebuilt on the Debian root `@1795392000` (was `@1
 4. Then t009.
 
 **Follow-up for the next review (not this milestone's):** every push touching `lego/operator/internal/build/native*.go` republishes `ghcr.io/bex-co/bex-cnb-run:native-common-bookworm` (`native-base-image.yml` moves the tag after each build, whose revision label changes the digest), so `native-common-bookworm` reads as drift after almost any native change until the next families adoption, which is how it reached #201. Moving the tag only on a families run, or resolving that entry against a families-only tag, would leave the monitor reporting a newer qualified image only.
+
+## Unblocked — 2026-11-27 (`/loopx w3`: the gate cleared by itself)
+
+- **Affected:** t006, then t009.
+- **Source:** verified evidence. The newest pin on `origin/main`, `918667a83f` (`chore(deploy): pin platform images to 410850e80281`, 2026-11-26 20:20Z), carries the shipped refresh: `git merge-base --is-ancestor bef3a32083 410850e80281` holds. Production's `bex-controller-manager` (1/1), `bex-api` (2/2), activator and drain guard all run the pinned `bex-operator@sha256:4ba0d8fb497d…`, and Argo applied the kpack chart from main at 16:00Z.
+- **Remaining gate:** none. **Next:** t006's production check under **Parked** above (steps 2 and 3), then t009.
+
+## Closeout — 2026-11-27 (production pin `410850e80281`)
+
+- **DoD 1:** at the review, the dispatched freshness run [45854117852](https://github.com/bex-co/bex/actions/runs/45854117852) on `bef3a32083` resolved all 56 entries with no drift. The closeout `toolchain-freshness.py resolve` (00:30Z, 60 entries) finds seven of #201's eight entries still equal to their pins: `cnb-builder`, `cnb-stack-build`, `cnb-stack-run`, `native-bun`, `native-ruby`, `native-ruby-3-3` and `native-ruby-4-0`. The only drift is `native-common-bookworm`: `native-common-image.yml` republished its tag on the pushes of `410850e802` and `01af8d284d`, after the review, as **Follow-up for the next review** above predicts. That is newer drift, and it opened its own issue: the scheduled run [45862355195](https://github.com/bex-co/bex/actions/runs/45862355195) filed #256 at 2026-11-26T16:50:38Z.
+- **DoD 2:** the freshness workflow's own `issue-action` closed #201 at 2026-11-26T15:57:50Z in run 45854117852, a dispatch of the scheduled workflow, not by hand. #201 is still closed.
+- **DoD 3:** on production, a `BUN_VERSION=1.4` build logged `==> Using Bun 1.4.5 (from BUN_VERSION=1.4)` and a `.ruby-version` `3.4` build logged `==> Using Ruby version 3.4.13 via /opt/render/project/src/site/.ruby-version`, both on the line images with no swap. Both answered 200 at their `onbex.co` URLs and were deleted (`404`). The kpack ClusterBuilder is Ready on `builder-jammy-base@sha256:906ba1546346…`, with the 12:43:57Z stack and `bex-cnb-run@sha256:69aa695c7ce1…` ([t006](done/t006.md)).
