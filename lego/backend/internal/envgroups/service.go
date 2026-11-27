@@ -1527,6 +1527,9 @@ func validateGroupServiceEnvironment(groupEnvironment, serviceID, serviceEnviron
 // serviceEnvironment is the environment a's service belongs to: the store's
 // row when wired, else the App label.
 func (s *Service) serviceEnvironment(ctx context.Context, a *appv1alpha1.App) (string, error) {
+	if a == nil {
+		return "", nil
+	}
 	if s.ServiceEnvironment != nil {
 		env, err := s.ServiceEnvironment(ctx, a.Labels[core.LabelAppID])
 		if !errors.Is(err, core.ErrNotFound) {
@@ -1534,6 +1537,16 @@ func (s *Service) serviceEnvironment(ctx context.Context, a *appv1alpha1.App) (s
 		}
 	}
 	return a.Labels[core.LabelEnvironment], nil
+}
+
+// StoredServiceEnvironment reports the environment the control-plane store
+// holds for the service behind a, falling back to the App label when the
+// store is unwired or holds no record for it: the same read the move and
+// link guards judge by (serviceEnvironment), exposed so a Blueprint plan
+// refuses exactly what the apply refuses instead of judging a label the
+// store reconciler has yet to re-stamp.
+func (s *Service) StoredServiceEnvironment(ctx context.Context, a *appv1alpha1.App) (string, error) {
+	return s.serviceEnvironment(ctx, a)
 }
 
 // validateLinkedServiceEnvironments refuses a group scope change to

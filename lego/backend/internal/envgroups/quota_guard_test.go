@@ -160,10 +160,11 @@ func TestEveryEnvGroupMapWriterRefusesAnOverQuotaWrite(t *testing.T) {
 		},
 	}
 	exempt := map[string]string{
-		"SetEnvironmentID":    "moves the group between environments; writes no env or file map",
-		"SetGroupEnvironment": "moves the group between environments; writes no env or file map",
-		"MoveEnvGroup":        "moves the group between environments; writes no env or file map",
-		"CloneEnvGroup":       "copies a source group whose maps were quota-checked when they were written",
+		"SetEnvironmentID":         "moves the group between environments; writes no env or file map",
+		"SetGroupEnvironment":      "moves the group between environments; writes no env or file map",
+		"MoveEnvGroup":             "moves the group between environments; writes no env or file map",
+		"CloneEnvGroup":            "copies a source group whose maps were quota-checked when they were written",
+		"StoredServiceEnvironment": "reads the service's stored environment for plan/apply agreement; writes no env or file map",
 	}
 
 	for name, write := range writers {
