@@ -241,6 +241,90 @@ describe("RegistryCredentialSelect", () => {
     ]);
   });
 
+  // w4/735: Render's service image forms keep only the credentials whose
+  // registry is the image's; an image on a host Render cannot name, and every
+  // page that passes no image, list them all.
+  describe("narrowed to the image's registry", () => {
+    const DOCKER_HUB: RegistryCredentialView = {
+      ...PRIVATE_GHCR,
+      id: "rgc-hub",
+      name: "Hub",
+      registry: "DOCKER",
+      host: "docker.io",
+    };
+    const SELF_HOSTED: RegistryCredentialView = {
+      ...PRIVATE_GHCR,
+      id: "rgc-self",
+      name: "Own registry",
+      registry: null,
+      host: "registry.example.com",
+    };
+    const ALL = [
+      "Add credential",
+      "No credential — public image",
+      "Private GHCR (ghcr.io)",
+      "Hub (docker.io)",
+      "Own registry (registry.example.com)",
+    ];
+
+    async function listed(image: string | undefined, value = "") {
+      credentialsState.credentials = [PRIVATE_GHCR, DOCKER_HUB, SELF_HOSTED];
+      const user = userEvent.setup();
+      renderInRouter(
+        <RegistryCredentialSelect
+          id="credential"
+          value={value}
+          onValueChange={vi.fn()}
+          description="Private image credential"
+          image={image}
+        />,
+      );
+      await user.click(
+        await screen.findByRole("combobox", { name: "Registry Credential" }),
+      );
+      return screen
+        .getAllByRole("option")
+        .map((option) => option.textContent?.trim());
+    }
+
+    it("lists only GitHub credentials for a GHCR image", async () => {
+      expect(await listed("ghcr.io/acme/web:1")).toEqual([
+        "Add credential",
+        "No credential — public image",
+        "Private GHCR (ghcr.io)",
+      ]);
+    });
+
+    it("lists only Docker credentials for a Docker Hub image", async () => {
+      expect(await listed("acme/web:1")).toEqual([
+        "Add credential",
+        "No credential — public image",
+        "Hub (docker.io)",
+      ]);
+    });
+
+    it("lists every credential for a self-hosted image", async () => {
+      expect(await listed("registry.example.com/web:1")).toEqual(ALL);
+    });
+
+    it("lists every credential before the image names a host", async () => {
+      expect(await listed("")).toEqual(ALL);
+    });
+
+    it("lists every credential where no image is given", async () => {
+      expect(await listed(undefined)).toEqual(ALL);
+    });
+
+    it("keeps the chosen credential listed after the image moves registry", async () => {
+      expect(await listed("ghcr.io/acme/web:1", "rgc-hub")).toEqual([
+        "Add credential",
+        "No credential — public image",
+        "Private GHCR (ghcr.io)",
+        "Hub (docker.io)",
+      ]);
+    });
+  });
+
   it("links an empty credential list to the settings panel", async () => {
     credentialsState.credentials = [];
     renderInRouter(

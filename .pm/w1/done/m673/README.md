@@ -62,7 +62,7 @@ Verified 2026-11-26 on main `ff791487b5`.
 
 - t001–t004 and t006–t008 shipped in `0a715b42cc` (with `8428d9dc67`, the cross-workspace matrix's caller-scoped entry): Render's `isDeployableImage` on bex-api's GraphQL (`lego/backend/internal/registryread`, `registrycreds/imagecheck.go`), and the image tab's live check in the create form and in Settings' Update Source, in eight locales. Details are in each task under [done/](done).
 - t005: the dev-1 walk passed on GraphQL, with API keys, and in the browser at 1440 and 390 px. Every pending frame held the ready state's height ([t005](done/t005.md#dev-1-walk-2026-11-26)). The production walk waits for a pin carrying the milestone.
-- Follow-up: [w1/173](../../173.md) (the field's label, Render's unparseable-path sentence and the Git-repository hint). The credential list filtered by registry is [w4/735](../../../w4/735.md).
+- Follow-up: [w1/173](../../173.md) (the field's label, Render's unparseable-path sentence and the Git-repository hint). The credential list filtered by registry is [w4/735](../../../w4/done/735.md).
 
 ## Unblocked (2026-11-27)
 

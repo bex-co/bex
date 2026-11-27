@@ -11,11 +11,12 @@ One component serves every page that picks a credential:
 | New service, Existing Image (inline and stepped forms) | **Credential (Optional)** | "If your service pulls private Docker images from a registry, specify a credential that can access those images. Manage your credentials in Settings." (stepped form) |
 | New service, Advanced, a Docker build from a repository | **Registry Credential** | the same two sentences |
 | Service Settings (image service, or Docker build) | **Registry Credential** | the same, behind Edit / Save Changes |
+| Service Settings, the **Update Image** dialog of an image service | **Credential (Optional)** | the stepped form's two sentences: the dialog is that form's component, with the current image filled in |
 | Build Source settings | **Registry Credential** | "If your build pulls private Docker images from a registry, …" |
 
 - Its items, in order: **Add credential** (a New icon, an action item, with a separator after it), then the owner's credentials by name, each with its registry's icon.
 - With nothing chosen it reads **No credential**, and a clear button returns to that.
-- On the image forms the list holds only the credentials whose registry matches the image URL's registry (`parsedRegistryType`: `*pkg.dev*` is Google Artifact, `*dkr.ecr*` AWS ECR, `docker.io` Docker, `ghcr.io` GitHub, any host containing `gitlab` GitLab). An image whose host is none of those shows every credential.
+- On the image forms (New service's Existing Image and the Update Image dialog) the list holds only the credentials whose registry matches the image URL's registry: `credentials.filter(c => !type || c.registryType === type)`, where `type` is `parsedRegistryType`. The parser takes the first path segment: `*pkg.dev*` is Google Artifact, `*dkr.ecr*` AWS ECR, `docker.io` or `*.docker.io` Docker, `ghcr.io` GitHub, any host containing `gitlab` GitLab. A name with no host (`nginx`, `acme/web`) is Docker. An image on any other host, and a blank field, show every credential. The other dropdowns pass no type. Re-read 2026-11-27 (w4/735): the same bundle hashes, and the parser was run from the chunk on the vectors `registries.test.ts` pins.
 - The dropdown has no permission check of its own. The Manage link stays, as the "Manage your credentials in Settings." sentence in the help text.
 - Choosing Add credential leaves the selection as it was and opens the dialog over the page. On success the caller sets the new credential's id as the selection (`onCompleted: e => e.createRegistryCredential && setId(e.createRegistryCredential.id)`), and the mutation's cache update puts the new credential first in the list. Nothing else in the form changes.
 
@@ -44,4 +45,9 @@ Title **Add Credential**. Description "Learn more about storing external [regist
 - The help link goes to bex's own page, [bex.co/docs/platform/docker-deploys#use-a-private-registry](https://bex.co/docs/platform/docker-deploys#use-a-private-registry).
 - Every Credential dropdown starts with Add credential and a separator. Choosing it opens the dialog in place, and the new credential is selected. bex keeps its explicit "No credential — public image" item, because its select has no clear button.
 - A self-hosted registry (any other host) can still be added through REST, GraphQL and MCP, and its credentials list, bind, edit and delete as before. The Edit dialog shows its host as the registry.
-- Not taken in w4/m670: filtering the image form's dropdown by the image URL's registry, filed as its own item.
+
+## What bex takes from it (w4/735)
+
+- The create page's Existing Image tab and Settings' Update Source image tab (Render's Update Image dialog) list only the credentials for the image's registry, by a port of Render's parser. Settings' Image registry credential card, the Docker build's dropdown and the Build Source's dropdowns list every credential, as Render's Settings, Docker-build and Build Source settings dropdowns do.
+- A credential for a self-hosted host, which Render's enum cannot name, is listed only for an image on that host, or wherever every credential is listed.
+- The chosen credential stays listed after the image moves to another registry, so the trigger still names it.

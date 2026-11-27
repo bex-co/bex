@@ -837,6 +837,10 @@ export function ServiceSourcePicker({
                 value={image.registryCredentialId}
                 onValueChange={image.onRegistryCredentialChange}
                 description={t("services.createRegistryCredentialDescription")}
+                // Render's two service image forms, the checked ones (create
+                // and Update Image), list only the image registry's
+                // credentials; a Build Source's lists them all (w4/735).
+                image={image.check ? image.value : undefined}
                 // Render's rules: a public image that deploys as it is needs
                 // no credential, and a check that failed with one marks it.
                 disabled={

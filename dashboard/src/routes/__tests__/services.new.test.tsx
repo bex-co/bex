@@ -1161,6 +1161,55 @@ describe("NewServicePage", () => {
       );
     });
 
+    // w4/735: as on Render, the image's registry narrows the dropdown, and an
+    // image on a host Render cannot name lists every credential.
+    it("lists only the credentials for the image's registry", async () => {
+      registryCredentialsState.credentials = [
+        PRIVATE_REGISTRY_CREDENTIAL,
+        {
+          ...PRIVATE_REGISTRY_CREDENTIAL,
+          id: "rgc-hub",
+          name: "Hub",
+          registry: "DOCKER",
+          host: "docker.io",
+        },
+      ];
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("tab", { name: /Existing Image/i }),
+      );
+      const field = screen.getByPlaceholderText(
+        "docker.io/library/nginx:latest",
+      );
+      const options = async () => {
+        await user.click(
+          screen.getByRole("combobox", { name: /Registry credential/i }),
+        );
+        const names = screen
+          .getAllByRole("option")
+          .map((option) => option.textContent?.trim());
+        await user.keyboard("{Escape}");
+        return names;
+      };
+
+      await user.type(field, "ghcr.io/acme/private-web:1");
+      expect(await options()).toEqual([
+        "Add credential",
+        "No credential — public image",
+        "Private GHCR (ghcr.io)",
+      ]);
+
+      await user.clear(field);
+      await user.type(field, "registry.example.com/private-web:1");
+      expect(await options()).toEqual([
+        "Add credential",
+        "No credential — public image",
+        "Private GHCR (ghcr.io)",
+        "Hub (docker.io)",
+      ]);
+    });
+
     // w4/m670: Render's Credential dropdown starts with Add credential, which
     // adds one over the half-filled form and selects it.
     it("adds a credential from the dropdown and selects it, leaving the form as typed", async () => {

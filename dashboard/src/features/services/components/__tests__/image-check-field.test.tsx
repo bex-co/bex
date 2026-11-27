@@ -270,6 +270,62 @@ describe("the image field's check", () => {
     ).toHaveAttribute("aria-invalid", "true");
   });
 
+  // w4/735: Render's two service image forms (create, Update Image) list only
+  // the image registry's credentials; a Build Source's image tab, which has
+  // no check, lists them all.
+  const credentialOptions = async (
+    user: ReturnType<typeof userEvent.setup>,
+  ) => {
+    await user.click(
+      screen.getByRole("combobox", { name: /Registry credential/i }),
+    );
+    return screen
+      .getAllByRole("option")
+      .map((option) => option.textContent?.trim());
+  };
+
+  it.each(["create", "update"] as const)(
+    "lists only the image registry's credentials in the %s form",
+    async (messages) => {
+      const user = userEvent.setup();
+      renderField({
+        state: check("failed", UndeployableImageFailureCode.DoesNotExist),
+        messages,
+        value: "acme/private-app:1",
+      });
+      expect(await credentialOptions(user)).toEqual([
+        "Add credential",
+        "No credential — public image",
+      ]);
+    },
+  );
+
+  it("lists every credential on a Build Source's image tab", async () => {
+    const user = userEvent.setup();
+    render(
+      <ServiceSourcePicker
+        tab="image"
+        onTabChange={vi.fn()}
+        selectedRepo={null}
+        onSelectRepo={vi.fn()}
+        gitUrl=""
+        onGitUrlChange={vi.fn()}
+        image={{
+          value: "acme/private-app:1",
+          onChange: vi.fn(),
+          registryCredentialId: "",
+          onRegistryCredentialChange: vi.fn(),
+          showPortHint: false,
+        }}
+      />,
+    );
+    expect(await credentialOptions(user)).toEqual([
+      "Add credential",
+      "No credential — public image",
+      "GHCR (ghcr.io)",
+    ]);
+  });
+
   it("tells the check about a paste", async () => {
     const user = userEvent.setup();
     const state = check("idle");

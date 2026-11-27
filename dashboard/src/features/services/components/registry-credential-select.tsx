@@ -15,6 +15,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { CreateRegistryCredentialDialog } from "@/features/registry-credentials/components/create-registry-credential-dialog";
 import { useRegistryCredentials } from "@/features/registry-credentials/hooks/use-registry-credentials";
+import { credentialFitsImage } from "@/features/registry-credentials/lib/registries";
 
 const NONE_VALUE = "__none__";
 const ADD_VALUE = "__add__";
@@ -29,6 +30,12 @@ export interface RegistryCredentialSelectProps {
   invalid?: boolean;
   /** Leave the label to the caller: a create row names the select itself. */
   hideLabel?: boolean;
+  /**
+   * The image the service pulls. Given, the list keeps only the credentials
+   * for its registry, as Render's service image forms do (w4/735); Settings'
+   * credential card, the Docker build's and the Build Source's list them all.
+   */
+  image?: string;
 }
 
 /**
@@ -50,9 +57,19 @@ export function RegistryCredentialSelect({
   disabled = false,
   invalid = false,
   hideLabel = false,
+  image,
 }: RegistryCredentialSelectProps) {
   const { t } = useTranslations();
   const { credentials, loading, error, refetch } = useRegistryCredentials();
+  // The chosen credential stays listed after the image moves to another
+  // registry, so the trigger still names it.
+  const listed =
+    image === undefined
+      ? credentials
+      : credentials.filter(
+          (credential) =>
+            credential.id === value || credentialFitsImage(credential, image),
+        );
   const { canManage } = useCapabilities();
   const [adding, setAdding] = useState(false);
   // Set while Add credential closes the list, so the list does not hand focus
@@ -108,7 +125,7 @@ export function RegistryCredentialSelect({
           <SelectItem value={NONE_VALUE}>
             {t("services.createRegistryCredentialNone")}
           </SelectItem>
-          {credentials.map((credential) => (
+          {listed.map((credential) => (
             <SelectItem key={credential.id} value={credential.id}>
               {credential.name} ({credential.host})
             </SelectItem>
