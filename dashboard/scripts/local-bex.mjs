@@ -76,7 +76,8 @@ const WORKSPACES = [
     __typename: "Workspace",
     id: WORKSPACE_DEFAULT,
     name: "acme-hq",
-    plan: "hobby",
+    // LOCAL_BEX_PLAN=pro|scale shows the plan-gated surfaces ungated (w1/m683).
+    plan: process.env.LOCAL_BEX_PLAN || "hobby",
     role: "admin",
     createdAt: "2026-06-01T09:00:00Z",
   },
@@ -1456,8 +1457,9 @@ const ENVIRONMENTS = [
     envGroupIds: ["evg-localproduction"],
     protectedStatus: "protected",
     networkIsolationEnabled: true,
-    ipAllowList: [],
-    ipAllowListEntries: [],
+    // Seeded allow-all, as the real store seeds every new environment.
+    ipAllowList: ["0.0.0.0/0", "::/0"],
+    ipAllowListEntries: seededWorkspaceIPAllowList(),
   },
   {
     __typename: "Environment",
@@ -1472,8 +1474,8 @@ const ENVIRONMENTS = [
     envGroupIds: [],
     protectedStatus: "unprotected",
     networkIsolationEnabled: false,
-    ipAllowList: [],
-    ipAllowListEntries: [],
+    ipAllowList: ["0.0.0.0/0", "::/0"],
+    ipAllowListEntries: seededWorkspaceIPAllowList(),
   },
 ];
 
@@ -1630,22 +1632,17 @@ function logEnvelope(page, limit, variables = {}) {
   const oldest = page[0]?.timestamp;
   const newest = page[page.length - 1]?.timestamp;
   const start =
-    variables.startTime ??
-    new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    variables.startTime ?? new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const end = variables.endTime ?? new Date().toISOString();
   let nextEndTime = end;
   if (oldest) {
     const t = Date.parse(oldest);
-    nextEndTime = Number.isNaN(t)
-      ? oldest
-      : new Date(t - 1).toISOString();
+    nextEndTime = Number.isNaN(t) ? oldest : new Date(t - 1).toISOString();
   }
   let nextStartTime = start;
   if (newest && variables.direction === "forward") {
     const t = Date.parse(newest);
-    nextStartTime = Number.isNaN(t)
-      ? newest
-      : new Date(t + 1).toISOString();
+    nextStartTime = Number.isNaN(t) ? newest : new Date(t + 1).toISOString();
   }
   return {
     __typename: "LogList",
@@ -3150,8 +3147,8 @@ function resolveGraphQL({ operationName, variables = {} }) {
         envGroupIds: [],
         protectedStatus: "unprotected",
         networkIsolationEnabled: false,
-        ipAllowList: [],
-        ipAllowListEntries: [],
+        ipAllowList: ["0.0.0.0/0", "::/0"],
+        ipAllowListEntries: seededWorkspaceIPAllowList(),
       };
       ENVIRONMENTS.push(created);
       return { createEnvironment: created };
@@ -3161,6 +3158,43 @@ function resolveGraphQL({ operationName, variables = {} }) {
       if (!e) return { renameEnvironment: null };
       e.name = variables.name;
       return { renameEnvironment: e };
+    }
+    // Render's updateEnvironment patch (w1/m683): only the sent fields change,
+    // and a name another environment of the project has is refused as bex-api
+    // refuses it.
+    case "UpdateEnvironment": {
+      const e = ENVIRONMENTS.find((env) => env.id === variables.id);
+      if (!e) return { updateEnvironment: null };
+      if (variables.name != null) {
+        const name = variables.name.trim();
+        const taken = ENVIRONMENTS.some(
+          (other) =>
+            other.id !== e.id &&
+            other.projectId === e.projectId &&
+            other.name === name,
+        );
+        if (taken) {
+          const err = new Error(
+            `conflict: an environment named "${name}" already exists in this project`,
+          );
+          err.extensions = { code: "CONFLICT" };
+          throw err;
+        }
+        e.name = name;
+      }
+      if (variables.protectedStatus != null) {
+        e.protectedStatus = variables.protectedStatus;
+      }
+      if (variables.networkIsolationEnabled != null) {
+        e.networkIsolationEnabled = variables.networkIsolationEnabled;
+      }
+      if (variables.ipAllowListEntries != null) {
+        e.ipAllowListEntries = variables.ipAllowListEntries;
+        e.ipAllowList = variables.ipAllowListEntries.map(
+          (entry) => entry.cidrBlock,
+        );
+      }
+      return { updateEnvironment: e };
     }
     case "DeleteEnvironment": {
       const i = ENVIRONMENTS.findIndex((e) => e.id === variables.id);

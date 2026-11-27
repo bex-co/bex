@@ -3,6 +3,11 @@ import { ArrowDown, ArrowUp, Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import {
+  TOUCH_TARGET_HEIGHT,
+  TOUCH_TARGET_SIZE,
+} from "@/common/lib/touch-target";
+import { cn } from "@/common/lib/utils/utils";
 import { isValidCIDR } from "@/common/lib/cidr";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import {
@@ -54,16 +59,20 @@ interface IPAllowListRow {
 
 /**
  * One editable rule row of the editor (two inputs, three icon buttons) at the
- * ready row's geometry, for a list that has not loaded yet.
+ * ready row's geometry, for a list that has not loaded yet. `touch` is for a
+ * row inside a `data-touch-region`, where the ready inputs and buttons take
+ * the 44px target below the desktop layout (style.css).
  */
-export function RuleRowSkeleton() {
+export function RuleRowSkeleton({ touch = false }: { touch?: boolean }) {
+  const input = cn("h-9 w-full max-w-xs min-w-0", touch && TOUCH_TARGET_HEIGHT);
+  const icon = cn("size-8", touch && TOUCH_TARGET_SIZE);
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-md border p-2">
-      <Skeleton className="h-9 w-full max-w-xs min-w-0" />
-      <Skeleton className="h-9 w-full max-w-xs min-w-0" />
-      <Skeleton className="size-8" />
-      <Skeleton className="size-8" />
-      <Skeleton className="size-8" />
+      <Skeleton className={input} />
+      <Skeleton className={input} />
+      <Skeleton className={icon} />
+      <Skeleton className={icon} />
+      <Skeleton className={icon} />
     </div>
   );
 }

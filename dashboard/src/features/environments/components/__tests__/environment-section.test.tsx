@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { EnvironmentSection } from "@/features/environments/components/environment-section";
 import { ProjectEnvironmentSectionSkeleton } from "@/common/components/route-skeletons";
 import { SECTION_FILTER_STORAGE_KEY } from "@/features/environments/lib/section-filter";
@@ -8,8 +9,6 @@ import { memoryStorage } from "@/test/mocks/storage";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import type { EnvGroupView } from "@/features/env-groups/types";
 import type { ServiceView } from "@/features/services/types";
-import type { DatabaseView } from "@/features/databases/types";
-import type { KeyValueView } from "@/features/keyvalue/types";
 
 // The create links, as the router would write them.
 vi.mock("@tanstack/react-router", () => ({
@@ -17,17 +16,14 @@ vi.mock("@tanstack/react-router", () => ({
     children,
     to,
     search,
-    className,
-  }: {
-    children: React.ReactNode;
+    params: _params,
+    ...rest
+  }: React.ComponentProps<"a"> & {
     to: string;
     search?: Record<string, string>;
-    className?: string;
+    params?: Record<string, string>;
   }) => (
-    <a
-      href={search ? `${to}?${new URLSearchParams(search)}` : to}
-      className={className}
-    >
+    <a href={search ? `${to}?${new URLSearchParams(search)}` : to} {...rest}>
       {children}
     </a>
   ),
@@ -50,14 +46,16 @@ vi.mock(
       useCapabilities: () => ({
         loaded: role.current !== null,
         canManage: role.current?.canManage ?? false,
+        denied: (action: string) =>
+          action === "can_manage" &&
+          role.current !== null &&
+          !role.current.canManage,
         reasonKey: (action: string) =>
           action === "can_create" ? role.current?.createReason : undefined,
       }),
     };
   },
 );
-
-const rename = vi.fn();
 
 beforeAll(() => {
   if (!Element.prototype.hasPointerCapture) {
@@ -67,18 +65,20 @@ beforeAll(() => {
     Element.prototype.releasePointerCapture = () => {};
   }
 });
-vi.mock("@/features/environments/hooks/use-rename-environment", () => ({
-  useRenameEnvironment: () => ({ rename, busy: false }),
+// The ••• menu's isolation toggle saves through Render's updateEnvironment
+// patch (w1/m683).
+const update = vi.fn();
+vi.mock("@/features/environments/hooks/use-update-environment", () => ({
+  useUpdateEnvironment: () => ({ update, saving: false }),
 }));
 
-const remove = vi.fn();
-vi.mock("@/features/environments/hooks/use-delete-environment", () => ({
-  useDeleteEnvironment: () => ({ remove, deleting: null }),
-}));
+const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+vi.mock("sonner", () => ({ toast }));
 
-const saveACL = vi.fn();
-vi.mock("@/features/environments/hooks/use-set-environment-acl", () => ({
-  useSetEnvironmentACL: () => ({ saveACL, saving: false }),
+// The workspace plan the menu's plan gate reads (Pro unless a test says).
+const workspace = vi.hoisted(() => ({ plan: "pro" }));
+vi.mock("@/features/workspaces/context", () => ({
+  useWorkspace: () => ({ currentWorkspace: { plan: workspace.plan } }),
 }));
 
 const setServices = vi.fn();
@@ -245,6 +245,7 @@ function renderSection(
 ) {
   return render(
     <EnvironmentSection
+      projectName="shop"
       environment={env}
       services={[]}
       databases={[]}
@@ -262,12 +263,11 @@ beforeEach(() => {
   // The section keeps its switcher choice in localStorage (w1/m682).
   vi.stubGlobal("localStorage", memoryStorage());
   role.current = null;
-  rename.mockReset();
-  rename.mockResolvedValue(true);
-  remove.mockReset();
-  remove.mockResolvedValue(true);
-  saveACL.mockReset();
-  saveACL.mockResolvedValue(true);
+  workspace.plan = "pro";
+  update.mockReset();
+  update.mockResolvedValue({ ok: true });
+  toast.success.mockReset();
+  toast.error.mockReset();
   for (const mutate of [
     setServices,
     setDatabases,
@@ -738,6 +738,7 @@ describe("EnvironmentSection", () => {
     });
     const card = (source: EnvironmentView) => (
       <EnvironmentSection
+        projectName="shop"
         environment={source}
         services={[]}
         databases={[]}
@@ -788,243 +789,157 @@ describe("EnvironmentSection", () => {
     expect(screen.queryByText(/Selected: [12]/)).not.toBeInTheDocument();
   });
 
-  it("renames via the overflow menu", async () => {
+  // Render's ••• menu (w1/m683): the isolation toggle and All settings.
+  it("offers Render's ••• menu: the connections toggle and All settings", async () => {
     const user = userEvent.setup();
-    renderSection();
+    renderSection({ projectName: "shop" });
 
     await user.click(screen.getByRole("button", { name: "More actions" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Rename" }));
-
-    const dialog = await screen.findByRole("dialog");
-    // By accessible name — see the project rename test (w4/134).
-    const input = within(dialog).getByRole("textbox", {
-      name: "Environment name",
+    const toggle = await screen.findByRole("menuitemcheckbox", {
+      name: /Block cross-environment connections/,
     });
-    await user.clear(input);
-    await user.type(input, "production");
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
-
-    expect(rename).toHaveBeenCalledWith("env-1", "production");
-  });
-
-  it("refuses an over-long environment name inline and never renames (w21/036)", async () => {
-    const user = userEvent.setup();
-    renderSection();
-
-    await user.click(screen.getByRole("button", { name: "More actions" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Rename" }));
-    const dialog = await screen.findByRole("dialog");
-    const input = within(dialog).getByRole("textbox", {
-      name: "Environment name",
-    });
-    await user.clear(input);
-    await user.click(input);
-    await user.paste("a".repeat(101));
-
-    expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
-    expect(within(dialog).getByRole("alert")).toHaveTextContent(
-      "up to 100 characters",
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(toggle).toHaveTextContent(
+      "Prevent private network traffic from crossing the environment boundary.",
     );
-    await user.type(input, "{Enter}");
-    expect(rename).not.toHaveBeenCalled();
-  });
-
-  it("deletes behind a confirmation", async () => {
-    const user = userEvent.setup();
-    renderSection();
-
-    await user.click(screen.getByRole("button", { name: "More actions" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
-
-    const dialog = await screen.findByRole("alertdialog");
     expect(
-      within(dialog).getByText('Delete environment "staging"?'),
-    ).toBeInTheDocument();
-    // w21/037: a detached group becomes unassigned; it does not stay in the project.
-    expect(
-      within(dialog).getByText(
-        /Its environment groups are kept but become unassigned/,
-      ),
-    ).toBeInTheDocument();
-    expect(within(dialog).queryByText(/stay in the project/)).toBeNull();
-    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
-
-    expect(remove).toHaveBeenCalledWith("env-1", "staging");
-  });
-
-  // w6/m290: the environment's databases and key value stores are deleted with
-  // it, as Render's dashboard deletes all of its services, so the typed
-  // confirmation names them; env groups stay.
-  it("names the databases and key value stores a delete removes", async () => {
-    const user = userEvent.setup();
-    renderSection({
-      environment: {
-        ...env,
-        databaseIds: ["dpg-1"],
-        keyValueIds: ["red-1"],
-        envGroupIds: [],
-      },
-      databases: [
-        { id: "dpg-1", name: "orders-db" } as unknown as DatabaseView,
-      ],
-      keyValues: [
-        { id: "red-1", name: "sessions-kv" } as unknown as KeyValueView,
-      ],
-    });
-
-    await user.click(screen.getByRole("button", { name: "More actions" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
-
-    const dialog = await screen.findByRole("alertdialog");
-    expect(
-      within(dialog).getByText(
-        /deletes all of its services, databases, and key value stores: orders-db, sessions-kv\. Its environment groups are kept but become unassigned/,
-      ),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByRole("button", { name: "Delete" }),
-    ).toBeDisabled();
-    await user.type(
-      within(dialog).getByRole("textbox"),
-      "sudo delete environment staging",
+      screen.getByRole("menuitem", { name: "All settings" }),
+    ).toHaveAttribute(
+      "href",
+      "/project/$projectId/environment/$environmentId/settings",
     );
-    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
-
-    expect(remove).toHaveBeenCalledWith("env-1", "staging");
+    // The section's old Rename / Settings / Delete are gone.
+    expect(screen.queryByRole("menuitem", { name: "Rename" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Delete" })).toBeNull();
   });
 
-  it("full-replaces protection, network isolation, and inbound IP rules", async () => {
+  it("blocks cross-environment connections after Render's confirmation, and toasts", async () => {
     const user = userEvent.setup();
-    renderSection();
+    renderSection({ projectName: "shop" });
 
     await user.click(screen.getByRole("button", { name: "More actions" }));
     await user.click(
-      await screen.findByRole("menuitem", { name: "All settings" }),
-    );
-
-    const dialog = await screen.findByRole("dialog");
-    expect(
-      within(dialog).getByText(/will DENY all traffic/),
-    ).toBeInTheDocument();
-    await user.click(
-      within(dialog).getByRole("switch", { name: "Protected environment" }),
-    );
-    await user.click(
-      within(dialog).getByRole("switch", {
-        name: "Block cross-environment connections",
+      await screen.findByRole("menuitemcheckbox", {
+        name: /Block cross-environment connections/,
       }),
     );
-    await user.type(
-      within(dialog).getByRole("textbox", { name: "New CIDR block" }),
-      "10.0.0.0/24",
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "Restrict connections" }),
+    ).toBeInTheDocument();
+    expect(dialog).toHaveTextContent(
+      "Confirm you want to isolate connections for shop / staging",
     );
-    await user.type(
-      within(dialog).getByRole("textbox", { name: "New rule description" }),
-      "office",
+    expect(dialog).toHaveTextContent(
+      "Restart services in this environment to ensure all existing connections are closed.",
     );
+    expect(update).not.toHaveBeenCalled();
     await user.click(
-      within(dialog).getByRole("button", { name: "Add source" }),
+      within(dialog).getByRole("button", { name: "Restrict connections" }),
     );
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
-    expect(saveACL).toHaveBeenCalledWith("env-1", "staging", {
-      protectedStatus: "protected",
+    expect(update).toHaveBeenCalledWith("env-1", {
       networkIsolationEnabled: true,
-      ipAllowListEntries: [{ cidrBlock: "10.0.0.0/24", description: "office" }],
     });
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(toast.success).toHaveBeenCalledWith(
+      "Cross-environment connections blocked for staging.",
+    );
   });
 
-  it("edits and removes existing rules and keeps descriptions optional", async () => {
+  it("allows an isolated environment's connections again with Yes, remove restrictions", async () => {
     const user = userEvent.setup();
+    // On Hobby too: bex always lets isolation be turned off (ADR030).
+    workspace.plan = "hobby";
     renderSection({
-      environment: {
-        ...env,
-        ipAllowListEntries: [
-          { cidrBlock: "10.0.0.0/8", description: "office" },
-          { cidrBlock: "192.168.0.0/16", description: "" },
-        ],
-      },
+      environment: { ...env, networkIsolationEnabled: true },
+      projectName: "shop",
     });
 
     await user.click(screen.getByRole("button", { name: "More actions" }));
-    await user.click(
-      await screen.findByRole("menuitem", { name: "All settings" }),
-    );
-
-    const dialog = await screen.findByRole("dialog");
-    const description = within(dialog).getByRole("textbox", {
-      name: "Description for rule 1",
+    const toggle = await screen.findByRole("menuitemcheckbox", {
+      name: /Block cross-environment connections/,
     });
-    await user.clear(description);
-    await user.type(description, "headquarters");
-    await user.click(
-      within(dialog).getByRole("button", { name: "Remove 192.168.0.0/16" }),
-    );
-    await user.type(
-      within(dialog).getByRole("textbox", { name: "New CIDR block" }),
-      "203.0.113.0/24",
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+    await user.click(toggle);
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(
+      "Private network traffic to and from your bex services outside this environment will no longer be blocked.",
     );
     await user.click(
-      within(dialog).getByRole("button", { name: "Add source" }),
+      within(dialog).getByRole("button", { name: "Yes, remove restrictions" }),
     );
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
-    expect(saveACL).toHaveBeenCalledWith("env-1", "staging", {
-      protectedStatus: "unprotected",
+    expect(update).toHaveBeenCalledWith("env-1", {
       networkIsolationEnabled: false,
-      ipAllowListEntries: [
-        { cidrBlock: "10.0.0.0/8", description: "headquarters" },
-        { cidrBlock: "203.0.113.0/24", description: "" },
-      ],
     });
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith(
+        "Cross-environment connections allowed for staging.",
+      ),
+    );
   });
 
-  it("warns that the allowlist sees Cloudflare on proxied member domains (w1/m171)", async () => {
+  it("keeps a refused toggle's reason in the dialog, and toasts nothing", async () => {
     const user = userEvent.setup();
-    renderSection({
-      environment: {
-        ...env,
-        ipAllowListEntries: [{ cidrBlock: "10.0.0.0/8", description: "" }],
-        ipAllowListProxiedDomains: ["shop.example.com", "www.example.com"],
-      },
+    update.mockResolvedValue({
+      ok: false,
+      error: new CombinedGraphQLErrors({
+        errors: [
+          {
+            message: "forbidden: only an admin may change this",
+            extensions: { code: "FORBIDDEN" },
+          },
+        ],
+      }),
     });
+    renderSection();
 
     await user.click(screen.getByRole("button", { name: "More actions" }));
     await user.click(
-      await screen.findByRole("menuitem", { name: "All settings" }),
+      await screen.findByRole("menuitemcheckbox", {
+        name: /Block cross-environment connections/,
+      }),
     );
-    const dialog = await screen.findByRole("dialog");
-    const notice = within(dialog).getByTestId("ip-allow-list-proxied-notice");
-    expect(notice).toHaveTextContent(
-      "The allowlist can't see clients on 2 custom domains",
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Restrict connections" }),
     );
-    expect(within(notice).getByText("shop.example.com")).toBeInTheDocument();
-    expect(within(notice).getByText("www.example.com")).toBeInTheDocument();
-    // The list stays editable and saveable: a warning, never a refusal.
-    expect(
-      within(dialog).getByRole("textbox", { name: "New CIDR block" }),
-    ).toBeEnabled();
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "only an admin may change this",
+    );
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
-  it("shows no Cloudflare warning when no member domain is proxied", async () => {
+  it("disables the toggle below Pro with Render's Upgrade to unlock this feature", async () => {
     const user = userEvent.setup();
-    renderSection({ environment: { ...env, ipAllowListProxiedDomains: [] } });
+    workspace.plan = "hobby";
+    renderSection();
 
     await user.click(screen.getByRole("button", { name: "More actions" }));
-    await user.click(
-      await screen.findByRole("menuitem", { name: "All settings" }),
-    );
-    const dialog = await screen.findByRole("dialog");
+    const toggle = await screen.findByRole("menuitemcheckbox", {
+      name: /Block cross-environment connections/,
+    });
+    expect(toggle).toHaveAttribute("aria-disabled", "true");
     expect(
-      within(dialog).queryByTestId("ip-allow-list-proxied-notice"),
-    ).toBeNull();
+      screen.getByRole("menuitem", { name: "Upgrade to unlock this feature" }),
+    ).toHaveAttribute("href", "/workspace/settings?plan=change");
+  });
+
+  it("shows a non-Admin only All settings, as Render hides a toggle the member may not use", async () => {
+    const user = userEvent.setup();
+    role.current = { canManage: false };
+    renderSection();
+
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    expect(
+      await screen.findByRole("menuitem", { name: "All settings" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("menuitemcheckbox")).toBeNull();
   });
 });
 
-// At 390px a squeezed header stacked "production" one letter per line, and a
-// loading preview without the header's rows made the page jump on load
-// (w4/715). jsdom has no layout: these pin the classes the browser measured,
-// shared by the ready section and its preview (w1/m682).
 describe("EnvironmentSection header and loading preview (w4/715)", () => {
   function headerRows(container: HTMLElement) {
     const header = container.querySelector<HTMLElement>(
@@ -1111,6 +1026,7 @@ describe("EnvironmentSection's remembered switcher", () => {
     const page = () => (
       <>
         <EnvironmentSection
+          projectName="shop"
           environment={env}
           services={[]}
           databases={[]}
@@ -1121,6 +1037,7 @@ describe("EnvironmentSection's remembered switcher", () => {
           onKeyValueDeleted={vi.fn()}
         />
         <EnvironmentSection
+          projectName="shop"
           environment={production}
           services={[]}
           databases={[]}

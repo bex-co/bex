@@ -59,15 +59,6 @@ const ptEnvironments: Record<string, TranslationEntry> = {
     description:
       "Accessible label for an environment card's overflow (•••) menu",
   },
-  "environments.renameAction": {
-    message: "Renomear",
-    description: "Environment overflow-menu item that opens the rename dialog",
-  },
-  "environments.deleteAction": {
-    message: "Excluir",
-    description:
-      "Environment overflow-menu item that opens the delete confirmation, and the confirm button",
-  },
   "environments.cardEmpty": {
     message: "Nenhum recurso neste ambiente ainda.",
     description:
@@ -112,55 +103,16 @@ const ptEnvironments: Record<string, TranslationEntry> = {
     message: "Falha ao criar o ambiente “{name}”.",
     description: "Toast shown when creating an environment fails",
   },
-  "environments.renameFieldLabel": {
-    message: "Nome do ambiente",
-    description:
-      'Accessible/visible label for the environment rename field. Deliberately more specific than environments.fieldName\'s bare "Name" (w4/134)',
-  },
-  "environments.renameTitle": {
-    message: "Renomear ambiente",
-    description: "Rename-environment dialog title",
-  },
-  "environments.renameSubmit": {
-    message: "Salvar",
-    description: "Rename-environment dialog submit button",
-  },
-  "environments.renameSuccess": {
-    message: "Ambiente renomeado para “{name}”.",
-    description: "Toast shown after an environment is renamed",
-  },
-  "environments.renameError": {
-    message: "Falha ao renomear o ambiente para “{name}”.",
-    description: "Toast shown when renaming an environment fails",
-  },
-  "environments.deleteConfirmTitle": {
-    message: "Excluir o ambiente “{name}”?",
-    description: "Delete-environment confirmation dialog title",
-  },
-  "environments.deleteConfirmBody": {
-    message:
-      "Os grupos de ambiente dele são mantidos, mas ficam sem atribuição: deixam de pertencer a este ambiente ou projeto e permanecem em Grupos de ambiente. Esta ação não pode ser desfeita.",
-    description: "Delete-environment confirmation dialog body",
-  },
-  "environments.deleteConfirmBodyResources": {
-    message:
-      "Excluir este ambiente exclui todos os seus serviços, bancos de dados e instâncias de Key Value: {resources}. Os grupos de ambiente dele são mantidos, mas ficam sem atribuição: deixam de pertencer a este ambiente ou projeto e permanecem em Grupos de ambiente. Esta ação não pode ser desfeita.",
-    description:
-      "Delete-environment confirmation body when services, databases or key value stores would be deleted (w4/m264, w6/m290, Render parity)",
-  },
   "environments.deleteSuccess": {
-    message: "Ambiente “{name}” excluído.",
-    description: "Toast shown after an environment is deleted",
+    message: "Ambiente {name} excluído com sucesso.",
+    description:
+      "Toast shown after an environment is deleted (Render's words, w1/m683)",
   },
   "environments.deleteRefreshFailed": {
     message:
       "Ambiente “{name}” excluído, mas não foi possível atualizar a lista. Tente novamente ou recarregue para atualizá-la.",
     description:
       "Warning after the environment was deleted but re-reading the list failed; deletion must not be retried or reported as failed (w4/290)",
-  },
-  "environments.deleteError": {
-    message: "Falha ao excluir o ambiente “{name}”.",
-    description: "Toast shown when deleting an environment fails",
   },
   "environments.manageTitle": {
     message: "Gerenciar recursos em “{name}”",
@@ -340,41 +292,9 @@ const ptEnvironments: Record<string, TranslationEntry> = {
     message: "Todas as configurações",
     description: "Environment overflow-menu action opening ACL settings",
   },
-  "environments.settingsTitle": {
-    message: "Configurações de “{name}”",
-    description: "Environment ACL settings dialog title",
-  },
-  "environments.settingsDescription": {
-    message:
-      "Gerencie permissões, isolamento da rede privada e regras de IP de entrada.",
-    description: "Environment ACL settings dialog description",
-  },
   "environments.protectedBadge": {
     message: "Protegido",
     description: "Badge shown beside a protected environment name",
-  },
-  "environments.protectedLabel": {
-    message: "Ambiente protegido",
-    description: "Protected-status setting label",
-  },
-  "environments.protectedHint": {
-    message:
-      "Somente administradores do workspace podem excluir, suspender, retomar ou ativar e desativar o modo de manutenção dos recursos deste ambiente.",
-    description: "Protected-status setting explanation",
-  },
-  "environments.isolationLabel": {
-    message: "Bloquear conexões entre ambientes",
-    description: "Private-network isolation setting label",
-  },
-  "environments.isolationProOnly": {
-    message:
-      "O isolamento de rede exige o plano Pro ou superior. Desative-o aqui se ele foi ativado antes.",
-    description: "Isolation setting explanation on a Hobby workspace (w8/m138)",
-  },
-  "environments.isolationHint": {
-    message:
-      "Impeça que o tráfego da rede privada cruze o limite deste ambiente, inclusive para suas instâncias de Postgres e Key Value. As URLs externas delas continuam seguindo suas regras de IP.",
-    description: "Private-network isolation setting explanation",
   },
   "environments.ipAllowListLabel": {
     message: "Restrições de IP de entrada",
@@ -433,18 +353,6 @@ const ptEnvironments: Record<string, TranslationEntry> = {
   "environments.ipAllowListAdd": {
     message: "Adicionar origem",
     description: "Button adding an inbound-IP CIDR rule",
-  },
-  "environments.settingsSave": {
-    message: "Salvar",
-    description: "Environment ACL settings save button",
-  },
-  "environments.aclSaveSuccess": {
-    message: "Configurações de “{name}” salvas.",
-    description: "Toast shown after an Environment ACL is saved",
-  },
-  "environments.aclSaveError": {
-    message: "Falha ao salvar as configurações de “{name}”.",
-    description: "Toast shown when an Environment ACL save fails",
   },
   "environments.resourceCountLoading": {
     message: "Contando…",
@@ -580,6 +488,336 @@ const ptEnvironments: Record<string, TranslationEntry> = {
     message: "Recursos deste projeto que não estão em nenhum ambiente.",
     description:
       "Line under the project page's Unassigned section, which lists the project's resources in no environment (a bex section; Render requires an environment)",
+  },
+  "environments.settingsPageTitle": {
+    message: "Configurações do ambiente",
+    description:
+      "Heading of an environment's settings page, /project/<id>/environment/<envId>/settings (Render's words, w1/m683)",
+  },
+  "environments.settingsNavigation": {
+    message: "Seções das configurações do ambiente",
+    description:
+      "Accessible name of the environment settings page's section navigation (w1/m683)",
+  },
+  "environments.settingsEdit": {
+    message: "Editar",
+    description:
+      "Button on an environment settings card that makes its field editable (Render's words, w1/m683)",
+  },
+  "environments.settingsCardSave": {
+    message: "Salvar",
+    description:
+      "Button that saves an environment settings card's change (Render's words, w1/m683)",
+  },
+  "environments.settingsUpdateError": {
+    message: "Ocorreu um erro ao atualizar o ambiente. Tente novamente.",
+    description:
+      "Inline error on an environment settings card when the save failed for a reason the server did not name (Render's words, w1/m683)",
+  },
+  "environments.nameCardTitle": {
+    message: "Nome",
+    description:
+      "Title of the environment settings page's Name card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.nameCardDescription": {
+    message: "Um nome exclusivo para o seu ambiente",
+    description:
+      "Description of the environment settings page's Name card (Render's words, w1/m683)",
+  },
+  "environments.nameFieldLabel": {
+    message: "Nome do ambiente",
+    description:
+      "Accessible label of the Name card's field (Render's words, w1/m683)",
+  },
+  "environments.nameRequired": {
+    message: "O nome do ambiente é obrigatório",
+    description:
+      "Error under the Name card's field when it is saved empty (Render's words, w1/m683)",
+  },
+  "environments.nameInUse": {
+    message: "O nome já está em uso por outro ambiente neste projeto",
+    description:
+      "Error under the Name card's field when another environment of the project has the name (Render's words, w1/m683)",
+  },
+  "environments.permissionsCardTitle": {
+    message: "Permissões",
+    description:
+      "Title of the environment settings page's Permissions card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.permissionsDefaultBody": {
+    message:
+      "Por padrão, todos os membros da equipe podem excluir e suspender recursos, mover serviços e gerenciar a rede dos bancos de dados.",
+    description:
+      "First paragraph of the Permissions card (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtectedBody": {
+    message:
+      "Se marcado como {protectedEnvironment}, somente administradores podem excluir e suspender recursos, mover serviços e gerenciar a rede dos bancos de dados.",
+    description:
+      "Second paragraph of the Permissions card; {protectedEnvironment} is a link whose text is environments.permissionsProtectedLink (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtectedLink": {
+    message: "ambiente protegido",
+    description:
+      "Link text inside environments.permissionsProtectedBody, to the projects and environments docs (Render's words, w1/m683)",
+  },
+  "environments.permissionsLegend": {
+    message: "Permissões do ambiente",
+    description:
+      "Accessible name of the Permissions card's Default / Protected choice (Render's words, w1/m683)",
+  },
+  "environments.permissionsDefault": {
+    message: "Padrão",
+    description:
+      "The Permissions card's option for an unprotected environment (Render's words, w1/m683)",
+  },
+  "environments.permissionsDefaultHint": {
+    message: "Para staging e desenvolvimento",
+    description:
+      "Line under the Permissions card's Default option (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtected": {
+    message: "Protegido",
+    description:
+      "The Permissions card's option for a protected environment (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtectedHint": {
+    message: "Ideal para produção",
+    description:
+      "Line under the Permissions card's Protected option (Render's words, w1/m683)",
+  },
+  "environments.removeRestrictionsTitle": {
+    message: "Remover restrições",
+    description:
+      "Title of the dialog that confirms unprotecting an environment, or allowing its cross-environment connections again (Render's words, w1/m683)",
+  },
+  "environments.removeProtectionBody": {
+    message:
+      "Remover as restrições do ambiente {name} permitirá que todos os membros da equipe executem ações destrutivas. Tem certeza de que deseja fazer isso?",
+    description:
+      "Body of the dialog that confirms unprotecting an environment; {name} is the environment (Render's words, w1/m683)",
+  },
+  "environments.removeRestrictionsConfirm": {
+    message: "Sim, remover restrições",
+    description:
+      "Confirm button that unprotects an environment, or allows its cross-environment connections again (Render's words, w1/m683)",
+  },
+  "environments.connectionsNavLabel": {
+    message: "Conexões",
+    description:
+      "Navigation entry of the environment settings page's Cross-Environment Connections card (Render's words, w1/m683)",
+  },
+  "environments.connectionsCardTitle": {
+    message: "Conexões entre ambientes",
+    description:
+      "Title of the environment settings page's connections card (Render's words, w1/m683)",
+  },
+  "environments.connectionsBody": {
+    message:
+      "Impeça que o tráfego da rede privada cruze o limite do ambiente, mantendo permitido o tráfego entre os serviços deste ambiente.",
+    description:
+      "First paragraph of the Cross-Environment Connections card (Render's words, w1/m683)",
+  },
+  "environments.connectionsBodyOutside": {
+    message:
+      "Os serviços deste ambiente não poderão se comunicar com serviços do bex fora dele.",
+    description:
+      "Second paragraph of the Cross-Environment Connections card (Render's words, with bex for Render, w1/m683)",
+  },
+  "environments.connectionsLegend": {
+    message: "Conexões entre ambientes",
+    description:
+      "Accessible name of the Cross-Environment Connections card's Allowed / Blocked choice (w1/m683)",
+  },
+  "environments.connectionsAllowed": {
+    message: "Permitidas",
+    description:
+      "The Cross-Environment Connections card's option for an environment whose private traffic may cross its boundary (Render's words, w1/m683)",
+  },
+  "environments.connectionsAllowedHint": {
+    message: "Padrão para novos ambientes",
+    description:
+      "Line under the Cross-Environment Connections card's Allowed option (Render's words, w1/m683)",
+  },
+  "environments.connectionsBlocked": {
+    message: "Bloqueadas",
+    description:
+      "The Cross-Environment Connections card's option for an isolated environment (Render's words, w1/m683)",
+  },
+  "environments.connectionsBlockedHint": {
+    message: "Recomendado para ambientes de produção",
+    description:
+      "Line under the Cross-Environment Connections card's Blocked option (Render's words, w1/m683)",
+  },
+  "environments.connectionsPaywall": {
+    message:
+      "Bloqueie conexões entre ambientes fazendo upgrade para o plano {plan}.",
+    description:
+      "Notice on the Cross-Environment Connections card below Pro; {plan} is the Pro plan's name (Render's words, w1/m683)",
+  },
+  "environments.upgrade": {
+    message: "Fazer upgrade",
+    description:
+      "Button or link that opens the change-plan dialog from an environment's plan gate (Render's words, w1/m683)",
+  },
+  "environments.isolateTitle": {
+    message: "Restringir conexões",
+    description:
+      "Title of the dialog that confirms blocking an environment's cross-environment connections, and its confirm button (Render's words, w1/m683)",
+  },
+  "environments.isolateDescription": {
+    message: "Confirme que deseja isolar as conexões de {environment}",
+    description:
+      "Description of the dialog that confirms blocking or allowing an environment's cross-environment connections; {environment} is <project> / <environment> (Render's words, w1/m683)",
+  },
+  "environments.isolateRestrictBody": {
+    message:
+      "Bloqueie o tráfego da rede privada de e para seus serviços do bex fora deste ambiente. Isso pode interromper serviços que dependem de tráfego entre ambientes.",
+    description:
+      "First paragraph of the dialog that confirms blocking cross-environment connections (Render's words, with bex for Render, w1/m683)",
+  },
+  "environments.isolateRestrictRestart": {
+    message:
+      "As conexões de rede já abertas não serão afetadas. Reinicie os serviços deste ambiente para garantir que todas as conexões existentes sejam encerradas.",
+    description:
+      "Second paragraph of the dialog that confirms blocking cross-environment connections (Render's words, w1/m683)",
+  },
+  "environments.isolateRemoveBody": {
+    message:
+      "O tráfego da rede privada de e para seus serviços do bex fora deste ambiente deixará de ser bloqueado.",
+    description:
+      "Body of the dialog that confirms allowing cross-environment connections again (Render's words, with bex for Render, w1/m683)",
+  },
+  "environments.isolateQuestion": {
+    message: "Tem certeza de que deseja fazer isso?",
+    description:
+      "Last line of the dialog that confirms blocking or allowing cross-environment connections (Render's words, w1/m683)",
+  },
+  "environments.isolationBlockedToast": {
+    message: "Conexões entre ambientes bloqueadas para {name}.",
+    description:
+      "Toast after the section menu's toggle blocks an environment's cross-environment connections (Render's words, w1/m683)",
+  },
+  "environments.isolationAllowedToast": {
+    message: "Conexões entre ambientes permitidas para {name}.",
+    description:
+      "Toast after the section menu's toggle allows an environment's cross-environment connections again (Render's words, w1/m683)",
+  },
+  "environments.menuBlockConnections": {
+    message: "Bloquear conexões entre ambientes",
+    description:
+      "The environment section's ••• menu toggle that isolates the environment (Render's words, w1/m683)",
+  },
+  "environments.menuBlockConnectionsHint": {
+    message: "Impeça que o tráfego da rede privada cruze o limite do ambiente.",
+    description:
+      "Line under the ••• menu's Block cross-environment connections toggle (Render's words, w1/m683)",
+  },
+  "environments.menuUpgradeToUnlock": {
+    message: "{upgrade} para desbloquear este recurso",
+    description:
+      "The ••• menu's plan gate on Block cross-environment connections below Pro; {upgrade} is a link whose text is environments.upgrade (Render's words, w1/m683)",
+  },
+  "environments.envGroupsCardTitle": {
+    message: "Grupos de ambiente",
+    description:
+      "Title of the environment settings page's Environment Groups card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.envGroupsNew": {
+    message: "Novo grupo de ambiente",
+    description:
+      "Button on the Environment Groups card that creates an env group in the environment (Render's words, w1/m683)",
+  },
+  "environments.envGroupsSearch": {
+    message: "Pesquisar grupos de ambiente",
+    description:
+      "Placeholder and accessible name of the Environment Groups card's search (Render's words, w1/m683)",
+  },
+  "environments.envGroupsNone": {
+    message: "Nenhum grupo de ambiente encontrado",
+    description:
+      "The Environment Groups card when the environment has no env groups (Render's words, w1/m683)",
+  },
+  "environments.networkingCardTitle": {
+    message: "Rede",
+    description:
+      "Title of the environment settings page's Networking card (inbound IP rules), and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.ipAllowListMoveUp": {
+    message: "Mover {cidr} para cima",
+    description:
+      "Accessible name of an environment IP rule's move-up button; {cidr} is the rule's CIDR block",
+  },
+  "environments.ipAllowListMoveDown": {
+    message: "Mover {cidr} para baixo",
+    description:
+      "Accessible name of an environment IP rule's move-down button; {cidr} is the rule's CIDR block",
+  },
+  "environments.ipAllowListAllowsAll": {
+    message: "Aberto a todos os IPs de origem",
+    description:
+      "The Networking card below Scale when the environment's rules are the allow-all pair",
+  },
+  "environments.ipAllowListSaved": {
+    message: "Regras de IP de entrada de {name} salvas.",
+    description:
+      "Toast after the Networking card saves an environment's inbound IP rules",
+  },
+  "environments.deleteCardTitle": {
+    message: "Excluir ambiente",
+    description:
+      "Title of the environment settings page's delete card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.deleteCardDescription": {
+    message:
+      "Este ambiente, incluindo seus serviços, será excluído permanentemente. Esta ação não pode ser desfeita.",
+    description:
+      "Description of the Delete Environment card (Render's words, w1/m683)",
+  },
+  "environments.deleteLastEnvironment": {
+    message:
+      "Este ambiente não pode ser excluído, pois os projetos exigem pelo menos um ambiente. Considere excluir o {project} em vez disso.",
+    description:
+      "Notice on the Delete Environment card for a project's only environment; {project} is a link whose text is environments.deleteLastEnvironmentProject (Render's words, w1/m683)",
+  },
+  "environments.deleteLastEnvironmentProject": {
+    message: "projeto",
+    description:
+      "Link text inside environments.deleteLastEnvironment, to the project's settings (Render's words, w1/m683)",
+  },
+  "environments.deleteButton": {
+    message: "Excluir ambiente",
+    description:
+      "The Delete Environment card's button, the confirmation dialog's title and its confirm button (Render's words, w1/m683)",
+  },
+  "environments.deleteDialogBody": {
+    message:
+      "Este ambiente será excluído permanentemente, junto com todos os seus serviços. Para manter algum serviço, mova-o para fora do ambiente primeiro.",
+    description:
+      "Body of the dialog that confirms deleting an environment (Render's words, w1/m683)",
+  },
+  "environments.deleteDialogEnvGroupsKept": {
+    message:
+      "Os grupos de ambiente dele são mantidos, mas ficam sem atribuição: deixam de pertencer a este ambiente ou projeto e permanecem em Grupos de ambiente.",
+    description:
+      "Added to the delete dialog's body when the environment holds env groups, which bex keeps (w1/m683)",
+  },
+  "environments.deleteFailed": {
+    message:
+      "Não foi possível excluir o ambiente. Tente novamente daqui a pouco. Desculpe!",
+    description:
+      "Error in the delete dialog when the delete failed for a reason the server did not name (Render's words, w1/m683)",
+  },
+  "environments.deleteCardDenied": {
+    message: "Exclusão do ambiente",
+    description:
+      "Title of the card that replaces Delete Environment for a member who may not delete the environment (Render's words, w1/m683)",
+  },
+  "environments.protectedDeleteAdminOnly": {
+    message:
+      "Somente um administrador pode excluir um ambiente protegido ou um com isolamento de rede ou regras de IP de entrada.",
+    description:
+      "Why a non-Admin cannot delete an environment that is protected, isolated or has inbound IP rules (w1/m683)",
   },
 };
 

@@ -49,15 +49,6 @@ const jaEnvironments: Record<string, TranslationEntry> = {
     description:
       "Accessible label for an environment card's overflow (•••) menu",
   },
-  "environments.renameAction": {
-    message: "名前を変更",
-    description: "Environment overflow-menu item that opens the rename dialog",
-  },
-  "environments.deleteAction": {
-    message: "削除",
-    description:
-      "Environment overflow-menu item that opens the delete confirmation, and the confirm button",
-  },
   "environments.cardEmpty": {
     message: "この環境には、まだリソースがありません。",
     description:
@@ -102,55 +93,16 @@ const jaEnvironments: Record<string, TranslationEntry> = {
     message: "環境「{name}」を作成できませんでした。",
     description: "Toast shown when creating an environment fails",
   },
-  "environments.renameFieldLabel": {
-    message: "環境名",
-    description:
-      'Accessible/visible label for the environment rename field. Deliberately more specific than environments.fieldName\'s bare "Name" (w4/134)',
-  },
-  "environments.renameTitle": {
-    message: "環境の名前を変更",
-    description: "Rename-environment dialog title",
-  },
-  "environments.renameSubmit": {
-    message: "保存",
-    description: "Rename-environment dialog submit button",
-  },
-  "environments.renameSuccess": {
-    message: "環境の名前を「{name}」に変更しました。",
-    description: "Toast shown after an environment is renamed",
-  },
-  "environments.renameError": {
-    message: "環境の名前を「{name}」に変更できませんでした。",
-    description: "Toast shown when renaming an environment fails",
-  },
-  "environments.deleteConfirmTitle": {
-    message: "環境「{name}」を削除しますか？",
-    description: "Delete-environment confirmation dialog title",
-  },
-  "environments.deleteConfirmBody": {
-    message:
-      "この環境の環境グループは削除されず、未割り当てになります。この環境やプロジェクトには属さなくなり、環境グループに残ります。この操作は元に戻せません。",
-    description: "Delete-environment confirmation dialog body",
-  },
-  "environments.deleteConfirmBodyResources": {
-    message:
-      "この環境を削除すると、そのすべてのサービス、データベース、Key Value ストアが削除されます: {resources}。この環境の環境グループは削除されず、未割り当てになります。この環境やプロジェクトには属さなくなり、環境グループに残ります。この操作は元に戻せません。",
-    description:
-      "Delete-environment confirmation body when services, databases or key value stores would be deleted (w4/m264, w6/m290, Render parity)",
-  },
   "environments.deleteSuccess": {
-    message: "環境「{name}」を削除しました。",
-    description: "Toast shown after an environment is deleted",
+    message: "環境 {name} を削除しました。",
+    description:
+      "Toast shown after an environment is deleted (Render's words, w1/m683)",
   },
   "environments.deleteRefreshFailed": {
     message:
       "環境「{name}」を削除しましたが、一覧を更新できませんでした。もう一度お試しいただくか、再読み込みして更新してください。",
     description:
       "Warning after the environment was deleted but re-reading the list failed; deletion must not be retried or reported as failed (w4/290)",
-  },
-  "environments.deleteError": {
-    message: "環境「{name}」を削除できませんでした。",
-    description: "Toast shown when deleting an environment fails",
   },
   "environments.manageTitle": {
     message: "「{name}」のリソースを管理",
@@ -333,41 +285,9 @@ const jaEnvironments: Record<string, TranslationEntry> = {
     message: "すべての設定",
     description: "Environment overflow-menu action opening ACL settings",
   },
-  "environments.settingsTitle": {
-    message: "「{name}」の設定",
-    description: "Environment ACL settings dialog title",
-  },
-  "environments.settingsDescription": {
-    message:
-      "権限、プライベートネットワークの分離、受信 IP ルールを管理します。",
-    description: "Environment ACL settings dialog description",
-  },
   "environments.protectedBadge": {
     message: "保護",
     description: "Badge shown beside a protected environment name",
-  },
-  "environments.protectedLabel": {
-    message: "保護された環境",
-    description: "Protected-status setting label",
-  },
-  "environments.protectedHint": {
-    message:
-      "この環境のリソースを削除、一時停止、再開したり、メンテナンスモードを切り替えたりできるのは、ワークスペースの管理者のみです。",
-    description: "Protected-status setting explanation",
-  },
-  "environments.isolationLabel": {
-    message: "環境間の接続をブロック",
-    description: "Private-network isolation setting label",
-  },
-  "environments.isolationProOnly": {
-    message:
-      "ネットワークの分離には Pro プラン以上が必要です。以前に有効にしていた場合は、ここでオフにできます。",
-    description: "Isolation setting explanation on a Hobby workspace (w8/m138)",
-  },
-  "environments.isolationHint": {
-    message:
-      "この環境の Postgres や Key Value インスタンスを含め、この環境の境界を越えるプライベートネットワークのトラフィックを防ぎます。外部 URL は引き続き、それぞれの IP ルールに従います。",
-    description: "Private-network isolation setting explanation",
   },
   "environments.ipAllowListLabel": {
     message: "受信 IP の制限",
@@ -427,18 +347,6 @@ const jaEnvironments: Record<string, TranslationEntry> = {
   "environments.ipAllowListAdd": {
     message: "ソースを追加",
     description: "Button adding an inbound-IP CIDR rule",
-  },
-  "environments.settingsSave": {
-    message: "保存",
-    description: "Environment ACL settings save button",
-  },
-  "environments.aclSaveSuccess": {
-    message: "「{name}」の設定を保存しました。",
-    description: "Toast shown after an Environment ACL is saved",
-  },
-  "environments.aclSaveError": {
-    message: "「{name}」の設定を保存できませんでした。",
-    description: "Toast shown when an Environment ACL save fails",
   },
   "environments.resourceCountLoading": {
     message: "集計中…",
@@ -574,6 +482,337 @@ const jaEnvironments: Record<string, TranslationEntry> = {
     message: "このプロジェクトのうち、どの環境にも属していないリソースです。",
     description:
       "Line under the project page's Unassigned section, which lists the project's resources in no environment (a bex section; Render requires an environment)",
+  },
+  "environments.settingsPageTitle": {
+    message: "環境の設定",
+    description:
+      "Heading of an environment's settings page, /project/<id>/environment/<envId>/settings (Render's words, w1/m683)",
+  },
+  "environments.settingsNavigation": {
+    message: "環境の設定セクション",
+    description:
+      "Accessible name of the environment settings page's section navigation (w1/m683)",
+  },
+  "environments.settingsEdit": {
+    message: "編集",
+    description:
+      "Button on an environment settings card that makes its field editable (Render's words, w1/m683)",
+  },
+  "environments.settingsCardSave": {
+    message: "保存",
+    description:
+      "Button that saves an environment settings card's change (Render's words, w1/m683)",
+  },
+  "environments.settingsUpdateError": {
+    message: "環境の更新中にエラーが発生しました。もう一度お試しください。",
+    description:
+      "Inline error on an environment settings card when the save failed for a reason the server did not name (Render's words, w1/m683)",
+  },
+  "environments.nameCardTitle": {
+    message: "名前",
+    description:
+      "Title of the environment settings page's Name card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.nameCardDescription": {
+    message: "環境の一意な名前",
+    description:
+      "Description of the environment settings page's Name card (Render's words, w1/m683)",
+  },
+  "environments.nameFieldLabel": {
+    message: "環境名",
+    description:
+      "Accessible label of the Name card's field (Render's words, w1/m683)",
+  },
+  "environments.nameRequired": {
+    message: "環境名は必須です",
+    description:
+      "Error under the Name card's field when it is saved empty (Render's words, w1/m683)",
+  },
+  "environments.nameInUse": {
+    message: "この名前は、このプロジェクト内の別の環境ですでに使用されています",
+    description:
+      "Error under the Name card's field when another environment of the project has the name (Render's words, w1/m683)",
+  },
+  "environments.permissionsCardTitle": {
+    message: "権限",
+    description:
+      "Title of the environment settings page's Permissions card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.permissionsDefaultBody": {
+    message:
+      "デフォルトでは、すべてのチームメンバーがリソースの削除と一時停止、サービスの移動、データベースのネットワーク管理を行えます。",
+    description:
+      "First paragraph of the Permissions card (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtectedBody": {
+    message:
+      "{protectedEnvironment}に指定すると、リソースの削除と一時停止、サービスの移動、データベースのネットワーク管理を行えるのは管理者のみになります。",
+    description:
+      "Second paragraph of the Permissions card; {protectedEnvironment} is a link whose text is environments.permissionsProtectedLink (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtectedLink": {
+    message: "保護された環境",
+    description:
+      "Link text inside environments.permissionsProtectedBody, to the projects and environments docs (Render's words, w1/m683)",
+  },
+  "environments.permissionsLegend": {
+    message: "環境の権限",
+    description:
+      "Accessible name of the Permissions card's Default / Protected choice (Render's words, w1/m683)",
+  },
+  "environments.permissionsDefault": {
+    message: "デフォルト",
+    description:
+      "The Permissions card's option for an unprotected environment (Render's words, w1/m683)",
+  },
+  "environments.permissionsDefaultHint": {
+    message: "ステージングと開発向け",
+    description:
+      "Line under the Permissions card's Default option (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtected": {
+    message: "保護",
+    description:
+      "The Permissions card's option for a protected environment (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtectedHint": {
+    message: "本番環境に最適",
+    description:
+      "Line under the Permissions card's Protected option (Render's words, w1/m683)",
+  },
+  "environments.removeRestrictionsTitle": {
+    message: "制限を解除",
+    description:
+      "Title of the dialog that confirms unprotecting an environment, or allowing its cross-environment connections again (Render's words, w1/m683)",
+  },
+  "environments.removeProtectionBody": {
+    message:
+      "{name} 環境の制限を解除すると、すべてのチームメンバーが破壊的な操作を実行できるようになります。本当に実行しますか？",
+    description:
+      "Body of the dialog that confirms unprotecting an environment; {name} is the environment (Render's words, w1/m683)",
+  },
+  "environments.removeRestrictionsConfirm": {
+    message: "はい、制限を解除します",
+    description:
+      "Confirm button that unprotects an environment, or allows its cross-environment connections again (Render's words, w1/m683)",
+  },
+  "environments.connectionsNavLabel": {
+    message: "接続",
+    description:
+      "Navigation entry of the environment settings page's Cross-Environment Connections card (Render's words, w1/m683)",
+  },
+  "environments.connectionsCardTitle": {
+    message: "環境間の接続",
+    description:
+      "Title of the environment settings page's connections card (Render's words, w1/m683)",
+  },
+  "environments.connectionsBody": {
+    message:
+      "この環境内のサービス間のトラフィックは許可したまま、プライベートネットワークのトラフィックが環境の境界を越えないようにします。",
+    description:
+      "First paragraph of the Cross-Environment Connections card (Render's words, w1/m683)",
+  },
+  "environments.connectionsBodyOutside": {
+    message:
+      "この環境のサービスは、環境外の bex サービスと通信できなくなります。",
+    description:
+      "Second paragraph of the Cross-Environment Connections card (Render's words, with bex for Render, w1/m683)",
+  },
+  "environments.connectionsLegend": {
+    message: "環境間の接続",
+    description:
+      "Accessible name of the Cross-Environment Connections card's Allowed / Blocked choice (w1/m683)",
+  },
+  "environments.connectionsAllowed": {
+    message: "許可",
+    description:
+      "The Cross-Environment Connections card's option for an environment whose private traffic may cross its boundary (Render's words, w1/m683)",
+  },
+  "environments.connectionsAllowedHint": {
+    message: "新しい環境のデフォルト",
+    description:
+      "Line under the Cross-Environment Connections card's Allowed option (Render's words, w1/m683)",
+  },
+  "environments.connectionsBlocked": {
+    message: "ブロック",
+    description:
+      "The Cross-Environment Connections card's option for an isolated environment (Render's words, w1/m683)",
+  },
+  "environments.connectionsBlockedHint": {
+    message: "本番環境に推奨",
+    description:
+      "Line under the Cross-Environment Connections card's Blocked option (Render's words, w1/m683)",
+  },
+  "environments.connectionsPaywall": {
+    message:
+      "{plan} プランにアップグレードすると、環境間の接続をブロックできます。",
+    description:
+      "Notice on the Cross-Environment Connections card below Pro; {plan} is the Pro plan's name (Render's words, w1/m683)",
+  },
+  "environments.upgrade": {
+    message: "アップグレード",
+    description:
+      "Button or link that opens the change-plan dialog from an environment's plan gate (Render's words, w1/m683)",
+  },
+  "environments.isolateTitle": {
+    message: "接続を制限",
+    description:
+      "Title of the dialog that confirms blocking an environment's cross-environment connections, and its confirm button (Render's words, w1/m683)",
+  },
+  "environments.isolateDescription": {
+    message: "{environment} の接続を分離することを確認してください",
+    description:
+      "Description of the dialog that confirms blocking or allowing an environment's cross-environment connections; {environment} is <project> / <environment> (Render's words, w1/m683)",
+  },
+  "environments.isolateRestrictBody": {
+    message:
+      "この環境外にある bex サービスとの間のプライベートネットワークのトラフィックをブロックします。境界を越えるトラフィックに依存するサービスが中断する可能性があります。",
+    description:
+      "First paragraph of the dialog that confirms blocking cross-environment connections (Render's words, with bex for Render, w1/m683)",
+  },
+  "environments.isolateRestrictRestart": {
+    message:
+      "すでに開いているネットワーク接続には影響しません。既存の接続をすべて確実に閉じるには、この環境のサービスを再起動してください。",
+    description:
+      "Second paragraph of the dialog that confirms blocking cross-environment connections (Render's words, w1/m683)",
+  },
+  "environments.isolateRemoveBody": {
+    message:
+      "この環境外にある bex サービスとの間のプライベートネットワークのトラフィックは、ブロックされなくなります。",
+    description:
+      "Body of the dialog that confirms allowing cross-environment connections again (Render's words, with bex for Render, w1/m683)",
+  },
+  "environments.isolateQuestion": {
+    message: "本当に実行しますか？",
+    description:
+      "Last line of the dialog that confirms blocking or allowing cross-environment connections (Render's words, w1/m683)",
+  },
+  "environments.isolationBlockedToast": {
+    message: "{name} の環境間の接続をブロックしました。",
+    description:
+      "Toast after the section menu's toggle blocks an environment's cross-environment connections (Render's words, w1/m683)",
+  },
+  "environments.isolationAllowedToast": {
+    message: "{name} の環境間の接続を許可しました。",
+    description:
+      "Toast after the section menu's toggle allows an environment's cross-environment connections again (Render's words, w1/m683)",
+  },
+  "environments.menuBlockConnections": {
+    message: "環境間の接続をブロック",
+    description:
+      "The environment section's ••• menu toggle that isolates the environment (Render's words, w1/m683)",
+  },
+  "environments.menuBlockConnectionsHint": {
+    message:
+      "プライベートネットワークのトラフィックが環境の境界を越えないようにします。",
+    description:
+      "Line under the ••• menu's Block cross-environment connections toggle (Render's words, w1/m683)",
+  },
+  "environments.menuUpgradeToUnlock": {
+    message: "{upgrade}すると、この機能を利用できます",
+    description:
+      "The ••• menu's plan gate on Block cross-environment connections below Pro; {upgrade} is a link whose text is environments.upgrade (Render's words, w1/m683)",
+  },
+  "environments.envGroupsCardTitle": {
+    message: "環境グループ",
+    description:
+      "Title of the environment settings page's Environment Groups card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.envGroupsNew": {
+    message: "新規環境グループ",
+    description:
+      "Button on the Environment Groups card that creates an env group in the environment (Render's words, w1/m683)",
+  },
+  "environments.envGroupsSearch": {
+    message: "環境グループを検索",
+    description:
+      "Placeholder and accessible name of the Environment Groups card's search (Render's words, w1/m683)",
+  },
+  "environments.envGroupsNone": {
+    message: "環境グループが見つかりません",
+    description:
+      "The Environment Groups card when the environment has no env groups (Render's words, w1/m683)",
+  },
+  "environments.networkingCardTitle": {
+    message: "ネットワーク",
+    description:
+      "Title of the environment settings page's Networking card (inbound IP rules), and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.ipAllowListMoveUp": {
+    message: "{cidr} を上に移動",
+    description:
+      "Accessible name of an environment IP rule's move-up button; {cidr} is the rule's CIDR block",
+  },
+  "environments.ipAllowListMoveDown": {
+    message: "{cidr} を下に移動",
+    description:
+      "Accessible name of an environment IP rule's move-down button; {cidr} is the rule's CIDR block",
+  },
+  "environments.ipAllowListAllowsAll": {
+    message: "すべての送信元 IP に開放",
+    description:
+      "The Networking card below Scale when the environment's rules are the allow-all pair",
+  },
+  "environments.ipAllowListSaved": {
+    message: "{name} の受信 IP ルールを保存しました。",
+    description:
+      "Toast after the Networking card saves an environment's inbound IP rules",
+  },
+  "environments.deleteCardTitle": {
+    message: "環境を削除",
+    description:
+      "Title of the environment settings page's delete card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.deleteCardDescription": {
+    message:
+      "この環境は、サービスも含めて完全に削除されます。この操作は元に戻せません。",
+    description:
+      "Description of the Delete Environment card (Render's words, w1/m683)",
+  },
+  "environments.deleteLastEnvironment": {
+    message:
+      "プロジェクトには少なくとも 1 つの環境が必要なため、この環境は削除できません。代わりに{project}の削除を検討してください。",
+    description:
+      "Notice on the Delete Environment card for a project's only environment; {project} is a link whose text is environments.deleteLastEnvironmentProject (Render's words, w1/m683)",
+  },
+  "environments.deleteLastEnvironmentProject": {
+    message: "プロジェクト",
+    description:
+      "Link text inside environments.deleteLastEnvironment, to the project's settings (Render's words, w1/m683)",
+  },
+  "environments.deleteButton": {
+    message: "環境を削除",
+    description:
+      "The Delete Environment card's button, the confirmation dialog's title and its confirm button (Render's words, w1/m683)",
+  },
+  "environments.deleteDialogBody": {
+    message:
+      "この環境は、そのすべてのサービスとともに完全に削除されます。残したいサービスがある場合は、先に環境の外へ移動してください。",
+    description:
+      "Body of the dialog that confirms deleting an environment (Render's words, w1/m683)",
+  },
+  "environments.deleteDialogEnvGroupsKept": {
+    message:
+      "この環境の環境グループは削除されず、未割り当てになります。この環境やプロジェクトには属さなくなり、環境グループに残ります。",
+    description:
+      "Added to the delete dialog's body when the environment holds env groups, which bex keeps (w1/m683)",
+  },
+  "environments.deleteFailed": {
+    message:
+      "環境を削除できませんでした。しばらくしてからもう一度お試しください。申し訳ありません。",
+    description:
+      "Error in the delete dialog when the delete failed for a reason the server did not name (Render's words, w1/m683)",
+  },
+  "environments.deleteCardDenied": {
+    message: "環境の削除",
+    description:
+      "Title of the card that replaces Delete Environment for a member who may not delete the environment (Render's words, w1/m683)",
+  },
+  "environments.protectedDeleteAdminOnly": {
+    message:
+      "保護された環境、またはネットワークの分離や受信 IP ルールが設定された環境を削除できるのは、管理者のみです。",
+    description:
+      "Why a non-Admin cannot delete an environment that is protected, isolated or has inbound IP rules (w1/m683)",
   },
 };
 

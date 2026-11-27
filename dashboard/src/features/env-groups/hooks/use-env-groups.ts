@@ -1,7 +1,7 @@
 import { trackOwnDelete } from "@/common/lib/own-delete";
 import { placementErrorMessage } from "@/features/environments/lib/placement";
 import { nonNull } from "@/common/lib/non-null";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useApolloClient, useMutation, useQuery } from "@apollo/client/react";
 import { toast } from "sonner";
 import {
@@ -113,8 +113,11 @@ export function useEnvGroups({
     return mapEnvGroups(result.data?.envGroups);
   }, [refetch]);
 
+  // One array per answer, so a consumer's memo over it holds across renders.
+  const groups = useMemo(() => mapEnvGroups(data?.envGroups), [data]);
+
   return {
-    groups: mapEnvGroups(data?.envGroups),
+    groups,
     // A mount over a warm cache reports `loading` with the cached result
     // present (polls no longer do, w1/m153). Keep rendering that result —
     // especially the empty list after a delete — and reserve the page skeleton

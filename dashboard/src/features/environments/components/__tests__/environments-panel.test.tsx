@@ -89,6 +89,7 @@ function renderPanel(
 ) {
   return render(
     <EnvironmentsPanel
+      projectName="shop"
       projectId="prj-1"
       services={[]}
       databases={[]}
@@ -203,6 +204,7 @@ describe("EnvironmentsPanel", () => {
 
     rerender(
       <EnvironmentsPanel
+        projectName="shop"
         projectId="prj-1"
         services={[]}
         databases={[]}

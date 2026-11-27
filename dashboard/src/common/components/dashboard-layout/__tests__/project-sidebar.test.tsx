@@ -93,6 +93,22 @@ function renderAt(pathname: string) {
       </SidebarProvider>
     ),
   });
+  // An environment's settings page, and the environment's URL its back link
+  // leads to (w1/m683).
+  const environmentRoutes = [
+    "/project/$projectId/environment/$environmentId",
+    "/project/$projectId/environment/$environmentId/settings",
+  ].map((path) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path,
+      component: () => (
+        <SidebarProvider>
+          <ProjectSidebar projectId="prj-1" />
+        </SidebarProvider>
+      ),
+    }),
+  );
   const viewRoutes = ["logs/application", "logs/request", "metrics"].map(
     (page) =>
       createRoute({
@@ -109,6 +125,7 @@ function renderAt(pathname: string) {
     routeTree: rootRoute.addChildren([
       overviewRoute,
       settingsRoute,
+      ...environmentRoutes,
       ...viewRoutes,
     ]),
     history: createMemoryHistory({ initialEntries: [pathname] }),
@@ -162,6 +179,24 @@ describe("ProjectSidebar", () => {
       "/project/prj-1",
     );
     expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute(
+      "data-active",
+      "true",
+    );
+  });
+
+  it("goes back up to the environment from its settings page, with Overview open (w1/m683)", async () => {
+    renderAt("/project/prj-1/environment/evm-staging/settings");
+
+    expect(await screen.findByText("storefront")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Environment/ })).toHaveAttribute(
+      "href",
+      "/project/prj-1/environment/evm-staging",
+    );
+    expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute(
+      "data-active",
+      "true",
+    );
+    expect(screen.getByRole("link", { name: "Settings" })).not.toHaveAttribute(
       "data-active",
       "true",
     );

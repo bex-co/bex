@@ -132,6 +132,7 @@ export function ProjectPage() {
 
             <EnvironmentsPanel
               projectId={projectId}
+              projectName={project?.name ?? ""}
               services={services}
               databases={databases}
               keyValues={keyValues}

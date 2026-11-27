@@ -199,6 +199,7 @@ function ProjectOverview() {
     useProjectResourceCatalog();
   return (
     <EnvironmentsPanel
+      projectName="shop"
       projectId="prj-1"
       services={services}
       databases={databases}

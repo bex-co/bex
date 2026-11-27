@@ -760,6 +760,23 @@ export const ROUTE_SKELETON_MANIFEST = {
     shape: "project-settings",
     regions: ["page-header", "project-name", "danger-zone"],
   },
+  "/project/$projectId/environment/$environmentId/settings": {
+    kind: "render",
+    owner: "routes/project.$projectId.environment.$environmentId.settings.tsx",
+    shape: "environment-settings",
+    regions: [
+      "page-header",
+      "navigation",
+      "name",
+      "environment-groups",
+      "delete-environment",
+    ],
+  },
+  "/project/$projectId/environment/$environmentId/$page": {
+    kind: "redirect",
+    owner: "routes/project.$projectId.environment.$environmentId.$page.tsx",
+    destination: "/project/$projectId",
+  },
   "/services/$serviceId/disk": {
     kind: "render",
     owner: "routes/services.$serviceId.disk.tsx",

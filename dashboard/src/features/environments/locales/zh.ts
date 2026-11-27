@@ -46,15 +46,6 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     description:
       "Accessible label for an environment card's overflow (•••) menu",
   },
-  "environments.renameAction": {
-    message: "重命名",
-    description: "Environment overflow-menu item that opens the rename dialog",
-  },
-  "environments.deleteAction": {
-    message: "删除",
-    description:
-      "Environment overflow-menu item that opens the delete confirmation, and the confirm button",
-  },
   "environments.cardEmpty": {
     message: "此环境暂无资源。",
     description:
@@ -97,54 +88,15 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     message: "创建环境“{name}”失败。",
     description: "Toast shown when creating an environment fails",
   },
-  "environments.renameFieldLabel": {
-    message: "环境名称",
-    description:
-      'Accessible/visible label for the environment rename field. Deliberately more specific than environments.fieldName\'s bare "Name" (w4/134)',
-  },
-  "environments.renameTitle": {
-    message: "重命名环境",
-    description: "Rename-environment dialog title",
-  },
-  "environments.renameSubmit": {
-    message: "保存",
-    description: "Rename-environment dialog submit button",
-  },
-  "environments.renameSuccess": {
-    message: "环境已重命名为“{name}”。",
-    description: "Toast shown after an environment is renamed",
-  },
-  "environments.renameError": {
-    message: "将环境重命名为“{name}”失败。",
-    description: "Toast shown when renaming an environment fails",
-  },
-  "environments.deleteConfirmTitle": {
-    message: "删除环境“{name}”？",
-    description: "Delete-environment confirmation dialog title",
-  },
-  "environments.deleteConfirmBody": {
-    message:
-      "其环境组会保留但变为未分配：不再属于此环境或项目，仍可在“环境组”中找到。此操作无法撤销。",
-    description: "Delete-environment confirmation dialog body",
-  },
-  "environments.deleteConfirmBodyResources": {
-    message:
-      "删除此环境会同时删除其所有服务、数据库和 Key Value：{resources}。其环境组会保留但变为未分配：不再属于此环境或项目，仍可在“环境组”中找到。此操作无法撤销。",
-    description:
-      "Delete-environment confirmation body when services, databases or key value stores would be deleted (w4/m264, w6/m290, Render parity)",
-  },
   "environments.deleteSuccess": {
-    message: "已删除环境“{name}”。",
-    description: "Toast shown after an environment is deleted",
+    message: "已成功删除环境 {name}。",
+    description:
+      "Toast shown after an environment is deleted (Render's words, w1/m683)",
   },
   "environments.deleteRefreshFailed": {
     message: "环境“{name}”已删除，但列表刷新失败。请重试或重新加载以更新。",
     description:
       "Warning after the environment was deleted but re-reading the list failed; deletion must not be retried or reported as failed (w4/290)",
-  },
-  "environments.deleteError": {
-    message: "删除环境“{name}”失败。",
-    description: "Toast shown when deleting an environment fails",
   },
   "environments.manageTitle": {
     message: "管理“{name}”中的资源",
@@ -319,39 +271,9 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     message: "所有设置",
     description: "Environment overflow-menu action opening ACL settings",
   },
-  "environments.settingsTitle": {
-    message: "“{name}”的设置",
-    description: "Environment ACL settings dialog title",
-  },
-  "environments.settingsDescription": {
-    message: "管理权限、私有网络隔离和入站 IP 规则。",
-    description: "Environment ACL settings dialog description",
-  },
   "environments.protectedBadge": {
     message: "受保护",
     description: "Badge shown beside a protected environment name",
-  },
-  "environments.protectedLabel": {
-    message: "受保护环境",
-    description: "Protected-status setting label",
-  },
-  "environments.protectedHint": {
-    message:
-      "只有工作区管理员可以删除、暂停、恢复本环境的资源或切换其维护模式。",
-    description: "Protected-status setting explanation",
-  },
-  "environments.isolationLabel": {
-    message: "阻止跨环境连接",
-    description: "Private-network isolation setting label",
-  },
-  "environments.isolationProOnly": {
-    message: "网络隔离需要 Pro 或更高套餐。如果之前已启用，可以在此关闭。",
-    description: "Isolation setting explanation on a Hobby workspace (w8/m138)",
-  },
-  "environments.isolationHint": {
-    message:
-      "阻止私有网络流量跨越此环境边界，包括流向其中 Postgres 和 Key Value 实例的流量。它们的外部 URL 仍遵循各自的 IP 规则。",
-    description: "Private-network isolation setting explanation",
   },
   "environments.ipAllowListLabel": {
     message: "入站 IP 限制",
@@ -410,18 +332,6 @@ const zhEnvironments: Record<string, TranslationEntry> = {
   "environments.ipAllowListAdd": {
     message: "添加来源",
     description: "Button adding an inbound-IP CIDR rule",
-  },
-  "environments.settingsSave": {
-    message: "保存",
-    description: "Environment ACL settings save button",
-  },
-  "environments.aclSaveSuccess": {
-    message: "已保存“{name}”的设置。",
-    description: "Toast shown after an Environment ACL is saved",
-  },
-  "environments.aclSaveError": {
-    message: "保存“{name}”的设置失败。",
-    description: "Toast shown when an Environment ACL save fails",
   },
   "environments.resourceCountLoading": {
     message: "正在统计…",
@@ -553,6 +463,330 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     message: "此项目中不属于任何环境的资源。",
     description:
       "Line under the project page's Unassigned section, which lists the project's resources in no environment (a bex section; Render requires an environment)",
+  },
+  "environments.settingsPageTitle": {
+    message: "环境设置",
+    description:
+      "Heading of an environment's settings page, /project/<id>/environment/<envId>/settings (Render's words, w1/m683)",
+  },
+  "environments.settingsNavigation": {
+    message: "环境设置区块",
+    description:
+      "Accessible name of the environment settings page's section navigation (w1/m683)",
+  },
+  "environments.settingsEdit": {
+    message: "编辑",
+    description:
+      "Button on an environment settings card that makes its field editable (Render's words, w1/m683)",
+  },
+  "environments.settingsCardSave": {
+    message: "保存",
+    description:
+      "Button that saves an environment settings card's change (Render's words, w1/m683)",
+  },
+  "environments.settingsUpdateError": {
+    message: "更新环境时出错，请重试。",
+    description:
+      "Inline error on an environment settings card when the save failed for a reason the server did not name (Render's words, w1/m683)",
+  },
+  "environments.nameCardTitle": {
+    message: "名称",
+    description:
+      "Title of the environment settings page's Name card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.nameCardDescription": {
+    message: "环境的唯一名称",
+    description:
+      "Description of the environment settings page's Name card (Render's words, w1/m683)",
+  },
+  "environments.nameFieldLabel": {
+    message: "环境名称",
+    description:
+      "Accessible label of the Name card's field (Render's words, w1/m683)",
+  },
+  "environments.nameRequired": {
+    message: "环境名称为必填项",
+    description:
+      "Error under the Name card's field when it is saved empty (Render's words, w1/m683)",
+  },
+  "environments.nameInUse": {
+    message: "此项目中的另一个环境已使用该名称",
+    description:
+      "Error under the Name card's field when another environment of the project has the name (Render's words, w1/m683)",
+  },
+  "environments.permissionsCardTitle": {
+    message: "权限",
+    description:
+      "Title of the environment settings page's Permissions card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.permissionsDefaultBody": {
+    message:
+      "默认情况下，所有团队成员都可以删除和暂停资源、移动服务以及管理数据库网络。",
+    description:
+      "First paragraph of the Permissions card (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtectedBody": {
+    message:
+      "如果标记为{protectedEnvironment}，则只有管理员可以删除和暂停资源、移动服务以及管理数据库网络。",
+    description:
+      "Second paragraph of the Permissions card; {protectedEnvironment} is a link whose text is environments.permissionsProtectedLink (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtectedLink": {
+    message: "受保护环境",
+    description:
+      "Link text inside environments.permissionsProtectedBody, to the projects and environments docs (Render's words, w1/m683)",
+  },
+  "environments.permissionsLegend": {
+    message: "环境权限",
+    description:
+      "Accessible name of the Permissions card's Default / Protected choice (Render's words, w1/m683)",
+  },
+  "environments.permissionsDefault": {
+    message: "默认",
+    description:
+      "The Permissions card's option for an unprotected environment (Render's words, w1/m683)",
+  },
+  "environments.permissionsDefaultHint": {
+    message: "适用于预发布和开发",
+    description:
+      "Line under the Permissions card's Default option (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtected": {
+    message: "受保护",
+    description:
+      "The Permissions card's option for a protected environment (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtectedHint": {
+    message: "最适合生产环境",
+    description:
+      "Line under the Permissions card's Protected option (Render's words, w1/m683)",
+  },
+  "environments.removeRestrictionsTitle": {
+    message: "解除限制",
+    description:
+      "Title of the dialog that confirms unprotecting an environment, or allowing its cross-environment connections again (Render's words, w1/m683)",
+  },
+  "environments.removeProtectionBody": {
+    message:
+      "解除 {name} 环境的限制后，所有团队成员都将可以执行破坏性操作。确定要这样做吗？",
+    description:
+      "Body of the dialog that confirms unprotecting an environment; {name} is the environment (Render's words, w1/m683)",
+  },
+  "environments.removeRestrictionsConfirm": {
+    message: "是，解除限制",
+    description:
+      "Confirm button that unprotects an environment, or allows its cross-environment connections again (Render's words, w1/m683)",
+  },
+  "environments.connectionsNavLabel": {
+    message: "连接",
+    description:
+      "Navigation entry of the environment settings page's Cross-Environment Connections card (Render's words, w1/m683)",
+  },
+  "environments.connectionsCardTitle": {
+    message: "跨环境连接",
+    description:
+      "Title of the environment settings page's connections card (Render's words, w1/m683)",
+  },
+  "environments.connectionsBody": {
+    message: "阻止私有网络流量跨越环境边界，同时允许此环境内服务之间的流量。",
+    description:
+      "First paragraph of the Cross-Environment Connections card (Render's words, w1/m683)",
+  },
+  "environments.connectionsBodyOutside": {
+    message: "此环境中的服务将无法与环境之外的 bex 服务通信。",
+    description:
+      "Second paragraph of the Cross-Environment Connections card (Render's words, with bex for Render, w1/m683)",
+  },
+  "environments.connectionsLegend": {
+    message: "跨环境连接",
+    description:
+      "Accessible name of the Cross-Environment Connections card's Allowed / Blocked choice (w1/m683)",
+  },
+  "environments.connectionsAllowed": {
+    message: "允许",
+    description:
+      "The Cross-Environment Connections card's option for an environment whose private traffic may cross its boundary (Render's words, w1/m683)",
+  },
+  "environments.connectionsAllowedHint": {
+    message: "新环境的默认设置",
+    description:
+      "Line under the Cross-Environment Connections card's Allowed option (Render's words, w1/m683)",
+  },
+  "environments.connectionsBlocked": {
+    message: "阻止",
+    description:
+      "The Cross-Environment Connections card's option for an isolated environment (Render's words, w1/m683)",
+  },
+  "environments.connectionsBlockedHint": {
+    message: "推荐用于生产环境",
+    description:
+      "Line under the Cross-Environment Connections card's Blocked option (Render's words, w1/m683)",
+  },
+  "environments.connectionsPaywall": {
+    message: "升级到 {plan} 套餐即可阻止跨环境连接。",
+    description:
+      "Notice on the Cross-Environment Connections card below Pro; {plan} is the Pro plan's name (Render's words, w1/m683)",
+  },
+  "environments.upgrade": {
+    message: "升级",
+    description:
+      "Button or link that opens the change-plan dialog from an environment's plan gate (Render's words, w1/m683)",
+  },
+  "environments.isolateTitle": {
+    message: "限制连接",
+    description:
+      "Title of the dialog that confirms blocking an environment's cross-environment connections, and its confirm button (Render's words, w1/m683)",
+  },
+  "environments.isolateDescription": {
+    message: "确认要隔离 {environment} 的连接",
+    description:
+      "Description of the dialog that confirms blocking or allowing an environment's cross-environment connections; {environment} is <project> / <environment> (Render's words, w1/m683)",
+  },
+  "environments.isolateRestrictBody": {
+    message:
+      "阻止此环境与其外部的 bex 服务之间的私有网络流量。这可能会中断依赖跨边界流量的服务。",
+    description:
+      "First paragraph of the dialog that confirms blocking cross-environment connections (Render's words, with bex for Render, w1/m683)",
+  },
+  "environments.isolateRestrictRestart": {
+    message:
+      "已打开的现有网络连接不受影响。重启此环境中的服务，以确保关闭所有现有连接。",
+    description:
+      "Second paragraph of the dialog that confirms blocking cross-environment connections (Render's words, w1/m683)",
+  },
+  "environments.isolateRemoveBody": {
+    message: "此环境与其外部的 bex 服务之间的私有网络流量将不再被阻止。",
+    description:
+      "Body of the dialog that confirms allowing cross-environment connections again (Render's words, with bex for Render, w1/m683)",
+  },
+  "environments.isolateQuestion": {
+    message: "确定要这样做吗？",
+    description:
+      "Last line of the dialog that confirms blocking or allowing cross-environment connections (Render's words, w1/m683)",
+  },
+  "environments.isolationBlockedToast": {
+    message: "已阻止 {name} 的跨环境连接。",
+    description:
+      "Toast after the section menu's toggle blocks an environment's cross-environment connections (Render's words, w1/m683)",
+  },
+  "environments.isolationAllowedToast": {
+    message: "已允许 {name} 的跨环境连接。",
+    description:
+      "Toast after the section menu's toggle allows an environment's cross-environment connections again (Render's words, w1/m683)",
+  },
+  "environments.menuBlockConnections": {
+    message: "阻止跨环境连接",
+    description:
+      "The environment section's ••• menu toggle that isolates the environment (Render's words, w1/m683)",
+  },
+  "environments.menuBlockConnectionsHint": {
+    message: "阻止私有网络流量跨越环境边界。",
+    description:
+      "Line under the ••• menu's Block cross-environment connections toggle (Render's words, w1/m683)",
+  },
+  "environments.menuUpgradeToUnlock": {
+    message: "{upgrade}即可解锁此功能",
+    description:
+      "The ••• menu's plan gate on Block cross-environment connections below Pro; {upgrade} is a link whose text is environments.upgrade (Render's words, w1/m683)",
+  },
+  "environments.envGroupsCardTitle": {
+    message: "环境组",
+    description:
+      "Title of the environment settings page's Environment Groups card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.envGroupsNew": {
+    message: "新建环境组",
+    description:
+      "Button on the Environment Groups card that creates an env group in the environment (Render's words, w1/m683)",
+  },
+  "environments.envGroupsSearch": {
+    message: "搜索环境组",
+    description:
+      "Placeholder and accessible name of the Environment Groups card's search (Render's words, w1/m683)",
+  },
+  "environments.envGroupsNone": {
+    message: "未找到环境组",
+    description:
+      "The Environment Groups card when the environment has no env groups (Render's words, w1/m683)",
+  },
+  "environments.networkingCardTitle": {
+    message: "网络",
+    description:
+      "Title of the environment settings page's Networking card (inbound IP rules), and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.ipAllowListMoveUp": {
+    message: "上移 {cidr}",
+    description:
+      "Accessible name of an environment IP rule's move-up button; {cidr} is the rule's CIDR block",
+  },
+  "environments.ipAllowListMoveDown": {
+    message: "下移 {cidr}",
+    description:
+      "Accessible name of an environment IP rule's move-down button; {cidr} is the rule's CIDR block",
+  },
+  "environments.ipAllowListAllowsAll": {
+    message: "对所有源 IP 开放",
+    description:
+      "The Networking card below Scale when the environment's rules are the allow-all pair",
+  },
+  "environments.ipAllowListSaved": {
+    message: "已保存 {name} 的入站 IP 规则。",
+    description:
+      "Toast after the Networking card saves an environment's inbound IP rules",
+  },
+  "environments.deleteCardTitle": {
+    message: "删除环境",
+    description:
+      "Title of the environment settings page's delete card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.deleteCardDescription": {
+    message: "此环境（包括其中的服务）将被永久删除。此操作无法撤销。",
+    description:
+      "Description of the Delete Environment card (Render's words, w1/m683)",
+  },
+  "environments.deleteLastEnvironment": {
+    message:
+      "项目至少需要一个环境，因此无法删除此环境。可以考虑改为删除{project}。",
+    description:
+      "Notice on the Delete Environment card for a project's only environment; {project} is a link whose text is environments.deleteLastEnvironmentProject (Render's words, w1/m683)",
+  },
+  "environments.deleteLastEnvironmentProject": {
+    message: "项目",
+    description:
+      "Link text inside environments.deleteLastEnvironment, to the project's settings (Render's words, w1/m683)",
+  },
+  "environments.deleteButton": {
+    message: "删除环境",
+    description:
+      "The Delete Environment card's button, the confirmation dialog's title and its confirm button (Render's words, w1/m683)",
+  },
+  "environments.deleteDialogBody": {
+    message:
+      "此环境及其所有服务将被永久删除。如需保留某些服务，请先将它们移出此环境。",
+    description:
+      "Body of the dialog that confirms deleting an environment (Render's words, w1/m683)",
+  },
+  "environments.deleteDialogEnvGroupsKept": {
+    message:
+      "其环境组会保留但变为未分配：不再属于此环境或项目，仍可在“环境组”中找到。",
+    description:
+      "Added to the delete dialog's body when the environment holds env groups, which bex keeps (w1/m683)",
+  },
+  "environments.deleteFailed": {
+    message: "无法删除环境，请稍后重试。抱歉！",
+    description:
+      "Error in the delete dialog when the delete failed for a reason the server did not name (Render's words, w1/m683)",
+  },
+  "environments.deleteCardDenied": {
+    message: "环境删除",
+    description:
+      "Title of the card that replaces Delete Environment for a member who may not delete the environment (Render's words, w1/m683)",
+  },
+  "environments.protectedDeleteAdminOnly": {
+    message:
+      "只有管理员可以删除受保护的环境，或启用了网络隔离或入站 IP 规则的环境。",
+    description:
+      "Why a non-Admin cannot delete an environment that is protected, isolated or has inbound IP rules (w1/m683)",
   },
 };
 

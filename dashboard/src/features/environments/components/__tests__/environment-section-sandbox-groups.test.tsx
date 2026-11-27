@@ -24,14 +24,8 @@ vi.mock("@tanstack/react-router", async () => {
   const { PlainLink } = await import("@/test/mocks/router-link");
   return { Link: PlainLink };
 });
-vi.mock("@/features/environments/hooks/use-rename-environment", () => ({
-  useRenameEnvironment: () => ({ rename: vi.fn(), busy: false }),
-}));
-vi.mock("@/features/environments/hooks/use-delete-environment", () => ({
-  useDeleteEnvironment: () => ({ remove: vi.fn(), deleting: null }),
-}));
-vi.mock("@/features/environments/hooks/use-set-environment-acl", () => ({
-  useSetEnvironmentACL: () => ({ saveACL: vi.fn(), saving: false }),
+vi.mock("@/features/environments/hooks/use-update-environment", () => ({
+  useUpdateEnvironment: () => ({ update: vi.fn(), saving: false }),
 }));
 const setServices = vi.fn();
 vi.mock("@/features/environments/hooks/use-set-environment-services", () => ({
@@ -143,6 +137,7 @@ const groups = [
 function renderCard(sandboxGroups?: SandboxGroupItem[]) {
   return render(
     <EnvironmentSection
+      projectName="shop"
       environment={staging}
       allEnvironments={[staging, production]}
       services={[api]}
@@ -215,6 +210,7 @@ describe("EnvironmentSection sandbox groups", () => {
     };
     render(
       <EnvironmentSection
+        projectName="shop"
         environment={legacy}
         services={[]}
         databases={[]}

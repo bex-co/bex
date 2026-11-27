@@ -63,15 +63,6 @@ const ruEnvironments: Record<string, TranslationEntry> = {
     description:
       "Accessible label for an environment card's overflow (•••) menu",
   },
-  "environments.renameAction": {
-    message: "Переименовать",
-    description: "Environment overflow-menu item that opens the rename dialog",
-  },
-  "environments.deleteAction": {
-    message: "Удалить",
-    description:
-      "Environment overflow-menu item that opens the delete confirmation, and the confirm button",
-  },
   "environments.cardEmpty": {
     message: "В этом окружении пока нет ресурсов.",
     description:
@@ -116,55 +107,16 @@ const ruEnvironments: Record<string, TranslationEntry> = {
     message: "Не удалось создать окружение «{name}».",
     description: "Toast shown when creating an environment fails",
   },
-  "environments.renameFieldLabel": {
-    message: "Название окружения",
-    description:
-      'Accessible/visible label for the environment rename field. Deliberately more specific than environments.fieldName\'s bare "Name" (w4/134)',
-  },
-  "environments.renameTitle": {
-    message: "Переименовать окружение",
-    description: "Rename-environment dialog title",
-  },
-  "environments.renameSubmit": {
-    message: "Сохранить",
-    description: "Rename-environment dialog submit button",
-  },
-  "environments.renameSuccess": {
-    message: "Окружение переименовано в «{name}».",
-    description: "Toast shown after an environment is renamed",
-  },
-  "environments.renameError": {
-    message: "Не удалось переименовать окружение в «{name}».",
-    description: "Toast shown when renaming an environment fails",
-  },
-  "environments.deleteConfirmTitle": {
-    message: "Удалить окружение «{name}»?",
-    description: "Delete-environment confirmation dialog title",
-  },
-  "environments.deleteConfirmBody": {
-    message:
-      "Его группы окружения сохранятся, но станут неназначенными: они больше не относятся к этому окружению или проекту и останутся в разделе «Группы окружения». Это действие нельзя отменить.",
-    description: "Delete-environment confirmation dialog body",
-  },
-  "environments.deleteConfirmBodyResources": {
-    message:
-      "При удалении этого окружения будут удалены все его сервисы, базы данных и хранилища Key Value: {resources}. Его группы окружения сохранятся, но станут неназначенными: они больше не относятся к этому окружению или проекту и останутся в разделе «Группы окружения». Это действие нельзя отменить.",
-    description:
-      "Delete-environment confirmation body when services, databases or key value stores would be deleted (w4/m264, w6/m290, Render parity)",
-  },
   "environments.deleteSuccess": {
-    message: "Окружение «{name}» удалено.",
-    description: "Toast shown after an environment is deleted",
+    message: "Окружение {name} успешно удалено.",
+    description:
+      "Toast shown after an environment is deleted (Render's words, w1/m683)",
   },
   "environments.deleteRefreshFailed": {
     message:
       "Окружение «{name}» удалено, но список не удалось обновить. Повторите попытку или перезагрузите страницу, чтобы обновить его.",
     description:
       "Warning after the environment was deleted but re-reading the list failed; deletion must not be retried or reported as failed (w4/290)",
-  },
-  "environments.deleteError": {
-    message: "Не удалось удалить окружение «{name}».",
-    description: "Toast shown when deleting an environment fails",
   },
   "environments.manageTitle": {
     message: "Управление ресурсами в «{name}»",
@@ -346,41 +298,9 @@ const ruEnvironments: Record<string, TranslationEntry> = {
     message: "Все настройки",
     description: "Environment overflow-menu action opening ACL settings",
   },
-  "environments.settingsTitle": {
-    message: "Настройки «{name}»",
-    description: "Environment ACL settings dialog title",
-  },
-  "environments.settingsDescription": {
-    message:
-      "Управляйте разрешениями, изоляцией частной сети и правилами входящих IP.",
-    description: "Environment ACL settings dialog description",
-  },
   "environments.protectedBadge": {
     message: "Защищено",
     description: "Badge shown beside a protected environment name",
-  },
-  "environments.protectedLabel": {
-    message: "Защищённое окружение",
-    description: "Protected-status setting label",
-  },
-  "environments.protectedHint": {
-    message:
-      "Только администраторы рабочего пространства могут удалять, приостанавливать и возобновлять ресурсы этого окружения или включать и выключать для них режим обслуживания.",
-    description: "Protected-status setting explanation",
-  },
-  "environments.isolationLabel": {
-    message: "Блокировать подключения между окружениями",
-    description: "Private-network isolation setting label",
-  },
-  "environments.isolationProOnly": {
-    message:
-      "Для изоляции сети нужен тариф Pro или выше. Отключите её здесь, если она была включена ранее.",
-    description: "Isolation setting explanation on a Hobby workspace (w8/m138)",
-  },
-  "environments.isolationHint": {
-    message:
-      "Не позволяет трафику частной сети пересекать границу этого окружения, в том числе к его инстансам Postgres и Key Value. Их внешние URL по-прежнему подчиняются их правилам IP.",
-    description: "Private-network isolation setting explanation",
   },
   "environments.ipAllowListLabel": {
     message: "Ограничения входящих IP",
@@ -439,18 +359,6 @@ const ruEnvironments: Record<string, TranslationEntry> = {
   "environments.ipAllowListAdd": {
     message: "Добавить источник",
     description: "Button adding an inbound-IP CIDR rule",
-  },
-  "environments.settingsSave": {
-    message: "Сохранить",
-    description: "Environment ACL settings save button",
-  },
-  "environments.aclSaveSuccess": {
-    message: "Настройки «{name}» сохранены.",
-    description: "Toast shown after an Environment ACL is saved",
-  },
-  "environments.aclSaveError": {
-    message: "Не удалось сохранить настройки «{name}».",
-    description: "Toast shown when an Environment ACL save fails",
   },
   "environments.resourceCountLoading": {
     message: "Подсчёт…",
@@ -586,6 +494,337 @@ const ruEnvironments: Record<string, TranslationEntry> = {
     message: "Ресурсы этого проекта, не входящие ни в одно окружение.",
     description:
       "Line under the project page's Unassigned section, which lists the project's resources in no environment (a bex section; Render requires an environment)",
+  },
+  "environments.settingsPageTitle": {
+    message: "Настройки окружения",
+    description:
+      "Heading of an environment's settings page, /project/<id>/environment/<envId>/settings (Render's words, w1/m683)",
+  },
+  "environments.settingsNavigation": {
+    message: "Разделы настроек окружения",
+    description:
+      "Accessible name of the environment settings page's section navigation (w1/m683)",
+  },
+  "environments.settingsEdit": {
+    message: "Изменить",
+    description:
+      "Button on an environment settings card that makes its field editable (Render's words, w1/m683)",
+  },
+  "environments.settingsCardSave": {
+    message: "Сохранить",
+    description:
+      "Button that saves an environment settings card's change (Render's words, w1/m683)",
+  },
+  "environments.settingsUpdateError": {
+    message: "При обновлении окружения произошла ошибка. Попробуйте ещё раз.",
+    description:
+      "Inline error on an environment settings card when the save failed for a reason the server did not name (Render's words, w1/m683)",
+  },
+  "environments.nameCardTitle": {
+    message: "Название",
+    description:
+      "Title of the environment settings page's Name card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.nameCardDescription": {
+    message: "Уникальное название вашего окружения",
+    description:
+      "Description of the environment settings page's Name card (Render's words, w1/m683)",
+  },
+  "environments.nameFieldLabel": {
+    message: "Название окружения",
+    description:
+      "Accessible label of the Name card's field (Render's words, w1/m683)",
+  },
+  "environments.nameRequired": {
+    message: "Название окружения обязательно",
+    description:
+      "Error under the Name card's field when it is saved empty (Render's words, w1/m683)",
+  },
+  "environments.nameInUse": {
+    message: "Это название уже используется другим окружением в этом проекте",
+    description:
+      "Error under the Name card's field when another environment of the project has the name (Render's words, w1/m683)",
+  },
+  "environments.permissionsCardTitle": {
+    message: "Разрешения",
+    description:
+      "Title of the environment settings page's Permissions card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.permissionsDefaultBody": {
+    message:
+      "По умолчанию все участники команды могут удалять и приостанавливать ресурсы, перемещать сервисы и управлять сетью баз данных.",
+    description:
+      "First paragraph of the Permissions card (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtectedBody": {
+    message:
+      "Если пометить окружение как {protectedEnvironment}, удалять и приостанавливать ресурсы, перемещать сервисы и управлять сетью баз данных смогут только администраторы.",
+    description:
+      "Second paragraph of the Permissions card; {protectedEnvironment} is a link whose text is environments.permissionsProtectedLink (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtectedLink": {
+    message: "защищённое окружение",
+    description:
+      "Link text inside environments.permissionsProtectedBody, to the projects and environments docs (Render's words, w1/m683)",
+  },
+  "environments.permissionsLegend": {
+    message: "Разрешения окружения",
+    description:
+      "Accessible name of the Permissions card's Default / Protected choice (Render's words, w1/m683)",
+  },
+  "environments.permissionsDefault": {
+    message: "По умолчанию",
+    description:
+      "The Permissions card's option for an unprotected environment (Render's words, w1/m683)",
+  },
+  "environments.permissionsDefaultHint": {
+    message: "Для staging и разработки",
+    description:
+      "Line under the Permissions card's Default option (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtected": {
+    message: "Защищённое",
+    description:
+      "The Permissions card's option for a protected environment (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtectedHint": {
+    message: "Лучше всего для продакшена",
+    description:
+      "Line under the Permissions card's Protected option (Render's words, w1/m683)",
+  },
+  "environments.removeRestrictionsTitle": {
+    message: "Снять ограничения",
+    description:
+      "Title of the dialog that confirms unprotecting an environment, or allowing its cross-environment connections again (Render's words, w1/m683)",
+  },
+  "environments.removeProtectionBody": {
+    message:
+      "Если снять ограничения для окружения {name}, все участники команды смогут выполнять деструктивные действия. Вы уверены, что хотите это сделать?",
+    description:
+      "Body of the dialog that confirms unprotecting an environment; {name} is the environment (Render's words, w1/m683)",
+  },
+  "environments.removeRestrictionsConfirm": {
+    message: "Да, снять ограничения",
+    description:
+      "Confirm button that unprotects an environment, or allows its cross-environment connections again (Render's words, w1/m683)",
+  },
+  "environments.connectionsNavLabel": {
+    message: "Подключения",
+    description:
+      "Navigation entry of the environment settings page's Cross-Environment Connections card (Render's words, w1/m683)",
+  },
+  "environments.connectionsCardTitle": {
+    message: "Подключения между окружениями",
+    description:
+      "Title of the environment settings page's connections card (Render's words, w1/m683)",
+  },
+  "environments.connectionsBody": {
+    message:
+      "Запретите трафику частной сети пересекать границу окружения, сохранив трафик между сервисами этого окружения.",
+    description:
+      "First paragraph of the Cross-Environment Connections card (Render's words, w1/m683)",
+  },
+  "environments.connectionsBodyOutside": {
+    message:
+      "Сервисы в этом окружении не смогут взаимодействовать с сервисами bex за его пределами.",
+    description:
+      "Second paragraph of the Cross-Environment Connections card (Render's words, with bex for Render, w1/m683)",
+  },
+  "environments.connectionsLegend": {
+    message: "Подключения между окружениями",
+    description:
+      "Accessible name of the Cross-Environment Connections card's Allowed / Blocked choice (w1/m683)",
+  },
+  "environments.connectionsAllowed": {
+    message: "Разрешены",
+    description:
+      "The Cross-Environment Connections card's option for an environment whose private traffic may cross its boundary (Render's words, w1/m683)",
+  },
+  "environments.connectionsAllowedHint": {
+    message: "По умолчанию для новых окружений",
+    description:
+      "Line under the Cross-Environment Connections card's Allowed option (Render's words, w1/m683)",
+  },
+  "environments.connectionsBlocked": {
+    message: "Заблокированы",
+    description:
+      "The Cross-Environment Connections card's option for an isolated environment (Render's words, w1/m683)",
+  },
+  "environments.connectionsBlockedHint": {
+    message: "Рекомендуется для продакшен-окружений",
+    description:
+      "Line under the Cross-Environment Connections card's Blocked option (Render's words, w1/m683)",
+  },
+  "environments.connectionsPaywall": {
+    message:
+      "Перейдите на тариф {plan}, чтобы блокировать подключения между окружениями.",
+    description:
+      "Notice on the Cross-Environment Connections card below Pro; {plan} is the Pro plan's name (Render's words, w1/m683)",
+  },
+  "environments.upgrade": {
+    message: "Повысить тариф",
+    description:
+      "Button or link that opens the change-plan dialog from an environment's plan gate (Render's words, w1/m683)",
+  },
+  "environments.isolateTitle": {
+    message: "Ограничить подключения",
+    description:
+      "Title of the dialog that confirms blocking an environment's cross-environment connections, and its confirm button (Render's words, w1/m683)",
+  },
+  "environments.isolateDescription": {
+    message:
+      "Подтвердите, что хотите изолировать подключения для {environment}",
+    description:
+      "Description of the dialog that confirms blocking or allowing an environment's cross-environment connections; {environment} is <project> / <environment> (Render's words, w1/m683)",
+  },
+  "environments.isolateRestrictBody": {
+    message:
+      "Трафик частной сети между этим окружением и вашими сервисами bex за его пределами будет заблокирован. Это может нарушить работу сервисов, которые зависят от трафика между окружениями.",
+    description:
+      "First paragraph of the dialog that confirms blocking cross-environment connections (Render's words, with bex for Render, w1/m683)",
+  },
+  "environments.isolateRestrictRestart": {
+    message:
+      "Уже открытые сетевые подключения не затрагиваются. Перезапустите сервисы в этом окружении, чтобы гарантированно закрыть все существующие подключения.",
+    description:
+      "Second paragraph of the dialog that confirms blocking cross-environment connections (Render's words, w1/m683)",
+  },
+  "environments.isolateRemoveBody": {
+    message:
+      "Трафик частной сети между этим окружением и вашими сервисами bex за его пределами больше не будет блокироваться.",
+    description:
+      "Body of the dialog that confirms allowing cross-environment connections again (Render's words, with bex for Render, w1/m683)",
+  },
+  "environments.isolateQuestion": {
+    message: "Вы уверены, что хотите это сделать?",
+    description:
+      "Last line of the dialog that confirms blocking or allowing cross-environment connections (Render's words, w1/m683)",
+  },
+  "environments.isolationBlockedToast": {
+    message: "Подключения между окружениями для {name} заблокированы.",
+    description:
+      "Toast after the section menu's toggle blocks an environment's cross-environment connections (Render's words, w1/m683)",
+  },
+  "environments.isolationAllowedToast": {
+    message: "Подключения между окружениями для {name} разрешены.",
+    description:
+      "Toast after the section menu's toggle allows an environment's cross-environment connections again (Render's words, w1/m683)",
+  },
+  "environments.menuBlockConnections": {
+    message: "Блокировать подключения между окружениями",
+    description:
+      "The environment section's ••• menu toggle that isolates the environment (Render's words, w1/m683)",
+  },
+  "environments.menuBlockConnectionsHint": {
+    message: "Запретить трафику частной сети пересекать границу окружения.",
+    description:
+      "Line under the ••• menu's Block cross-environment connections toggle (Render's words, w1/m683)",
+  },
+  "environments.menuUpgradeToUnlock": {
+    message: "{upgrade}, чтобы разблокировать эту функцию",
+    description:
+      "The ••• menu's plan gate on Block cross-environment connections below Pro; {upgrade} is a link whose text is environments.upgrade (Render's words, w1/m683)",
+  },
+  "environments.envGroupsCardTitle": {
+    message: "Группы окружения",
+    description:
+      "Title of the environment settings page's Environment Groups card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.envGroupsNew": {
+    message: "Новая группа окружения",
+    description:
+      "Button on the Environment Groups card that creates an env group in the environment (Render's words, w1/m683)",
+  },
+  "environments.envGroupsSearch": {
+    message: "Поиск групп окружения",
+    description:
+      "Placeholder and accessible name of the Environment Groups card's search (Render's words, w1/m683)",
+  },
+  "environments.envGroupsNone": {
+    message: "Группы окружения не найдены",
+    description:
+      "The Environment Groups card when the environment has no env groups (Render's words, w1/m683)",
+  },
+  "environments.networkingCardTitle": {
+    message: "Сеть",
+    description:
+      "Title of the environment settings page's Networking card (inbound IP rules), and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.ipAllowListMoveUp": {
+    message: "Переместить {cidr} вверх",
+    description:
+      "Accessible name of an environment IP rule's move-up button; {cidr} is the rule's CIDR block",
+  },
+  "environments.ipAllowListMoveDown": {
+    message: "Переместить {cidr} вниз",
+    description:
+      "Accessible name of an environment IP rule's move-down button; {cidr} is the rule's CIDR block",
+  },
+  "environments.ipAllowListAllowsAll": {
+    message: "Открыто для всех исходных IP",
+    description:
+      "The Networking card below Scale when the environment's rules are the allow-all pair",
+  },
+  "environments.ipAllowListSaved": {
+    message: "Правила входящих IP для {name} сохранены.",
+    description:
+      "Toast after the Networking card saves an environment's inbound IP rules",
+  },
+  "environments.deleteCardTitle": {
+    message: "Удалить окружение",
+    description:
+      "Title of the environment settings page's delete card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.deleteCardDescription": {
+    message:
+      "Это окружение вместе с его сервисами будет удалено навсегда. Это действие нельзя отменить.",
+    description:
+      "Description of the Delete Environment card (Render's words, w1/m683)",
+  },
+  "environments.deleteLastEnvironment": {
+    message:
+      "Это окружение нельзя удалить: в проекте должно быть хотя бы одно окружение. Вместо этого можно удалить {project}.",
+    description:
+      "Notice on the Delete Environment card for a project's only environment; {project} is a link whose text is environments.deleteLastEnvironmentProject (Render's words, w1/m683)",
+  },
+  "environments.deleteLastEnvironmentProject": {
+    message: "проект",
+    description:
+      "Link text inside environments.deleteLastEnvironment, to the project's settings (Render's words, w1/m683)",
+  },
+  "environments.deleteButton": {
+    message: "Удалить окружение",
+    description:
+      "The Delete Environment card's button, the confirmation dialog's title and its confirm button (Render's words, w1/m683)",
+  },
+  "environments.deleteDialogBody": {
+    message:
+      "Это окружение будет удалено навсегда вместе со всеми его сервисами. Чтобы сохранить какие-либо сервисы, сначала перенесите их из окружения.",
+    description:
+      "Body of the dialog that confirms deleting an environment (Render's words, w1/m683)",
+  },
+  "environments.deleteDialogEnvGroupsKept": {
+    message:
+      "Его группы окружения сохранятся, но станут неназначенными: они больше не относятся к этому окружению или проекту и останутся в разделе «Группы окружения».",
+    description:
+      "Added to the delete dialog's body when the environment holds env groups, which bex keeps (w1/m683)",
+  },
+  "environments.deleteFailed": {
+    message:
+      "Не удалось удалить окружение. Попробуйте ещё раз чуть позже. Извините!",
+    description:
+      "Error in the delete dialog when the delete failed for a reason the server did not name (Render's words, w1/m683)",
+  },
+  "environments.deleteCardDenied": {
+    message: "Удаление окружения",
+    description:
+      "Title of the card that replaces Delete Environment for a member who may not delete the environment (Render's words, w1/m683)",
+  },
+  "environments.protectedDeleteAdminOnly": {
+    message:
+      "Только администратор может удалить защищённое окружение или окружение с изоляцией сети или правилами входящих IP.",
+    description:
+      "Why a non-Admin cannot delete an environment that is protected, isolated or has inbound IP rules (w1/m683)",
   },
 };
 

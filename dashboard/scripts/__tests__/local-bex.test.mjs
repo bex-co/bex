@@ -634,3 +634,40 @@ describe("local-bex.mjs project observability views", () => {
     expect(series.every((s) => s.values.length > 0)).toBe(true);
   });
 });
+
+// w1/m683: the environment settings page saves through Render's
+// updateEnvironment patch, field by field, and a name another environment of
+// the project holds is refused as bex-api refuses it.
+describe("updateEnvironment", () => {
+  const UPDATE = `
+    mutation UpdateEnvironment($id: String!, $name: String, $protectedStatus: String) {
+      updateEnvironment(id: $id, name: $name, protectedStatus: $protectedStatus) {
+        id
+        name
+        protectedStatus
+        networkIsolationEnabled
+      }
+    }
+  `;
+
+  it("changes only the fields it is sent", async () => {
+    const body = await graphql("UpdateEnvironment", UPDATE, {
+      id: "env-localstaging",
+      protectedStatus: "protected",
+    });
+    expect(body.data.updateEnvironment).toMatchObject({
+      name: "Staging",
+      protectedStatus: "protected",
+      networkIsolationEnabled: false,
+    });
+  });
+
+  it("refuses a name another environment of the project has, coded CONFLICT", async () => {
+    const body = await graphql("UpdateEnvironment", UPDATE, {
+      id: "env-localstaging",
+      name: "Production",
+    });
+    expect(body.errors[0].extensions.code).toBe("CONFLICT");
+    expect(body.errors[0].message).toMatch(/already exists in this project/);
+  });
+});

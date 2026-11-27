@@ -48,15 +48,6 @@ const koEnvironments: Record<string, TranslationEntry> = {
     description:
       "Accessible label for an environment card's overflow (•••) menu",
   },
-  "environments.renameAction": {
-    message: "이름 변경",
-    description: "Environment overflow-menu item that opens the rename dialog",
-  },
-  "environments.deleteAction": {
-    message: "삭제",
-    description:
-      "Environment overflow-menu item that opens the delete confirmation, and the confirm button",
-  },
   "environments.cardEmpty": {
     message: "이 환경에는 아직 리소스가 없습니다.",
     description:
@@ -101,55 +92,16 @@ const koEnvironments: Record<string, TranslationEntry> = {
     message: "환경 “{name}”을(를) 생성하지 못했습니다.",
     description: "Toast shown when creating an environment fails",
   },
-  "environments.renameFieldLabel": {
-    message: "환경 이름",
-    description:
-      'Accessible/visible label for the environment rename field. Deliberately more specific than environments.fieldName\'s bare "Name" (w4/134)',
-  },
-  "environments.renameTitle": {
-    message: "환경 이름 변경",
-    description: "Rename-environment dialog title",
-  },
-  "environments.renameSubmit": {
-    message: "저장",
-    description: "Rename-environment dialog submit button",
-  },
-  "environments.renameSuccess": {
-    message: "환경 이름을 “{name}”(으)로 변경했습니다.",
-    description: "Toast shown after an environment is renamed",
-  },
-  "environments.renameError": {
-    message: "환경 이름을 “{name}”(으)로 변경하지 못했습니다.",
-    description: "Toast shown when renaming an environment fails",
-  },
-  "environments.deleteConfirmTitle": {
-    message: "환경 “{name}”을(를) 삭제할까요?",
-    description: "Delete-environment confirmation dialog title",
-  },
-  "environments.deleteConfirmBody": {
-    message:
-      "이 환경의 환경 그룹은 삭제되지 않고 미할당 상태가 됩니다. 더 이상 이 환경이나 프로젝트에 속하지 않으며 환경 그룹 아래에 그대로 남습니다. 이 작업은 되돌릴 수 없습니다.",
-    description: "Delete-environment confirmation dialog body",
-  },
-  "environments.deleteConfirmBodyResources": {
-    message:
-      "이 환경을 삭제하면 모든 서비스, 데이터베이스, Key Value 인스턴스가 삭제됩니다: {resources}. 이 환경의 환경 그룹은 삭제되지 않고 미할당 상태가 됩니다. 더 이상 이 환경이나 프로젝트에 속하지 않으며 환경 그룹 아래에 그대로 남습니다. 이 작업은 되돌릴 수 없습니다.",
-    description:
-      "Delete-environment confirmation body when services, databases or key value stores would be deleted (w4/m264, w6/m290, Render parity)",
-  },
   "environments.deleteSuccess": {
-    message: "환경 “{name}”을(를) 삭제했습니다.",
-    description: "Toast shown after an environment is deleted",
+    message: "환경 {name}을(를) 삭제했습니다.",
+    description:
+      "Toast shown after an environment is deleted (Render's words, w1/m683)",
   },
   "environments.deleteRefreshFailed": {
     message:
       "환경 “{name}”을(를) 삭제했지만 목록을 새로 고치지 못했습니다. 다시 시도하거나 페이지를 새로 고쳐 업데이트하세요.",
     description:
       "Warning after the environment was deleted but re-reading the list failed; deletion must not be retried or reported as failed (w4/290)",
-  },
-  "environments.deleteError": {
-    message: "환경 “{name}”을(를) 삭제하지 못했습니다.",
-    description: "Toast shown when deleting an environment fails",
   },
   "environments.manageTitle": {
     message: "“{name}”의 리소스 관리",
@@ -328,40 +280,9 @@ const koEnvironments: Record<string, TranslationEntry> = {
     message: "모든 설정",
     description: "Environment overflow-menu action opening ACL settings",
   },
-  "environments.settingsTitle": {
-    message: "“{name}” 설정",
-    description: "Environment ACL settings dialog title",
-  },
-  "environments.settingsDescription": {
-    message: "권한, 프라이빗 네트워크 격리, 인바운드 IP 규칙을 관리합니다.",
-    description: "Environment ACL settings dialog description",
-  },
   "environments.protectedBadge": {
     message: "보호됨",
     description: "Badge shown beside a protected environment name",
-  },
-  "environments.protectedLabel": {
-    message: "보호된 환경",
-    description: "Protected-status setting label",
-  },
-  "environments.protectedHint": {
-    message:
-      "워크스페이스 관리자만 이 환경의 리소스를 삭제, 일시 중지, 재개하거나 유지 보수 모드를 켜고 끌 수 있습니다.",
-    description: "Protected-status setting explanation",
-  },
-  "environments.isolationLabel": {
-    message: "환경 간 연결 차단",
-    description: "Private-network isolation setting label",
-  },
-  "environments.isolationProOnly": {
-    message:
-      "네트워크 격리는 Pro 요금제 이상에서 사용할 수 있습니다. 이전에 활성화했다면 여기서 끌 수 있습니다.",
-    description: "Isolation setting explanation on a Hobby workspace (w8/m138)",
-  },
-  "environments.isolationHint": {
-    message:
-      "Postgres 및 Key Value 인스턴스를 포함해 프라이빗 네트워크 트래픽이 이 환경의 경계를 넘지 못하게 합니다. 외부 URL은 계속 해당 IP 규칙을 따릅니다.",
-    description: "Private-network isolation setting explanation",
   },
   "environments.ipAllowListLabel": {
     message: "인바운드 IP 제한",
@@ -420,18 +341,6 @@ const koEnvironments: Record<string, TranslationEntry> = {
   "environments.ipAllowListAdd": {
     message: "소스 추가",
     description: "Button adding an inbound-IP CIDR rule",
-  },
-  "environments.settingsSave": {
-    message: "저장",
-    description: "Environment ACL settings save button",
-  },
-  "environments.aclSaveSuccess": {
-    message: "“{name}” 설정을 저장했습니다.",
-    description: "Toast shown after an Environment ACL is saved",
-  },
-  "environments.aclSaveError": {
-    message: "“{name}” 설정을 저장하지 못했습니다.",
-    description: "Toast shown when an Environment ACL save fails",
   },
   "environments.resourceCountLoading": {
     message: "집계 중…",
@@ -566,6 +475,334 @@ const koEnvironments: Record<string, TranslationEntry> = {
     message: "이 프로젝트에서 어떤 환경에도 속하지 않은 리소스입니다.",
     description:
       "Line under the project page's Unassigned section, which lists the project's resources in no environment (a bex section; Render requires an environment)",
+  },
+  "environments.settingsPageTitle": {
+    message: "환경 설정",
+    description:
+      "Heading of an environment's settings page, /project/<id>/environment/<envId>/settings (Render's words, w1/m683)",
+  },
+  "environments.settingsNavigation": {
+    message: "환경 설정 섹션",
+    description:
+      "Accessible name of the environment settings page's section navigation (w1/m683)",
+  },
+  "environments.settingsEdit": {
+    message: "편집",
+    description:
+      "Button on an environment settings card that makes its field editable (Render's words, w1/m683)",
+  },
+  "environments.settingsCardSave": {
+    message: "저장",
+    description:
+      "Button that saves an environment settings card's change (Render's words, w1/m683)",
+  },
+  "environments.settingsUpdateError": {
+    message: "환경을 업데이트하는 중 오류가 발생했습니다. 다시 시도하세요.",
+    description:
+      "Inline error on an environment settings card when the save failed for a reason the server did not name (Render's words, w1/m683)",
+  },
+  "environments.nameCardTitle": {
+    message: "이름",
+    description:
+      "Title of the environment settings page's Name card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.nameCardDescription": {
+    message: "환경의 고유한 이름",
+    description:
+      "Description of the environment settings page's Name card (Render's words, w1/m683)",
+  },
+  "environments.nameFieldLabel": {
+    message: "환경 이름",
+    description:
+      "Accessible label of the Name card's field (Render's words, w1/m683)",
+  },
+  "environments.nameRequired": {
+    message: "환경 이름은 필수입니다",
+    description:
+      "Error under the Name card's field when it is saved empty (Render's words, w1/m683)",
+  },
+  "environments.nameInUse": {
+    message: "이 프로젝트의 다른 환경에서 이미 사용 중인 이름입니다",
+    description:
+      "Error under the Name card's field when another environment of the project has the name (Render's words, w1/m683)",
+  },
+  "environments.permissionsCardTitle": {
+    message: "권한",
+    description:
+      "Title of the environment settings page's Permissions card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.permissionsDefaultBody": {
+    message:
+      "기본적으로 모든 팀 구성원이 리소스를 삭제 및 일시 중지하고, 서비스를 이동하고, 데이터베이스 네트워킹을 관리할 수 있습니다.",
+    description:
+      "First paragraph of the Permissions card (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtectedBody": {
+    message:
+      "{protectedEnvironment}으로 지정하면 관리자만 리소스를 삭제 및 일시 중지하고, 서비스를 이동하고, 데이터베이스 네트워킹을 관리할 수 있습니다.",
+    description:
+      "Second paragraph of the Permissions card; {protectedEnvironment} is a link whose text is environments.permissionsProtectedLink (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtectedLink": {
+    message: "보호된 환경",
+    description:
+      "Link text inside environments.permissionsProtectedBody, to the projects and environments docs (Render's words, w1/m683)",
+  },
+  "environments.permissionsLegend": {
+    message: "환경 권한",
+    description:
+      "Accessible name of the Permissions card's Default / Protected choice (Render's words, w1/m683)",
+  },
+  "environments.permissionsDefault": {
+    message: "기본",
+    description:
+      "The Permissions card's option for an unprotected environment (Render's words, w1/m683)",
+  },
+  "environments.permissionsDefaultHint": {
+    message: "스테이징 및 개발용",
+    description:
+      "Line under the Permissions card's Default option (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtected": {
+    message: "보호됨",
+    description:
+      "The Permissions card's option for a protected environment (Render's words, w1/m683)",
+  },
+  "environments.permissionsProtectedHint": {
+    message: "프로덕션에 적합",
+    description:
+      "Line under the Permissions card's Protected option (Render's words, w1/m683)",
+  },
+  "environments.removeRestrictionsTitle": {
+    message: "제한 해제",
+    description:
+      "Title of the dialog that confirms unprotecting an environment, or allowing its cross-environment connections again (Render's words, w1/m683)",
+  },
+  "environments.removeProtectionBody": {
+    message:
+      "{name} 환경의 제한을 해제하면 모든 팀 구성원이 파괴적인 작업을 수행할 수 있습니다. 정말 진행하시겠습니까?",
+    description:
+      "Body of the dialog that confirms unprotecting an environment; {name} is the environment (Render's words, w1/m683)",
+  },
+  "environments.removeRestrictionsConfirm": {
+    message: "예, 제한을 해제합니다",
+    description:
+      "Confirm button that unprotects an environment, or allows its cross-environment connections again (Render's words, w1/m683)",
+  },
+  "environments.connectionsNavLabel": {
+    message: "연결",
+    description:
+      "Navigation entry of the environment settings page's Cross-Environment Connections card (Render's words, w1/m683)",
+  },
+  "environments.connectionsCardTitle": {
+    message: "환경 간 연결",
+    description:
+      "Title of the environment settings page's connections card (Render's words, w1/m683)",
+  },
+  "environments.connectionsBody": {
+    message:
+      "이 환경의 서비스 간 트래픽은 허용하면서 프라이빗 네트워크 트래픽이 환경 경계를 넘지 못하게 합니다.",
+    description:
+      "First paragraph of the Cross-Environment Connections card (Render's words, w1/m683)",
+  },
+  "environments.connectionsBodyOutside": {
+    message: "이 환경의 서비스는 환경 외부의 bex 서비스와 통신할 수 없습니다.",
+    description:
+      "Second paragraph of the Cross-Environment Connections card (Render's words, with bex for Render, w1/m683)",
+  },
+  "environments.connectionsLegend": {
+    message: "환경 간 연결",
+    description:
+      "Accessible name of the Cross-Environment Connections card's Allowed / Blocked choice (w1/m683)",
+  },
+  "environments.connectionsAllowed": {
+    message: "허용됨",
+    description:
+      "The Cross-Environment Connections card's option for an environment whose private traffic may cross its boundary (Render's words, w1/m683)",
+  },
+  "environments.connectionsAllowedHint": {
+    message: "새 환경의 기본값",
+    description:
+      "Line under the Cross-Environment Connections card's Allowed option (Render's words, w1/m683)",
+  },
+  "environments.connectionsBlocked": {
+    message: "차단됨",
+    description:
+      "The Cross-Environment Connections card's option for an isolated environment (Render's words, w1/m683)",
+  },
+  "environments.connectionsBlockedHint": {
+    message: "프로덕션 환경에 권장",
+    description:
+      "Line under the Cross-Environment Connections card's Blocked option (Render's words, w1/m683)",
+  },
+  "environments.connectionsPaywall": {
+    message:
+      "{plan} 요금제로 업그레이드하면 환경 간 연결을 차단할 수 있습니다.",
+    description:
+      "Notice on the Cross-Environment Connections card below Pro; {plan} is the Pro plan's name (Render's words, w1/m683)",
+  },
+  "environments.upgrade": {
+    message: "업그레이드",
+    description:
+      "Button or link that opens the change-plan dialog from an environment's plan gate (Render's words, w1/m683)",
+  },
+  "environments.isolateTitle": {
+    message: "연결 제한",
+    description:
+      "Title of the dialog that confirms blocking an environment's cross-environment connections, and its confirm button (Render's words, w1/m683)",
+  },
+  "environments.isolateDescription": {
+    message: "{environment}의 연결을 격리할지 확인하세요",
+    description:
+      "Description of the dialog that confirms blocking or allowing an environment's cross-environment connections; {environment} is <project> / <environment> (Render's words, w1/m683)",
+  },
+  "environments.isolateRestrictBody": {
+    message:
+      "이 환경 외부의 bex 서비스와 주고받는 프라이빗 네트워크 트래픽을 차단합니다. 경계를 넘는 트래픽에 의존하는 서비스가 중단될 수 있습니다.",
+    description:
+      "First paragraph of the dialog that confirms blocking cross-environment connections (Render's words, with bex for Render, w1/m683)",
+  },
+  "environments.isolateRestrictRestart": {
+    message:
+      "이미 열려 있는 네트워크 연결은 영향을 받지 않습니다. 기존 연결을 모두 닫으려면 이 환경의 서비스를 다시 시작하세요.",
+    description:
+      "Second paragraph of the dialog that confirms blocking cross-environment connections (Render's words, w1/m683)",
+  },
+  "environments.isolateRemoveBody": {
+    message:
+      "이 환경 외부의 bex 서비스와 주고받는 프라이빗 네트워크 트래픽이 더 이상 차단되지 않습니다.",
+    description:
+      "Body of the dialog that confirms allowing cross-environment connections again (Render's words, with bex for Render, w1/m683)",
+  },
+  "environments.isolateQuestion": {
+    message: "정말 진행하시겠습니까?",
+    description:
+      "Last line of the dialog that confirms blocking or allowing cross-environment connections (Render's words, w1/m683)",
+  },
+  "environments.isolationBlockedToast": {
+    message: "{name}의 환경 간 연결을 차단했습니다.",
+    description:
+      "Toast after the section menu's toggle blocks an environment's cross-environment connections (Render's words, w1/m683)",
+  },
+  "environments.isolationAllowedToast": {
+    message: "{name}의 환경 간 연결을 허용했습니다.",
+    description:
+      "Toast after the section menu's toggle allows an environment's cross-environment connections again (Render's words, w1/m683)",
+  },
+  "environments.menuBlockConnections": {
+    message: "환경 간 연결 차단",
+    description:
+      "The environment section's ••• menu toggle that isolates the environment (Render's words, w1/m683)",
+  },
+  "environments.menuBlockConnectionsHint": {
+    message: "프라이빗 네트워크 트래픽이 환경 경계를 넘지 못하게 합니다.",
+    description:
+      "Line under the ••• menu's Block cross-environment connections toggle (Render's words, w1/m683)",
+  },
+  "environments.menuUpgradeToUnlock": {
+    message: "{upgrade}하여 이 기능을 사용하세요",
+    description:
+      "The ••• menu's plan gate on Block cross-environment connections below Pro; {upgrade} is a link whose text is environments.upgrade (Render's words, w1/m683)",
+  },
+  "environments.envGroupsCardTitle": {
+    message: "환경 그룹",
+    description:
+      "Title of the environment settings page's Environment Groups card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.envGroupsNew": {
+    message: "새 환경 그룹",
+    description:
+      "Button on the Environment Groups card that creates an env group in the environment (Render's words, w1/m683)",
+  },
+  "environments.envGroupsSearch": {
+    message: "환경 그룹 검색",
+    description:
+      "Placeholder and accessible name of the Environment Groups card's search (Render's words, w1/m683)",
+  },
+  "environments.envGroupsNone": {
+    message: "환경 그룹을 찾을 수 없습니다",
+    description:
+      "The Environment Groups card when the environment has no env groups (Render's words, w1/m683)",
+  },
+  "environments.networkingCardTitle": {
+    message: "네트워킹",
+    description:
+      "Title of the environment settings page's Networking card (inbound IP rules), and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.ipAllowListMoveUp": {
+    message: "{cidr} 위로 이동",
+    description:
+      "Accessible name of an environment IP rule's move-up button; {cidr} is the rule's CIDR block",
+  },
+  "environments.ipAllowListMoveDown": {
+    message: "{cidr} 아래로 이동",
+    description:
+      "Accessible name of an environment IP rule's move-down button; {cidr} is the rule's CIDR block",
+  },
+  "environments.ipAllowListAllowsAll": {
+    message: "모든 소스 IP에 개방",
+    description:
+      "The Networking card below Scale when the environment's rules are the allow-all pair",
+  },
+  "environments.ipAllowListSaved": {
+    message: "{name}의 인바운드 IP 규칙을 저장했습니다.",
+    description:
+      "Toast after the Networking card saves an environment's inbound IP rules",
+  },
+  "environments.deleteCardTitle": {
+    message: "환경 삭제",
+    description:
+      "Title of the environment settings page's delete card, and its navigation entry (Render's words, w1/m683)",
+  },
+  "environments.deleteCardDescription": {
+    message:
+      "이 환경과 그 안의 서비스가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.",
+    description:
+      "Description of the Delete Environment card (Render's words, w1/m683)",
+  },
+  "environments.deleteLastEnvironment": {
+    message:
+      "프로젝트에는 환경이 하나 이상 있어야 하므로 이 환경은 삭제할 수 없습니다. 대신 {project}를 삭제하는 것을 고려하세요.",
+    description:
+      "Notice on the Delete Environment card for a project's only environment; {project} is a link whose text is environments.deleteLastEnvironmentProject (Render's words, w1/m683)",
+  },
+  "environments.deleteLastEnvironmentProject": {
+    message: "프로젝트",
+    description:
+      "Link text inside environments.deleteLastEnvironment, to the project's settings (Render's words, w1/m683)",
+  },
+  "environments.deleteButton": {
+    message: "환경 삭제",
+    description:
+      "The Delete Environment card's button, the confirmation dialog's title and its confirm button (Render's words, w1/m683)",
+  },
+  "environments.deleteDialogBody": {
+    message:
+      "이 환경은 모든 서비스와 함께 영구적으로 삭제됩니다. 유지하려는 서비스가 있다면 먼저 환경 밖으로 옮기세요.",
+    description:
+      "Body of the dialog that confirms deleting an environment (Render's words, w1/m683)",
+  },
+  "environments.deleteDialogEnvGroupsKept": {
+    message:
+      "이 환경의 환경 그룹은 삭제되지 않고 미할당 상태가 됩니다. 더 이상 이 환경이나 프로젝트에 속하지 않으며 환경 그룹 아래에 그대로 남습니다.",
+    description:
+      "Added to the delete dialog's body when the environment holds env groups, which bex keeps (w1/m683)",
+  },
+  "environments.deleteFailed": {
+    message: "환경을 삭제하지 못했습니다. 잠시 후 다시 시도하세요. 죄송합니다!",
+    description:
+      "Error in the delete dialog when the delete failed for a reason the server did not name (Render's words, w1/m683)",
+  },
+  "environments.deleteCardDenied": {
+    message: "환경 삭제",
+    description:
+      "Title of the card that replaces Delete Environment for a member who may not delete the environment (Render's words, w1/m683)",
+  },
+  "environments.protectedDeleteAdminOnly": {
+    message:
+      "보호된 환경 또는 네트워크 격리나 인바운드 IP 규칙이 있는 환경은 관리자만 삭제할 수 있습니다.",
+    description:
+      "Why a non-Admin cannot delete an environment that is protected, isolated or has inbound IP rules (w1/m683)",
   },
 };
 

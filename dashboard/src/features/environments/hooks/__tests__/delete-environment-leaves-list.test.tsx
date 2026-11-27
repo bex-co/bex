@@ -6,7 +6,10 @@ import { ApolloProvider } from "@apollo/client/react";
 import { Observable } from "rxjs";
 import { toast } from "sonner";
 import { apolloCacheConfig } from "@/common/apollo/cache";
-import { useDeleteEnvironment } from "../use-delete-environment";
+import {
+  useDeleteEnvironment,
+  type DeleteEnvironmentResult,
+} from "../use-delete-environment";
 import { useEnvironments } from "../use-environments";
 
 vi.mock("sonner", () => ({
@@ -171,12 +174,12 @@ describe("deleting an environment removes it from the list once the delete settl
       const { result } = renderDelete();
       await waitFor(() => expect(server.held).toHaveLength(1));
 
-      let ok: boolean | undefined;
+      let outcome: DeleteEnvironmentResult | undefined;
       await act(async () => {
-        ok = await result.current.deleter.remove("evm-dev", "dev");
+        outcome = await result.current.deleter.remove("evm-dev", "dev");
       });
 
-      expect(ok).toBe(true);
+      expect(outcome).toEqual({ ok: true });
       // On completion — waitFor's bound is far inside the 30s poll.
       await waitFor(() =>
         expect(names(result.current.list.environments)).toEqual(remaining),
@@ -190,7 +193,9 @@ describe("deleting an environment removes it from the list once the delete settl
       // The list that published it was requested after the delete answered.
       const ack = server.log.indexOf("←DeleteEnvironment");
       expect(server.log.indexOf("→Environments", ack)).toBeGreaterThan(ack);
-      expect(toast.success).toHaveBeenCalledWith('Environment "dev" deleted.');
+      expect(toast.success).toHaveBeenCalledWith(
+        "Deleted environment dev successfully.",
+      );
     },
   );
 
@@ -251,11 +256,11 @@ describe("deleting an environment removes it from the list once the delete settl
     );
     server.failListsAfterDelete = 99;
 
-    let ok: boolean | undefined;
+    let outcome: DeleteEnvironmentResult | undefined;
     await act(async () => {
-      ok = await result.current.deleter.remove("evm-dev", "dev");
+      outcome = await result.current.deleter.remove("evm-dev", "dev");
     });
-    expect(ok).toBe(true);
+    expect(outcome).toEqual({ ok: true });
     expect(toast.error).not.toHaveBeenCalled();
     expect(toast.warning).toHaveBeenCalledTimes(1);
     expect(vi.mocked(toast.warning).mock.calls[0]?.[0]).toMatch(
@@ -273,10 +278,12 @@ describe("deleting an environment removes it from the list once the delete settl
       expect(names(result.current.list.environments)).toEqual(["stage"]),
     );
     expect(deletes()).toBe(1);
-    expect(toast.success).toHaveBeenCalledWith('Environment "dev" deleted.');
+    expect(toast.success).toHaveBeenCalledWith(
+      "Deleted environment dev successfully.",
+    );
   });
 
-  it("a refused delete is a deletion error: the environment stays and nothing re-reads", async () => {
+  it("a refused delete answers with the server's reason for the dialog: the environment stays and nothing re-reads", async () => {
     server.environments = ["stage", "dev"];
     server.deleteRefusal = "forbidden";
     const { result } = renderDelete();
@@ -285,12 +292,14 @@ describe("deleting an environment removes it from the list once the delete settl
     );
     const reads = server.log.filter((e) => e === "→Environments").length;
 
-    let ok: boolean | undefined;
+    let outcome: DeleteEnvironmentResult | undefined;
     await act(async () => {
-      ok = await result.current.deleter.remove("evm-dev", "dev");
+      outcome = await result.current.deleter.remove("evm-dev", "dev");
     });
-    expect(ok).toBe(false);
-    expect(toast.error).toHaveBeenCalledTimes(1);
+    expect(outcome?.ok).toBe(false);
+    expect(outcome && !outcome.ok && outcome.message).toBeTruthy();
+    // The dialog shows it; nothing toasts behind it (w1/m683).
+    expect(toast.error).not.toHaveBeenCalled();
     expect(toast.success).not.toHaveBeenCalled();
     expect(names(result.current.list.environments)).toEqual(["stage", "dev"]);
     expect(server.log.filter((e) => e === "→Environments")).toHaveLength(reads);

@@ -1,39 +1,7 @@
 import { useId, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { doomedResourceNames } from "@/features/projects/lib/doomed-resources";
-import {
-  ArrowRightLeft,
-  Loader2,
-  LockKeyhole,
-  MoreVertical,
-  Pencil,
-  Plus,
-  Settings2,
-  ShieldCheck,
-  Trash2,
-} from "lucide-react";
+import { ArrowRightLeft, LockKeyhole, Plus, Settings2 } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
-import { Input } from "@/common/components/ui/input";
-import { Label } from "@/common/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/common/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/common/components/ui/dropdown-menu";
-import { ConfirmDialog } from "@/common/components/confirm-dialog";
-import { LabelError } from "@/common/components/label-error";
-import {
-  isInvalidLabel,
-  isValidLabel,
-} from "@/common/lib/utils/resource-label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { UnreadResourcesNotice } from "@/features/environments/components/unread-resources-notice";
 import {
@@ -55,11 +23,10 @@ import {
 import type { SandboxGroupItem } from "@/features/sandbox-groups/hooks/use-sandbox-groups";
 import { inEnvironment } from "@/features/environments/lib/link-id";
 import type { ResourceRow } from "@/features/projects/types";
-import { useRenameEnvironment } from "@/features/environments/hooks/use-rename-environment";
-import { useDeleteEnvironment } from "@/features/environments/hooks/use-delete-environment";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import { ManageResourcesDialog } from "@/features/environments/components/manage-resources-dialog";
-import { EnvironmentSettingsDialog } from "@/features/environments/components/environment-settings-dialog";
+import { EnvironmentMenu } from "@/features/environments/components/environment-menu";
+import { NoMatchingResources } from "@/features/environments/components/no-matching-resources";
 import { EnvironmentSectionHeader } from "@/features/environments/components/environment-section-header";
 import type { ServiceView } from "@/features/services/types";
 import type {
@@ -91,6 +58,8 @@ import { cn } from "@/common/lib/utils/utils";
 
 export interface EnvironmentSectionProps {
   environment: EnvironmentView;
+  /** The project's name, which the ••• menu's isolation dialog names. */
+  projectName: string;
   /** All the workspace's services — used to resolve this env's rows and as assign candidates. */
   services: ServiceView[];
   /** All the workspace's databases — same role as `services` (w6/m20 extension). */
@@ -125,13 +94,14 @@ export interface EnvironmentSectionProps {
  * icon and "Protected environment"), the counted All / Services / Env Groups
  * switcher it remembers, its own search, the table of its services, Postgres,
  * Key Value and sandbox groups, the table of its env groups, and Render's
- * empty state. The right of the switcher row holds bex's per-environment
- * actions (New Service, Manage resources and the rename / settings / delete
- * menu) until w1/m683 and w1/m684 bring Render's ••• and New menus
+ * empty state. The right of the switcher row holds Render's ••• menu (w1/m683)
+ * after bex's New Service and Manage resources, which stay until w1/m684 and
+ * w1/m685 bring Render's New menu and Move Services modal
  * (docs/ADR032-environments.md).
  */
 export function EnvironmentSection({
   environment,
+  projectName,
   services,
   databases,
   keyValues,
@@ -150,22 +120,7 @@ export function EnvironmentSection({
   const [filter, setFilter] = useSectionFilter(environment.id);
   const [query, setQuery] = useState("");
 
-  const { rename, busy: renaming } = useRenameEnvironment();
-  const { remove, deleting } = useDeleteEnvironment(environment.projectId);
-  const deletingThis = deleting === environment.id;
-
-  const [renameOpen, setRenameOpen] = useState(false);
-  const [renameValue, setRenameValue] = useState("");
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-
-  // Deleting an environment deletes its services, databases and key value
-  // stores, as Render's dashboard deletes all its services (w4/m264, w6/m290).
-  const doomedNames = useMemo(
-    () => doomedResourceNames(environment, [services, databases, keyValues]),
-    [environment, services, databases, keyValues],
-  );
 
   const rows = useMemo((): ResourceRow[] => {
     const serviceById = new Map(services.map((s) => [s.id, s]));
@@ -273,28 +228,6 @@ export function EnvironmentSection({
 
   const sectionRef = useFocusedSection(focused, rows.length);
 
-  function openRename() {
-    setRenameValue(environment.name);
-    setRenameOpen(true);
-  }
-
-  async function handleRename() {
-    if (isInvalidLabel(renameValue)) return;
-    const trimmed = renameValue.trim();
-    if (!trimmed || trimmed === environment.name) {
-      setRenameOpen(false);
-      return;
-    }
-    // The hook refetches the Environments list, so closing is all that's left.
-    const ok = await rename(environment.id, trimmed);
-    if (ok) setRenameOpen(false);
-  }
-
-  async function handleDelete() {
-    const ok = await remove(environment.id, environment.name);
-    if (ok) setDeleteOpen(false);
-  }
-
   const tableProps = {
     servicePending,
     onRunServiceAction,
@@ -392,34 +325,10 @@ export function EnvironmentSection({
                 {t("environments.manageButton")}
               </Button>
             </PermissionTooltip>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={t("environments.moreActions")}
-                >
-                  <MoreVertical />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={openRename}>
-                  <Pencil />
-                  {t("environments.renameAction")}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
-                  <ShieldCheck />
-                  {t("environments.settingsAction")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={() => setDeleteOpen(true)}
-                >
-                  <Trash2 />
-                  {t("environments.deleteAction")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <EnvironmentMenu
+              environment={environment}
+              projectName={projectName}
+            />
           </>
         }
       />
@@ -463,86 +372,6 @@ export function EnvironmentSection({
       ) : null}
       {noMatches ? <NoMatchingResources /> : null}
 
-      {/* See the project rename dialog: the title names the dialog, the label
-          names the field, and the description is opted out of explicitly so
-          Radix does not point at an element that was never rendered (w4/134).
-          The input id carries the environment id because the page renders
-          one section per environment. */}
-      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent aria-describedby={undefined}>
-          <DialogHeader>
-            <DialogTitle>{t("environments.renameTitle")}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor={`environment-rename-name-${environment.id}`}>
-              {t("environments.renameFieldLabel")}
-            </Label>
-            <Input
-              id={`environment-rename-name-${environment.id}`}
-              aria-invalid={isInvalidLabel(renameValue)}
-              aria-describedby={
-                isInvalidLabel(renameValue)
-                  ? `environment-rename-name-${environment.id}-error`
-                  : undefined
-              }
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
-              autoComplete="off"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void handleRename();
-              }}
-            />
-            <LabelError
-              id={`environment-rename-name-${environment.id}-error`}
-              value={renameValue}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setRenameOpen(false)}
-              disabled={renaming}
-            >
-              {t("environments.cancel")}
-            </Button>
-            <Button
-              onClick={() => void handleRename()}
-              disabled={renaming || !isValidLabel(renameValue)}
-            >
-              {renaming ? <Loader2 className="animate-spin" /> : null}
-              {t("environments.renameSubmit")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title={t("environments.deleteConfirmTitle", { name: environment.name })}
-        description={
-          doomedNames.length > 0
-            ? t("environments.deleteConfirmBodyResources", {
-                resources: doomedNames.join(", "),
-              })
-            : t("environments.deleteConfirmBody")
-        }
-        phrase={
-          doomedNames.length > 0
-            ? `sudo delete environment ${environment.name}`
-            : undefined
-        }
-        cancelLabel={t("environments.cancel")}
-        confirmLabel={
-          <>
-            {deletingThis ? <Loader2 className="animate-spin" /> : null}
-            {t("environments.deleteAction")}
-          </>
-        }
-        pending={deletingThis}
-        onConfirm={() => void handleDelete()}
-      />
-
       <ManageResourcesDialog
         environment={environment}
         services={services}
@@ -552,11 +381,6 @@ export function EnvironmentSection({
         open={assignOpen}
         onOpenChange={setAssignOpen}
         unread={unread}
-      />
-      <EnvironmentSettingsDialog
-        environment={environment}
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
       />
     </section>
   );
@@ -631,19 +455,6 @@ function EnvironmentEmptyState({
           </PermissionTooltip>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-/** A search that matches none of a section's rows. */
-export function NoMatchingResources() {
-  const { t } = useTranslations();
-  return (
-    <div className="py-6 text-center" role="status">
-      <p className="font-medium">{t("projects.noMatchesTitle")}</p>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {t("projects.noMatchesBody")}
-      </p>
     </div>
   );
 }

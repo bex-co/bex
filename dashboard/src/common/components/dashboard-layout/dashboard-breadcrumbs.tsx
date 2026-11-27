@@ -36,6 +36,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { en } from "@/i18n";
 import { useEnvironments } from "@/features/environments/hooks/use-environments";
+import { ENVIRONMENT_SETTINGS_ROUTE_ID } from "@/features/environments/lib/settings";
 import { useProjects } from "@/features/projects/hooks/use-projects";
 import { useServer } from "@/features/services/hooks/use-server";
 import { useServices } from "@/features/services/hooks/use-services";
@@ -57,6 +58,7 @@ type DashboardParams = {
   agentSessionId?: string;
   serviceId?: string;
   projectId?: string;
+  environmentId?: string;
   databaseId?: string;
   keyValueId?: string;
   groupId?: string;
@@ -73,6 +75,12 @@ export function DashboardBreadcrumbs() {
     select: (state) => (state.resolvedLocation ?? state.location).pathname,
   });
   const params = useParams({ strict: false }) as DashboardParams;
+  const onEnvironmentSettings = useRouterState({
+    select: (state) =>
+      state.matches.some(
+        (match) => match.routeId === ENVIRONMENT_SETTINGS_ROUTE_ID,
+      ),
+  });
   const createType = currentCreateType(pathname);
   if (createType) {
     return <CreateTypeBreadcrumbs current={createType} />;
@@ -81,7 +89,18 @@ export function DashboardBreadcrumbs() {
     return <ServiceBreadcrumbs serviceId={params.serviceId} />;
   }
   if (params.projectId) {
-    return <ProjectBreadcrumbs projectId={params.projectId} />;
+    // An environment's settings page adds the environment, as Render's
+    // Project › Environment trail does (w1/m683); the project page at an
+    // environment's URL keeps the project alone, as Render's does.
+    const environmentId = onEnvironmentSettings
+      ? params.environmentId
+      : undefined;
+    return (
+      <ProjectBreadcrumbs
+        projectId={params.projectId}
+        environmentId={environmentId}
+      />
+    );
   }
   if (params.databaseId) {
     return <DatabaseBreadcrumbs id={params.databaseId} />;
@@ -487,12 +506,35 @@ function BlueprintBreadcrumbs({ id }: { id: string }) {
   );
 }
 
-function ProjectBreadcrumbs({ projectId }: { projectId: string }) {
+function ProjectBreadcrumbs({
+  projectId,
+  environmentId,
+}: {
+  projectId: string;
+  environmentId?: string;
+}) {
   const { t } = useTranslations();
   const { projects } = useProjects({ poll: false });
+  const { environments } = useEnvironments(environmentId ? projectId : null, {
+    poll: false,
+  });
   return (
-    <nav aria-label={t("common.topbarBreadcrumbs")} className="min-w-0">
+    <nav
+      aria-label={t("common.topbarBreadcrumbs")}
+      className="flex min-w-0 items-center gap-0.5"
+    >
       <ProjectMenu currentId={projectId} projects={projects} />
+      {environmentId ? (
+        // The environment crumb shows from md, as on a service's trail.
+        <div className="hidden md:contents">
+          <BreadcrumbSeparator />
+          <EnvironmentMenu
+            projectId={projectId}
+            currentId={environmentId}
+            environments={environments}
+          />
+        </div>
+      ) : null}
     </nav>
   );
 }

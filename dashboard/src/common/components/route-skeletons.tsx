@@ -3,6 +3,14 @@ import { InvitationFrame } from "@/features/invites/invitation-frame";
 import { EnvGroupsTableHeader } from "@/features/env-groups/components/env-groups-table-header";
 import { WebhooksTableHeader } from "@/features/webhooks/components/webhooks-table-header";
 import { EnvironmentSectionHeader } from "@/features/environments/components/environment-section-header";
+import { EnvironmentSettingsNavigation } from "@/features/environments/components/environment-settings-navigation";
+import {
+  ENVIRONMENT_SETTINGS_ROUTE_ID,
+  environmentSettingsSections,
+  isolationGated,
+} from "@/features/environments/lib/settings";
+import { EnvironmentSettingsCardsSkeleton } from "@/features/environments/components/environment-settings-skeleton";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
   EnvironmentResourceSearchSkeleton,
   EnvironmentResourceSwitcherSkeleton,
@@ -53,7 +61,10 @@ import {
 import { useWorkspace } from "@/features/workspaces/context";
 import { useGettingStartedDismissal } from "@/features/onboarding/hooks/use-getting-started-dismissal";
 import { useOverviewShape } from "@/features/onboarding/hooks/use-overview-shape";
-import { proFeaturesPlan } from "@/features/workspaces/types";
+import {
+  inboundIpRulesPlan,
+  proFeaturesPlan,
+} from "@/features/workspaces/types";
 import {
   CreateActionBarSkeleton,
   CreateField,
@@ -1694,6 +1705,36 @@ export function ProjectSettingsPageSkeleton() {
   );
 }
 
+/**
+ * An environment's settings page while it loads (w1/m683): the ready page's
+ * frame, heading and section navigation, and each card in read mode. The role
+ * and the plan are known before the environment is, so the sections and the
+ * plan gates are the ones the page is about to show.
+ */
+export function EnvironmentSettingsPageSkeleton() {
+  const { t } = useTranslations();
+  const capabilities = useCapabilities();
+  const { currentWorkspace } = useWorkspace();
+  const sections = environmentSettingsSections(
+    capabilities.denied("can_manage"),
+  );
+  const plan = currentWorkspace?.plan;
+  return (
+    <PageFrame
+      pending="environment-settings"
+      header={<PageHeader title={t("environments.settingsPageTitle")} />}
+      navigation={<EnvironmentSettingsNavigation sections={sections} />}
+    >
+      <EnvironmentSettingsCardsSkeleton
+        sections={sections}
+        // The environment's isolation is not known yet: most are not.
+        connectionsGated={isolationGated(plan, false)}
+        belowScale={!inboundIpRulesPlan(plan)}
+      />
+    </PageFrame>
+  );
+}
+
 /** Parent project loading chooses the child shape the URL will reveal. */
 export function ProjectRouteSkeleton() {
   const routeId = useRouterState({
@@ -1702,6 +1743,8 @@ export function ProjectRouteSkeleton() {
   let child: React.ReactNode;
   if (routeId === "/project/$projectId/settings") {
     child = <ProjectSettingsPageSkeleton />;
+  } else if (routeId === ENVIRONMENT_SETTINGS_ROUTE_ID) {
+    child = <EnvironmentSettingsPageSkeleton />;
   } else if (
     routeId === "/project/$projectId/observability/logs/application" ||
     routeId === "/project/$projectId/observability/logs/request"

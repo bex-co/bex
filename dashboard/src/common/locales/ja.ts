@@ -407,6 +407,11 @@ const jaCommon: Record<string, TranslationEntry> = {
     description:
       "Contextual project sidebar's back link label, shown on a project's Settings page (links up to the project's Overview)",
   },
+  "common.navBackToEnvironment": {
+    message: "環境",
+    description:
+      "Contextual project sidebar's back link label, shown on an environment's settings page (links up to the environment's section on the project page, Render's words, w1/m683)",
+  },
   "common.navProjectOverview": {
     message: "概要",
     description:

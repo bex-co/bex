@@ -10,6 +10,7 @@ import {
   Settings,
 } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { ENVIRONMENT_SETTINGS_ROUTE_ID } from "@/features/environments/lib/settings";
 import {
   Sidebar,
   SidebarContent,
@@ -82,6 +83,17 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
   const onObservability = pathname.startsWith(
     `/project/${projectId}/observability/`,
   );
+  // An environment's settings page goes back up to its environment, as
+  // Render's does, with Overview still the open entry (w1/m683).
+  const settingsEnvironmentId = useRouterState({
+    select: (s) => {
+      const match = s.matches.find(
+        (candidate) => candidate.routeId === ENVIRONMENT_SETTINGS_ROUTE_ID,
+      );
+      const params = match?.params as { environmentId?: string } | undefined;
+      return params?.environmentId;
+    },
+  });
   const savedSearchId = useRouterState({
     select: (s): string | undefined => {
       const id = (s.location.search as Record<string, unknown>).savedSearchId;
@@ -106,7 +118,16 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
       </SidebarHeader>
       <SidebarContent>
         <div className="flex flex-col gap-2 px-2 pt-2 pb-1 group-data-[collapsible=icon]:hidden">
-          {onSettings || onObservability ? (
+          {settingsEnvironmentId ? (
+            <Link
+              to="/project/$projectId/environment/$environmentId"
+              params={{ projectId, environmentId: settingsEnvironmentId }}
+              className="relative flex items-center gap-1 text-xs font-medium text-muted-foreground after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] hover:text-foreground"
+            >
+              <ChevronLeft className="size-3.5" />
+              {t("common.navBackToEnvironment")}
+            </Link>
+          ) : onSettings || onObservability ? (
             <Link
               to="/project/$projectId"
               params={{ projectId }}

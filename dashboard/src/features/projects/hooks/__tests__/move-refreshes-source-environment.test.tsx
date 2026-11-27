@@ -249,6 +249,7 @@ function renderSourceStage(server: ReturnType<typeof makeServer>) {
         {menuOpen ? <Menu /> : null}
         <OtherProjectEnvironments />
         <EnvironmentsPanel
+          projectName="shop"
           projectId="prj-a"
           services={services}
           databases={databases}

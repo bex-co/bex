@@ -5,10 +5,8 @@ import { Card, CardContent } from "@/common/components/ui/card";
 import { ProjectEnvironmentSectionSkeleton } from "@/common/components/route-skeletons";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useEnvironments } from "@/features/environments/hooks/use-environments";
-import {
-  EnvironmentSection,
-  NoMatchingResources,
-} from "@/features/environments/components/environment-section";
+import { EnvironmentSection } from "@/features/environments/components/environment-section";
+import { NoMatchingResources } from "@/features/environments/components/no-matching-resources";
 import { EnvironmentSectionHeader } from "@/features/environments/components/environment-section-header";
 import type { ServiceView } from "@/features/services/types";
 import type {
@@ -51,6 +49,8 @@ import { UNASSIGNED_SECTION } from "@/features/environments/lib/sections";
 
 export interface EnvironmentsPanelProps {
   projectId: string;
+  /** The project's name, which each section's ••• menu names. */
+  projectName: string;
   services: ServiceView[];
   databases: DatabaseView[];
   keyValues: KeyValueView[];
@@ -80,6 +80,7 @@ export interface EnvironmentsPanelProps {
  */
 export function EnvironmentsPanel({
   projectId,
+  projectName,
   services,
   databases,
   keyValues,
@@ -178,6 +179,7 @@ export function EnvironmentsPanel({
         <EnvironmentSection
           key={environment.id}
           environment={environment}
+          projectName={projectName}
           allEnvironments={environments}
           services={services}
           databases={databases}

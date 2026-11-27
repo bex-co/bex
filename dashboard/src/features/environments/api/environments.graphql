@@ -30,8 +30,22 @@ mutation CreateEnvironment($name: String!, $projectId: String!) {
   }
 }
 
-mutation RenameEnvironment($id: String!, $name: String!) {
-  renameEnvironment(id: $id, name: $name) {
+# Render's updateEnvironment patch (w1/m683): only the fields sent change, as
+# the environment settings page's cards each save one of them.
+mutation UpdateEnvironment(
+  $id: String!
+  $name: String
+  $protectedStatus: String
+  $networkIsolationEnabled: Boolean
+  $ipAllowListEntries: [IPAllowListEntryInput!]
+) {
+  updateEnvironment(
+    id: $id
+    name: $name
+    protectedStatus: $protectedStatus
+    networkIsolationEnabled: $networkIsolationEnabled
+    ipAllowListEntries: $ipAllowListEntries
+  ) {
     ...EnvironmentFields
   }
 }
@@ -64,18 +78,3 @@ mutation SetEnvironmentEnvGroups($id: String!, $envGroupIds: [String!]!) {
   }
 }
 
-mutation SetEnvironmentACL(
-  $id: String!
-  $protectedStatus: String!
-  $networkIsolationEnabled: Boolean!
-  $ipAllowListEntries: [IPAllowListEntryInput!]
-) {
-  setEnvironmentACL(
-    id: $id
-    protectedStatus: $protectedStatus
-    networkIsolationEnabled: $networkIsolationEnabled
-    ipAllowListEntries: $ipAllowListEntries
-  ) {
-    ...EnvironmentFields
-  }
-}
