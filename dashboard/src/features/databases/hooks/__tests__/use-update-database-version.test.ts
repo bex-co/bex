@@ -49,7 +49,7 @@ describe("useUpdateDatabaseVersion", () => {
 
     expect(ok).toBe(true);
     expect(toastSuccess).toHaveBeenCalledWith(
-      "Upgrade to PostgreSQL 17 started.",
+      "Starting upgrade to PostgreSQL 17",
     );
     expect(toastWarning).not.toHaveBeenCalled();
   });
@@ -69,12 +69,12 @@ describe("useUpdateDatabaseVersion", () => {
 
     expect(toastSuccess).not.toHaveBeenCalled();
     expect(toastWarning).toHaveBeenCalledWith(
-      "Upgrade to PostgreSQL 17 started.",
+      "Starting upgrade to PostgreSQL 17",
       { description: notice, duration: Infinity },
     );
   });
 
-  // A lagging slot's refusal reaches the dialog's inline error as the
+  // A lagging slot's refusal reaches the upgrade page's inline error as the
   // server words it, naming the slot.
   it("surfaces a lagging-slot refusal inline", async () => {
     const message =

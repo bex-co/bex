@@ -55,6 +55,7 @@ export const ROUTE_HEAD_INVENTORY: Record<
     "databases.$databaseId.metrics.tsx",
     "databases.$databaseId.plan.tsx",
     "databases.$databaseId.recovery.tsx",
+    "databases.$databaseId.version-upgrade.tsx",
     "env-groups.tsx",
     "env-groups_.$groupId.tsx",
     "index.tsx",

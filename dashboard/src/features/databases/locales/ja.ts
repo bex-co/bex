@@ -362,55 +362,268 @@ const jaDatabases: Record<string, TranslationEntry> = {
     message: "PostgreSQL {version}",
     description: "Formatted PostgreSQL major version label",
   },
-  "databases.versionUpgradeAction": {
-    message: "アップグレード",
-    description: "Button opening the PostgreSQL major-version upgrade dialog",
-  },
-  "databases.versionUpgrading": {
-    message: "アップグレード中",
-    description:
-      "Version-row status while the database is offline for pg_upgrade",
-  },
-  "databases.versionUpgradeTitle": {
-    message: "PostgreSQL のアップグレード",
-    description: "PostgreSQL major-version upgrade dialog title",
-  },
-  "databases.versionUpgradeDescription": {
-    message:
-      "このデータベースを PostgreSQL {version} から、サポートされている新しいメジャーバージョンにアップグレードします。",
-    description: "PostgreSQL major-version upgrade dialog description",
-  },
-  "databases.versionUpgradeTarget": {
-    message: "アップグレード先バージョン",
-    description: "PostgreSQL major-version upgrade target selector label",
-  },
   "databases.versionUpgradeDowntime": {
     message:
-      "オフラインアップグレードの実行中、データベースは利用できなくなります。事前に互換性をテストし、ダウンタイムを計画してください。大規模なデータベースでは最大 1 時間かかることがあります。",
+      "アップグレード中は、データベースとすべてのレプリカが一時的に利用できなくなります。",
     description:
-      "Downtime warning in the PostgreSQL major-version upgrade dialog",
-  },
-  "databases.versionUpgradeErrorTitle": {
-    message: "アップグレードがブロックされました",
-    description:
-      "Inline backend-guard error title in the version upgrade dialog",
-  },
-  "databases.versionUpgradeCancel": {
-    message: "キャンセル",
-    description: "PostgreSQL major-version upgrade dialog cancel button",
+      "Version upgrade page: first sentence of the downtime notice under Upgrade this database",
   },
   "databases.versionUpgradeConfirm": {
     message: "PostgreSQL {version} にアップグレード",
-    description: "PostgreSQL major-version upgrade dialog confirmation button",
+    description:
+      "Version upgrade page: the button that starts the upgrade of this database",
   },
   "databases.versionUpgradeAccepted": {
-    message: "PostgreSQL {version} へのアップグレードを開始しました。",
+    message: "PostgreSQL {version} へのアップグレードを開始しています",
     description: "Toast after a PostgreSQL major-version upgrade is accepted",
   },
   "databases.versionUpgradeError": {
     message:
       "PostgreSQL のアップグレードを開始できませんでした。もう一度お試しください。",
     description: "Fallback error when the PostgreSQL upgrade mutation fails",
+  },
+  "databases.versionUpgradeDowntimeDetail": {
+    message:
+      "通常は 1 時間以内に完了します。アップグレードが終わるまで、データベースとレプリカは利用できません。",
+    description: "Version upgrade page: second sentence of the downtime notice",
+  },
+  "databases.versionUpgradeHeading": {
+    message: "Postgres バージョンのアップグレード",
+    description:
+      "Version upgrade page title and document title (Render: Postgres Version Upgrades)",
+  },
+  "databases.versionUpgradeCurrent": {
+    message: "現在のバージョン: PostgreSQL {version}",
+    description:
+      "Version upgrade page: badge naming the database's current major version",
+  },
+  "databases.versionUpgradeLatest": {
+    message:
+      "このデータベースは、サポートされている最新バージョンの PostgreSQL で動作しています。",
+    description:
+      "Version upgrade page: shown when the database already runs the latest major",
+  },
+  "databases.versionUpgradeStepsTitle": {
+    message: "アップグレードの手順",
+    description: "Version upgrade page: heading over the upgrade steps",
+  },
+  "databases.versionUpgradeStepsDocs": {
+    message: "アップグレードの詳細は{docs}をご覧ください。",
+    description:
+      "Version upgrade page: sentence after the steps heading; {docs} is the See the docs link",
+  },
+  "databases.versionUpgradeDocsLink": {
+    message: "ドキュメント",
+    description: "Version upgrade page: link to the upgrade documentation",
+  },
+  "databases.versionUpgradeChangesTitle": {
+    message:
+      "アップグレードでは、データベースに次の取り消せない変更が加えられます:",
+    description:
+      "Version upgrade page: title of the list of changes an upgrade makes for good",
+  },
+  "databases.versionUpgradeChangePitr": {
+    message:
+      "ポイントインタイムリカバリはアップグレード時点から始まり直します。アップグレードより前の時点にはデータベースを復旧できません。",
+    description:
+      "Version upgrade page: irreversible change — point-in-time recovery restarts at the upgrade",
+  },
+  "databases.versionUpgradeChangeNoDowngrade": {
+    message: "データベースを PostgreSQL {version} に戻すことはできません。",
+    description:
+      "Version upgrade page: irreversible change — no return to the current major",
+  },
+  "databases.versionUpgradeBlockedTitle": {
+    message: "拡張機能がアップグレードをブロックしています",
+    description:
+      "Version upgrade page: title of the notice listing extensions that block the upgrade",
+  },
+  "databases.versionUpgradeBlockedBody": {
+    message:
+      "これらの拡張機能が有効なデータベースはアップグレードできません。先に削除してください (DROP EXTENSION):",
+    description:
+      "Version upgrade page: explanation above the list of blocking extensions",
+  },
+  "databases.versionUpgradeStepsLabel": {
+    message: "アップグレードの手順",
+    description:
+      "Version upgrade page: accessible name of the ordered list of upgrade steps",
+  },
+  "databases.versionUpgradeCloneStep": {
+    message: "このデータベースのクローンをアップグレードする (推奨)",
+    description:
+      "Version upgrade page: title of the first step (Render: Upgrade a clone of this database (recommended))",
+  },
+  "databases.versionUpgradeCloneBody": {
+    message:
+      "使い捨てのコピーでテストアップグレードを行い、正常に完了することを確認します。",
+    description: "Version upgrade page: why to clone first",
+  },
+  "databases.versionUpgradeCloneBilling": {
+    message:
+      "クローンは、同じスペックの他のデータベースと同じように課金されます。テストが終わったら必ずクローンを削除してください。",
+    description: "Version upgrade page: clone billing reminder",
+  },
+  "databases.versionUpgradeCloneAction": {
+    message: "このデータベースをクローン",
+    description:
+      "Version upgrade page: button that creates the point-in-time clone",
+  },
+  "databases.versionUpgradeClonePitr": {
+    message:
+      "ポイントインタイムリカバリの準備ができると、データベースをクローンできます。",
+    description:
+      "Version upgrade page: tooltip while the clone button waits for point-in-time recovery",
+  },
+  "databases.versionUpgradeCloneCreated": {
+    message: "クローンのデータベースを作成しました: {name}",
+    description:
+      "Version upgrade page: toast after the clone is created; {name} is the clone",
+  },
+  "databases.versionUpgradeCloneView": {
+    message: "Postgres のクローンを表示",
+    description: "Version upgrade page: link to the clone's own upgrade page",
+  },
+  "databases.versionUpgradeCloneError": {
+    message: "クローンを作成できませんでした。もう一度お試しください。",
+    description:
+      "Version upgrade page: fallback error when the clone cannot be created",
+  },
+  "databases.versionUpgradeThisStep": {
+    message: "このデータベースをアップグレードする",
+    description:
+      "Version upgrade page: title of the step that upgrades this database",
+  },
+  "databases.versionUpgradeRunning": {
+    message: "アップグレード中...",
+    description:
+      "Version upgrade page: upgrade button label while the upgrade runs",
+  },
+  "databases.versionUpgradeNotReady": {
+    message:
+      "データベースが利用可能になり、ポイントインタイムリカバリが初期化されると、アップグレードできるようになります。",
+    description:
+      "Version upgrade page: tooltip while the upgrade button waits for the database and point-in-time recovery",
+  },
+  "databases.versionUpgradeReleaseNotes": {
+    message: "リリースノートを読む",
+    description:
+      "Version upgrade page: link to PostgreSQL's release notes for the target major",
+  },
+  "databases.versionUpgradeStatusLabel": {
+    message: "アップグレードのステータスとログ",
+    description:
+      "Version upgrade page: accessible name of a run's status and logs section",
+  },
+  "databases.versionUpgradeStateInProgress": {
+    message: "進行中",
+    description: "Version upgrade page: run state badge",
+  },
+  "databases.versionUpgradeStateSucceeded": {
+    message: "成功",
+    description: "Version upgrade page: run state badge",
+  },
+  "databases.versionUpgradeStateFailed": {
+    message: "失敗",
+    description: "Version upgrade page: run state badge",
+  },
+  "databases.versionUpgradeLogsEmpty": {
+    message: "検索条件に一致するログがここに表示されます。",
+    description:
+      "Version upgrade page: empty logs explanation for a finished run",
+  },
+  "databases.versionUpgradeLogsEmptyRunning": {
+    message:
+      "検索条件に一致するログがここに表示されます。アップグレード開始後、ログが表示されるまで数分かかる場合があります。",
+    description:
+      "Version upgrade page: empty logs explanation while the run is in progress",
+  },
+  "databases.versionUpgradeLastAttempt": {
+    message: "前回のアップグレード",
+    description:
+      "Version upgrade page: title of the card holding the last finished run",
+  },
+  "databases.versionUpgradeSucceededTitle": {
+    message: "アップグレードが完了しました",
+    description: "Toast title when an upgrade the page watched succeeds",
+  },
+  "databases.versionUpgradeSucceededBody": {
+    message: "データベースを Postgres {version} に更新しました。",
+    description: "Toast body when an upgrade the page watched succeeds",
+  },
+  "databases.versionUpgradeFailedTitle": {
+    message: "アップグレードに失敗しました",
+    description: "Toast title when an upgrade the page watched fails",
+  },
+  "databases.versionUpgradeFailedBannerTitle": {
+    message: "アップグレードに失敗しました。",
+    description:
+      "Banner title on Info and the upgrade page for a failed upgrade nobody dismissed",
+  },
+  "databases.versionUpgradeFailedBody": {
+    message:
+      "データベースは現在のバージョンのまま動作しています。アップグレードのログを確認して問題を解決してから、もう一度お試しください。",
+    description: "Banner and toast body for a failed upgrade",
+  },
+  "databases.versionUpgradeDismiss": {
+    message: "エラーを閉じる",
+    description:
+      "Button that acknowledges a failed upgrade (Render: Dismiss error)",
+  },
+  "databases.versionUpgradeDismissError": {
+    message: "エラーを閉じられませんでした。もう一度お試しください。",
+    description: "Fallback error when acknowledging a failed upgrade fails",
+  },
+  "databases.versionUpgradeAvailableTitle": {
+    message: "PostgreSQL {version} を利用できます。",
+    description: "Info banner title when a newer PostgreSQL major is available",
+  },
+  "databases.versionUpgradeAvailableBody": {
+    message:
+      "アップグレードすると、パフォーマンスが向上し、機能も追加されます。",
+    description: "Info banner body when a newer PostgreSQL major is available",
+  },
+  "databases.versionUpgradeViewOptions": {
+    message: "アップグレードのオプションを表示",
+    description: "Info banner button that opens the version upgrade page",
+  },
+  "databases.versionUpgradeAvailableDismiss": {
+    message: "閉じる",
+    description:
+      "Accessible name of the button that dismisses the newer-major banner",
+  },
+  "databases.versionUpgradeLink": {
+    message: "バージョンをアップグレード",
+    description:
+      "Info Version row link when a newer major is available (Render: Upgrade version)",
+  },
+  "databases.versionUpgradeViewLink": {
+    message: "アップグレードを表示",
+    description:
+      "Info Version row link while an upgrade runs (Render: View upgrade)",
+  },
+  "databases.versionUpgradeReviewLink": {
+    message: "バージョンの詳細を確認",
+    description:
+      "Info Version row link on the latest major (Render: Review version details)",
+  },
+  "databases.versionUpgradeCloneOf": {
+    message: "このデータベースは {name} のクローンです。",
+    description:
+      "Banner title on a clone made for a test upgrade; {name} is its source database",
+  },
+  "databases.versionUpgradeCloneOfBody": {
+    message:
+      "クローンは、同じスペックの他のデータベースと同じように課金されます。テストが終わったら必ずこのクローンを削除してください。",
+    description: "Banner body on a clone made for a test upgrade",
+  },
+  "databases.versionUpgradeDeleteClone": {
+    message: "このクローンを削除",
+    description: "Clone banner button that opens the clone's delete action",
+  },
+  "databases.versionUpgradeGoToOriginal": {
+    message: "元のデータベースに移動",
+    description: "Clone banner link to the source database's upgrade page",
   },
   "databases.metaDatabaseName": {
     message: "データベース",

@@ -110,6 +110,8 @@ describe("toDatabaseDetailView", () => {
       ipAllowList: null,
       region: null,
       readReplicas: null,
+      lastUpgradeRun: null,
+      versionUpgradeAvailable: null,
     });
     expect(d.ownerId).toBe("tea-1");
     expect(d.databaseName).toBe("db1");
@@ -153,6 +155,8 @@ describe("toDatabaseDetailView", () => {
       ipAllowList: null,
       region: null,
       readReplicas: null,
+      lastUpgradeRun: null,
+      versionUpgradeAvailable: null,
     });
     expect(d.externalHost).toBeNull();
   });
@@ -187,6 +191,8 @@ describe("toDatabaseDetailView", () => {
       ipAllowList: null,
       region: "fsn1",
       readReplicas: null,
+      lastUpgradeRun: null,
+      versionUpgradeAvailable: null,
     });
     expect(d.region).toBe("fsn1");
   });
@@ -223,6 +229,8 @@ describe("toDatabaseDetailView", () => {
       ipAllowList: null,
       region: null,
       readReplicas: null,
+      lastUpgradeRun: null,
+      versionUpgradeAvailable: null,
     });
     expect(d.statusReason).toBe(
       "The connection pooler could not be provisioned.",
@@ -357,6 +365,8 @@ describe("toDatabaseDetailView high availability (w2/059)", () => {
       ipAllowList: null,
       region: null,
       readReplicas: null,
+      lastUpgradeRun: null,
+      versionUpgradeAvailable: null,
     });
 
   it("treats the wire's enabled field as the request and ready as the standby", () => {

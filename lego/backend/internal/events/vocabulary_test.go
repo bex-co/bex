@@ -93,6 +93,7 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		"postgres.ClearEnvironmentID": "conditional grouping cleanup mirrors SetEnvironmentID; workspace audit records the targeted write",
 		"postgres.Ungroup":            "Render's remove-from-environment (w4/714), a conditional grouping clear like ClearEnvironmentID; workspace audit records the targeted write",
 		"postgres.ExecuteQuery":       "managed Postgres has no events feed; confirmed writes remain visible in the workspace audit log without recording SQL text",
+		"postgres.AcknowledgeUpgrade": "dismisses a finished upgrade's result on the guided page (w3/m676); Render records no event for it, and the upgrade's own postgres_upgrade_* facts are the events",
 		"postgres.UpdatePostgres":     "REST's general PATCH handler (rename-rejection/disk/HA/ip-allow-list/version, supersedes dedicated setters for that surface); postgres has no events feed integration yet",
 		"postgres.SetVersion":         "managed Postgres has no events feed integration yet; the workspace audit log still records the targeted write",
 		"keyvalue.SetEnvironmentID":   "mirrors keyvalue.SetProjectID; keyvalue has no events feed integration yet",

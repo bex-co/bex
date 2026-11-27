@@ -26,8 +26,8 @@ vi.mock("@/features/databases/components/database-name-row", () => ({
     <div>{database.name}</div>
   ),
 }));
-vi.mock("@/features/databases/components/database-version-control", () => ({
-  DatabaseVersionControl: () => <div data-testid="version-control" />,
+vi.mock("@/features/databases/components/database-upgrade-notices", () => ({
+  DatabaseVersionValue: () => <div data-testid="version-control" />,
 }));
 
 import { DatabaseMetadataCard } from "@/features/databases/components/database-metadata-card";
@@ -56,13 +56,7 @@ function db(overrides: Partial<DatabaseDetailView> = {}): DatabaseDetailView {
 }
 
 function renderCard(database: DatabaseDetailView) {
-  render(
-    <DatabaseMetadataCard
-      database={database}
-      onVersionChanged={vi.fn()}
-      onRenamed={vi.fn()}
-    />,
-  );
+  render(<DatabaseMetadataCard database={database} onRenamed={vi.fn()} />);
 }
 
 describe("DatabaseMetadataCard", () => {
@@ -72,7 +66,6 @@ describe("DatabaseMetadataCard", () => {
     const { unmount } = render(
       <DatabaseMetadataCard
         database={db({ defaultUser: "orders_user2" })}
-        onVersionChanged={vi.fn()}
         onRenamed={vi.fn()}
       />,
     );

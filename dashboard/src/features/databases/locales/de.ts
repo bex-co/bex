@@ -368,55 +368,268 @@ const deDatabases: Record<string, TranslationEntry> = {
     message: "PostgreSQL {version}",
     description: "Formatted PostgreSQL major version label",
   },
-  "databases.versionUpgradeAction": {
-    message: "Upgrade",
-    description: "Button opening the PostgreSQL major-version upgrade dialog",
-  },
-  "databases.versionUpgrading": {
-    message: "Upgrade läuft",
-    description:
-      "Version-row status while the database is offline for pg_upgrade",
-  },
-  "databases.versionUpgradeTitle": {
-    message: "PostgreSQL upgraden",
-    description: "PostgreSQL major-version upgrade dialog title",
-  },
-  "databases.versionUpgradeDescription": {
-    message:
-      "Upgrade diese Datenbank von PostgreSQL {version} auf eine neuere unterstützte Major-Version.",
-    description: "PostgreSQL major-version upgrade dialog description",
-  },
-  "databases.versionUpgradeTarget": {
-    message: "Zielversion",
-    description: "PostgreSQL major-version upgrade target selector label",
-  },
   "databases.versionUpgradeDowntime": {
     message:
-      "Die Datenbank ist während des Offline-Upgrades nicht verfügbar. Teste zuerst die Kompatibilität und plane eine Downtime ein; große Datenbanken können bis zu einer Stunde brauchen.",
+      "Die Datenbank und alle Replikate sind während des Upgrades vorübergehend nicht verfügbar.",
     description:
-      "Downtime warning in the PostgreSQL major-version upgrade dialog",
-  },
-  "databases.versionUpgradeErrorTitle": {
-    message: "Upgrade blockiert",
-    description:
-      "Inline backend-guard error title in the version upgrade dialog",
-  },
-  "databases.versionUpgradeCancel": {
-    message: "Abbrechen",
-    description: "PostgreSQL major-version upgrade dialog cancel button",
+      "Version upgrade page: first sentence of the downtime notice under Upgrade this database",
   },
   "databases.versionUpgradeConfirm": {
     message: "Auf PostgreSQL {version} upgraden",
-    description: "PostgreSQL major-version upgrade dialog confirmation button",
+    description:
+      "Version upgrade page: the button that starts the upgrade of this database",
   },
   "databases.versionUpgradeAccepted": {
-    message: "Upgrade auf PostgreSQL {version} gestartet.",
+    message: "Upgrade auf PostgreSQL {version} wird gestartet",
     description: "Toast after a PostgreSQL major-version upgrade is accepted",
   },
   "databases.versionUpgradeError": {
     message:
       "Das PostgreSQL-Upgrade konnte nicht gestartet werden. Bitte versuche es erneut.",
     description: "Fallback error when the PostgreSQL upgrade mutation fails",
+  },
+  "databases.versionUpgradeDowntimeDetail": {
+    message:
+      "Das dauert in der Regel weniger als eine Stunde. Die Datenbank und ihre Replikate sind bis zum Ende des Upgrades nicht verfügbar.",
+    description: "Version upgrade page: second sentence of the downtime notice",
+  },
+  "databases.versionUpgradeHeading": {
+    message: "Postgres-Versionsupgrades",
+    description:
+      "Version upgrade page title and document title (Render: Postgres Version Upgrades)",
+  },
+  "databases.versionUpgradeCurrent": {
+    message: "Aktuelle Version: PostgreSQL {version}",
+    description:
+      "Version upgrade page: badge naming the database's current major version",
+  },
+  "databases.versionUpgradeLatest": {
+    message:
+      "Diese Datenbank läuft bereits auf der neuesten unterstützten PostgreSQL-Version.",
+    description:
+      "Version upgrade page: shown when the database already runs the latest major",
+  },
+  "databases.versionUpgradeStepsTitle": {
+    message: "Schritte zum Upgrade",
+    description: "Version upgrade page: heading over the upgrade steps",
+  },
+  "databases.versionUpgradeStepsDocs": {
+    message: "Weitere Details zum Upgrade findest du in der {docs}.",
+    description:
+      "Version upgrade page: sentence after the steps heading; {docs} is the See the docs link",
+  },
+  "databases.versionUpgradeDocsLink": {
+    message: "Dokumentation",
+    description: "Version upgrade page: link to the upgrade documentation",
+  },
+  "databases.versionUpgradeChangesTitle": {
+    message:
+      "Ein Upgrade nimmt diese Änderungen an deiner Datenbank vor, die sich nicht rückgängig machen lassen:",
+    description:
+      "Version upgrade page: title of the list of changes an upgrade makes for good",
+  },
+  "databases.versionUpgradeChangePitr": {
+    message:
+      "Point-in-Time Recovery beginnt mit dem Upgrade neu: Die Datenbank lässt sich nicht auf einen Zeitpunkt davor wiederherstellen.",
+    description:
+      "Version upgrade page: irreversible change — point-in-time recovery restarts at the upgrade",
+  },
+  "databases.versionUpgradeChangeNoDowngrade": {
+    message: "Die Datenbank kann nicht zu PostgreSQL {version} zurückkehren.",
+    description:
+      "Version upgrade page: irreversible change — no return to the current major",
+  },
+  "databases.versionUpgradeBlockedTitle": {
+    message: "Erweiterungen blockieren das Upgrade",
+    description:
+      "Version upgrade page: title of the notice listing extensions that block the upgrade",
+  },
+  "databases.versionUpgradeBlockedBody": {
+    message:
+      "Eine Datenbank mit diesen aktivierten Erweiterungen kann nicht upgegradet werden. Entferne sie zuerst (DROP EXTENSION):",
+    description:
+      "Version upgrade page: explanation above the list of blocking extensions",
+  },
+  "databases.versionUpgradeStepsLabel": {
+    message: "Upgrade-Schritte",
+    description:
+      "Version upgrade page: accessible name of the ordered list of upgrade steps",
+  },
+  "databases.versionUpgradeCloneStep": {
+    message: "Einen Klon dieser Datenbank upgraden (empfohlen)",
+    description:
+      "Version upgrade page: title of the first step (Render: Upgrade a clone of this database (recommended))",
+  },
+  "databases.versionUpgradeCloneBody": {
+    message:
+      "Führe ein Test-Upgrade auf einer Wegwerfkopie durch, um sicherzugehen, dass es erfolgreich abschließt.",
+    description: "Version upgrade page: why to clone first",
+  },
+  "databases.versionUpgradeCloneBilling": {
+    message:
+      "Klone werden genauso abgerechnet wie jede andere Datenbank mit denselben Spezifikationen. Lösche den Klon, wenn du mit dem Testen fertig bist.",
+    description: "Version upgrade page: clone billing reminder",
+  },
+  "databases.versionUpgradeCloneAction": {
+    message: "Diese Datenbank klonen",
+    description:
+      "Version upgrade page: button that creates the point-in-time clone",
+  },
+  "databases.versionUpgradeClonePitr": {
+    message:
+      "Du kannst die Datenbank klonen, sobald Point-in-Time Recovery bereit ist.",
+    description:
+      "Version upgrade page: tooltip while the clone button waits for point-in-time recovery",
+  },
+  "databases.versionUpgradeCloneCreated": {
+    message: "Eine geklonte Datenbank wurde erstellt: {name}.",
+    description:
+      "Version upgrade page: toast after the clone is created; {name} is the clone",
+  },
+  "databases.versionUpgradeCloneView": {
+    message: "Postgres-Klon ansehen",
+    description: "Version upgrade page: link to the clone's own upgrade page",
+  },
+  "databases.versionUpgradeCloneError": {
+    message: "Der Klon konnte nicht erstellt werden. Bitte versuche es erneut.",
+    description:
+      "Version upgrade page: fallback error when the clone cannot be created",
+  },
+  "databases.versionUpgradeThisStep": {
+    message: "Diese Datenbank upgraden",
+    description:
+      "Version upgrade page: title of the step that upgrades this database",
+  },
+  "databases.versionUpgradeRunning": {
+    message: "Upgrade läuft...",
+    description:
+      "Version upgrade page: upgrade button label while the upgrade runs",
+  },
+  "databases.versionUpgradeNotReady": {
+    message:
+      "Das Upgrade ist möglich, sobald die Datenbank verfügbar und Point-in-Time Recovery eingerichtet ist.",
+    description:
+      "Version upgrade page: tooltip while the upgrade button waits for the database and point-in-time recovery",
+  },
+  "databases.versionUpgradeReleaseNotes": {
+    message: "Versionshinweise lesen",
+    description:
+      "Version upgrade page: link to PostgreSQL's release notes for the target major",
+  },
+  "databases.versionUpgradeStatusLabel": {
+    message: "Upgrade-Status und Logs",
+    description:
+      "Version upgrade page: accessible name of a run's status and logs section",
+  },
+  "databases.versionUpgradeStateInProgress": {
+    message: "läuft",
+    description: "Version upgrade page: run state badge",
+  },
+  "databases.versionUpgradeStateSucceeded": {
+    message: "erfolgreich",
+    description: "Version upgrade page: run state badge",
+  },
+  "databases.versionUpgradeStateFailed": {
+    message: "fehlgeschlagen",
+    description: "Version upgrade page: run state badge",
+  },
+  "databases.versionUpgradeLogsEmpty": {
+    message: "Logs, die zu deinen Suchparametern passen, erscheinen hier.",
+    description:
+      "Version upgrade page: empty logs explanation for a finished run",
+  },
+  "databases.versionUpgradeLogsEmptyRunning": {
+    message:
+      "Logs, die zu deinen Suchparametern passen, erscheinen hier. Nach dem Start des Upgrades kann es einige Minuten dauern, bis Logs erscheinen.",
+    description:
+      "Version upgrade page: empty logs explanation while the run is in progress",
+  },
+  "databases.versionUpgradeLastAttempt": {
+    message: "Letzter Upgrade-Versuch",
+    description:
+      "Version upgrade page: title of the card holding the last finished run",
+  },
+  "databases.versionUpgradeSucceededTitle": {
+    message: "Upgrade erfolgreich",
+    description: "Toast title when an upgrade the page watched succeeds",
+  },
+  "databases.versionUpgradeSucceededBody": {
+    message: "Deine Datenbank wurde auf Postgres {version} aktualisiert.",
+    description: "Toast body when an upgrade the page watched succeeds",
+  },
+  "databases.versionUpgradeFailedTitle": {
+    message: "Upgrade fehlgeschlagen",
+    description: "Toast title when an upgrade the page watched fails",
+  },
+  "databases.versionUpgradeFailedBannerTitle": {
+    message: "Upgrade fehlgeschlagen.",
+    description:
+      "Banner title on Info and the upgrade page for a failed upgrade nobody dismissed",
+  },
+  "databases.versionUpgradeFailedBody": {
+    message:
+      "Deine Datenbank läuft weiterhin auf ihrer aktuellen Version. Prüfe die Upgrade-Logs, behebe das Problem und versuche es dann erneut.",
+    description: "Banner and toast body for a failed upgrade",
+  },
+  "databases.versionUpgradeDismiss": {
+    message: "Fehler ausblenden",
+    description:
+      "Button that acknowledges a failed upgrade (Render: Dismiss error)",
+  },
+  "databases.versionUpgradeDismissError": {
+    message:
+      "Der Fehler konnte nicht ausgeblendet werden. Bitte versuche es erneut.",
+    description: "Fallback error when acknowledging a failed upgrade fails",
+  },
+  "databases.versionUpgradeAvailableTitle": {
+    message: "PostgreSQL {version} ist verfügbar.",
+    description: "Info banner title when a newer PostgreSQL major is available",
+  },
+  "databases.versionUpgradeAvailableBody": {
+    message: "Upgrade für bessere Performance und zusätzliche Funktionen.",
+    description: "Info banner body when a newer PostgreSQL major is available",
+  },
+  "databases.versionUpgradeViewOptions": {
+    message: "Upgrade-Optionen ansehen",
+    description: "Info banner button that opens the version upgrade page",
+  },
+  "databases.versionUpgradeAvailableDismiss": {
+    message: "Ausblenden",
+    description:
+      "Accessible name of the button that dismisses the newer-major banner",
+  },
+  "databases.versionUpgradeLink": {
+    message: "Version upgraden",
+    description:
+      "Info Version row link when a newer major is available (Render: Upgrade version)",
+  },
+  "databases.versionUpgradeViewLink": {
+    message: "Upgrade ansehen",
+    description:
+      "Info Version row link while an upgrade runs (Render: View upgrade)",
+  },
+  "databases.versionUpgradeReviewLink": {
+    message: "Versionsdetails ansehen",
+    description:
+      "Info Version row link on the latest major (Render: Review version details)",
+  },
+  "databases.versionUpgradeCloneOf": {
+    message: "Diese Datenbank ist ein Klon von {name}.",
+    description:
+      "Banner title on a clone made for a test upgrade; {name} is its source database",
+  },
+  "databases.versionUpgradeCloneOfBody": {
+    message:
+      "Klone werden genauso abgerechnet wie jede andere Datenbank mit denselben Spezifikationen. Lösche diesen Klon, wenn du mit dem Testen fertig bist.",
+    description: "Banner body on a clone made for a test upgrade",
+  },
+  "databases.versionUpgradeDeleteClone": {
+    message: "Diesen Klon löschen",
+    description: "Clone banner button that opens the clone's delete action",
+  },
+  "databases.versionUpgradeGoToOriginal": {
+    message: "Zur ursprünglichen Datenbank",
+    description: "Clone banner link to the source database's upgrade page",
   },
   "databases.metaDatabaseName": {
     message: "Datenbank",

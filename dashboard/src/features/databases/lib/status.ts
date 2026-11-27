@@ -105,6 +105,16 @@ export function toDatabaseDetailView(
     // work the same for both encodings.
     externalHost: d.externalHost || null,
     backupsEnabled: d.backupsEnabled ?? false,
+    lastUpgradeRun: d.lastUpgradeRun
+      ? {
+          runId: d.lastUpgradeRun.runId,
+          startedAt: d.lastUpgradeRun.startedAt,
+          state: d.lastUpgradeRun.state,
+          toVersion: d.lastUpgradeRun.toVersion,
+          acknowledged: d.lastUpgradeRun.acknowledged,
+        }
+      : null,
+    versionUpgradeAvailable: d.versionUpgradeAvailable ?? null,
   };
 }
 
@@ -148,10 +158,7 @@ export function deriveStatus(d: {
  * states are left to the server's own answer.
  */
 export type SQLConsoleBlock =
-  | "suspended"
-  | "creating"
-  | "upgrading"
-  | "restarting";
+  "suspended" | "creating" | "upgrading" | "restarting";
 
 const SQL_CONSOLE_BLOCKS: ReadonlySet<string> = new Set([
   "suspended",

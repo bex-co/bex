@@ -77,6 +77,16 @@ query Database($id: String!) {
     backupsEnabled
     ipAllowList
     region
+    # The guided version-upgrade page (w3/m676): the last upgrade's attempt
+    # (null before one) and the one major an in-place upgrade targets.
+    lastUpgradeRun {
+      runId
+      startedAt
+      state
+      toVersion
+      acknowledged
+    }
+    versionUpgradeAvailable
   }
 }
 
@@ -399,6 +409,36 @@ mutation UpdateDatabaseVersion($id: String!, $version: String!) {
     version
     status
     upgradeNotice
+    lastUpgradeRun {
+      runId
+      startedAt
+      state
+      toVersion
+      acknowledged
+    }
+  }
+}
+
+# Render's databaseExtensions: the installed extensions, and the ones a
+# PostgreSQL major upgrade cannot carry (w3/m676).
+query DatabaseExtensions($id: String!) {
+  databaseExtensions(id: $id) {
+    name
+    blocksUpgradeDatabase
+  }
+}
+
+# Dismisses a finished upgrade's result, Render's acknowledgeDatabaseUpgrade.
+mutation AcknowledgeDatabaseUpgrade($id: String!, $runId: String!) {
+  acknowledgeDatabaseUpgrade(id: $id, runId: $runId) {
+    id
+    lastUpgradeRun {
+      runId
+      startedAt
+      state
+      toVersion
+      acknowledged
+    }
   }
 }
 

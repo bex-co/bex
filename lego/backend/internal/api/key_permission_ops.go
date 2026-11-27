@@ -48,6 +48,7 @@ import "github.com/bex-co/bex/lego/backend/internal/core"
 // A key whose grant is All skips this table entirely; for any other key an
 // operation missing from it is refused (I7).
 var keyPermissionOps = map[string][]core.KeyAction{
+	"GQL Mutation.acknowledgeDatabaseUpgrade":                               {core.KeyPostgresManage},
 	"GQL Mutation.createObjectAccessKey":                                    {core.KeyNoGrant},
 	"GQL Mutation.deployPostgresAdminApp":                                   {core.KeyServicesManage, core.KeyServicesEnvSet, core.KeyPostgresCredentials},
 	"GQL Mutation.revokeObjectAccessKey":                                    {core.KeyNoGrant},
@@ -304,6 +305,7 @@ var keyPermissionOps = map[string][]core.KeyAction{
 	"GQL Mutation.updateDatabaseHighAvailability":                           {core.KeyPostgresManage},
 	"GQL Mutation.updateDatabasePlan":                                       {core.KeyPostgresManage},
 	"GQL Mutation.updateDatabaseVersion":                                    {core.KeyPostgresManage},
+	"GQL Mutation.upgradeDatabase":                                          {core.KeyPostgresManage},
 	"GQL Mutation.updateDisk":                                               {core.KeyServicesManage},
 	"GQL Mutation.updateEnvironment":                                        {core.KeyProjectsManage},
 	"GQL Mutation.updateKeyValuePlan":                                       {core.KeyKeyValueManage},
@@ -372,6 +374,7 @@ var keyPermissionOps = map[string][]core.KeyAction{
 	"GQL Query.databaseParameterSpec":                                       {core.KeyAnyGrant},
 	"GQL Query.databaseProcesses":                                           {core.KeyPostgresCredentials},
 	"GQL Query.databaseRecoveryInfo":                                        {core.KeyPostgresView},
+	"GQL Query.databaseExtensions":                                          {core.KeyPostgresView},
 	"GQL Query.databaseSizes":                                               {core.KeyPostgresView},
 	"GQL Query.databaseTableScans":                                          {core.KeyPostgresView},
 	"GQL Query.databaseTopQueries":                                          {core.KeyPostgresCredentials},

@@ -187,6 +187,9 @@ OUT_OF_ORDER_RUN = [
 APP_TARGET = 'namespace = "tenant", app = "web", pod = "web-1", container = "app"'
 PG_TARGET = 'namespace = "tenant", database = "dpg-test", pod = "dpg-test-1", container = "postgres"'
 KV_TARGET = 'namespace = "tenant", keyvalue = "red-test", pod = "red-test-0", container = "valkey"'
+# A major upgrade's Job pod (w3/m676).
+UPGRADE_TARGET = ('namespace = "tenant", database = "dpg-test", pod = "dpg-test-1-major-upgrade-x7k2p", '
+                  'container = "major-upgrade"')
 BUILD_TARGET = 'namespace = "tenant", app = "web", pod = "web-build-1", container = "build"'
 # stage.cri's max_partial_line_size in every tenant pipeline (CRI LINE CAP).
 CRI_LINE_CAP = 200000
@@ -360,6 +363,41 @@ class TenantDatastoreLogsTest(unittest.TestCase):
             with self.subTest(line=line):
                 labels = {"namespace": "tenant", "database": "dpg-test", "pod": "dpg-test-1",
                           "container": "postgres", "type": "postgres"}
+                if level is not None:
+                    labels["level"] = level
+                self.assertEqual({key: value for key, value in actual[line].items() if key != "__ts"}, labels)
+
+    def test_postgres_upgrade_job_lines_are_kept(self):
+        """w3/m676: a major upgrade runs in its own Job pod, whose
+        major-upgrade container is CNPG's instance manager running initdb and
+        pg_upgrade. Its JSON lines are the upgrade's log: each is kept as its
+        message, after the program that wrote it, with CNPG's level, where the
+        postgres container's instance-manager JSON is dropped."""
+        lines = [
+            '{"level":"info","ts":"2026-11-27T04:53:17.156317594Z","msg":"Starting the upgrade process",'
+            '"logging_pod":"dpg-test-1-major-upgrade"}',
+            '{"level":"info","ts":"2026-11-27T04:53:17.357684802Z","logger":"initdb",'
+            '"msg":"creating subdirectories ... ok","pipe":"stdout","logging_pod":"dpg-test-1-major-upgrade"}',
+            '{"level":"info","ts":"2026-11-27T04:53:19.1Z","logger":"pg_upgrade",'
+            '"msg":"Checking for presence of required libraries                fatal","pipe":"stdout",'
+            '"logging_pod":"dpg-test-1-major-upgrade"}',
+            '{"level":"error","ts":"2026-11-27T04:53:19.2Z","msg":"Error while executing pg_upgrade",'
+            '"error":"exit status 1","logging_pod":"dpg-test-1-major-upgrade"}',
+            "a line that is not JSON",
+        ]
+        want = {
+            "Starting the upgrade process": "info",
+            "initdb: creating subdirectories ... ok": "info",
+            "pg_upgrade: Checking for presence of required libraries                fatal": "info",
+            "Error while executing pg_upgrade": "error",
+            "a line that is not JSON": None,
+        }
+        actual, output = run_pipeline(self, "database_logs", lines, "postgres", UPGRADE_TARGET, cri=True)
+        self.assertEqual(set(actual), set(want), f"unexpected upgrade lines:\n{output}")
+        for line, level in want.items():
+            with self.subTest(line=line):
+                labels = {"namespace": "tenant", "database": "dpg-test", "pod": "dpg-test-1-major-upgrade-x7k2p",
+                          "container": "major-upgrade", "type": "postgres"}
                 if level is not None:
                     labels["level"] = level
                 self.assertEqual({key: value for key, value in actual[line].items() if key != "__ts"}, labels)

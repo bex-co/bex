@@ -349,7 +349,7 @@ Grouped by product area, then sorted by name.
 
 | Operation | Kind | Disposition | Pointer |
 | --- | --- | --- | --- |
-| `acknowledgeDatabaseUpgrade` | mutation | matched | ADR018 § Managed Postgres: Postgres major-version upgrade; [postgres-version-upgrade.md](postgres-version-upgrade.md) |
+| `acknowledgeDatabaseUpgrade` | mutation | matched | ADR018 § Managed Postgres: Postgres major-version upgrade; GraphQL `acknowledgeDatabaseUpgrade(id, runId)` and `Database.lastUpgradeRun` (w3/m676); [postgres-version-upgrade.md](postgres-version-upgrade.md#the-guided-page) |
 | `createDatabase` | mutation | matched | ADR018 § Managed Postgres: Postgres CRUD + connection-info |
 | `createDatabaseBackup` | mutation | matched | ADR018 § Managed Postgres: Backups · PITR / recovery; [postgres-exports.md](postgres-exports.md) |
 | `createDatabaseCredential` | mutation | matched | ADR018 § Managed Postgres: Access control (IP allowlist) · users · pooler |
@@ -359,7 +359,7 @@ Grouped by product area, then sorted by name.
 | `databaseBackupsQuery` | query | matched | ADR018 § Managed Postgres: Backups · PITR / recovery; [postgres-exports.md](postgres-exports.md) |
 | `databaseCredentialList` | query | matched | ADR018 § Managed Postgres: Access control (IP allowlist) · users · pooler |
 | `databaseEvents` | query | matched | ADR018 § Managed Postgres: Dashboard pages (sidebar · Info · Logs · Metrics · Plan · Apps · Recovery); [postgres-dashboard.md](postgres-dashboard.md) |
-| `databaseExtensions` | query | partial | ADR018 § Managed Postgres: Postgres extensions (`CREATE EXTENSION`); the names that still fail are `w21/m585`, `w21/m586` |
+| `databaseExtensions` | query | partial | ADR018 § Managed Postgres: Postgres extensions (`CREATE EXTENSION`); the names that still fail are `w21/m585`, `w21/m586`. GraphQL `databaseExtensions(id) { name blocksUpgradeDatabase }` serves the version-upgrade page (w3/m676) |
 | `databaseIdsForOwner` | query | matched | ADR018 § Managed Postgres: Postgres CRUD + connection-info |
 | `databaseIpAllowList` | query | matched | ADR018 § Managed Postgres: Access control (IP allowlist) · users · pooler |
 | `databaseMemoryMetrics` | query | matched | ADR018 § Metrics: Extended metrics (datastore CPU and memory, `w1/m180`) |
@@ -390,7 +390,7 @@ Grouped by product area, then sorted by name.
 | `updateDatabaseIpAllowList` | mutation | matched | ADR018 § Managed Postgres: Access control (IP allowlist) · users · pooler |
 | `updateDatabaseParameterOverrides` | mutation | flagged | `postgres-parameter-overrides`: the PostgreSQL Configuration Overrides card; bex retired overrides (`w2/066` D2=A) |
 | `updateDatabasePlan` | mutation | matched | ADR018 § Managed Postgres: Postgres CRUD + connection-info (plans); [pricing.md](pricing.md) |
-| `upgradeDatabaseVersion` | mutation | matched | ADR018 § Managed Postgres: Postgres major-version upgrade; [postgres-version-upgrade.md](postgres-version-upgrade.md) |
+| `upgradeDatabaseVersion` | mutation | matched | ADR018 § Managed Postgres: Postgres major-version upgrade; GraphQL `upgradeDatabase(id, newVersion)` beside bex's `updateDatabaseVersion` (w3/m676); [postgres-version-upgrade.md](postgres-version-upgrade.md#the-guided-page) |
 
 ### Key Value
 

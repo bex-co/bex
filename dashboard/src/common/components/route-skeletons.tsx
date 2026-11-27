@@ -120,6 +120,11 @@ import { CronRunsFrameSkeleton } from "@/features/services/components/cron-runs-
 import { AdminAppsPanelSkeleton } from "@/features/databases/components/admin-apps-panel-skeleton";
 import { RecoveryPanelSkeleton } from "@/features/databases/components/recovery-panel-skeleton";
 import { useOptionalDatabaseDetail } from "@/features/databases/lib/database-detail";
+import {
+  isUpgradeClone,
+  upgradeAvailable,
+  upgradeRunning,
+} from "@/features/databases/lib/version-upgrade";
 import type { DatabaseDetailView } from "@/features/databases/types";
 import {
   ObservabilityViewHeader,
@@ -3768,6 +3773,94 @@ export function DatabaseRecoverySkeleton({
           backupsEnabled={known?.backupsEnabled !== false}
           exportScope={known ? Boolean(known.databaseName) : true}
         />
+      </Region>
+    </PendingFrame>
+  );
+}
+
+/**
+ * A Postgres database's guided version-upgrade page (w3/m676): the versions
+ * card, with Render's steps under it while a newer major exists, else its
+ * one-line "latest supported version". The database the layout's cache holds,
+ * or the open one on a page switch, decides which.
+ */
+export function DatabaseVersionUpgradeSkeleton({
+  database,
+}: {
+  database?: Pick<
+    DatabaseDetailView,
+    | "plan"
+    | "name"
+    | "version"
+    | "backupsEnabled"
+    | "versionUpgradeAvailable"
+    | "lastUpgradeRun"
+  > | null;
+}) {
+  const open = useOptionalDatabaseDetail()?.database;
+  const known = database ?? open;
+  const latest =
+    known != null &&
+    !upgradeAvailable(known) &&
+    !upgradeRunning(known.lastUpgradeRun);
+  // A paid database has backups, so the clone step and the PITR change lead
+  // unless the database says otherwise.
+  const backups = known ? known.backupsEnabled : true;
+  const cloneStep = backups && !(known && isUpgradeClone(known.name));
+  return (
+    <PendingFrame route="database-version-upgrade" className="space-y-6">
+      <Region name="versions">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-4 w-48" />
+            {/* The current-version badge. */}
+            <Skeleton className="mt-1 h-[22px] w-52" />
+          </CardHeader>
+          <CardContent>
+            {latest ? (
+              <Skeleton className="h-5 w-full max-w-[28rem]" />
+            ) : (
+              <div className="space-y-6">
+                <div className="space-y-1">
+                  <Skeleton className="h-6 w-32" />
+                  <Skeleton className="h-5 w-72 max-w-full" />
+                </div>
+                {/* What the upgrade changes for good: its title and one line
+                    per change, wrapped on a phone. */}
+                <Skeleton
+                  className={cn(
+                    "w-full rounded-lg",
+                    backups
+                      ? "h-[8.5rem] sm:h-[5.75rem]"
+                      : "h-[5.5rem] sm:h-[4.375rem]",
+                  )}
+                />
+                <div>
+                  {cloneStep ? (
+                    <div className="flex gap-4 pb-6">
+                      <Skeleton className="size-7 shrink-0 rounded-full" />
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <Skeleton className="mt-1 h-5 w-80 max-w-full" />
+                        <Skeleton className="h-[3.75rem] w-full sm:h-10" />
+                        <Skeleton className="h-9 w-40" />
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="flex gap-4">
+                    <Skeleton className="size-7 shrink-0 rounded-full" />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <Skeleton className="mt-1 h-5 w-44" />
+                      <Skeleton className="h-[5rem] w-full sm:h-10" />
+                      <Skeleton className="h-9 w-48" />
+                      {/* Read release notes. */}
+                      <Skeleton className="h-5 w-36" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </Region>
     </PendingFrame>
   );

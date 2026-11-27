@@ -77,6 +77,28 @@ export interface DatabaseDetailView extends DatabaseView {
   externalHost: string | null;
   /** Whether the operator has configured continuous physical backups. */
   backupsEnabled: boolean;
+  /**
+   * The last major-version upgrade (bex-api `lastUpgradeRun`, w3/m676), null
+   * before bex-api accepted one. Absent on legacy fixtures.
+   */
+  lastUpgradeRun?: DatabaseUpgradeRunView | null;
+  /**
+   * The one major an in-place upgrade targets, the latest bex runs (bex-api
+   * `versionUpgradeAvailable`). Absent on legacy fixtures.
+   */
+  versionUpgradeAvailable?: string | null;
+}
+
+/** One major-version upgrade's attempt, Render's lastUpgradeRun. */
+export interface DatabaseUpgradeRunView {
+  runId: string;
+  /** When bex-api accepted the upgrade (RFC 3339). */
+  startedAt: string;
+  /** Render's state: IN_PROGRESS, SUCCEEDED or FAILED. */
+  state: string;
+  toVersion: string;
+  /** Whether a member dismissed the result. */
+  acknowledged: boolean;
 }
 
 /** Full connection strings (with password) for one named read replica. */

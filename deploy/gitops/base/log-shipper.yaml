@@ -620,9 +620,13 @@ spec:
                 }
                 // The postgres container carries PostgreSQL's output, wrapped
                 // by CNPG's instance manager; database_logs below unwraps it.
+                // A major-version upgrade runs in its own Job pod, whose
+                // major-upgrade container is CNPG's instance manager running
+                // initdb and pg_upgrade: the upgrade's log, which the guided
+                // version-upgrade page shows (w3/m676).
                 rule {
                   source_labels = ["__meta_kubernetes_pod_container_name"]
-                  regex         = "postgres"
+                  regex         = "postgres|major-upgrade"
                   action        = "keep"
                 }
                 rule {
@@ -692,14 +696,17 @@ spec:
                 // against one fixture file.
                 stage.json {
                   expressions = {
-                    cnpg_json   = "`true`",
-                    cnpg_record = "logger == 'postgres' && msg == 'record' && type(record) == 'object'",
-                    pg_time     = "record.log_time",
-                    pg_pid      = "record.process_id",
-                    pg_severity = "record.error_severity",
-                    pg_message  = "record.message",
-                    pg_detail   = "record.detail",
-                    pg_hint     = "record.hint",
+                    cnpg_json      = "`true`",
+                    cnpg_record    = "logger == 'postgres' && msg == 'record' && type(record) == 'object'",
+                    pg_time        = "record.log_time",
+                    pg_pid         = "record.process_id",
+                    pg_severity    = "record.error_severity",
+                    pg_message     = "record.message",
+                    pg_detail      = "record.detail",
+                    pg_hint        = "record.hint",
+                    upgrade_logger = "logger",
+                    upgrade_msg    = "msg",
+                    upgrade_level  = "level",
                   }
                 }
                 stage.labels {
@@ -709,9 +716,30 @@ spec:
                   }
                 }
                 stage.match {
-                  selector            = "{cnpg_json=\"true\", cnpg_record!=\"true\"}"
+                  selector            = "{container=\"postgres\", cnpg_json=\"true\", cnpg_record!=\"true\"}"
                   action              = "drop"
                   drop_counter_reason = "cnpg_instance_manager"
+                }
+                // The upgrade Job's instance manager is the upgrade's own
+                // story (initdb, pg_upgrade's checks and why one failed), so
+                // each of its JSON lines is kept as its message, after the
+                // program that wrote it, with CNPG's level (w3/m676).
+                stage.match {
+                  selector = "{container=\"major-upgrade\", cnpg_json=\"true\"}"
+                  stage.template {
+                    source   = "upgrade_line"
+                    template = "{{ "{{" }} if .upgrade_logger {{ "}}" }}{{ "{{" }} .upgrade_logger {{ "}}" }}: {{ "{{" }} end {{ "}}" }}{{ "{{" }} or .upgrade_msg \"\" {{ "}}" }}"
+                  }
+                  stage.template {
+                    source   = "level"
+                    template = "{{ "{{" }} $l := or .upgrade_level \"\" {{ "}}" }}{{ "{{" }} if eq $l \"error\" {{ "}}" }}error{{ "{{" }} else if eq $l \"warning\" {{ "}}" }}warning{{ "{{" }} else if eq $l \"debug\" {{ "}}" }}debug{{ "{{" }} else {{ "}}" }}info{{ "{{" }} end {{ "}}" }}"
+                  }
+                  stage.labels {
+                    values = { level = "level" }
+                  }
+                  stage.output {
+                    source = "upgrade_line"
+                  }
                 }
                 stage.match {
                   selector = "{cnpg_record=\"true\"}"

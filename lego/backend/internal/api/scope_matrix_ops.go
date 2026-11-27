@@ -23,6 +23,7 @@ import "github.com/bex-co/bex/lego/backend/internal/core"
 var classifiedOps = map[string]string{
 	"GQL Mutation.acceptOrganizationInvite":                                 core.OpClassWrite,
 	"GQL Mutation.acceptWorkspaceInvite":                                    core.OpClassWrite,
+	"GQL Mutation.acknowledgeDatabaseUpgrade":                               core.OpClassWrite,
 	"GQL Mutation.addCustomDomain":                                          core.OpClassWrite,
 	"GQL Mutation.addDisk":                                                  core.OpClassWrite,
 	"GQL Mutation.approveBlueprint":                                         core.OpClassWrite,
@@ -283,6 +284,7 @@ var classifiedOps = map[string]string{
 	"GQL Mutation.updateUserLogThemeSetting":                                core.OpClassWrite,
 	"GQL Mutation.updateUserThemeSetting":                                   core.OpClassWrite,
 	"GQL Mutation.updateWebhookEndpoint":                                    core.OpClassWrite,
+	"GQL Mutation.upgradeDatabase":                                          core.OpClassWrite,
 	"GQL Mutation.verifyCustomDomain":                                       core.OpClassWrite,
 	"GQL Query.accountDeletionPreview":                                      core.OpClassRead,
 	"GQL Query.agentAttachment":                                             core.OpClassRead,
@@ -329,6 +331,7 @@ var classifiedOps = map[string]string{
 	"GQL Query.databaseConnectionInfo":                                      core.OpClassSensitive,
 	"GQL Query.databaseCredentials":                                         core.OpClassRead,
 	"GQL Query.databaseExports":                                             core.OpClassSensitive,
+	"GQL Query.databaseExtensions":                                          core.OpClassRead,
 	"GQL Query.databaseInstanceTypes":                                       core.OpClassRead,
 	"GQL Query.databaseIpAllowList":                                         core.OpClassRead,
 	"GQL Query.databaseLogs":                                                core.OpClassRead,

@@ -229,11 +229,15 @@ func (s *Service) executeAuthorizedQuery(ctx context.Context, db *appv1alpha1.Da
 	if uri == "" {
 		return QueryResult{}, core.ErrNotFound
 	}
-	executor := s.queryExecutor
-	if executor == nil {
-		executor = runSQLQuery
+	return s.sqlExecutor()(ctx, uri, sql, lim, readOnly)
+}
+
+// sqlExecutor is the SQL transport: the test seam when set, else pgx.
+func (s *Service) sqlExecutor() queryExecutor {
+	if s.queryExecutor != nil {
+		return s.queryExecutor
 	}
-	return executor(ctx, uri, sql, lim, readOnly)
+	return runSQLQuery
 }
 
 // The two limit sets executeAuthorizedQuery runs under: the console's (REST,

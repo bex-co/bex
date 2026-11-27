@@ -56,5 +56,5 @@ export function createLocalSetting<T extends string>(
     return useSyncExternalStore(subscribe, read, () => fallback);
   }
 
-  return { useValue, write };
+  return { useValue, read, write };
 }

@@ -157,6 +157,12 @@ interface DatastoreLogViewerProps {
   contextLine?: string;
   /** The live tail's stream factory; tests inject a fake (as LogViewer). */
   createEventSource?: EventSourceFactory;
+  /**
+   * The empty state's explanation in place of the kind's own, for a viewer
+   * embedded where an empty window means something narrower (the version
+   * upgrade page's logs, w3/m676).
+   */
+  emptyBody?: string;
 }
 
 function DatastoreLogs({
@@ -168,10 +174,14 @@ function DatastoreLogs({
   onFiltersChange,
   contextLine,
   createEventSource,
+  emptyBody,
 }: DatastoreLogViewerProps) {
   const { t } = useTranslations();
   const hydrated = useIsHydrated();
-  const copy = datastoreLogCopy(kind, t);
+  const copy = {
+    ...datastoreLogCopy(kind, t),
+    ...(emptyBody && { emptyBody }),
+  };
   const [localRange, setLocalRange] = useState<LogRange>(
     DEFAULT_DATASTORE_LOG_RANGE,
   );

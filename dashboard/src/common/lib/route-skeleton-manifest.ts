@@ -410,6 +410,14 @@ export const ROUTE_SKELETON_MANIFEST = {
     shape: "database-recovery",
     regions: ["recovery"],
   },
+  // Render's guided version-upgrade page, which Info's version row opens
+  // (w3/m676).
+  "/databases/$databaseId/version-upgrade": {
+    kind: "render",
+    owner: "routes/databases.$databaseId.version-upgrade.tsx",
+    shape: "database-version-upgrade",
+    regions: ["versions"],
+  },
   // Render's sub-paths with no page of their own land where their control is.
   "/databases/$databaseId/$": {
     kind: "redirect",

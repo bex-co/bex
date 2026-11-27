@@ -359,54 +359,265 @@ const koDatabases: Record<string, TranslationEntry> = {
     message: "PostgreSQL {version}",
     description: "Formatted PostgreSQL major version label",
   },
-  "databases.versionUpgradeAction": {
-    message: "업그레이드",
-    description: "Button opening the PostgreSQL major-version upgrade dialog",
-  },
-  "databases.versionUpgrading": {
-    message: "업그레이드 진행 중",
-    description:
-      "Version-row status while the database is offline for pg_upgrade",
-  },
-  "databases.versionUpgradeTitle": {
-    message: "PostgreSQL 업그레이드",
-    description: "PostgreSQL major-version upgrade dialog title",
-  },
-  "databases.versionUpgradeDescription": {
-    message:
-      "이 데이터베이스를 PostgreSQL {version}에서 지원되는 더 최신 메이저 버전으로 업그레이드합니다.",
-    description: "PostgreSQL major-version upgrade dialog description",
-  },
-  "databases.versionUpgradeTarget": {
-    message: "대상 버전",
-    description: "PostgreSQL major-version upgrade target selector label",
-  },
   "databases.versionUpgradeDowntime": {
     message:
-      "오프라인 업그레이드가 실행되는 동안 데이터베이스를 사용할 수 없습니다. 먼저 호환성을 테스트하고 다운타임을 계획하세요. 대용량 데이터베이스는 최대 1시간까지 걸릴 수 있습니다.",
+      "업그레이드하는 동안 데이터베이스와 모든 복제본을 일시적으로 사용할 수 없습니다.",
     description:
-      "Downtime warning in the PostgreSQL major-version upgrade dialog",
-  },
-  "databases.versionUpgradeErrorTitle": {
-    message: "업그레이드가 차단되었습니다",
-    description:
-      "Inline backend-guard error title in the version upgrade dialog",
-  },
-  "databases.versionUpgradeCancel": {
-    message: "취소",
-    description: "PostgreSQL major-version upgrade dialog cancel button",
+      "Version upgrade page: first sentence of the downtime notice under Upgrade this database",
   },
   "databases.versionUpgradeConfirm": {
     message: "PostgreSQL {version}(으)로 업그레이드",
-    description: "PostgreSQL major-version upgrade dialog confirmation button",
+    description:
+      "Version upgrade page: the button that starts the upgrade of this database",
   },
   "databases.versionUpgradeAccepted": {
-    message: "PostgreSQL {version} 업그레이드를 시작했습니다.",
+    message: "PostgreSQL {version}(으)로 업그레이드를 시작합니다",
     description: "Toast after a PostgreSQL major-version upgrade is accepted",
   },
   "databases.versionUpgradeError": {
     message: "PostgreSQL 업그레이드를 시작하지 못했습니다. 다시 시도하세요.",
     description: "Fallback error when the PostgreSQL upgrade mutation fails",
+  },
+  "databases.versionUpgradeDowntimeDetail": {
+    message:
+      "보통 1시간 이내에 끝납니다. 업그레이드가 끝날 때까지 데이터베이스와 복제본을 사용할 수 없습니다.",
+    description: "Version upgrade page: second sentence of the downtime notice",
+  },
+  "databases.versionUpgradeHeading": {
+    message: "Postgres 버전 업그레이드",
+    description:
+      "Version upgrade page title and document title (Render: Postgres Version Upgrades)",
+  },
+  "databases.versionUpgradeCurrent": {
+    message: "현재 버전: PostgreSQL {version}",
+    description:
+      "Version upgrade page: badge naming the database's current major version",
+  },
+  "databases.versionUpgradeLatest": {
+    message:
+      "이 데이터베이스는 지원되는 최신 버전의 PostgreSQL을 실행하고 있습니다.",
+    description:
+      "Version upgrade page: shown when the database already runs the latest major",
+  },
+  "databases.versionUpgradeStepsTitle": {
+    message: "업그레이드 단계",
+    description: "Version upgrade page: heading over the upgrade steps",
+  },
+  "databases.versionUpgradeStepsDocs": {
+    message: "업그레이드에 대한 자세한 내용은 {docs}를 참고하세요.",
+    description:
+      "Version upgrade page: sentence after the steps heading; {docs} is the See the docs link",
+  },
+  "databases.versionUpgradeDocsLink": {
+    message: "문서",
+    description: "Version upgrade page: link to the upgrade documentation",
+  },
+  "databases.versionUpgradeChangesTitle": {
+    message:
+      "업그레이드하면 데이터베이스에 되돌릴 수 없는 다음 변경이 적용됩니다:",
+    description:
+      "Version upgrade page: title of the list of changes an upgrade makes for good",
+  },
+  "databases.versionUpgradeChangePitr": {
+    message:
+      "특정 시점 복구는 업그레이드 시점부터 다시 시작됩니다. 업그레이드 이전 시점으로는 데이터베이스를 복구할 수 없습니다.",
+    description:
+      "Version upgrade page: irreversible change — point-in-time recovery restarts at the upgrade",
+  },
+  "databases.versionUpgradeChangeNoDowngrade": {
+    message: "데이터베이스를 PostgreSQL {version}(으)로 되돌릴 수 없습니다.",
+    description:
+      "Version upgrade page: irreversible change — no return to the current major",
+  },
+  "databases.versionUpgradeBlockedTitle": {
+    message: "확장 기능 때문에 업그레이드할 수 없습니다",
+    description:
+      "Version upgrade page: title of the notice listing extensions that block the upgrade",
+  },
+  "databases.versionUpgradeBlockedBody": {
+    message:
+      "이 확장 기능이 활성화된 데이터베이스는 업그레이드할 수 없습니다. 먼저 삭제하세요(DROP EXTENSION):",
+    description:
+      "Version upgrade page: explanation above the list of blocking extensions",
+  },
+  "databases.versionUpgradeStepsLabel": {
+    message: "업그레이드 단계",
+    description:
+      "Version upgrade page: accessible name of the ordered list of upgrade steps",
+  },
+  "databases.versionUpgradeCloneStep": {
+    message: "이 데이터베이스의 복제본 업그레이드(권장)",
+    description:
+      "Version upgrade page: title of the first step (Render: Upgrade a clone of this database (recommended))",
+  },
+  "databases.versionUpgradeCloneBody": {
+    message:
+      "일회용 사본에서 테스트 업그레이드를 실행해 성공적으로 완료되는지 확인하세요.",
+    description: "Version upgrade page: why to clone first",
+  },
+  "databases.versionUpgradeCloneBilling": {
+    message:
+      "복제본은 사양이 같은 다른 데이터베이스와 똑같이 청구됩니다. 테스트가 끝나면 복제본을 꼭 삭제하세요.",
+    description: "Version upgrade page: clone billing reminder",
+  },
+  "databases.versionUpgradeCloneAction": {
+    message: "이 데이터베이스 복제",
+    description:
+      "Version upgrade page: button that creates the point-in-time clone",
+  },
+  "databases.versionUpgradeClonePitr": {
+    message: "특정 시점 복구가 준비되면 데이터베이스를 복제할 수 있습니다.",
+    description:
+      "Version upgrade page: tooltip while the clone button waits for point-in-time recovery",
+  },
+  "databases.versionUpgradeCloneCreated": {
+    message: "복제 데이터베이스를 만들었습니다: {name}",
+    description:
+      "Version upgrade page: toast after the clone is created; {name} is the clone",
+  },
+  "databases.versionUpgradeCloneView": {
+    message: "Postgres 복제본 보기",
+    description: "Version upgrade page: link to the clone's own upgrade page",
+  },
+  "databases.versionUpgradeCloneError": {
+    message: "복제본을 만들지 못했습니다. 다시 시도하세요.",
+    description:
+      "Version upgrade page: fallback error when the clone cannot be created",
+  },
+  "databases.versionUpgradeThisStep": {
+    message: "이 데이터베이스 업그레이드",
+    description:
+      "Version upgrade page: title of the step that upgrades this database",
+  },
+  "databases.versionUpgradeRunning": {
+    message: "업그레이드 중...",
+    description:
+      "Version upgrade page: upgrade button label while the upgrade runs",
+  },
+  "databases.versionUpgradeNotReady": {
+    message:
+      "데이터베이스를 사용할 수 있고 특정 시점 복구가 초기화되면 업그레이드할 수 있습니다.",
+    description:
+      "Version upgrade page: tooltip while the upgrade button waits for the database and point-in-time recovery",
+  },
+  "databases.versionUpgradeReleaseNotes": {
+    message: "릴리스 노트 읽기",
+    description:
+      "Version upgrade page: link to PostgreSQL's release notes for the target major",
+  },
+  "databases.versionUpgradeStatusLabel": {
+    message: "업그레이드 상태 및 로그",
+    description:
+      "Version upgrade page: accessible name of a run's status and logs section",
+  },
+  "databases.versionUpgradeStateInProgress": {
+    message: "진행 중",
+    description: "Version upgrade page: run state badge",
+  },
+  "databases.versionUpgradeStateSucceeded": {
+    message: "성공",
+    description: "Version upgrade page: run state badge",
+  },
+  "databases.versionUpgradeStateFailed": {
+    message: "실패",
+    description: "Version upgrade page: run state badge",
+  },
+  "databases.versionUpgradeLogsEmpty": {
+    message: "검색 조건과 일치하는 로그가 여기에 표시됩니다.",
+    description:
+      "Version upgrade page: empty logs explanation for a finished run",
+  },
+  "databases.versionUpgradeLogsEmptyRunning": {
+    message:
+      "검색 조건과 일치하는 로그가 여기에 표시됩니다. 업그레이드가 시작된 후 로그가 표시되기까지 몇 분 걸릴 수 있습니다.",
+    description:
+      "Version upgrade page: empty logs explanation while the run is in progress",
+  },
+  "databases.versionUpgradeLastAttempt": {
+    message: "마지막 업그레이드 시도",
+    description:
+      "Version upgrade page: title of the card holding the last finished run",
+  },
+  "databases.versionUpgradeSucceededTitle": {
+    message: "업그레이드 성공",
+    description: "Toast title when an upgrade the page watched succeeds",
+  },
+  "databases.versionUpgradeSucceededBody": {
+    message: "데이터베이스가 Postgres {version}(으)로 업데이트되었습니다.",
+    description: "Toast body when an upgrade the page watched succeeds",
+  },
+  "databases.versionUpgradeFailedTitle": {
+    message: "업그레이드 실패",
+    description: "Toast title when an upgrade the page watched fails",
+  },
+  "databases.versionUpgradeFailedBannerTitle": {
+    message: "업그레이드에 실패했습니다.",
+    description:
+      "Banner title on Info and the upgrade page for a failed upgrade nobody dismissed",
+  },
+  "databases.versionUpgradeFailedBody": {
+    message:
+      "데이터베이스는 여전히 현재 버전으로 실행 중입니다. 업그레이드 로그를 확인하고 문제를 해결한 뒤 다시 시도하세요.",
+    description: "Banner and toast body for a failed upgrade",
+  },
+  "databases.versionUpgradeDismiss": {
+    message: "오류 닫기",
+    description:
+      "Button that acknowledges a failed upgrade (Render: Dismiss error)",
+  },
+  "databases.versionUpgradeDismissError": {
+    message: "오류를 닫지 못했습니다. 다시 시도하세요.",
+    description: "Fallback error when acknowledging a failed upgrade fails",
+  },
+  "databases.versionUpgradeAvailableTitle": {
+    message: "PostgreSQL {version}을(를) 사용할 수 있습니다.",
+    description: "Info banner title when a newer PostgreSQL major is available",
+  },
+  "databases.versionUpgradeAvailableBody": {
+    message: "업그레이드하면 성능이 향상되고 기능이 추가됩니다.",
+    description: "Info banner body when a newer PostgreSQL major is available",
+  },
+  "databases.versionUpgradeViewOptions": {
+    message: "업그레이드 옵션 보기",
+    description: "Info banner button that opens the version upgrade page",
+  },
+  "databases.versionUpgradeAvailableDismiss": {
+    message: "닫기",
+    description:
+      "Accessible name of the button that dismisses the newer-major banner",
+  },
+  "databases.versionUpgradeLink": {
+    message: "버전 업그레이드",
+    description:
+      "Info Version row link when a newer major is available (Render: Upgrade version)",
+  },
+  "databases.versionUpgradeViewLink": {
+    message: "업그레이드 보기",
+    description:
+      "Info Version row link while an upgrade runs (Render: View upgrade)",
+  },
+  "databases.versionUpgradeReviewLink": {
+    message: "버전 세부 정보 보기",
+    description:
+      "Info Version row link on the latest major (Render: Review version details)",
+  },
+  "databases.versionUpgradeCloneOf": {
+    message: "이 데이터베이스는 {name}의 복제본입니다.",
+    description:
+      "Banner title on a clone made for a test upgrade; {name} is its source database",
+  },
+  "databases.versionUpgradeCloneOfBody": {
+    message:
+      "복제본은 사양이 같은 다른 데이터베이스와 똑같이 청구됩니다. 테스트가 끝나면 이 복제본을 꼭 삭제하세요.",
+    description: "Banner body on a clone made for a test upgrade",
+  },
+  "databases.versionUpgradeDeleteClone": {
+    message: "이 복제본 삭제",
+    description: "Clone banner button that opens the clone's delete action",
+  },
+  "databases.versionUpgradeGoToOriginal": {
+    message: "원본 데이터베이스로 이동",
+    description: "Clone banner link to the source database's upgrade page",
   },
   "databases.metaDatabaseName": {
     message: "데이터베이스",

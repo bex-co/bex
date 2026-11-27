@@ -27,9 +27,9 @@ vi.mock("@/features/databases/hooks/use-rename-database", () => ({
 vi.mock("@/features/keyvalue/hooks/use-rename-key-value", () => ({
   useRenameKeyValue: () => ({ rename: vi.fn(), busy: false }),
 }));
-// The exercised PostgreSQL 18 version has no upgrade target: plain text.
-vi.mock("@/features/databases/components/database-version-control", () => ({
-  DatabaseVersionControl: () => <span>PostgreSQL 18</span>,
+// The version value links the guided upgrade page; the preview shows its text.
+vi.mock("@/features/databases/components/database-upgrade-notices", () => ({
+  DatabaseVersionValue: () => <span>PostgreSQL 18</span>,
 }));
 const policyState = { policy: "allkeys-lru", loading: false };
 vi.mock("@/features/keyvalue/hooks/use-set-key-value-maxmemory-policy", () => ({
@@ -127,7 +127,6 @@ describe("datastore Details and Connections previews (w4/298)", () => {
       <DatabaseMetadataCard
         key="details"
         database={database}
-        onVersionChanged={vi.fn()}
         onRenamed={vi.fn()}
       />,
       <DatabaseConnectionInfoPanel key="connections" id={database.id} />,

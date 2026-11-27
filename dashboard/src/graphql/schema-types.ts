@@ -1617,6 +1617,7 @@ export type Database = {
   id: Maybe<Scalars['String']['output']>;
   ipAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   ipAllowListEntries: Maybe<Array<Maybe<IpAllowListEntry>>>;
+  lastUpgradeRun: Maybe<DatabaseUpgradeRun>;
   name: Maybe<Scalars['String']['output']>;
   ownerId: Maybe<Scalars['String']['output']>;
   plan: Maybe<Scalars['String']['output']>;
@@ -1637,6 +1638,7 @@ export type Database = {
   updatedAt: Maybe<Scalars['String']['output']>;
   upgradeNotice: Maybe<Scalars['String']['output']>;
   version: Maybe<Scalars['String']['output']>;
+  versionUpgradeAvailable: Maybe<Scalars['String']['output']>;
 };
 
 export type DatabaseBackup = {
@@ -1662,6 +1664,12 @@ export type DatabaseExport = {
   status: Maybe<Scalars['String']['output']>;
   url: Maybe<Scalars['String']['output']>;
   urlExpiresAt: Maybe<Scalars['String']['output']>;
+};
+
+export type DatabaseExtension = {
+  __typename: 'DatabaseExtension';
+  blocksUpgradeDatabase: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
 };
 
 export type DatabaseInstanceType = {
@@ -1791,6 +1799,16 @@ export type DatabaseTopQuery = {
   sharedHitBlks: Maybe<Scalars['Int']['output']>;
   sharedReadBlks: Maybe<Scalars['Int']['output']>;
   totalTimeMs: Maybe<Scalars['Float']['output']>;
+};
+
+export type DatabaseUpgradeRun = {
+  __typename: 'DatabaseUpgradeRun';
+  acknowledged: Scalars['Boolean']['output'];
+  fromVersion: Maybe<Scalars['String']['output']>;
+  runId: Scalars['String']['output'];
+  startedAt: Scalars['String']['output'];
+  state: Scalars['String']['output'];
+  toVersion: Scalars['String']['output'];
 };
 
 export type DatabaseUser = {
@@ -2483,6 +2501,7 @@ export type Mutation = {
   __typename: 'Mutation';
   acceptOrganizationInvite: Maybe<AcceptedOrganizationInvite>;
   acceptWorkspaceInvite: Maybe<AcceptedWorkspaceInvite>;
+  acknowledgeDatabaseUpgrade: Maybe<Database>;
   addCustomDomain: Maybe<CustomDomain>;
   addDisk: Maybe<Disk>;
   approveBlueprint: Maybe<BlueprintApprovedSync>;
@@ -2779,6 +2798,7 @@ export type Mutation = {
   updateUserLogThemeSetting: Maybe<User>;
   updateUserThemeSetting: Maybe<User>;
   updateWebhookEndpoint: Maybe<WebhookEndpoint>;
+  upgradeDatabase: Maybe<Database>;
   verifyCustomDomain: Maybe<CustomDomain>;
 };
 
@@ -2790,6 +2810,12 @@ export type MutationAcceptOrganizationInviteArgs = {
 
 export type MutationAcceptWorkspaceInviteArgs = {
   token: Scalars['String']['input'];
+};
+
+
+export type MutationAcknowledgeDatabaseUpgradeArgs = {
+  id: Scalars['String']['input'];
+  runId: Scalars['String']['input'];
 };
 
 
@@ -4655,6 +4681,13 @@ export type MutationUpdateWebhookEndpointArgs = {
 };
 
 
+export type MutationUpgradeDatabaseArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['String']['input'];
+  newVersion: Scalars['String']['input'];
+};
+
+
 export type MutationVerifyCustomDomainArgs = {
   confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
@@ -5107,6 +5140,7 @@ export type Query = {
   databaseConnectionInfo: Maybe<PostgresConnectionInfo>;
   databaseCredentials: Maybe<Array<Maybe<DatabaseCredential>>>;
   databaseExports: Maybe<Array<Maybe<DatabaseExport>>>;
+  databaseExtensions: Maybe<Array<DatabaseExtension>>;
   databaseInstanceTypes: Maybe<Array<Maybe<DatabaseInstanceType>>>;
   databaseIpAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   databaseLogs: Maybe<Array<Maybe<DatabaseLogEntry>>>;
@@ -5549,6 +5583,11 @@ export type QueryDatabaseCredentialsArgs = {
 
 
 export type QueryDatabaseExportsArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type QueryDatabaseExtensionsArgs = {
   id: Scalars['String']['input'];
 };
 

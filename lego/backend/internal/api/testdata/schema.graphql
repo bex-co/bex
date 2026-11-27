@@ -1310,6 +1310,7 @@ type Database {
   id: String
   ipAllowList: [String]
   ipAllowListEntries: [IPAllowListEntry]
+  lastUpgradeRun: DatabaseUpgradeRun
   name: String
   ownerId: String
   plan: String
@@ -1330,6 +1331,7 @@ type Database {
   updatedAt: String
   upgradeNotice: String
   version: String
+  versionUpgradeAvailable: String
 }
 
 type DatabaseBackup {
@@ -1352,6 +1354,11 @@ type DatabaseExport {
   status: String
   url: String
   urlExpiresAt: String
+}
+
+type DatabaseExtension {
+  blocksUpgradeDatabase: Boolean!
+  name: String!
 }
 
 type DatabaseInstanceType {
@@ -1468,6 +1475,15 @@ type DatabaseTopQuery {
   sharedHitBlks: Int
   sharedReadBlks: Int
   totalTimeMs: Float
+}
+
+type DatabaseUpgradeRun {
+  acknowledged: Boolean!
+  fromVersion: String
+  runId: String!
+  startedAt: String!
+  state: String!
+  toVersion: String!
 }
 
 type DatabaseUser {
@@ -2090,6 +2106,7 @@ type MonthToDateBandwidth {
 type Mutation {
   acceptOrganizationInvite(token: String!): AcceptedOrganizationInvite
   acceptWorkspaceInvite(token: String!): AcceptedWorkspaceInvite
+  acknowledgeDatabaseUpgrade(id: String!, runId: String!): Database
   addCustomDomain(confirm: String, id: String!, name: String!): CustomDomain
   addDisk(mountPath: String!, name: String!, serviceId: String!, sizeGB: Int): Disk
   approveBlueprint(id: String!, manualEnvVars: [BlueprintManualEnvVarInput], ownerId: String, syncId: String): BlueprintApprovedSync
@@ -2350,6 +2367,7 @@ type Mutation {
   updateUserLogThemeSetting(id: String!, logThemeSetting: LogThemeSetting!): User
   updateUserThemeSetting(id: String!, themeSetting: ThemeSetting!): User
   updateWebhookEndpoint(enabled: Boolean, eventTypes: [String], id: String!, name: String, ownerId: String, url: String): WebhookEndpoint
+  upgradeDatabase(confirm: String, id: String!, newVersion: String!): Database
   verifyCustomDomain(confirm: String, id: String!, name: String!): CustomDomain
 }
 
@@ -2739,6 +2757,7 @@ type Query {
   databaseConnectionInfo(id: String!): PostgresConnectionInfo
   databaseCredentials(id: String!): [DatabaseCredential]
   databaseExports(id: String!): [DatabaseExport]
+  databaseExtensions(id: String!): [DatabaseExtension!]
   databaseInstanceTypes: [DatabaseInstanceType]
   databaseIpAllowList(id: String!): [String]
   databaseLogs(cursor: String, direction: String, endTime: String, id: String!, instance: [String], limit: Int, startTime: String, text: String): [DatabaseLogEntry]

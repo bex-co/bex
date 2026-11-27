@@ -224,6 +224,13 @@ type PostgresView struct {
 	// makes it affordable on lists as well as single reads.
 	BlueprintID string `json:"blueprintId,omitempty"`
 
+	// LastUpgradeRun is the database's last major-version upgrade, Render's
+	// lastUpgradeRun (w3/m676); nil before bex-api accepted one. GraphQL only:
+	// Render's public REST and MCP have no upgrade verb to record.
+	LastUpgradeRun *UpgradeRunView `json:"-"`
+	// VersionUpgradeAvailable is the major an in-place upgrade targets in the
+	// dashboard, the latest bex runs (Render's versionUpgradeAvailable).
+	VersionUpgradeAvailable string `json:"-"`
 	// storage reads the database's current usage for GraphQL's storage
 	// fields (w3/m656), only when a query selects one; nil without a source.
 	storage *storageUsage
@@ -688,6 +695,8 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		ProjectID:                 d.Labels[core.LabelProject],
 		EnvironmentID:             id.EnvironmentPublicID(d.Labels[core.LabelEnvironment]),
 		BlueprintID:               id.BlueprintPublicID(d.Labels[core.LabelBlueprint]),
+		LastUpgradeRun:            upgradeRunOf(d),
+		VersionUpgradeAvailable:   LatestPostgresVersion(),
 	}
 }
 
@@ -2066,6 +2075,9 @@ func (s *Service) validateVersionUpgrade(ctx context.Context, d *appv1alpha1.Dat
 	if err := s.checkVersionUpgrade(ctx, d, target, patchedPlan); err != nil {
 		return "", err
 	}
+	if err := s.checkUpgradeExtensions(ctx, d, target); err != nil {
+		return "", err
+	}
 	currentMajor, _ := strconv.Atoi(d.Status.CurrentVersion)
 	return s.upgradeLogicalSlotsNotice(ctx, d, currentMajor, target)
 }
@@ -2156,6 +2168,9 @@ func (s *Service) patchDatabaseObj(ctx context.Context, d *appv1alpha1.Database,
 	before := d.DeepCopy()
 	patch := client.MergeFrom(d.DeepCopy())
 	mutate(d)
+	// A write that moves spec.version starts a major-version upgrade: record
+	// its attempt (w3/m676), whichever surface accepted it.
+	stampUpgradeRun(before, d, s.Now())
 	SyncFreeClock(before.Spec.Plan, d, s.Now())
 	// The mark names the generation this write lands at (before+1). This is
 	// a plain merge patch, not KV's optimistic-locked one: a write that

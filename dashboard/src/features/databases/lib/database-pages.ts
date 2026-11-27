@@ -43,10 +43,9 @@ export interface DatabaseSubpathLanding {
  * (docs/render-artifacts/postgres-dashboard.md): `/upgrade` replaces itself
  * with `/plan` on Render too; `/high-availability-upgrade`, which a primary's
  * Render also sends to `/plan`, lands on Plan's High Availability card;
- * `/metrics/<period>` is Render's other Metrics route. `/version-upgrade`,
- * Render's PostgreSQL version page, lands on Info, whose Details card holds
- * bex's version control, and so does anything else, as Render's `*` route
- * shows Info.
+ * `/metrics/<period>` is Render's other Metrics route. Anything else lands on
+ * Info, as Render's `*` route shows Info. `/version-upgrade` is a page of its
+ * own since w3/m676.
  */
 export function databaseSubpathLanding(
   splat: string | undefined,

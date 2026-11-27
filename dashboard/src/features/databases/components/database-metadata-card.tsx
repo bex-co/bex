@@ -5,7 +5,7 @@ import { StatusWithReason } from "@/common/components/status-with-reason";
 import { RelativeAge } from "@/common/components/relative-time";
 import { DatabaseExpiryValue } from "@/features/databases/components/database-expiry";
 import { DatabaseNameRow } from "@/features/databases/components/database-name-row";
-import { DatabaseVersionControl } from "@/features/databases/components/database-version-control";
+import { DatabaseVersionValue } from "@/features/databases/components/database-upgrade-notices";
 import {
   FREE_EXPIRED_REASON,
   statusLabel,
@@ -17,17 +17,15 @@ import type { DatabaseDetailView } from "@/features/databases/types";
 
 /**
  * The detail page's Details card. It lives beside the database's other
- * building blocks (name row, version control, status badge, panels) rather
+ * building blocks (name row, version value, status badge, panels) rather
  * than inline in the route, so it can be rendered on its own in a test —
  * mirrors keyvalue's KeyValueMetadataCard.
  */
 export function DatabaseMetadataCard({
   database,
-  onVersionChanged,
   onRenamed,
 }: {
   database: DatabaseDetailView;
-  onVersionChanged: () => void;
   onRenamed: () => void;
 }) {
   const { t } = useTranslations();
@@ -69,12 +67,8 @@ export function DatabaseMetadataCard({
         { label: t("databases.metaPlan"), value: planName ?? "—" },
         {
           label: t("databases.metaVersion"),
-          value: (
-            <DatabaseVersionControl
-              database={database}
-              onChanged={onVersionChanged}
-            />
-          ),
+          // Render's version value links its guided upgrade page (w3/m676).
+          value: <DatabaseVersionValue database={database} />,
         },
         {
           label: t("databases.metaDatabaseName"),

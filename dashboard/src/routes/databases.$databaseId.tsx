@@ -12,6 +12,7 @@ import {
   DatabaseMetricsSkeleton,
   DatabasePlanSkeleton,
   DatabaseRecoverySkeleton,
+  DatabaseVersionUpgradeSkeleton,
   DatastoreLogsSkeleton,
 } from "@/common/components/route-skeletons";
 import { ResourceLoadError } from "@/common/components/resource-load-error";
@@ -35,6 +36,11 @@ import {
 } from "@/features/databases/components/database-header";
 import { DatastoreHeaderActionsSkeleton } from "@/common/components/datastore-connect-menu";
 import { DatabaseStorageAlert } from "@/features/databases/components/database-storage-alert";
+import {
+  DatabaseUpgradeAvailableBanner,
+  DatabaseUpgradeCloneBanner,
+  DatabaseUpgradeFailedBanner,
+} from "@/features/databases/components/database-upgrade-notices";
 import { databasePageLabelKey } from "@/features/databases/components/database-nav";
 import { DatabaseDetailProvider } from "@/features/databases/lib/database-detail";
 import { DatabaseDocument } from "@/graphql/definitions";
@@ -180,6 +186,19 @@ function DatabaseDetailLayout({
           data-skeleton-region={!database ? "active-page" : undefined}
         >
           <div className="mx-auto w-full max-w-5xl space-y-6">
+            {database ? (
+              // A clone made for a test upgrade says so above every page,
+              // as Render's does (w3/m676).
+              <DatabaseUpgradeCloneBanner database={database} />
+            ) : null}
+            {database && pageLabelKey === "databases.navInfo" ? (
+              // Render's Info opens with a newer major's announcement and a
+              // failed upgrade's result, above its title (w3/m676).
+              <>
+                <DatabaseUpgradeAvailableBanner database={database} />
+                <DatabaseUpgradeFailedBanner database={database} />
+              </>
+            ) : null}
             {database && storageAlertAbovePage(pageLabelKey) ? (
               // Render draws its almost-full warning first on Info and Plan,
               // above Info's title (w3/m656).
@@ -201,13 +220,22 @@ function DatabaseDetailLayout({
                 <Outlet />
               </DatabaseDetailProvider>
             ) : (
-              <DatabasePageSkeleton labelKey={pageLabelKey} database={loaded} />
+              <DatabasePageSkeleton
+                labelKey={pageLabelKey}
+                versionUpgrade={isVersionUpgradePage(pathname)}
+                database={loaded}
+              />
             )}
           </div>
         </PageScroll>
       </div>
     </DashboardLayout>
   );
+}
+
+/** Whether `pathname` is a database's guided version-upgrade page. */
+function isVersionUpgradePage(pathname: string): boolean {
+  return pathname.replace(/\/+$/, "").endsWith("/version-upgrade");
 }
 
 /** The pages whose almost-full warning leads them, above their heading. */
@@ -224,11 +252,17 @@ function storageAlertAbovePage(
  */
 function DatabasePageSkeleton({
   labelKey,
+  versionUpgrade,
   database,
 }: {
   labelKey: ReturnType<typeof databasePageLabelKey>;
+  /** The guided version-upgrade page, which has no sidebar entry. */
+  versionUpgrade: boolean;
   database: DatabaseDetailView | null;
 }) {
+  if (versionUpgrade) {
+    return <DatabaseVersionUpgradeSkeleton database={database} />;
+  }
   switch (labelKey) {
     case "databases.navLogs":
       return <DatastoreLogsSkeleton />;

@@ -19,7 +19,17 @@ import { Route as AliasRoute } from "../d.$";
 // sub-paths, still open the page they mean. The real routes' search
 // validation and beforeLoad redirects run; each page is a stub naming itself.
 
-const PAGES = ["info", "logs", "metrics", "plan", "apps", "recovery"] as const;
+// The guided version-upgrade page has no sidebar entry but a URL of its own
+// (w3/m676), Render's `/d/<id>/version-upgrade`.
+const PAGES = [
+  "info",
+  "logs",
+  "metrics",
+  "plan",
+  "apps",
+  "recovery",
+  "version-upgrade",
+] as const;
 
 async function land(href: string) {
   const root = createRootRoute({ component: Outlet });
@@ -148,7 +158,6 @@ describe("a Postgres database's old links and Render's sub-paths (w3/m641)", () 
     // The almost-full warning's link on Render (w3/m656).
     ["/plan#storage", "/plan", {}, "storage"],
     ["/high-availability-upgrade", "/plan", {}, "high-availability"],
-    ["/version-upgrade", "", {}, ""],
     ["/metrics/7d", "/metrics", {}, ""],
     ["/sharing", "", {}, ""],
     ["/no-such-page#connection", "", {}, "connection"],

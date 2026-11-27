@@ -43,7 +43,6 @@ export function DatabaseInfoPage() {
       <section id="metadata" className="scroll-mt-6">
         <DatabaseMetadataCard
           database={database}
-          onVersionChanged={() => void refetch()}
           onRenamed={() => void router.invalidate()}
         />
       </section>

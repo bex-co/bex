@@ -90,9 +90,45 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"blueprintId": gqlutil.OptionalStrField(func(v PostgresView) any { return v.BlueprintID }),
 		// Render's almost-full warning reads these three (w3/m656,
 		// storage_usage.go).
-		"storageTotal":       {Type: graphql.String, Resolve: resolveStorageTotal},
-		"storageUsed":        {Type: graphql.String, Resolve: resolveStorageUsed},
-		"storageUsedPercent": {Type: graphql.Float, Resolve: resolveStorageUsedPercent},
+		// The guided version-upgrade page reads these two (w3/m676,
+		// upgrade_run.go): the last upgrade's attempt record, null before
+		// bex-api accepted one, and the one major the page offers.
+		"lastUpgradeRun": gqlutil.Typed(databaseUpgradeRunGQLType, func(v PostgresView) any {
+			if v.LastUpgradeRun == nil {
+				return nil
+			}
+			return *v.LastUpgradeRun
+		}),
+		"versionUpgradeAvailable": gqlutil.OptionalStrField(func(v PostgresView) any { return v.VersionUpgradeAvailable }),
+		"storageTotal":            {Type: graphql.String, Resolve: resolveStorageTotal},
+		"storageUsed":             {Type: graphql.String, Resolve: resolveStorageUsed},
+		"storageUsedPercent":      {Type: graphql.Float, Resolve: resolveStorageUsedPercent},
+	},
+})
+
+// databaseUpgradeRunGQLType is Render's lastUpgradeRun: one major-version
+// upgrade's attempt (w3/m676). state is Render's enum, IN_PROGRESS, SUCCEEDED
+// or FAILED; acknowledged is whether a member dismissed its result.
+// fromVersion is a bex extension.
+var databaseUpgradeRunGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DatabaseUpgradeRun",
+	Fields: graphql.Fields{
+		"runId":        gqlutil.ReqStrField(func(v UpgradeRunView) any { return v.RunID }),
+		"startedAt":    gqlutil.ReqStrField(func(v UpgradeRunView) any { return v.StartedAt }),
+		"state":        gqlutil.ReqStrField(func(v UpgradeRunView) any { return v.State }),
+		"toVersion":    gqlutil.ReqStrField(func(v UpgradeRunView) any { return v.ToVersion }),
+		"fromVersion":  gqlutil.OptionalStrField(func(v UpgradeRunView) any { return v.FromVersion }),
+		"acknowledged": gqlutil.ReqBoolField(func(v UpgradeRunView) any { return v.Acknowledged }),
+	},
+})
+
+// databaseExtensionGQLType is Render's databaseExtensions entry (w3/m676): an
+// installed extension and whether it blocks an upgrade to the latest major.
+var databaseExtensionGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DatabaseExtension",
+	Fields: graphql.Fields{
+		"name":                  gqlutil.ReqStrField(func(v DatabaseExtensionView) any { return v.Name }),
+		"blocksUpgradeDatabase": gqlutil.ReqBoolField(func(v DatabaseExtensionView) any { return v.BlocksUpgradeDatabase }),
 	},
 })
 
@@ -537,6 +573,8 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.InstanceTypes(p.Context) },
 		},
 		"databaseRecoveryInfo": gqlutil.IDVerb(databaseRecoveryInfoGQLType, s.RecoveryInfo), // PITR window + backup list
+		// The installed extensions and which block an upgrade (w3/m676).
+		"databaseExtensions": gqlutil.IDVerb(graphql.NewList(graphql.NewNonNull(databaseExtensionGQLType)), s.DatabaseExtensions),
 		// logical pg_dump exports. The status poll selects no url and so mints none and
 		// records no download; a query that selects url is the download (w21/105).
 		"databaseExports": &graphql.Field{
@@ -670,6 +708,21 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 		"updateDatabasePlan":    gqlutil.PlanMutation(postgresGQLType, s.SetPlan, s.SetPlanDryRun),
 		"updateDatabaseVersion": gqlutil.ArgMutation(postgresGQLType, "version", s.SetVersion),
+		// upgradeDatabase is Render's dashboard name for the same verb
+		// (upgradeDatabase(id, newVersion), w3/m676).
+		"upgradeDatabase": gqlutil.ArgMutation(postgresGQLType, "newVersion", s.SetVersion),
+		// acknowledgeDatabaseUpgrade dismisses a finished upgrade's result
+		// (Render's operation, w3/m676): the members who may upgrade only.
+		"acknowledgeDatabaseUpgrade": &graphql.Field{
+			Type: postgresGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":    gqlutil.ReqArg(graphql.String),
+				"runId": gqlutil.ReqArg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.AcknowledgeUpgrade(p.Context, p.Args["id"].(string), p.Args["runId"].(string))
+			},
+		},
 		"updateDatabaseDiskAutoscaling": &graphql.Field{
 			Type: postgresGQLType,
 			Args: graphql.FieldConfigArgument{

@@ -4,7 +4,7 @@ import { databasePageRoute } from "@/features/databases/components/database-nav"
 
 /**
  * Every sub-path of a Postgres database with no page of its own (w3/m641):
- * Render's `/upgrade`, `/high-availability-upgrade`, `/version-upgrade`,
+ * Render's `/upgrade`, `/high-availability-upgrade`,
  * `/metrics/<period>` and `/sharing` arrive here through the `/d/<id>/…`
  * alias, and land where their control is, query and hash kept
  * (databaseSubpathLanding). Anything else lands on Info, as Render's `*`
