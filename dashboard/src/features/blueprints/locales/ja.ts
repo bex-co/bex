@@ -595,19 +595,6 @@ const jaBlueprints: Record<string, TranslationEntry> = {
     message: "リポジトリ",
     description: "Blueprint detail metadata label",
   },
-  "blueprints.metaBranch": {
-    message: "ブランチ",
-    description: "Blueprint detail metadata label",
-  },
-  "blueprints.metaPath": {
-    message: "マニフェストのパス",
-    description:
-      "Blueprint detail metadata label — path to render.yaml in repo",
-  },
-  "blueprints.metaAutoSync": {
-    message: "自動同期",
-    description: "Blueprint detail metadata label — auto-sync on push toggle",
-  },
   "blueprints.metaCreated": {
     message: "作成日時",
     description: "Blueprint detail metadata label",
@@ -616,13 +603,99 @@ const jaBlueprints: Record<string, TranslationEntry> = {
     message: "最終同期",
     description: "Blueprint detail metadata label",
   },
-  "blueprints.autoSyncOn": {
-    message: "オン",
-    description: "Auto-sync toggle label — enabled",
+  "blueprints.detailsTitle": {
+    message: "詳細",
+    description:
+      "Blueprint Settings page: title of bex's card of read-only facts (repository, created, last synced) under Render's Settings card (w3/m679)",
   },
-  "blueprints.autoSyncOff": {
-    message: "オフ",
-    description: "Auto-sync toggle label — disabled",
+  "blueprints.settingsNameHint": {
+    message: "Blueprint の一意の名前です。",
+    description:
+      "Blueprint Settings card: help under Blueprint Name (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsRequired": {
+    message: "必須",
+    description:
+      "Blueprint Settings card: shown under a row left empty (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsNameTaken": {
+    message: "この名前はすでに使用されています",
+    description:
+      "Blueprint Settings card: shown under Blueprint Name when another Blueprint of the workspace has the name (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsAutoSync": {
+    message: "自動同期",
+    description:
+      "Blueprint Settings card: the Auto Sync row's label (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsAutoSyncHint": {
+    message:
+      "Blueprint ファイルの変更を自動的に同期しますか？同期を手動で行う場合は「いいえ」を選択してください。",
+    description:
+      "Blueprint Settings card: help under Auto Sync; quotes the No option (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsYes": {
+    message: "はい",
+    description:
+      "Blueprint Settings card: Auto Sync option, on (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsNo": {
+    message: "いいえ",
+    description:
+      "Blueprint Settings card: Auto Sync option, off (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsBranch": {
+    message: "ブランチ",
+    description: "Blueprint Settings card: the Branch row's label (w3/m679)",
+  },
+  "blueprints.settingsBranchHint": {
+    message: "ビルドしてデプロイする Git ブランチです。",
+    description:
+      "Blueprint Settings card: help under Branch (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsBranchNotFound": {
+    message:
+      "このリポジトリにブランチが見つかりません。別のブランチを選択してください。",
+    description:
+      "Blueprint Settings card: shown under Branch when the repository has no such branch (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsPath": {
+    message: "Blueprint パス",
+    description:
+      "Blueprint Settings card: the Blueprint Path row's label (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsPathHint": {
+    message:
+      "リポジトリ内の Blueprint ファイルへのパスです（例: infra/render.yaml）。デフォルトは、リポジトリのルートにある render.yaml です。",
+    description:
+      "Blueprint Settings card: help under Blueprint Path (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsFileNotFound": {
+    message:
+      "Blueprint ファイル「{path}」が「{branch}」ブランチに見つかりません。このブランチにファイルが存在することを確認してください。",
+    description:
+      "Blueprint Settings card: shown under Branch or Blueprint Path when the Blueprint file is not at that path on that branch (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsUpdateFailed": {
+    message: "Blueprint を更新できませんでした。もう一度お試しください。",
+    description:
+      "Blueprint Settings card: shown under a row whose save failed with no reason from the server (Render's copy, w3/m679)",
+  },
+  "blueprints.disconnectNoSync": {
+    message: "リソースは Blueprint ファイルから自動的に同期されなくなります。",
+    description:
+      "Disconnect Blueprint modal: first sentence (Render's copy, w3/m679)",
+  },
+  "blueprints.disconnectKeeps": {
+    message:
+      "ファイル自体は削除されません。管理対象のリソースも削除されません。ファイルは後からいつでも Blueprints ページで接続できます。",
+    description:
+      "Disconnect Blueprint modal: second sentence (Render's copy, w3/m679)",
+  },
+  "blueprints.disconnectConfirm": {
+    message: "Blueprint 仕様 {name} の接続を解除してもよろしいですか？",
+    description:
+      "Disconnect Blueprint modal: the question, with the Blueprint's name in bold (Render's copy, w3/m679)",
   },
   "blueprints.resourcesTitle": {
     message: "管理対象のリソース",
@@ -714,14 +787,6 @@ const jaBlueprints: Record<string, TranslationEntry> = {
     message: "{field} を編集",
     description: "Aria label for the inline-edit pencil button",
   },
-  "blueprints.saveField": {
-    message: "{field} を保存",
-    description: "Aria label for the inline-edit save button",
-  },
-  "blueprints.cancelEdit": {
-    message: "編集をキャンセル",
-    description: "Aria label for the inline-edit cancel button",
-  },
   "blueprints.pathInvalid": {
     message:
       "リポジトリからの相対パスで、余計な要素を含まない .yaml または .yml のパスにしてください（先頭のスラッシュや '..' は不可）。",
@@ -731,27 +796,19 @@ const jaBlueprints: Record<string, TranslationEntry> = {
     message: "Blueprint を更新しました",
     description: "Toast shown after a successful updateBlueprint call",
   },
-  "blueprints.updateError": {
-    message: "更新に失敗しました",
-    description: "Toast shown when updateBlueprint returns an error",
-  },
   "blueprints.disconnectButton": {
-    message: "接続解除",
+    message: "Blueprint の接続を解除",
     description:
-      "Button that disconnects a blueprint from its Git repo (stops auto-sync, keeps resources)",
+      "Blueprint Settings page: the critical button that opens the Disconnect Blueprint modal (Render's copy, w3/m679)",
   },
   "blueprints.disconnectTitle": {
-    message: "Blueprint の接続を解除しますか？",
-    description: "Disconnect confirm dialog title",
-  },
-  "blueprints.disconnectBody": {
-    message:
-      "プッシュ時の自動同期が停止し、Blueprint が一覧から削除されます。すでにデプロイされたリソースには影響しません。",
-    description: "Disconnect confirm dialog description",
+    message: "Blueprint の接続を解除",
+    description: "Disconnect Blueprint modal title (Render's copy, w3/m679)",
   },
   "blueprints.disconnectAction": {
-    message: "接続解除",
-    description: "Disconnect confirm dialog primary action button label",
+    message: "Blueprint の接続を解除",
+    description:
+      "Disconnect Blueprint modal: the critical confirm button (Render's copy, w3/m679)",
   },
   "blueprints.disconnectCancel": {
     message: "キャンセル",

@@ -283,10 +283,13 @@ mutation CreateBlueprint(
   }
 }
 
+# Settings saves one row at a time: its name, Auto Sync, Branch or Blueprint
+# Path (w3/m679).
 mutation UpdateBlueprint(
   $id: String!
   $name: String
   $autoSync: Boolean
+  $branch: String
   $path: String
   $ownerId: String
 ) {
@@ -294,6 +297,7 @@ mutation UpdateBlueprint(
     id: $id
     name: $name
     autoSync: $autoSync
+    branch: $branch
     path: $path
     ownerId: $ownerId
   ) {

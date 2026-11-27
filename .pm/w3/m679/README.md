@@ -1,19 +1,19 @@
 # w3 · m679 — A Blueprint's Settings page is Render's: Blueprint Name, Auto Sync, Branch, Blueprint Path, then Disconnect Blueprint
 
-**Worker:** worker3 **Goal:** a Blueprint's Settings page holds Render's one Settings card in Render's order and words, its Branch can be changed there as on Render, and Disconnect Blueprint asks with Render's modal. **Status:** todo
+**Worker:** worker3 **Goal:** a Blueprint's Settings page holds Render's one Settings card in Render's order and words, its Branch can be changed there as on Render, and Disconnect Blueprint asks with Render's modal. **Status:** todo (t001–t004 and t006–t008 done; t005 walked locally, its production walk waits for a pin carrying the milestone)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Record Render's Settings card and Disconnect modal in `docs/render-artifacts/blueprint-pages.md` | 15m | — |
-| [t002](t002.md) | Blueprint Name, Auto Sync and Blueprint Path are Render's rows, in Render's order and words | 1h | t001, w3/m677 t003 |
-| [t003](t003.md) | Branch can be changed with the repository's branch picker | 1h | t002 |
-| [t004](t004.md) | Disconnect Blueprint asks with Render's modal | 30m | t001, w3/m677 t004 |
+| [t001](done/t001.md) | Record Render's Settings card and Disconnect modal in `docs/render-artifacts/blueprint-pages.md` — **DONE** | 15m | — |
+| [t002](done/t002.md) | Blueprint Name, Auto Sync and Blueprint Path are Render's rows, in Render's order and words — **DONE** | 1h | t001, w3/m677 t003 |
+| [t003](done/t003.md) | Branch can be changed with the repository's branch picker — **DONE** | 1h | t002 |
+| [t004](done/t004.md) | Disconnect Blueprint asks with Render's modal — **DONE** | 30m | t001, w3/m677 t004 |
 | [t005](t005.md) | Verify in a real browser at 1440 and 390, locally and on production | 30m | t003, t004 |
-| [t006](t006.md) | Render parity | 20m | t005 |
-| [t007](t007.md) | Simplify | 15m | t006 |
-| [t008](t008.md) | Test coverage | 35m | t006 |
+| [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 35m | t006 |
 | [t009](t009.md) | Closeout | 10m | t007, t008 |
 
 Total: **9 tasks, about 4h35m**.
@@ -59,3 +59,16 @@ Verified 2026-11-25 on main `c196617a8b`.
 - **Expected outcome:** someone who knows Render finds the same Settings card, can move a Blueprint to another branch without the API, and reads Render's words when something is wrong.
 - **Why now:** the API has changed branches since w8/m153 made a Blueprint its id, but the dashboard still withholds it for a reason that no longer holds; w3/m677 creates the Settings page this fills. It runs after w3/m678 so a save that opens a sync can go to its page.
 - **Render parity task:** included (t006): the dashboard changes; REST, GraphQL and MCP already accept `branch` and are checked, not changed.
+
+## Local walk (2026-11-27)
+
+Walked in headless Chrome against `yarn local-bex` behind a throwaway proxy that answers the Blueprint reads and Settings' `updateBlueprint`, `repoBranches` and `disconnectBlueprint` statefully (three fixture Blueprints, one paused; a repository whose `main` holds `render.yaml` and `infra/render.yaml`, `staging` only `render.yaml`, and `no-file` neither; one Blueprint's disconnect refused with `BLUEPRINT_SYNC_BUSY`), the dashboard on `vite dev`, at 1440 and 390. The shared Playwright browser was held by another session; the proxy and the walk script stayed in `/tmp` and are not committed.
+
+- The page opens with Render's Settings card, its one heading: Blueprint Name, Auto Sync, Branch and Blueprint Path with Render's help, then Details, the manifest, Validate and **Disconnect Blueprint**. The pending frame and the ready page have the same boxes at both widths (Settings 512 px tall at 1440, 572 at 390; every card's top, height and width equal).
+- An empty name read **Required**; the other fixture's name read **Name already in use** with Save held; a free name saved, and the header and title followed.
+- Branch listed `main`, `staging` and `no-file` once Edit was pressed; `no-file` read `Blueprint file "render.yaml" not found on "no-file" branch. Please check that the file exists on this branch.`, a typed `gone` read **Branch not found in this repository. Choose another branch.**, and `staging` saved.
+- On `staging`, Blueprint Path `infra/render.yaml` read Render's file sentence for `staging`; `../x.yaml` read the path rule before any save.
+- Auto Sync No saved and the header's badge read Paused; the paused fixture read No.
+- Disconnect Blueprint opened Render's modal with the name in bold; Cancel kept the page; the busy fixture's refusal stayed in the modal; a disconnect opened `/blueprints` without that Blueprint.
+- At 390 a refusal wraps under its row, and an edited path field narrows beside Cancel and Save changes, as every bex edit-in-place row does.
+

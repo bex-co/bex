@@ -107,6 +107,37 @@ Render's Approve carries no confirmation phrase, and neither does bex's `approve
 
 So Approve needs no guard of its own, and the sync dialog can retire. What retires with it is the dashboard's typed takeover of a resource another Blueprint manages: Render has no such takeover, and `syncBlueprint` with `confirm` stays on REST, GraphQL and MCP for the clients that use it.
 
+## Settings and Disconnect Blueprint (w3/m679)
+
+Read 2026-11-27 for w3/m679 from the same bundle, without sign-in: `index-D5V4ZgbE.js` (sha256 `8d15889ace2d…`, unchanged since 2026-11-25) holds the page, its rows and the modal. Find the page by `A unique name for your Blueprint.` and `Disconnect Blueprint`, the error wording by `Failed to update Blueprint. Please try again.`, the Branch row by `Branch not found in this repository. Choose another branch.`. No signed-in Render session was available, so this too is bundle-only, and no Blueprint's Settings was opened.
+
+### The Settings card
+
+One card titled **Settings**, its rows in this order. Each is a `RowInput`: the value read-only with an Edit action, then Save and Cancel while editing. Without `updateBlueprint` every row is read-only behind the no-permission tooltip.
+
+| Row | Help | Control and refusals |
+| --- | --- | --- |
+| **Blueprint Name** | "A unique name for your Blueprint." | A text input. Empty reads **Required**. A name another Blueprint of the workspace has reads **Name already in use**, checked as typed (`blueprintNameExists(name, ownerId)`) and again when a save is refused as a duplicate. |
+| **Auto Sync** | `Automatically sync changes to your Blueprint file? Select "No" to handle syncs manually.` | A select: **Yes** / **No**. It reads No when the Blueprint's status is paused, Yes otherwise (`setIACAutoSync(sourceId, autoSync)`). |
+| **Sync Hook** | "Your private URL to trigger a sync for this Blueprint. Remember to keep this a secret." | Only when the Blueprint has a `syncKey`: the read-only URL `<api>/sync/<id>?key=<syncKey>`. Render's docs do not mention it. |
+| **Branch** | "The Git branch to build and deploy." (the shared Branch row services use) | The repository's branch picker (`updateIacSourceBranch(id, branch)`). Empty reads **Required**. A branch the repository lacks reads **Branch not found in this repository. Choose another branch.**, and a failed lookup "Couldn't check that branch. Try again.". |
+| **Blueprint Path** | "The path to the Blueprint file in your repo (e.g., `infra/render.yaml`). Defaults to `render.yaml` at the root of your repository." | A file picker over the repository at the branch, placeholder `render.yaml` (`updateIacSourcePath(id, path)`). |
+| **Git Credentials** | — | Whose Git access syncs use, with Use My Credentials. A signed-off divergence ([`DO_NOT_DO.md` #GIT-WORKSPACE-OWNED](../../.pm/DO_NOT_DO.md)). |
+
+The Branch and Blueprint Path rows word a refusal with one function (`sL`): a server message containing `not found: file:` reads `Blueprint file "<path>" not found on "<branch>" branch. Please check that the file exists on this branch.` (with the path the save reads, `render.yaml` when none, and the branch it reads from; `Blueprint file "<path>" not found. Please check that the file exists in your repository.` when there is no branch), any other refusal reads the server's own message, and a failure with no message reads **Failed to update Blueprint. Please try again.**
+
+After a save, the Auto Sync, Branch and Blueprint Path mutations each select an `execution { id }`, and when one comes back the page navigates to that sync (`/blueprint/<id>/sync/<executionId>`). Whether Render plans a sync on those saves was not seen: its REST `PATCH /blueprints/{blueprintId}` says of `branch` "The branch must contain a Blueprint file at the configured path. Updating this field does not plan a sync.", and answers 404 for "the Blueprint file could not be found at the requested path when the branch is unchanged" (pinned `render-public-api-1.json`).
+
+### Disconnect Blueprint
+
+Below the card, a critical **Disconnect Blueprint** button (disabled behind the no-permission tooltip without `updateBlueprint`) opens a modal titled **Disconnect Blueprint**:
+
+1. "Resources will no longer sync automatically from your Blueprint file."
+2. "This will not delete the file itself. This will not delete the managed resources. You can always connect your file later from the Blueprint page."
+3. "Are you sure you want to disconnect your Blueprint spec **&lt;name&gt;**?" (the name in semibold)
+
+**Cancel** (secondary) and a critical **Disconnect Blueprint** (`deleteIACExecutionSource(id)`, loading while it runs). A refusal shows its message in an error callout inside the modal, which stays open; success removes the Blueprint from the list's cache and opens `/blueprints`.
+
 ## Page map (bex, w3/m677)
 
 Every card and control of bex's former single page (`routes/blueprints.$blueprintId.tsx`), moved unchanged to the page Render puts its counterpart on. What has no Render counterpart goes with the page it belongs to.
@@ -118,13 +149,13 @@ Every card and control of bex's former single page (`routes/blueprints.$blueprin
 | Managed Resources (Name, Type) | Resources | the resource tables (w3/m680) |
 | `PlannedSyncPanel` (a waiting plan, Approve, Plan again) | Syncs, 1st | a waiting sync's page (w3/m678) |
 | Sync History (Commit, State, Started, Completed, Details) | Syncs, 2nd | the sync cards (w3/m678) |
-| The metadata card: Name, Manifest path, Branch, Auto-sync | Settings, 1st | the Settings card's Name, Blueprint Path, Branch, Auto Sync (w3/m679) |
-| The metadata card's Repository, Created, Updated | Settings, in the same card | none: bex extras |
+| The metadata card: Name, Manifest path, Branch, Auto-sync | Settings, 1st: Render's Settings card since w3/m679 | the Settings card's Blueprint Name, Auto Sync, Branch, Blueprint Path |
+| The metadata card's Repository, Created, Updated | Settings, 2nd: the Details card since w3/m679 | none: bex extras |
 | render.yaml manifest | Settings, 2nd | none: a bex extra |
 | Validate (`ValidatePanel`) | Settings, 3rd | none: a bex extra |
-| **Disconnect** and its dialog | Settings, last | Disconnect Blueprint (w3/m679 gives it Render's words and modal) |
+| **Disconnect** and its dialog | Settings, last | Disconnect Blueprint, with Render's words and modal since w3/m679 |
 
-## What bex does (w3/m677, w3/m678)
+## What bex does (w3/m677, w3/m678, w3/m679)
 
 - A Blueprint's pages swap the workspace nav for this sidebar: the **Blueprints** back link, the name, then Resources, Syncs and Settings, with the open page highlighted (Resources on the bare URL, Syncs on `/sync` and `/sync/<id>`).
 - Each page is its own URL under `/blueprints/<id>`: the bare URL and `/resources`, then `/syncs`, a sync's `/sync/<syncId>`, and `/settings`. Any other sub-path lands on Resources, and a path past a sync's page on Syncs.
@@ -134,6 +165,8 @@ Every card and control of bex's former single page (`routes/blueprints.$blueprin
 - A sync's page draws `Sync: <short sha>`, its card, its actions with their states, **Resources already up to date**, Render's critical line, the errors and **Approve** as Render's does, with a field per `sync: false` value the plan needs (bex-api's approve requires them; Render's page asks for none). It reads the sync until it settles. A sync recorded before syncs kept their actions (migration 0353) says so; an id that is not one of this Blueprint's syncs (a plan deleted after 24 hours) says it does not exist and links Syncs (w3/m678).
 - bex-api's Blueprint links use Render's shape: a planned and an approved sync's `dashboardUrl` is the sync's page, `<dashboard>/blueprint/<exs-id>/sync/<exe-id>` (w3/m678), and the sync-failure email links `<dashboard>/blueprint/<exs-id>`.
 - The breadcrumb is **Blueprints** → the name.
+- Settings is Render's card (w3/m679): **Blueprint Name**, **Auto Sync** (Yes / No, No while paused), **Branch** (the repository's branches, typed or picked) and **Blueprint Path**, each with Render's help, saving only its own field through GraphQL `updateBlueprint`. **Required**, **Name already in use**, Render's branch and file sentences, the server's reason, or **Failed to update Blueprint. Please try again.** read under the row, which stays open and saves nothing. A role without `can_create` sees the rows read-only with the reason. Below it come bex's extras: the Details card (Repository, Created, Last synced), the render.yaml manifest and Validate. **Disconnect Blueprint** is last, a critical button opening Render's modal, its three sentences with the name in bold; a refusal stays in the modal, and a disconnect opens `/blueprints`.
+- bex-api refuses what Render's `update-blueprint` refuses, on REST, GraphQL and MCP alike (w8/418, w3/m679): a path whose file is not on the unchanged branch (404), and a new branch without the file at the path (400). Neither is saved, and a change plans nothing.
 
 ### Still apart
 
@@ -145,4 +178,9 @@ Every card and control of bex's former single page (`routes/blueprints.$blueprin
 - **The errors are a list with their line and column.** Render also draws the Blueprint file at the sync's commit with the erroring lines marked.
 - **Syncs loads older syncs with Load more**, as bex's deploy history does, where Render's list scrolls on.
 - **The sync-failure email links the Blueprint**, not the failed sync: Render's email was not seen.
-- The metadata card stands in for Render's Settings card until w3/m679, and the two-column table for Render's resource tables until w3/m680.
+- **Settings checks a name when it is saved**, not as it is typed: bex-api has no query for whether a name is taken, so **Name already in use** reads after Save ([w3/140](../../.pm/w3/140.md)).
+- **A Settings save stays on Settings.** Render's Auto Sync, Branch and Path mutations open the sync one returns; bex's `updateBlueprint` returns none, as Render's REST plans none on a branch change. Whether Render's dashboard plans on these saves was not seen ([w3/141](../../.pm/w3/141.md)).
+- **Settings has no Sync Hook row or Git Credentials row.** The Sync Hook shows only for a Blueprint with a sync key, which Render's docs do not mention and bex has none of; Git Credentials is #GIT-WORKSPACE-OWNED.
+- **The Branch row is a combobox over the repository's branches** (bex's shared Branch row) and the Path row a text field, where Render's Path row browses the repository's files. A branch the repository lacks reads Render's sentence from bex-api's refusal at Save, not from a lookup as it is typed.
+- **Below the Settings card come bex's extras** (Details, the manifest, Validate) before Disconnect Blueprint, which Render's page has right under the card.
+- The two-column table stands in for Render's resource tables until w3/m680.

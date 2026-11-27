@@ -171,15 +171,17 @@ func TestAFailedReplanThatSavesItsSyncIsWhatApproveRefuses(t *testing.T) {
 	assertRefusesTheFailedPlan(t, ctx, svc, bpID, failed, waiting)
 }
 
-// Sequence 4: `update --path` to a file that is not there, whose re-plan
-// fails. The failed plan is saved, so it is the newest one and approve
+// Sequence 4: `update --path` to a file deleted after the update, whose
+// re-plan fails. The failed plan is saved, so it is the newest one and approve
 // refuses it, as NewUpdateOut says ("A failed sync saved by this re-plan is
 // the newest one instead, and approve refuses it").
 func TestAnUpdatedPathWhoseReplanFailsIsWhatApproveRefuses(t *testing.T) {
 	svc, ctx, bpID, waiting := blueprintWithAWaitingPlan(t)
-	if _, err := svc.UpdateBlueprint(ctx, bpID, "tea-a", UpdateBlueprintRequest{Path: new("nope.yaml")}); err != nil {
-		t.Fatal(err)
-	}
+	withFileAt(svc, "nope.yaml", func() {
+		if _, err := svc.UpdateBlueprint(ctx, bpID, "tea-a", UpdateBlueprintRequest{Path: new("nope.yaml")}); err != nil {
+			t.Fatal(err)
+		}
+	})
 	failed, err := svc.PlanBlueprint(ctx, bpID, "tea-a")
 	if err != nil || failed.PlanningOutcome != PlanningFailed || failed.Sync == nil || failed.Sync.State != store.BlueprintSyncStateError {
 		t.Fatalf("re-plan at a missing path = %+v err=%v, want failed with an error sync saved", failed, err)

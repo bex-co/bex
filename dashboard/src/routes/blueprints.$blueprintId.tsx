@@ -105,8 +105,8 @@ function RouteComponent() {
  * (the name with bex's resource suffix and status, and Render's one action,
  * Manual sync), Render's dismissible Sync Error banner when Manual sync could
  * not plan (w3/m678), the open page's heading, which is its sidebar entry's
- * label (a sync's page heads itself), and an `<Outlet/>` for Resources, Syncs,
- * a sync or Settings. The sidebar is DashboardSidebar's BlueprintSidebar. The
+ * label (a sync's page and Settings head themselves), and an `<Outlet/>` for
+ * Resources, Syncs, a sync or Settings. The sidebar is DashboardSidebar's BlueprintSidebar. The
  * layout reads the Blueprint once and hands it to its pages through
  * BlueprintDetailProvider.
  */
@@ -150,6 +150,9 @@ function BlueprintDetailLayout({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const pageLabelKey = blueprintPageLabelKey(pathname, linkId);
   const syncPage = isBlueprintSyncPage(pathname, linkId);
+  // A sync's page heads itself with the sync, and Settings with Render's
+  // Settings card (w3/m679).
+  const headsItself = syncPage || pageLabelKey === "blueprints.navSettings";
   // Manual sync's refusal (the server's reason, mutationErrorMessage), kept
   // with the Blueprint it is about: another Blueprint's pages reuse this
   // layout without remounting it.
@@ -215,7 +218,7 @@ function BlueprintDetailLayout({
           data-skeleton-region={!blueprint ? "active-page" : undefined}
         >
           <div className="mx-auto w-full max-w-5xl space-y-6">
-            {pageLabelKey && !syncPage ? (
+            {pageLabelKey && !headsItself ? (
               // Every page opens with its name, the sidebar's label for it.
               <h2 className="text-lg leading-7 font-semibold tracking-tight">
                 {t(pageLabelKey)}

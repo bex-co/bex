@@ -352,7 +352,7 @@ export const ROUTE_SKELETON_MANIFEST = {
     kind: "render",
     owner: "routes/blueprints.$blueprintId.settings.tsx",
     shape: "blueprint-settings",
-    regions: ["metadata", "manifest", "validation", "disconnect"],
+    regions: ["settings", "details", "manifest", "validation", "disconnect"],
   },
   // A path under `sync` past a sync's page lands on Syncs, any other
   // sub-path on Resources.

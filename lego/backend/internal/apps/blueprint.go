@@ -2134,7 +2134,7 @@ func (s *Service) listBlueprintSyncs(ctx context.Context, bpID, ownerID, cursor 
 	return withWaitingPlan(out, toBlueprintSyncView(*waiting), limit), nil
 }
 
-// UpdateBlueprint applies a partial update to name/autoSync/path.
+// UpdateBlueprint applies a partial update to name/autoSync/path/branch.
 func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req UpdateBlueprintRequest) (BlueprintView, error) {
 	ctx, bpID, err := s.blueprintScope(ctx, core.RelCanCreate, bpID, ownerID)
 	if err != nil {
@@ -2189,16 +2189,28 @@ func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req
 			return BlueprintView{}, errBlueprintNameTaken(*req.Name)
 		}
 	}
-	if req.Branch != nil && *req.Branch != b.Branch {
+	// A new branch or a new path must hold the Blueprint file, as Render's
+	// update-blueprint requires, so a typo never replaces a working source
+	// (w8/418, w3/m679). Render answers a missing file on the unchanged branch
+	// 404 and a new branch's unreadable file 400.
+	branchChanged := req.Branch != nil && *req.Branch != b.Branch
+	if branchChanged || (req.Path != nil && *req.Path != b.Path) {
 		if s.GitFetcher == nil {
 			return BlueprintView{}, ErrBlueprintFetchUnavailable
 		}
-		path := b.Path
+		branch, path := b.Branch, b.Path
+		if branchChanged {
+			branch = *req.Branch
+		}
 		if req.Path != nil {
 			path = *req.Path
 		}
-		if _, _, _, err := discoverBlueprintFile(ctx, s.GitFetcher, tenantID, b.Repo, *req.Branch, path); err != nil {
-			return BlueprintView{}, blueprintCreateFetchError(err, b.Repo, path, *req.Branch)
+		if _, _, _, err := discoverBlueprintFile(ctx, s.GitFetcher, tenantID, b.Repo, branch, path); err != nil {
+			reason, message := classifyBlueprintFetchError(err, b.Repo, path, branch)
+			if !branchChanged && reason == BlueprintFetchFileNotFound {
+				return BlueprintView{}, core.NewNotFoundError(string(reason), message, nil)
+			}
+			return BlueprintView{}, blueprintFetchRefusal(reason, message, nil)
 		}
 	}
 	if req.AutoSync != nil && *req.AutoSync && !b.AutoSync && s.repoPushesUnreachable(ctx, tenantID, b.Repo) {

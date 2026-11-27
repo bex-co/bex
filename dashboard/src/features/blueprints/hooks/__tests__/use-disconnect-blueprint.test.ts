@@ -24,7 +24,22 @@ beforeEach(() => {
 });
 
 describe("useDisconnectBlueprint", () => {
-  it("shows the retry toast on BLUEPRINT_SYNC_BUSY instead of generic failure", async () => {
+  it("answers null once disconnected", async () => {
+    mutate.mockResolvedValue({ data: { disconnectBlueprint: true } });
+    const { result } = renderHook(() => useDisconnectBlueprint());
+
+    let refusal: string | null = "unset";
+    await act(async () => {
+      refusal = await result.current.disconnect("blp-1");
+    });
+
+    expect(refusal).toBeNull();
+    expect(mutate).toHaveBeenCalledWith({ variables: { id: "blp-1" } });
+    expect(toastSuccess).toHaveBeenCalledWith("Blueprint disconnected");
+  });
+
+  // Render's Disconnect Blueprint modal shows the refusal in place (w3/m679).
+  it("answers the retry sentence on BLUEPRINT_SYNC_BUSY, for the modal to show", async () => {
     mutate.mockRejectedValue(
       new CombinedGraphQLErrors({
         data: null,
@@ -38,25 +53,42 @@ describe("useDisconnectBlueprint", () => {
     );
     const { result } = renderHook(() => useDisconnectBlueprint());
 
-    let ok;
+    let refusal: string | null = null;
     await act(async () => {
-      ok = await result.current.disconnect("blp-1");
+      refusal = await result.current.disconnect("blp-1");
     });
 
-    expect(ok).toBe(false);
-    expect(toastError).toHaveBeenCalledWith(
+    expect(refusal).toBe(
       "A sync is currently applying — retry disconnect after it settles",
     );
+    expect(toastError).not.toHaveBeenCalled();
   });
 
-  it("shows generic failure for non-busy errors", async () => {
-    mutate.mockRejectedValue(new Error("boom"));
+  it("answers the server's reason, else the generic failure", async () => {
     const { result } = renderHook(() => useDisconnectBlueprint());
+    const refusals: (string | null)[] = [];
 
+    mutate.mockRejectedValueOnce(
+      new CombinedGraphQLErrors({
+        data: null,
+        errors: [
+          {
+            message: "forbidden: missing can_create",
+            extensions: { code: "FORBIDDEN" },
+          },
+        ],
+      }),
+    );
+    mutate.mockRejectedValueOnce(new Error("Failed to fetch"));
     await act(async () => {
-      await result.current.disconnect("blp-1");
+      refusals.push(await result.current.disconnect("blp-1"));
+      refusals.push(await result.current.disconnect("blp-1"));
     });
 
-    expect(toastError).toHaveBeenCalledWith("Disconnect failed");
+    expect(refusals).toEqual([
+      "Forbidden: missing can_create",
+      "Disconnect failed",
+    ]);
+    expect(toastError).not.toHaveBeenCalled();
   });
 });

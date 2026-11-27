@@ -656,19 +656,6 @@ const ruBlueprints: Record<string, TranslationEntry> = {
     message: "Репозиторий",
     description: "Blueprint detail metadata label",
   },
-  "blueprints.metaBranch": {
-    message: "Ветка",
-    description: "Blueprint detail metadata label",
-  },
-  "blueprints.metaPath": {
-    message: "Путь к манифесту",
-    description:
-      "Blueprint detail metadata label — path to render.yaml in repo",
-  },
-  "blueprints.metaAutoSync": {
-    message: "Автосинхронизация",
-    description: "Blueprint detail metadata label — auto-sync on push toggle",
-  },
   "blueprints.metaCreated": {
     message: "Создан",
     description: "Blueprint detail metadata label",
@@ -677,13 +664,99 @@ const ruBlueprints: Record<string, TranslationEntry> = {
     message: "Последняя синхронизация",
     description: "Blueprint detail metadata label",
   },
-  "blueprints.autoSyncOn": {
-    message: "Вкл.",
-    description: "Auto-sync toggle label — enabled",
+  "blueprints.detailsTitle": {
+    message: "Сведения",
+    description:
+      "Blueprint Settings page: title of bex's card of read-only facts (repository, created, last synced) under Render's Settings card (w3/m679)",
   },
-  "blueprints.autoSyncOff": {
-    message: "Выкл.",
-    description: "Auto-sync toggle label — disabled",
+  "blueprints.settingsNameHint": {
+    message: "Уникальное название вашего Blueprint.",
+    description:
+      "Blueprint Settings card: help under Blueprint Name (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsRequired": {
+    message: "Обязательно",
+    description:
+      "Blueprint Settings card: shown under a row left empty (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsNameTaken": {
+    message: "Название уже используется",
+    description:
+      "Blueprint Settings card: shown under Blueprint Name when another Blueprint of the workspace has the name (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsAutoSync": {
+    message: "Автосинхронизация",
+    description:
+      "Blueprint Settings card: the Auto Sync row's label (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsAutoSyncHint": {
+    message:
+      "Автоматически синхронизировать изменения файла Blueprint? Выберите «Нет», чтобы запускать синхронизацию вручную.",
+    description:
+      "Blueprint Settings card: help under Auto Sync; quotes the No option (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsYes": {
+    message: "Да",
+    description:
+      "Blueprint Settings card: Auto Sync option, on (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsNo": {
+    message: "Нет",
+    description:
+      "Blueprint Settings card: Auto Sync option, off (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsBranch": {
+    message: "Ветка",
+    description: "Blueprint Settings card: the Branch row's label (w3/m679)",
+  },
+  "blueprints.settingsBranchHint": {
+    message: "Git-ветка для сборки и деплоя.",
+    description:
+      "Blueprint Settings card: help under Branch (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsBranchNotFound": {
+    message: "Ветка не найдена в этом репозитории. Выберите другую ветку.",
+    description:
+      "Blueprint Settings card: shown under Branch when the repository has no such branch (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsPath": {
+    message: "Путь к Blueprint",
+    description:
+      "Blueprint Settings card: the Blueprint Path row's label (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsPathHint": {
+    message:
+      "Путь к файлу Blueprint в вашем репозитории (напр. infra/render.yaml). По умолчанию — render.yaml в корне репозитория.",
+    description:
+      "Blueprint Settings card: help under Blueprint Path (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsFileNotFound": {
+    message:
+      "Файл Blueprint «{path}» не найден в ветке «{branch}». Проверьте, что файл есть в этой ветке.",
+    description:
+      "Blueprint Settings card: shown under Branch or Blueprint Path when the Blueprint file is not at that path on that branch (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsUpdateFailed": {
+    message: "Не удалось обновить Blueprint. Попробуйте ещё раз.",
+    description:
+      "Blueprint Settings card: shown under a row whose save failed with no reason from the server (Render's copy, w3/m679)",
+  },
+  "blueprints.disconnectNoSync": {
+    message:
+      "Ресурсы больше не будут автоматически синхронизироваться из файла Blueprint.",
+    description:
+      "Disconnect Blueprint modal: first sentence (Render's copy, w3/m679)",
+  },
+  "blueprints.disconnectKeeps": {
+    message:
+      "Сам файл не будет удалён. Управляемые ресурсы не будут удалены. Вы всегда сможете снова подключить файл позже на странице Blueprints.",
+    description:
+      "Disconnect Blueprint modal: second sentence (Render's copy, w3/m679)",
+  },
+  "blueprints.disconnectConfirm": {
+    message: "Вы уверены, что хотите отключить спецификацию Blueprint {name}?",
+    description:
+      "Disconnect Blueprint modal: the question, with the Blueprint's name in bold (Render's copy, w3/m679)",
   },
   "blueprints.resourcesTitle": {
     message: "Управляемые ресурсы",
@@ -775,14 +848,6 @@ const ruBlueprints: Record<string, TranslationEntry> = {
     message: "Редактировать: {field}",
     description: "Aria label for the inline-edit pencil button",
   },
-  "blueprints.saveField": {
-    message: "Сохранить: {field}",
-    description: "Aria label for the inline-edit save button",
-  },
-  "blueprints.cancelEdit": {
-    message: "Отменить редактирование",
-    description: "Aria label for the inline-edit cancel button",
-  },
   "blueprints.pathInvalid": {
     message:
       "Должен быть чистым путём к файлу .yaml или .yml относительно репозитория (без начального слеша и без '..').",
@@ -792,27 +857,19 @@ const ruBlueprints: Record<string, TranslationEntry> = {
     message: "Blueprint обновлён",
     description: "Toast shown after a successful updateBlueprint call",
   },
-  "blueprints.updateError": {
-    message: "Не удалось обновить",
-    description: "Toast shown when updateBlueprint returns an error",
-  },
   "blueprints.disconnectButton": {
-    message: "Отключить",
+    message: "Отключить Blueprint",
     description:
-      "Button that disconnects a blueprint from its Git repo (stops auto-sync, keeps resources)",
+      "Blueprint Settings page: the critical button that opens the Disconnect Blueprint modal (Render's copy, w3/m679)",
   },
   "blueprints.disconnectTitle": {
-    message: "Отключить Blueprint?",
-    description: "Disconnect confirm dialog title",
-  },
-  "blueprints.disconnectBody": {
-    message:
-      "Автосинхронизация при push будет остановлена, а Blueprint исчезнет из вашего списка. Уже развёрнутые ресурсы останутся без изменений.",
-    description: "Disconnect confirm dialog description",
+    message: "Отключить Blueprint",
+    description: "Disconnect Blueprint modal title (Render's copy, w3/m679)",
   },
   "blueprints.disconnectAction": {
-    message: "Отключить",
-    description: "Disconnect confirm dialog primary action button label",
+    message: "Отключить Blueprint",
+    description:
+      "Disconnect Blueprint modal: the critical confirm button (Render's copy, w3/m679)",
   },
   "blueprints.disconnectCancel": {
     message: "Отмена",

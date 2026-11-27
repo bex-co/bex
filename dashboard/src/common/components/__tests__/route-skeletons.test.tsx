@@ -262,7 +262,7 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     [
       <BlueprintSettingsSkeleton key="blueprint-settings" />,
       "blueprint-settings",
-      ["metadata", "manifest", "validation", "disconnect"],
+      ["settings", "details", "manifest", "validation", "disconnect"],
     ],
   ])("renders the %s contract", (component, shape, expectedRegions) => {
     const { container, unmount } = render(component);

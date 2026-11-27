@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import {
   RouterProvider,
   createRouter,
@@ -24,6 +25,10 @@ import type {
   BlueprintView,
 } from "@/features/blueprints/types";
 import type { PlanBlueprintSyncResult } from "@/features/blueprints/hooks/use-plan-blueprint-sync";
+import type {
+  BlueprintUpdate,
+  BlueprintUpdateResult,
+} from "@/features/blueprints/hooks/use-update-blueprint";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
   CREATE_REASON,
@@ -113,15 +118,29 @@ vi.mock("@/features/blueprints/hooks/use-validate-blueprint", () => ({
 }));
 
 // --- update hook stub ---
-const update = vi.fn(async () => null);
+const update = vi.fn(
+  async (
+    _id: string,
+    _fields: BlueprintUpdate,
+  ): Promise<BlueprintUpdateResult> => ({ ok: true }),
+);
 vi.mock("@/features/blueprints/hooks/use-update-blueprint", () => ({
   useUpdateBlueprint: () => ({ update, busy: false }),
 }));
 
-// --- disconnect hook stub ---
-const disconnect = vi.fn(async () => true);
+// --- disconnect hook stub: null once disconnected, else the refusal ---
+const disconnect = vi.fn(async (_id: string): Promise<string | null> => null);
 vi.mock("@/features/blueprints/hooks/use-disconnect-blueprint", () => ({
   useDisconnectBlueprint: () => ({ disconnect, busy: false }),
+}));
+
+// --- the Branch row's picker reads the repository's branches (w3/m679) ---
+const readBranches = vi.fn();
+vi.mock("@/features/services/hooks/use-repo-branches", () => ({
+  useRepoBranches: (repo: string | null) => {
+    readBranches(repo);
+    return { branches: repo ? ["main", "staging"] : [], loading: false };
+  },
 }));
 
 // --- syncs hook stub ---
@@ -314,8 +333,11 @@ beforeEach(() => {
   blueprintSyncState.approveError = null;
   approve.mockClear();
   readSync.mockClear();
-  disconnect.mockClear();
-  update.mockClear();
+  readBranches.mockClear();
+  disconnect.mockReset();
+  disconnect.mockResolvedValue(null);
+  update.mockReset();
+  update.mockResolvedValue({ ok: true });
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   plan.mockReset();
   plan.mockResolvedValue({ status: "planned", syncId: "exe-planned" });
@@ -463,10 +485,12 @@ describe("a Blueprint's pages (w3/m677)", () => {
     const user = userEvent.setup();
     const router = renderDetailPage(SETTINGS);
 
-    await user.click(await screen.findByRole("button", { name: "Disconnect" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Disconnect Blueprint" }),
+    );
     await user.click(
       within(await screen.findByRole("alertdialog")).getByRole("button", {
-        name: "Disconnect",
+        name: "Disconnect Blueprint",
       }),
     );
     expect(disconnect).toHaveBeenCalledWith("exs-abc123");
@@ -482,7 +506,7 @@ describe("a Blueprint's pages (w3/m677)", () => {
 
       await manualSync();
       expect(
-        screen.queryByRole("button", { name: "Disconnect" }),
+        screen.queryByRole("button", { name: "Disconnect Blueprint" }),
       ).not.toBeInTheDocument();
     },
   );
@@ -498,7 +522,9 @@ describe("a Blueprint's pages (w3/m677)", () => {
 
     const button = await manualSync();
     expect(button).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Disconnect" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Disconnect Blueprint" }),
+    ).toBeDisabled();
     await user.hover(button.parentElement!);
     expect((await screen.findAllByText(CREATE_REASON)).length).toBeGreaterThan(
       0,
@@ -545,10 +571,10 @@ describe("each Blueprint page's pending frame (w3/m677)", () => {
       .split(" ")
       .filter((name) => name && name !== "invisible")
       .join(" ");
-  // The page under the layout's heading: its cards, its sync cards (w3/m678),
-  // then its loose controls.
+  // The page under its heading: its cards (with their edit-in-place rows'
+  // labels, w3/m679), its sync cards (w3/m678), then its loose controls.
   const pageShape = (heading: Element) => {
-    const page = heading.parentElement!;
+    const page = heading.closest(".max-w-5xl")!;
     return {
       cards: [...page.querySelectorAll("[data-slot=card]")].map((card) => ({
         title: (
@@ -556,6 +582,11 @@ describe("each Blueprint page's pending frame (w3/m677)", () => {
         ).replace(NAME, ""),
         columns: [...card.querySelectorAll("th")].map((th) => th.textContent),
         labels: [...card.querySelectorAll("dt")].map((dt) => dt.textContent),
+        rows: [
+          ...card.querySelectorAll(
+            "[data-slot=card-content] > .space-y-2 > div:first-child > div:first-child",
+          ),
+        ].map((label) => label.textContent),
       })),
       syncCards: [...page.querySelectorAll(".rounded-lg.border.bg-card")].map(
         (card) => ({
@@ -572,12 +603,12 @@ describe("each Blueprint page's pending frame (w3/m677)", () => {
     };
   };
 
-  // The layout's page heading; a card's title is a heading too.
+  // The page's heading: the layout's, or on Settings the Settings card's
+  // title (w3/m679).
   const pageHeading = () =>
     screen.findByText(
       (_, element) =>
         element?.tagName === "H2" &&
-        !element.hasAttribute("data-slot") &&
         ["Resources", "Syncs", "Settings"].includes(element.textContent ?? ""),
     );
 
@@ -1054,19 +1085,6 @@ describe("Manual sync (w3/m678)", () => {
 });
 
 describe("BlueprintDetailPage", () => {
-  it("renders the manifest and metadata for a found blueprint on Settings", async () => {
-    blueprintDetailState.blueprint = bp();
-    renderDetailPage(SETTINGS);
-
-    // The header's name and the Settings card's editable name.
-    expect(await screen.findAllByText("hello-go")).toHaveLength(2);
-    expect(screen.queryByTitle("Resource name suffix")).not.toBeInTheDocument();
-    expect(screen.getByText(/services:.*name: api/s)).toBeInTheDocument();
-    expect(
-      screen.getByText("https://github.com/example/hello-go"),
-    ).toBeInTheDocument();
-  });
-
   // w8/m153: the header names the suffix beside the name, outside the heading.
   it("shows the resource suffix of a Blueprint created as a separate set", async () => {
     blueprintDetailState.blueprint = bp({ resourceSuffix: "ab12" });
@@ -1130,52 +1148,311 @@ describe("BlueprintDetailPage", () => {
     expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/blueprints/blp-missing");
   });
+});
 
-  it("edits name and path via PATCH on Settings; branch stays read-only (w8/m21)", async () => {
+/** A refusal from bex-api's GraphQL with its code, as Apollo throws it. */
+function refusedWith(code: string, message: string) {
+  return new CombinedGraphQLErrors({
+    data: null,
+    errors: [{ message, extensions: { code } }],
+  });
+}
+
+// w3/m679: Render's Settings card (Blueprint Name, Auto Sync, Branch,
+// Blueprint Path), its refusals in Render's words, and Disconnect Blueprint
+// with Render's modal (docs/render-artifacts/blueprint-pages.md).
+describe("a Blueprint's Settings (w3/m679)", () => {
+  const settingsCard = async () =>
+    (
+      await screen.findByRole("heading", { level: 2, name: "Settings" })
+    ).closest("[data-slot=card]") as HTMLElement;
+  const editRow = async (
+    user: ReturnType<typeof userEvent.setup>,
+    label: string,
+  ) => user.click(await screen.findByRole("button", { name: `Edit ${label}` }));
+  const save = () => screen.getByRole("button", { name: "Save changes" });
+
+  it("is Render's one Settings card, its rows in Render's order and words", async () => {
+    blueprintDetailState.blueprint = bp();
+    renderDetailPage(SETTINGS);
+
+    const card = await settingsCard();
+    // The card heads the page: no second Settings heading above it.
+    expect(
+      screen.getAllByRole("heading", { level: 2, name: "Settings" }),
+    ).toHaveLength(1);
+    const labels = [
+      ...card.querySelectorAll(
+        "[data-slot=card-content] > .space-y-2 > div:first-child > div:first-child",
+      ),
+    ].map((label) => label.textContent);
+    expect(labels).toEqual([
+      "Blueprint Name",
+      "Auto Sync",
+      "Branch",
+      "Blueprint Path",
+    ]);
+    for (const help of [
+      "A unique name for your Blueprint.",
+      'Automatically sync changes to your Blueprint file? Select "No" to handle syncs manually.',
+      "The Git branch to build and deploy.",
+      "The path to the Blueprint file in your repo (e.g., infra/render.yaml). Defaults to render.yaml at the root of your repository.",
+    ]) {
+      expect(within(card).getByText(help)).toBeInTheDocument();
+    }
+    expect(
+      within(card).getByRole("textbox", { name: "Blueprint Name" }),
+    ).toHaveValue("hello-go");
+    expect(
+      within(card).getByRole("combobox", { name: "Auto Sync" }),
+    ).toHaveTextContent("Yes");
+    expect(within(card).getByRole("combobox", { name: "Branch" })).toHaveValue(
+      "main",
+    );
+    expect(
+      within(card).getByRole("textbox", { name: "Blueprint Path" }),
+    ).toHaveValue("bex.yml");
+    // bex's read-only facts sit below it, then the manifest, Validate and
+    // Disconnect Blueprint last.
+    const titles = [...document.querySelectorAll("[data-slot=card-title]")].map(
+      (title) => title.textContent,
+    );
+    expect(titles.slice(0, 3)).toEqual([
+      "Settings",
+      "Details",
+      "render.yaml manifest",
+    ]);
+    expect(
+      screen.getByText("https://github.com/example/hello-go"),
+    ).toBeInTheDocument();
+    const disconnectButton = screen.getByRole("button", {
+      name: "Disconnect Blueprint",
+    });
+    expect(
+      card.compareDocumentPosition(disconnectButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("reads Auto Sync No for a paused Blueprint, and saves only Auto Sync", async () => {
+    // Render reads the status: paused reads No whatever autoSync says.
+    blueprintDetailState.blueprint = bp({ status: "paused", autoSync: true });
+    const user = userEvent.setup();
+    renderDetailPage(SETTINGS);
+
+    const autoSync = await screen.findByRole("combobox", { name: "Auto Sync" });
+    expect(autoSync).toHaveTextContent("No");
+    await editRow(user, "Auto Sync");
+    await user.click(autoSync);
+    await user.click(await screen.findByRole("option", { name: "Yes" }));
+    await user.click(save());
+    expect(update).toHaveBeenCalledWith("exs-abc123", { autoSync: true });
+  });
+
+  it("saves only the name, and refuses an empty or taken one at the field", async () => {
     blueprintDetailState.blueprint = bp();
     const user = userEvent.setup();
     renderDetailPage(SETTINGS);
 
-    // Path edit: pencil → input → invalid rejected client-side → valid saves.
-    await user.click(
-      await screen.findByRole("button", { name: /edit manifest path/i }),
-    );
-    const pathInput = screen.getByRole("textbox", { name: /manifest path/i });
-    await user.clear(pathInput);
-    await user.type(pathInput, "../escape.yaml");
-    expect(
-      screen.getByRole("button", { name: /save manifest path/i }),
-    ).toBeDisabled();
-    expect(screen.getByText(/clean repository-relative/i)).toBeInTheDocument();
-    await user.clear(pathInput);
-    await user.type(pathInput, "infra/bex/stack.yaml");
-    await user.click(
-      screen.getByRole("button", { name: /save manifest path/i }),
-    );
-    expect(update).toHaveBeenCalledWith("exs-abc123", {
-      path: "infra/bex/stack.yaml",
+    await editRow(user, "Blueprint Name");
+    const name = screen.getByRole("textbox", { name: "Blueprint Name" });
+    await user.clear(name);
+    expect(screen.getByRole("alert")).toHaveTextContent(/^Required$/);
+    expect(save()).toBeDisabled();
+
+    update.mockResolvedValueOnce({
+      ok: false,
+      error: refusedWith(
+        "BLUEPRINT_NAME_TAKEN",
+        'a Blueprint named "taken" already exists in this workspace',
+      ),
     });
-
-    // Name edit PATCHes only the name.
-    await user.click(
-      screen.getByRole("button", { name: /edit blueprint name/i }),
+    await user.type(name, "taken");
+    await user.click(save());
+    expect(update).toHaveBeenCalledWith("exs-abc123", { name: "taken" });
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /^Name already in use$/,
     );
-    const nameInput = screen.getByRole("textbox", { name: /blueprint name/i });
-    await user.clear(nameInput);
-    await user.type(nameInput, "renamed");
-    await user.click(
-      screen.getByRole("button", { name: /save blueprint name/i }),
-    );
-    expect(update).toHaveBeenCalledWith("exs-abc123", { name: "renamed" });
-
-    // Auto-sync PATCHes only the switch.
-    await user.click(screen.getByRole("switch", { name: /auto-sync/i }));
-    expect(update).toHaveBeenCalledWith("exs-abc123", { autoSync: false });
-
-    // Branch has no edit affordance.
+    // The row stays open on the refused name, which cannot be sent again.
+    expect(save()).toBeDisabled();
+    await user.type(name, "-2");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await user.click(save());
+    expect(update).toHaveBeenLastCalledWith("exs-abc123", { name: "taken-2" });
     expect(
-      screen.queryByRole("button", { name: /edit branch/i }),
-    ).not.toBeInTheDocument();
+      await screen.findByRole("button", { name: "Edit Blueprint Name" }),
+    ).toBeInTheDocument();
+  });
+
+  it("moves the Blueprint to a branch from the repository's branches", async () => {
+    blueprintDetailState.blueprint = bp();
+    const user = userEvent.setup();
+    renderDetailPage(SETTINGS);
+
+    // The branches are read once Branch is edited, as Render's picker does.
+    await settingsCard();
+    expect(readBranches).not.toHaveBeenCalledWith(bp().repo);
+    await editRow(user, "Branch");
+    expect(readBranches).toHaveBeenLastCalledWith(bp().repo);
+    const branch = screen.getByRole("combobox", { name: "Branch" });
+    await user.clear(branch);
+    await user.click(await screen.findByRole("option", { name: "staging" }));
+    await user.click(save());
+    expect(update).toHaveBeenCalledWith("exs-abc123", { branch: "staging" });
+    expect(
+      await screen.findByRole("button", { name: "Edit Branch" }),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    [
+      "file_not_found",
+      'Blueprint file "bex.yml" not found on branch "staging".',
+      'Blueprint file "bex.yml" not found on "staging" branch. Please check that the file exists on this branch.',
+    ],
+    [
+      "branch_not_found",
+      'Branch "staging" does not exist in this repository.',
+      "Branch not found in this repository. Choose another branch.",
+    ],
+  ])(
+    "refuses a branch with %s in Render's words and saves nothing",
+    async (code, message, sentence) => {
+      blueprintDetailState.blueprint = bp();
+      update.mockResolvedValueOnce({
+        ok: false,
+        error: refusedWith(code, message),
+      });
+      const user = userEvent.setup();
+      renderDetailPage(SETTINGS);
+
+      await editRow(user, "Branch");
+      const branch = screen.getByRole("combobox", { name: "Branch" });
+      await user.clear(branch);
+      await user.type(branch, "staging");
+      await user.click(save());
+      expect(await screen.findByRole("alert")).toHaveTextContent(sentence);
+      expect(save()).toBeDisabled();
+    },
+  );
+
+  it.each([
+    [
+      "the file is not at the path",
+      refusedWith(
+        "file_not_found",
+        'Blueprint file "infra/render.yaml" not found on branch "main".',
+      ),
+      'Blueprint file "infra/render.yaml" not found on "main" branch. Please check that the file exists on this branch.',
+    ],
+    [
+      "the server refuses for another reason",
+      refusedWith(
+        "unavailable",
+        "Could not reach GitHub to read the Blueprint file. Try again in a few minutes.",
+      ),
+      "Could not reach GitHub to read the Blueprint file. Try again in a few minutes.",
+    ],
+    [
+      "the request fails with no reason",
+      new Error("Failed to fetch"),
+      "Failed to update Blueprint. Please try again.",
+    ],
+  ])("refuses a path when %s at the field", async (_, error, sentence) => {
+    blueprintDetailState.blueprint = bp();
+    update.mockResolvedValueOnce({ ok: false, error });
+    const user = userEvent.setup();
+    renderDetailPage(SETTINGS);
+
+    await editRow(user, "Blueprint Path");
+    const path = screen.getByRole("textbox", { name: "Blueprint Path" });
+    await user.clear(path);
+    await user.type(path, "infra/render.yaml");
+    await user.click(save());
+    expect(update).toHaveBeenCalledWith("exs-abc123", {
+      path: "infra/render.yaml",
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent(sentence);
+  });
+
+  it("checks a path's shape before sending it", async () => {
+    blueprintDetailState.blueprint = bp();
+    const user = userEvent.setup();
+    renderDetailPage(SETTINGS);
+
+    await editRow(user, "Blueprint Path");
+    const path = screen.getByRole("textbox", { name: "Blueprint Path" });
+    await user.clear(path);
+    await user.type(path, "../escape.yaml");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /clean repository-relative/,
+    );
+    expect(save()).toBeDisabled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("shows a role that cannot change the Blueprint its rows read-only with the reason", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(viewerCapabilities());
+    blueprintDetailState.blueprint = bp();
+    renderDetailPage(SETTINGS);
+
+    const card = await settingsCard();
+    expect(within(card).queryAllByRole("button", { name: /^Edit / })).toEqual(
+      [],
+    );
+    expect(within(card).getAllByText(CREATE_REASON)).toHaveLength(4);
+    expect(
+      screen.getByRole("button", { name: "Disconnect Blueprint" }),
+    ).toBeDisabled();
+  });
+
+  it("asks with Render's modal: Cancel keeps the Blueprint", async () => {
+    blueprintDetailState.blueprint = bp();
+    const user = userEvent.setup();
+    const router = renderDetailPage(SETTINGS);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Disconnect Blueprint" }),
+    );
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Disconnect Blueprint",
+    });
+    expect(dialog).toHaveTextContent(
+      "Resources will no longer sync automatically from your Blueprint file.",
+    );
+    expect(dialog).toHaveTextContent(
+      "This will not delete the file itself. This will not delete the managed resources. You can always connect your file later from the Blueprint page.",
+    );
+    expect(dialog).toHaveTextContent(
+      "Are you sure you want to disconnect your Blueprint spec hello-go?",
+    );
+    expect(within(dialog).getByText("hello-go").tagName).toBe("STRONG");
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(disconnect).not.toHaveBeenCalled();
+    expect(router.state.location.pathname).toBe(SETTINGS);
+  });
+
+  it("keeps a refused disconnect in the modal", async () => {
+    blueprintDetailState.blueprint = bp();
+    disconnect.mockResolvedValueOnce(
+      "A sync is currently applying — retry disconnect after it settles",
+    );
+    const user = userEvent.setup();
+    const router = renderDetailPage(SETTINGS);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Disconnect Blueprint" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Disconnect Blueprint" }),
+    );
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "A sync is currently applying — retry disconnect after it settles",
+    );
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(SETTINGS);
   });
 });
 

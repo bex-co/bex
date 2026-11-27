@@ -39,8 +39,6 @@ const ALLOWED: Record<string, string> = {
     "Kratos logout, not a bex-api request; the cause is logged",
   "common/hooks/use-copy-to-clipboard.ts: toast.error(errorText)":
     "the browser clipboard API failed; there is no server to relay",
-  'features/blueprints/hooks/use-disconnect-blueprint.ts: toast.error(t("blueprints.disconnectBusy"))':
-    DEDICATED,
   'features/blueprints/hooks/use-blueprint-syncs.ts: toast.error(t("blueprints.syncsLoadMoreError"))':
     READ,
   'features/deploys/hooks/use-deploys.ts: toast.error(t("deploys.listLoadMoreError"))':

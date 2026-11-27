@@ -595,19 +595,6 @@ const koBlueprints: Record<string, TranslationEntry> = {
     message: "저장소",
     description: "Blueprint detail metadata label",
   },
-  "blueprints.metaBranch": {
-    message: "브랜치",
-    description: "Blueprint detail metadata label",
-  },
-  "blueprints.metaPath": {
-    message: "매니페스트 경로",
-    description:
-      "Blueprint detail metadata label — path to render.yaml in repo",
-  },
-  "blueprints.metaAutoSync": {
-    message: "자동 동기화",
-    description: "Blueprint detail metadata label — auto-sync on push toggle",
-  },
   "blueprints.metaCreated": {
     message: "생성일",
     description: "Blueprint detail metadata label",
@@ -616,13 +603,100 @@ const koBlueprints: Record<string, TranslationEntry> = {
     message: "마지막 동기화",
     description: "Blueprint detail metadata label",
   },
-  "blueprints.autoSyncOn": {
-    message: "켜짐",
-    description: "Auto-sync toggle label — enabled",
+  "blueprints.detailsTitle": {
+    message: "세부 정보",
+    description:
+      "Blueprint Settings page: title of bex's card of read-only facts (repository, created, last synced) under Render's Settings card (w3/m679)",
   },
-  "blueprints.autoSyncOff": {
-    message: "꺼짐",
-    description: "Auto-sync toggle label — disabled",
+  "blueprints.settingsNameHint": {
+    message: "Blueprint의 고유한 이름입니다.",
+    description:
+      "Blueprint Settings card: help under Blueprint Name (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsRequired": {
+    message: "필수",
+    description:
+      "Blueprint Settings card: shown under a row left empty (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsNameTaken": {
+    message: "이미 사용 중인 이름입니다",
+    description:
+      "Blueprint Settings card: shown under Blueprint Name when another Blueprint of the workspace has the name (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsAutoSync": {
+    message: "자동 동기화",
+    description:
+      "Blueprint Settings card: the Auto Sync row's label (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsAutoSyncHint": {
+    message:
+      'Blueprint 파일의 변경 사항을 자동으로 동기화할까요? 동기화를 수동으로 처리하려면 "아니요"를 선택하세요.',
+    description:
+      "Blueprint Settings card: help under Auto Sync; quotes the No option (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsYes": {
+    message: "예",
+    description:
+      "Blueprint Settings card: Auto Sync option, on (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsNo": {
+    message: "아니요",
+    description:
+      "Blueprint Settings card: Auto Sync option, off (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsBranch": {
+    message: "브랜치",
+    description: "Blueprint Settings card: the Branch row's label (w3/m679)",
+  },
+  "blueprints.settingsBranchHint": {
+    message: "빌드하고 배포할 Git 브랜치입니다.",
+    description:
+      "Blueprint Settings card: help under Branch (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsBranchNotFound": {
+    message:
+      "이 저장소에서 브랜치를 찾을 수 없습니다. 다른 브랜치를 선택하세요.",
+    description:
+      "Blueprint Settings card: shown under Branch when the repository has no such branch (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsPath": {
+    message: "Blueprint 경로",
+    description:
+      "Blueprint Settings card: the Blueprint Path row's label (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsPathHint": {
+    message:
+      "저장소 내 Blueprint 파일의 경로입니다(예: infra/render.yaml). 기본값은 저장소 루트의 render.yaml입니다.",
+    description:
+      "Blueprint Settings card: help under Blueprint Path (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsFileNotFound": {
+    message:
+      '"{branch}" 브랜치에서 Blueprint 파일 "{path}"을(를) 찾을 수 없습니다. 이 브랜치에 파일이 있는지 확인하세요.',
+    description:
+      "Blueprint Settings card: shown under Branch or Blueprint Path when the Blueprint file is not at that path on that branch (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsUpdateFailed": {
+    message: "Blueprint를 업데이트하지 못했습니다. 다시 시도하세요.",
+    description:
+      "Blueprint Settings card: shown under a row whose save failed with no reason from the server (Render's copy, w3/m679)",
+  },
+  "blueprints.disconnectNoSync": {
+    message:
+      "리소스가 더 이상 Blueprint 파일에서 자동으로 동기화되지 않습니다.",
+    description:
+      "Disconnect Blueprint modal: first sentence (Render's copy, w3/m679)",
+  },
+  "blueprints.disconnectKeeps": {
+    message:
+      "파일 자체는 삭제되지 않습니다. 관리 중인 리소스도 삭제되지 않습니다. 나중에 언제든지 Blueprints 페이지에서 파일을 다시 연결할 수 있습니다.",
+    description:
+      "Disconnect Blueprint modal: second sentence (Render's copy, w3/m679)",
+  },
+  "blueprints.disconnectConfirm": {
+    message: "Blueprint 사양 {name}의 연결을 해제하시겠습니까?",
+    description:
+      "Disconnect Blueprint modal: the question, with the Blueprint's name in bold (Render's copy, w3/m679)",
   },
   "blueprints.resourcesTitle": {
     message: "관리 중인 리소스",
@@ -714,14 +788,6 @@ const koBlueprints: Record<string, TranslationEntry> = {
     message: "{field} 편집",
     description: "Aria label for the inline-edit pencil button",
   },
-  "blueprints.saveField": {
-    message: "{field} 저장",
-    description: "Aria label for the inline-edit save button",
-  },
-  "blueprints.cancelEdit": {
-    message: "편집 취소",
-    description: "Aria label for the inline-edit cancel button",
-  },
   "blueprints.pathInvalid": {
     message:
       "저장소 기준의 깔끔한 .yaml 또는 .yml 상대 경로여야 합니다(앞의 슬래시 및 '..' 불가).",
@@ -731,27 +797,19 @@ const koBlueprints: Record<string, TranslationEntry> = {
     message: "Blueprint를 업데이트했습니다",
     description: "Toast shown after a successful updateBlueprint call",
   },
-  "blueprints.updateError": {
-    message: "업데이트에 실패했습니다",
-    description: "Toast shown when updateBlueprint returns an error",
-  },
   "blueprints.disconnectButton": {
-    message: "연결 해제",
+    message: "Blueprint 연결 해제",
     description:
-      "Button that disconnects a blueprint from its Git repo (stops auto-sync, keeps resources)",
+      "Blueprint Settings page: the critical button that opens the Disconnect Blueprint modal (Render's copy, w3/m679)",
   },
   "blueprints.disconnectTitle": {
-    message: "Blueprint 연결을 해제하시겠습니까?",
-    description: "Disconnect confirm dialog title",
-  },
-  "blueprints.disconnectBody": {
-    message:
-      "푸시 시 자동 동기화가 중지되고 목록에서 Blueprint가 제거됩니다. 이미 배포된 리소스는 그대로 유지됩니다.",
-    description: "Disconnect confirm dialog description",
+    message: "Blueprint 연결 해제",
+    description: "Disconnect Blueprint modal title (Render's copy, w3/m679)",
   },
   "blueprints.disconnectAction": {
-    message: "연결 해제",
-    description: "Disconnect confirm dialog primary action button label",
+    message: "Blueprint 연결 해제",
+    description:
+      "Disconnect Blueprint modal: the critical confirm button (Render's copy, w3/m679)",
   },
   "blueprints.disconnectCancel": {
     message: "취소",

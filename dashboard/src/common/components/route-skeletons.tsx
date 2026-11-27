@@ -85,6 +85,7 @@ import {
   KeyValuePolicyPreview,
 } from "@/common/components/datastore-overview-previews";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { EditableFieldRowPreview } from "@/features/services/components/editable-field-row";
 import {
   ReservedButton,
   ReservedOryButton,
@@ -1245,41 +1246,70 @@ export function BlueprintSyncPageSkeleton() {
   );
 }
 
-// The Settings metadata card's labels, in its order; the manifest path's
-// value carries a 24px edit button, the others a 20px line.
-const BLUEPRINT_METADATA_FIELDS = [
-  ["blueprints.metaRepo", "h-5"],
-  ["blueprints.metaBranch", "h-5"],
-  ["blueprints.metaPath", "h-6"],
-  ["blueprints.metaAutoSync", "h-5"],
-  ["blueprints.metaCreated", "h-5"],
-  ["blueprints.metaUpdated", "h-5"],
+// The Details card's labels, in its order (w3/m679): bex's read-only facts
+// under Render's Settings card.
+const BLUEPRINT_DETAILS_FIELDS = [
+  "blueprints.metaRepo",
+  "blueprints.metaCreated",
+  "blueprints.metaUpdated",
 ] as const;
 
 /**
- * A Blueprint's Settings page while it loads (w3/m677): the metadata card
- * (the name's 24px editor line, then its six fields), the manifest's eight
- * lines, the Validate card and Disconnect.
+ * A Blueprint's Settings page while it loads (w3/m679): Render's Settings
+ * card, which heads the page, with its four rows (Auto Sync a select), the
+ * Details card, the manifest's eight lines, the Validate card and Disconnect
+ * Blueprint.
  */
 export function BlueprintSettingsSkeleton() {
   const { t } = useTranslations();
   return (
     <PendingFrame route="blueprint-settings" className="space-y-6">
-      <Region name="metadata">
+      <Region name="settings">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
-              <span className="flex h-6 items-center">
-                <Skeleton className="h-4 w-40" />
-              </span>
+              {t("blueprints.navSettings")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <EditableFieldRowPreview
+              label={t("blueprints.createNameLabel")}
+              hint={t("blueprints.settingsNameHint")}
+            />
+            <EditableFieldRowPreview
+              label={t("blueprints.settingsAutoSync")}
+              hint={t("blueprints.settingsAutoSyncHint")}
+              select={{ narrowLines: 1 }}
+            />
+            <EditableFieldRowPreview
+              label={t("blueprints.settingsBranch")}
+              hint={t("blueprints.settingsBranchHint")}
+            />
+            <EditableFieldRowPreview
+              label={t("blueprints.settingsPath")}
+              hint={t("blueprints.settingsPathHint")}
+            />
+          </CardContent>
+        </Card>
+      </Region>
+      <Region name="details">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              {t("blueprints.detailsTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
-              {BLUEPRINT_METADATA_FIELDS.map(([labelKey, height]) => (
-                <div key={labelKey}>
+              {BLUEPRINT_DETAILS_FIELDS.map((labelKey, index) => (
+                <div
+                  key={labelKey}
+                  className={cn(
+                    index === 0 && "col-span-2 min-w-0 sm:col-span-1",
+                  )}
+                >
                   <dt className="text-muted-foreground">{t(labelKey)}</dt>
-                  <dd className={cn("flex items-center", height)}>
+                  <dd className="flex h-5 items-center">
                     <Skeleton className="h-4 w-24 max-w-full" />
                   </dd>
                 </div>
@@ -1329,7 +1359,7 @@ export function BlueprintSettingsSkeleton() {
         </Card>
       </Region>
       <Region name="disconnect">
-        <ReservedButton variant="outline" size="sm">
+        <ReservedButton variant="destructive">
           {t("blueprints.disconnectButton")}
         </ReservedButton>
       </Region>

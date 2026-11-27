@@ -87,10 +87,13 @@ func TestApproveAfterAFailedPlanFixedWithNoChangesFindsNothingToApprove(t *testi
 	}
 
 	// The plan at a missing path fails, and approving it is refused as a failed
-	// plan, with the advice to fix the file and re-plan.
-	if code, out := call(http.MethodPatch, "/v1/blueprints/"+id, `{"path":"nope.yaml"}`); code != http.StatusOK {
-		t.Fatalf("update path = %d %v", code, out)
-	}
+	// plan, with the advice to fix the file and re-plan. An update refuses a
+	// path with no file (w8/418), so the file goes after the update.
+	withFileAt(svc, "nope.yaml", func() {
+		if code, out := call(http.MethodPatch, "/v1/blueprints/"+id, `{"path":"nope.yaml"}`); code != http.StatusOK {
+			t.Fatalf("update path = %d %v", code, out)
+		}
+	})
 	code, failed := call(http.MethodPost, "/v1/blueprints/"+id+"/syncs", "")
 	if code != http.StatusCreated || failed["planningOutcome"] != PlanningFailed {
 		t.Fatalf("plan at a missing path = %d %v, want 201 failed", code, failed)
@@ -127,9 +130,11 @@ func TestApproveAfterAFailedPlanFixedWithNoChangesFindsNothingToApprove(t *testi
 	assertNoChangesToApprove(t, err)
 
 	// A plan that fails after the no_changes one is the newest again.
-	if _, err := svc.UpdateBlueprint(ctx, id, "tea-a", UpdateBlueprintRequest{Path: new("nope.yaml")}); err != nil {
-		t.Fatal(err)
-	}
+	withFileAt(svc, "nope.yaml", func() {
+		if _, err := svc.UpdateBlueprint(ctx, id, "tea-a", UpdateBlueprintRequest{Path: new("nope.yaml")}); err != nil {
+			t.Fatal(err)
+		}
+	})
 	again, err := svc.PlanBlueprint(ctx, id, "tea-a")
 	if err != nil || again.PlanningOutcome != PlanningFailed {
 		t.Fatalf("plan = %+v err=%v, want failed", again, err)
@@ -194,9 +199,11 @@ func TestApproveAfterAFailedPlanFixedWithNoChangesPG(t *testing.T) {
 	}
 	planAt := func(path, want string) BlueprintPlanResult {
 		t.Helper()
-		if _, err := svc.UpdateBlueprint(ctx, id, wsID, UpdateBlueprintRequest{Path: new(path)}); err != nil {
-			t.Fatal(err)
-		}
+		withFileAt(svc, path, func() {
+			if _, err := svc.UpdateBlueprint(ctx, id, wsID, UpdateBlueprintRequest{Path: new(path)}); err != nil {
+				t.Fatal(err)
+			}
+		})
 		plan, err := svc.PlanBlueprint(ctx, id, wsID)
 		if err != nil || plan.PlanningOutcome != want {
 			t.Fatalf("plan at %s = %+v err=%v, want %s", path, plan, err, want)

@@ -590,19 +590,6 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "仓库",
     description: "Blueprint detail metadata label",
   },
-  "blueprints.metaBranch": {
-    message: "分支",
-    description: "Blueprint detail metadata label",
-  },
-  "blueprints.metaPath": {
-    message: "清单路径",
-    description:
-      "Blueprint detail metadata label — path to render.yaml in repo",
-  },
-  "blueprints.metaAutoSync": {
-    message: "自动同步",
-    description: "Blueprint detail metadata label — auto-sync on push toggle",
-  },
   "blueprints.metaCreated": {
     message: "创建时间",
     description: "Blueprint detail metadata label",
@@ -611,13 +598,97 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "最近同步",
     description: "Blueprint detail metadata label",
   },
-  "blueprints.autoSyncOn": {
-    message: "开启",
-    description: "Auto-sync toggle label — enabled",
+  "blueprints.detailsTitle": {
+    message: "详情",
+    description:
+      "Blueprint Settings page: title of bex's card of read-only facts (repository, created, last synced) under Render's Settings card (w3/m679)",
   },
-  "blueprints.autoSyncOff": {
-    message: "关闭",
-    description: "Auto-sync toggle label — disabled",
+  "blueprints.settingsNameHint": {
+    message: "蓝图的唯一名称。",
+    description:
+      "Blueprint Settings card: help under Blueprint Name (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsRequired": {
+    message: "必填",
+    description:
+      "Blueprint Settings card: shown under a row left empty (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsNameTaken": {
+    message: "名称已被使用",
+    description:
+      "Blueprint Settings card: shown under Blueprint Name when another Blueprint of the workspace has the name (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsAutoSync": {
+    message: "自动同步",
+    description:
+      "Blueprint Settings card: the Auto Sync row's label (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsAutoSyncHint": {
+    message: "自动同步蓝图文件的更改？选择“否”以手动处理同步。",
+    description:
+      "Blueprint Settings card: help under Auto Sync; quotes the No option (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsYes": {
+    message: "是",
+    description:
+      "Blueprint Settings card: Auto Sync option, on (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsNo": {
+    message: "否",
+    description:
+      "Blueprint Settings card: Auto Sync option, off (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsBranch": {
+    message: "分支",
+    description: "Blueprint Settings card: the Branch row's label (w3/m679)",
+  },
+  "blueprints.settingsBranchHint": {
+    message: "构建和部署所用的 Git 分支。",
+    description:
+      "Blueprint Settings card: help under Branch (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsBranchNotFound": {
+    message: "此仓库中找不到该分支。请选择其他分支。",
+    description:
+      "Blueprint Settings card: shown under Branch when the repository has no such branch (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsPath": {
+    message: "蓝图路径",
+    description:
+      "Blueprint Settings card: the Blueprint Path row's label (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsPathHint": {
+    message:
+      "蓝图文件在仓库中的路径（例如 infra/render.yaml）。默认为仓库根目录下的 render.yaml。",
+    description:
+      "Blueprint Settings card: help under Blueprint Path (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsFileNotFound": {
+    message:
+      "在“{branch}”分支上找不到蓝图文件“{path}”。请检查该分支上是否存在此文件。",
+    description:
+      "Blueprint Settings card: shown under Branch or Blueprint Path when the Blueprint file is not at that path on that branch (Render's copy, w3/m679)",
+  },
+  "blueprints.settingsUpdateFailed": {
+    message: "更新蓝图失败。请重试。",
+    description:
+      "Blueprint Settings card: shown under a row whose save failed with no reason from the server (Render's copy, w3/m679)",
+  },
+  "blueprints.disconnectNoSync": {
+    message: "资源将不再从蓝图文件自动同步。",
+    description:
+      "Disconnect Blueprint modal: first sentence (Render's copy, w3/m679)",
+  },
+  "blueprints.disconnectKeeps": {
+    message:
+      "这不会删除文件本身，也不会删除托管的资源。你随时可以稍后在蓝图页面重新连接文件。",
+    description:
+      "Disconnect Blueprint modal: second sentence (Render's copy, w3/m679)",
+  },
+  "blueprints.disconnectConfirm": {
+    message: "确定要断开蓝图规范 {name} 的连接吗？",
+    description:
+      "Disconnect Blueprint modal: the question, with the Blueprint's name in bold (Render's copy, w3/m679)",
   },
   // --- Resources section ---
   "blueprints.resourcesTitle": {
@@ -709,14 +780,6 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "编辑{field}",
     description: "Aria label for the inline-edit pencil button",
   },
-  "blueprints.saveField": {
-    message: "保存{field}",
-    description: "Aria label for the inline-edit save button",
-  },
-  "blueprints.cancelEdit": {
-    message: "取消编辑",
-    description: "Aria label for the inline-edit cancel button",
-  },
   "blueprints.pathInvalid": {
     message:
       "必须是干净的仓库相对 .yaml/.yml 路径（不能以 / 开头，不能包含 ..）。",
@@ -726,28 +789,20 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "蓝图已更新",
     description: "Toast shown after a successful updateBlueprint call",
   },
-  "blueprints.updateError": {
-    message: "更新失败",
-    description: "Toast shown when updateBlueprint returns an error",
-  },
   // --- Disconnect action ---
   "blueprints.disconnectButton": {
-    message: "断开连接",
+    message: "断开蓝图连接",
     description:
-      "Button that disconnects a blueprint from its Git repo (stops auto-sync, keeps resources)",
+      "Blueprint Settings page: the critical button that opens the Disconnect Blueprint modal (Render's copy, w3/m679)",
   },
   "blueprints.disconnectTitle": {
-    message: "确认断开蓝图连接？",
-    description: "Disconnect confirm dialog title",
-  },
-  "blueprints.disconnectBody": {
-    message:
-      "此操作将停止推送时自动同步，并从列表中移除蓝图。已部署的资源不受影响。",
-    description: "Disconnect confirm dialog description",
+    message: "断开蓝图连接",
+    description: "Disconnect Blueprint modal title (Render's copy, w3/m679)",
   },
   "blueprints.disconnectAction": {
-    message: "断开连接",
-    description: "Disconnect confirm dialog primary action button label",
+    message: "断开蓝图连接",
+    description:
+      "Disconnect Blueprint modal: the critical confirm button (Render's copy, w3/m679)",
   },
   "blueprints.disconnectCancel": {
     message: "取消",

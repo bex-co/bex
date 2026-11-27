@@ -86,6 +86,9 @@ export interface EditableFieldRowProps {
   describe?: (value: string) => ReactNode | null;
   /** Confirm dialog shown before onSave for rebuild-affecting fields. */
   confirm?: EditableFieldConfirm;
+  /** Called when Edit is pressed, e.g. to start loading the combobox's
+   *  options only once they are needed. */
+  onEdit?: () => void;
   /** Persist the (normalized) draft; return true on success to leave edit mode. */
   onSave: (value: string) => Promise<boolean>;
 }
@@ -136,6 +139,7 @@ export function EditableFieldRow({
   validate,
   describe,
   confirm,
+  onEdit,
   onSave,
 }: EditableFieldRowProps) {
   const { t } = useTranslations();
@@ -185,6 +189,7 @@ export function EditableFieldRow({
   function startEdit() {
     setDraft(value);
     setEditing(true);
+    onEdit?.();
   }
 
   function cancel() {

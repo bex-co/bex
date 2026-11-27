@@ -3997,6 +3997,30 @@ func (f *recordingBlueprintFetcher) FetchBlueprintFileAtCommit(_ context.Context
 	return "", fmt.Errorf("fetch should not have been reached")
 }
 
+// fileAt serves a Blueprint file at path and leaves every other read to the
+// fetcher it wraps.
+type fileAt struct {
+	BlueprintFetcher
+	path string
+}
+
+func (f fileAt) FetchBlueprintFileAtCommit(ctx context.Context, workspaceID, repo, commit, filePath string) (string, error) {
+	if filePath == f.path {
+		return "services: []\n", nil
+	}
+	return f.BlueprintFetcher.FetchBlueprintFileAtCommit(ctx, workspaceID, repo, commit, filePath)
+}
+
+// withFileAt runs fn while the repository also holds a file at path, then
+// deletes it. An update refuses a path with no file (w8/418), so a test that
+// plans at a missing path points the Blueprint at the file first.
+func withFileAt(svc *Service, path string, fn func()) {
+	gone := svc.GitFetcher
+	svc.GitFetcher = fileAt{BlueprintFetcher: gone, path: path}
+	defer func() { svc.GitFetcher = gone }()
+	fn()
+}
+
 // TestUpdateBlueprintEnforcesApprovedPath pins round-6 #14: the discovery-time
 // YAML-bounded path rule must hold on the mutable update path too — otherwise
 // a member with Blueprint create rights could point the stored path at any
@@ -4009,7 +4033,8 @@ func TestUpdateBlueprintEnforcesApprovedPath(t *testing.T) {
 		Branch: "main", Path: CanonicalBlueprintFilename, Manifest: stackManifest,
 		Status: "active", Name: "app",
 	})
-	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs}
+	fetcher := &recordingBlueprintFetcher{}
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs, GitFetcher: fetcher}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
 	for _, bad := range []string{".env", "Makefile", "../render.yaml", "./render.yaml", `deploy\render.yaml`} {
@@ -4021,8 +4046,12 @@ func TestUpdateBlueprintEnforcesApprovedPath(t *testing.T) {
 	if stored := fs.blueprints["blp-1"]; stored.Path != CanonicalBlueprintFilename {
 		t.Fatalf("rejected update mutated the stored path: %q", stored.Path)
 	}
+	if fetcher.resolves != 0 || len(fetcher.paths) != 0 {
+		t.Fatalf("a refused path reached the repository: %d resolves, reads %v", fetcher.resolves, fetcher.paths)
+	}
 
 	good := "deploy/render.yaml"
+	svc.GitFetcher = fileAt{BlueprintFetcher: fakeBlueprintFetcher{}, path: good}
 	if _, err := svc.UpdateBlueprint(ctx, "blp-1", "tea-a", UpdateBlueprintRequest{Path: &good}); err != nil {
 		t.Fatalf("UpdateBlueprint approved nested path: %v", err)
 	}

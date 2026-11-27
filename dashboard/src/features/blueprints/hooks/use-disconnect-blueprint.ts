@@ -10,7 +10,9 @@ import {
 } from "@/common/lib/graphql-error";
 
 export interface UseDisconnectBlueprintResult {
-  disconnect: (id: string) => Promise<boolean>;
+  /** Disconnects the Blueprint: null once it is, else why not, for the
+   *  Disconnect Blueprint modal to show (w3/m679). */
+  disconnect: (id: string) => Promise<string | null>;
   busy: boolean;
 }
 
@@ -20,23 +22,18 @@ export function useDisconnectBlueprint(): UseDisconnectBlueprintResult {
   const [busy, setBusy] = useState(false);
 
   const disconnect = useCallback(
-    async (id: string): Promise<boolean> => {
+    async (id: string): Promise<string | null> => {
       setBusy(true);
       try {
         await trackOwnDelete(() => mutate({ variables: { id } }));
         toast.success(t("blueprints.disconnectSuccess"));
-        return true;
+        return null;
       } catch (err) {
         // Disconnect refused while an apply owns the claim: retry after it
         // settles (w8/m37 t005).
-        if (hasGraphQLErrorCode(err, "BLUEPRINT_SYNC_BUSY")) {
-          toast.error(t("blueprints.disconnectBusy"));
-        } else {
-          toast.error(
-            mutationErrorMessage(err, t("blueprints.disconnectError")),
-          );
-        }
-        return false;
+        return hasGraphQLErrorCode(err, "BLUEPRINT_SYNC_BUSY")
+          ? t("blueprints.disconnectBusy")
+          : mutationErrorMessage(err, t("blueprints.disconnectError"));
       } finally {
         setBusy(false);
       }
