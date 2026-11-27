@@ -116,6 +116,16 @@ func TestRouteDestinationWildcardExpandsInPlace(t *testing.T) {
 		{"/x/*", "/a/:splat/*", "/x/y", "/a/y/y"},
 		{"/exact", "/a/*", "/exact", "/a/"},
 		{"/*/:id", "/items/:id/*", "/shop/7", "/items/7/shop"},
+		// A source ":splat" segment captures like any ":name", so a destination
+		// ":splat" with no "*" capture to take expands it instead of dropping
+		// it: "/blog/:splat" → "/new/:splat" sends "/blog/hello" to
+		// "/new/hello", not "/new/".
+		{"/blog/:splat", "/new/:splat", "/blog/hello", "/new/hello"},
+		{"/:splat", "/new/:splat", "/hello", "/new/hello"},
+		// Past the source's star count a "*" still takes the last capture, and
+		// a ":splat" still takes the first star capture even when the source
+		// also declares a ":splat" segment.
+		{"/*/:splat", "/:splat", "/a/b", "/a"},
 	} {
 		routes := []appv1alpha1.StaticRoute{{Type: "redirect", Source: tc.source, Destination: tc.destination}}
 		act, target, err := matchRoutes(routes, tc.path)
