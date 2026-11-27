@@ -104,6 +104,13 @@ func parseExternalImageReference(image string) (host, repo, repoPath, reference 
 	name := image
 	reference = "latest"
 	if before, digest, found := strings.Cut(name, "@"); found {
+		// A pinned reference may still carry its tag ("repo:tag@sha256:…",
+		// the form docker pull accepts and create admits): the tag is
+		// informational, the digest decides what is read, so it must not
+		// leak into the repository the metadata read validates.
+		if i := strings.LastIndex(before, ":"); i > strings.LastIndex(before, "/") {
+			before = before[:i]
+		}
 		name, reference = before, digest
 	} else if i := strings.LastIndex(name, ":"); i > strings.LastIndex(name, "/") {
 		name, reference = name[:i], name[i+1:]

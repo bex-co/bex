@@ -265,6 +265,27 @@ func TestCheckPublicImages(t *testing.T) {
 	wantVerdict(t, c.Check(ctx, ref("acme/armonly:1"), nil), false, FailureUnsupportedPlatform)
 }
 
+// A tag pinned by a digest checks as the digest does: create admits the
+// combined form and the deploy reads by digest, so the preview must bless
+// what both accept rather than refuse what the deploy would run.
+func TestCheckTagPinnedByDigest(t *testing.T) {
+	f := newFakeRegistry(t, false)
+	f.pushImage("acme/app:1", DefaultPlatform)
+	parsed, err := name.ParseReference(ref("acme/app:1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	desc, err := remote.Head(parsed, remote.WithTransport(routes{registryHost: f.srv, cdnHost: f.srv}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := desc.Digest.String()
+	c := f.checker()
+	ctx := context.Background()
+	wantVerdict(t, c.Check(ctx, ref("acme/app@")+d, nil), true, "")
+	wantVerdict(t, c.Check(ctx, ref("acme/app:1@")+d, nil), true, "")
+}
+
 // The platform follows the hosting node pool (BEX_IMAGE_PLATFORM), as the
 // operator's metadata read does.
 func TestCheckFollowsTheHostingPlatform(t *testing.T) {
