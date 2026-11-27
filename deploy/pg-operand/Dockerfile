@@ -65,6 +65,14 @@ RUN set -eu; \
   # Hold the server so an extension dependency can never move the patch the
   # base image was reviewed at.
   apt-mark hold "postgresql-${PG_MAJOR}" "postgresql-client-${PG_MAJOR}" libpq5 >/dev/null; \
+  # A version matrix.json pins (PostGIS 3.6.4 on 14 and 15) leaves PGDG's
+  # main repository once newer ones land there; PGDG's archive repository
+  # keeps every version it published, signed with the same key.
+  archive=/etc/apt/sources.list.d/pgdg-archive.sources; \
+  case "${PGDG_PACKAGES}" in *=*) \
+    printf '%s\n' 'Types: deb' 'URIs: https://apt-archive.postgresql.org/pub/repos/apt' 'Suites: bookworm-pgdg-archive' \
+      'Components: main' 'Signed-By: /usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg' > "$archive" ;; \
+  esac; \
   apt-get update; \
   pkgs=""; for p in ${PGDG_PACKAGES}; do pkgs="$pkgs postgresql-${PG_MAJOR}-$p"; done; \
   if [ -n "${TIMESCALE_PACKAGES}" ]; then \
@@ -79,6 +87,7 @@ RUN set -eu; \
     pkgs="$pkgs ${TIMESCALE_PACKAGES}"; \
   fi; \
   apt-get install -y --no-install-recommends $pkgs; \
+  rm -f "$archive"; \
   if [ -n "${TIMESCALE_PACKAGES}" ]; then \
     rm -f "/usr/lib/postgresql/${PG_MAJOR}/lib"/timescaledb-tsl-*.so /etc/apt/sources.list.d/timescale.list; \
     apt-get purge -y --auto-remove curl gnupg; \
