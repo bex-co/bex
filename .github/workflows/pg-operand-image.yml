@@ -299,13 +299,24 @@ jobs:
       - uses: oras-project/setup-oras@005458ad77f1c8facd38a094e4af2e69e5607ff4 # v2.0.2
         with:
           version: 1.3.1
+      # GHCR at times answers one platform manifest's push with "<digest>: not
+      # found" while its blobs settle: publish (14) of run 45343175628 and
+      # publish (16) of run 45990637060 failed so, and a rerun of the same
+      # layout succeeded both times. oras cp skips what GHCR already holds, so
+      # a later attempt resumes where the last stopped, and the digest check
+      # still refuses anything but the gated image.
       - name: publish the gated image
         env:
           LAYOUT: ${{ runner.temp }}/artifact/operand@${{ steps.recipe.outputs.digest }}
           DIGEST: ${{ steps.recipe.outputs.digest }}
           TAG: ${{ env.OPERAND_IMAGE }}:${{ steps.recipe.outputs.tag }}
         run: |
-          oras cp --from-oci-layout "$LAYOUT" "$TAG"
+          for attempt in 1 2 3; do
+            oras cp --from-oci-layout "$LAYOUT" "$TAG" && break
+            [ "$attempt" -lt 3 ] || exit 1
+            echo "::warning::publish attempt $attempt failed; retrying in $((attempt * 30)) s"
+            sleep $((attempt * 30))
+          done
           published=$(oras manifest fetch --descriptor "$TAG" | jq -r .digest)
           [ "$published" = "$DIGEST" ] || { echo "published $published, gated $DIGEST" >&2; exit 1; }
 
