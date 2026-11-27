@@ -36,9 +36,16 @@ const PAGE_FRAME_WIDTH: Record<PageFrameWidth, string> = {
  * queries measure, and it publishes its top padding as `--page-pad-top` so a
  * sticky bar inside can cancel it and sit flush under the app header (sticky
  * offsets are measured inside the scroller's padding).
+ *
+ * `relative` makes it the containing block of absolutely positioned
+ * descendants (screen-reader text, a select's hidden native control), so it
+ * scrolls and clips them, as the service page's scroller does. Without it,
+ * one below the fold was placed against the document and stretched it: the
+ * window itself scrolled into a blank band under the app (6,651 px on
+ * Workspace Settings at 390 px; w1/m657).
  */
 const PAGE_SCROLL_CLASS =
-  "@container/page min-h-0 flex-1 overflow-auto p-4 [--page-pad-top:1rem] sm:p-6 sm:[--page-pad-top:1.5rem]";
+  "@container/page relative min-h-0 flex-1 overflow-auto p-4 [--page-pad-top:1rem] sm:p-6 sm:[--page-pad-top:1.5rem]";
 
 /** The page scroller, for a page that lays out its own column (a detail page
  *  under its resource header). `data-page-scroll` and the class travel

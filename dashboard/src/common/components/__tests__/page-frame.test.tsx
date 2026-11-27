@@ -12,6 +12,10 @@ describe("PageFrame", () => {
     const scroll = container.firstElementChild as HTMLElement;
     expect(scroll).toHaveAttribute("data-page-scroll");
     expect(scroll).toHaveClass("flex-1", "overflow-auto", "p-4", "sm:p-6");
+    // It contains its absolutely positioned descendants (screen-reader text
+    // below the fold): without it they stretched the document and the window
+    // scrolled into a blank band under the app (w1/m657).
+    expect(scroll).toHaveClass("relative");
     expect(scroll.querySelector(".max-w-2xl")).not.toBeNull();
     expect(
       screen.getByRole("heading", { level: 1, name: "New webhook" }),
