@@ -1,6 +1,6 @@
 # w3 · m677 — A Blueprint's pages are Render's: Resources, Syncs and Settings in a resource sidebar, each at its own URL
 
-**Worker:** worker3 **Goal:** a Blueprint's pages swap the workspace nav for a resource sidebar reading Resources / Syncs / Settings, as Render's do; each entry is its own URL under `/blueprints/<id>`, so Render's `/blueprint/<id>/…` links open the page they name; the single stacked page is gone. **Status:** todo (t001–t006 and t008–t010 done; t007 walked locally, its production walk waits for a pin carrying the milestone)
+**Worker:** worker3 **Goal:** a Blueprint's pages swap the workspace nav for a resource sidebar reading Resources / Syncs / Settings, as Render's do; each entry is its own URL under `/blueprints/<id>`, so Render's `/blueprint/<id>/…` links open the page they name; the single stacked page is gone. **Status:** blocked (t001–t006 and t008–t010 done; t007 walked locally, its production walk waits for a pin carrying `720e0296cb`)
 
 ## Tasks (in order)
 
@@ -54,7 +54,7 @@ Verified 2026-11-25 on main `c196617a8b`.
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm one aspect of render parity to w3` (2026-11-25), item 1, verified the same day against Render's bundle and its chunks. ADR018's Blueprint row scores the UI ◐ without recording this difference, and `dashboard-routes.md` called the detail path "docs-fallback … unverified"; Render's is `/blueprint/<id>`.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)). A Blueprint's pages and URLs are customer-facing, and Render-shaped links are a contract bex accepts through its alias routes and emits as `dashboardUrl`.
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). A Blueprint's pages and URLs are customer-facing, and Render-shaped links are a contract bex accepts through its alias routes and emits as `dashboardUrl`.
 - **Expected outcome:** someone who knows Render's Blueprint pages finds the same sidebar, pages and URLs; a pasted `/blueprint/<id>` link opens the Blueprint instead of a 404; w3/m678–m680 have the pages they fill.
 - **Why now:** after w3/m641 (Postgres) and w3/m649 (Key Value), a Blueprint is the last resource with a Render resource sidebar that bex draws as one stacked page, and their nav code is fresh to reuse. Run it after w3/m649 lands, which shares the resource-page nav helpers. It comes first of the five Blueprint milestones because the sync page (w3/m678), Settings (w3/m679) and Resources (w3/m680) build on its routes.
 - **Render parity task:** included (t008): the milestone changes the dashboard's pages and URLs and the Blueprint links bex-api emits on REST, GraphQL, MCP and email.
@@ -67,3 +67,7 @@ Walked in headless Chromium against `yarn local-bex` (port 8399) behind a throwa
 - Each page's title names it (`Syncs ・ platform ・ Blueprint ・ bex Dashboard`) and its heading reads Resources, Syncs or Settings. The sidebar reads Blueprints, the name, Resources / Syncs / Settings with the open page highlighted, at 1440 and in the 390 drawer; the breadcrumb reads Blueprints › name.
 - The header shows the name, the suffix, the status and Manual sync, disabled for the `created` Blueprint; its Syncs page shows the waiting plan with Approve and Plan again, and its empty Resources links Syncs.
 - Pending against ready, with the Blueprint read held on a client navigation from `/blueprints`: at 1440 the header (65 px), the heading, the Resources card (196 px), Sync History (239 px) and the Settings cards (182, 82 px) equal the ready page; the manifest card follows the file's length. At 390 a header whose name and badge share one row with Manual sync is 40 px shorter than the frame, which reserves the two-row header a repository-length name takes; the frame matches that case exactly. A sync's error text that wraps makes the ready table taller. The sidebar did not move. No page error was logged.
+
+## Parked (2026-11-26)
+
+Shipped in `720e0296cb`. Everything but the production walk is done: once the newest `chore(deploy): pin platform images to <sha>` carries `720e0296cb`, t007 step 2 walks production as the QA user in `bex-canary` with a Blueprint created for the walk from a public repository (disposable), at 1440 and 390, then deletes it, and t011 closes the milestone if every point of the definition of done holds. Nothing is needed from the user.
