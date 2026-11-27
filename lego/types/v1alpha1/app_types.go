@@ -1342,9 +1342,10 @@ type AutoscalingSpec struct {
 	Enabled bool `json:"enabled"`
 
 	// MinReplicas is the lower replica bound; the autoscaler never drives replicas
-	// below this. Must be ≥ 0. Defaults to 1 when omitted and autoscaling is enabled.
+	// below this. 1–100, Render's range (w4/739); bex-api refuses a lower value,
+	// and the operator runs one instance when it is omitted.
 	// +optional
-	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
 	MinReplicas int32 `json:"minReplicas,omitempty"`
 
@@ -1358,33 +1359,34 @@ type AutoscalingSpec struct {
 	// TargetCPUPercent is the desired average CPU utilization as a percentage of
 	// the tier's CPU limit across all running pods. The autoscaler adjusts
 	// replicas to approach this target. Either TargetCPUPercent or
-	// TargetMemoryPercent (or both) is required when Enabled.
+	// TargetMemoryPercent (or both) is required when Enabled. 1–90, Render's
+	// range (w4/739).
 	// +optional
 	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=100
+	// +kubebuilder:validation:Maximum=90
 	TargetCPUPercent *int32 `json:"targetCPUPercent,omitempty"`
 
 	// TargetMemoryPercent is the desired average memory utilization as a
-	// percentage of the tier's memory limit across all running pods.
+	// percentage of the tier's memory limit across all running pods. 1–90.
 	// +optional
 	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=100
+	// +kubebuilder:validation:Maximum=90
 	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty"`
 
 	// DisabledCPUPercent is the percentage given to a CPU criterion that is
 	// turned off: Render's criteria.cpu {enabled: false, percentage: N}
 	// keeps N and reads it back (w9/111). It never drives scaling, which
 	// TargetCPUPercent alone does, so the two are never both set. Unset reads
-	// as 0.
+	// as 0. Held to a target's 90 ceiling (w4/739).
 	// +optional
 	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=100
+	// +kubebuilder:validation:Maximum=90
 	DisabledCPUPercent *int32 `json:"disabledCPUPercent,omitempty"`
 
 	// DisabledMemoryPercent is DisabledCPUPercent for the memory criterion.
 	// +optional
 	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=100
+	// +kubebuilder:validation:Maximum=90
 	DisabledMemoryPercent *int32 `json:"disabledMemoryPercent,omitempty"`
 }
 

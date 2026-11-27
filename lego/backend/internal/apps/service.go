@@ -7190,20 +7190,18 @@ func autoscalingSpec(req SetAutoscalingRequest, serviceType, tier string) (appv1
 	if tier == "" || tier == "free" {
 		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: autoscaling requires a paid compute plan", core.ErrBadRequest)
 	}
-	if req.MinInstances < 0 {
-		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: minInstances must be ≥ 0", core.ErrBadRequest)
+	// Render's instance range (w4/739): its Blueprint schema requires
+	// minInstances ≥ 1 and its dashboard's slider runs 1–100. The operator
+	// always runs at least one instance, so a stored minimum of 0 would read
+	// back a floor that never runs.
+	if req.MinInstances < 1 || req.MinInstances > store.MaxReplicas {
+		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: minInstances must be 1–%d", core.ErrBadRequest, store.MaxReplicas)
 	}
-	if req.MaxInstances < 1 {
-		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: maxInstances must be ≥ 1", core.ErrBadRequest)
+	if req.MaxInstances < 1 || req.MaxInstances > store.MaxReplicas {
+		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: maxInstances must be 1–%d", core.ErrBadRequest, store.MaxReplicas)
 	}
 	if req.MinInstances > req.MaxInstances {
 		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: minInstances must be ≤ maxInstances", core.ErrBadRequest)
-	}
-	if req.MinInstances > store.MaxReplicas {
-		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: minInstances must be 0-%d", core.ErrBadRequest, store.MaxReplicas)
-	}
-	if req.MaxInstances > store.MaxReplicas {
-		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: maxInstances must be 1-%d", core.ErrBadRequest, store.MaxReplicas)
 	}
 	// The plan cap bounds the range the autoscaler may drive into: both ends,
 	// since a minInstances above the cap is equally unrunnable.
@@ -7213,11 +7211,11 @@ func autoscalingSpec(req SetAutoscalingRequest, serviceType, tier string) (appv1
 	if err := checkInstanceCap(tier, req.MinInstances); err != nil {
 		return appv1alpha1.AutoscalingSpec{}, err
 	}
-	if req.TargetCPUPercent != nil && (*req.TargetCPUPercent < 1 || *req.TargetCPUPercent > 100) {
-		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: targetCPUPercent must be 1–100", core.ErrBadRequest)
+	if req.TargetCPUPercent != nil && (*req.TargetCPUPercent < 1 || *req.TargetCPUPercent > maxTargetPercent) {
+		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: targetCPUPercent must be 1–%d", core.ErrBadRequest, maxTargetPercent)
 	}
-	if req.TargetMemoryPercent != nil && (*req.TargetMemoryPercent < 1 || *req.TargetMemoryPercent > 100) {
-		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: targetMemoryPercent must be 1–100", core.ErrBadRequest)
+	if req.TargetMemoryPercent != nil && (*req.TargetMemoryPercent < 1 || *req.TargetMemoryPercent > maxTargetPercent) {
+		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: targetMemoryPercent must be 1–%d", core.ErrBadRequest, maxTargetPercent)
 	}
 	if req.TargetCPUPercent == nil && req.TargetMemoryPercent == nil {
 		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: at least one of targetCPUPercent or targetMemoryPercent is required", core.ErrBadRequest)
@@ -7241,14 +7239,21 @@ func autoscalingSpec(req SetAutoscalingRequest, serviceType, tier string) (appv1
 	}, nil
 }
 
+// maxTargetPercent is the highest utilization a criterion may name: Render's
+// Blueprint schema bounds targetCPUPercent and targetMemoryPercent at 90, and
+// its dashboard's Target CPU and Target Memory sliders run 1–90 (w4/739).
+const maxTargetPercent = 90
+
 // disabledPercent is the percentage to keep for a criterion: none while the
 // criterion is on (target set), and none for 0, which reads back the same.
+// It is held to a target's ceiling, since Render's dashboard keeps the
+// slider's 1–90 value when a criterion is turned off (w4/739).
 func disabledPercent(criterion string, target, percent *int32) (*int32, error) {
 	if target != nil || percent == nil || *percent == 0 {
 		return nil, nil
 	}
-	if *percent < 0 || *percent > 100 {
-		return nil, fmt.Errorf("%w: criteria.%s.percentage must be 0–100", core.ErrBadRequest, criterion)
+	if *percent < 0 || *percent > maxTargetPercent {
+		return nil, fmt.Errorf("%w: criteria.%s.percentage must be 0–%d", core.ErrBadRequest, criterion, maxTargetPercent)
 	}
 	return percent, nil
 }

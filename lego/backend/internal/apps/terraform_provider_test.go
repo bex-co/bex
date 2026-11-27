@@ -324,16 +324,16 @@ func TestDisabledAutoscalingCriterionKeepsItsPercentage(t *testing.T) {
 }
 
 // TestDisabledAutoscalingPercentageRules pins the rest of w9/111: a kept
-// percentage is 0–100, never sits beside its criterion's target, survives a
+// percentage is 0–90 (a target's ceiling, w4/739), never sits beside its criterion's target, survives a
 // Blueprint's scaling block, and changes nothing about how the service scales.
 func TestDisabledAutoscalingPercentageRules(t *testing.T) {
 	put := func(memory string) *httptest.ResponseRecorder {
 		svc, _ := newService(nil, paidWebApp("web"))
 		return putAutoscaling(t, svc, `{"enabled":true,"min":1,"max":1,"criteria":{"cpu":{"enabled":true,"percentage":60},"memory":`+memory+`}}`)
 	}
-	for _, percentage := range []string{"-1", "101"} {
+	for _, percentage := range []string{"-1", "91"} {
 		if rec := put(`{"enabled":false,"percentage":` + percentage + `}`); rec.Code != http.StatusBadRequest ||
-			!strings.Contains(rec.Body.String(), "criteria.memory.percentage must be 0–100") {
+			!strings.Contains(rec.Body.String(), "criteria.memory.percentage must be 0–90") {
 			t.Errorf("memory off at %s = %d %s, want 400 naming the range", percentage, rec.Code, rec.Body.String())
 		}
 	}

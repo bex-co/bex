@@ -151,10 +151,10 @@ type updateServiceArgs struct {
 // same shape set_autoscaling took as flat arguments; nesting it keeps the
 // enable/update verb distinguishable from a field write in one patch call.
 type autoscalingArg struct {
-	MinInstances        int32  `json:"minInstances" jsonschema:"minimum running instances (≥ 0; default 1)"`
-	MaxInstances        int32  `json:"maxInstances" jsonschema:"maximum running instances (≥ 1; must be ≥ minInstances)"`
-	TargetCPUPercent    *int32 `json:"targetCPUPercent,omitempty" jsonschema:"target average CPU utilization % of tier limit (1-100); required if targetMemoryPercent is absent"`
-	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty" jsonschema:"target average memory utilization % of tier limit (1-100); required if targetCPUPercent is absent"`
+	MinInstances        int32  `json:"minInstances" jsonschema:"minimum running instances (1-100)"`
+	MaxInstances        int32  `json:"maxInstances" jsonschema:"maximum running instances (1-100; must be ≥ minInstances)"`
+	TargetCPUPercent    *int32 `json:"targetCPUPercent,omitempty" jsonschema:"target average CPU utilization % of tier limit (1-90); required if targetMemoryPercent is absent"`
+	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty" jsonschema:"target average memory utilization % of tier limit (1-90); required if targetCPUPercent is absent"`
 }
 
 // buildFilterArg is Render's Build Filters object, shared by update_service and
