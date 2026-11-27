@@ -8,9 +8,9 @@ import {
 } from "@/common/components/ui/card";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
-import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { BlueprintPlanSummary } from "@/features/blueprints/components/blueprint-plan-summary";
+import { PlannedSyncPanelSkeleton } from "@/features/blueprints/components/planned-sync-panel-skeleton";
 import {
   manualEnvVarKey,
   type PlannedSyncView,
@@ -41,24 +41,7 @@ export function PlannedSyncPanel({
   const [values, setValues] = useState<Record<string, string>>({});
 
   if (loading && !planned) {
-    return (
-      <Card aria-hidden="true" data-skeleton-region="planned-sync">
-        <CardHeader>
-          <Skeleton className="h-5 w-40" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Skeleton className="h-4 w-full max-w-md" />
-          <div className="space-y-2">
-            <Skeleton className="h-5 w-64" />
-            <Skeleton className="h-5 w-56" />
-          </div>
-          <div className="flex gap-2">
-            <Skeleton className="h-8 w-24" />
-            <Skeleton className="h-8 w-28" />
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <PlannedSyncPanelSkeleton />;
   }
 
   const missing = planned

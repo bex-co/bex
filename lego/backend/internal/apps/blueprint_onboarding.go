@@ -34,6 +34,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -458,7 +459,7 @@ func (s *Service) syncWithPlan(b store.Blueprint, p store.PlannedBlueprintSync, 
 	return &SyncWithPlan{
 		ID: ids.BlueprintSyncPublicID(p.ID), Commit: BlueprintCommitRef{ID: p.CommitID}, CommitID: p.CommitID, RawPlanJSON: rawPlanJSON(rawPlan), State: p.State,
 		StartedAt: &started, CompletedAt: p.CompletedAt,
-		DashboardURL: s.Metadata.DashboardURL("blueprints", ids.BlueprintPublicID(b.ID)),
+		DashboardURL: s.Metadata.DashboardURL(resourcemeta.BlueprintDashboardRoute, ids.BlueprintPublicID(b.ID)),
 		RawPlan:      rawPlan, RequiredManualEnvVars: required, Actions: actions,
 	}
 }
@@ -602,7 +603,7 @@ func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID, planned s
 	started := applied.StartedAt
 	return ApprovedSync{
 		ID: ids.BlueprintSyncPublicID(applied.ID), Commit: BlueprintCommitRef{ID: applied.CommitID}, CommitID: applied.CommitID, State: applied.State,
-		DashboardURL: s.Metadata.DashboardURL("blueprints", ids.BlueprintPublicID(b.ID)), StartedAt: &started, CompletedAt: applied.CompletedAt,
+		DashboardURL: s.Metadata.DashboardURL(resourcemeta.BlueprintDashboardRoute, ids.BlueprintPublicID(b.ID)), StartedAt: &started, CompletedAt: applied.CompletedAt,
 	}, nil
 }
 

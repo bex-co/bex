@@ -15,6 +15,9 @@ import {
   AuthWidgetSkeleton,
   BillingPageSkeleton,
   BlueprintCreatePageSkeleton,
+  BlueprintResourcesSkeleton,
+  BlueprintSettingsSkeleton,
+  BlueprintSyncsSkeleton,
   DatabaseAppsSkeleton,
   DatabaseCreatePageSkeleton,
   DatabaseInfoSkeleton,
@@ -244,6 +247,22 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
         "networking",
         "danger-zone",
       ],
+    ],
+    // A Blueprint's pages (w3/m677), as the manifest lists them.
+    [
+      <BlueprintResourcesSkeleton key="blueprint-resources" />,
+      "blueprint-resources",
+      ["resources"],
+    ],
+    [
+      <BlueprintSyncsSkeleton key="blueprint-syncs" />,
+      "blueprint-syncs",
+      ["sync-history"],
+    ],
+    [
+      <BlueprintSettingsSkeleton key="blueprint-settings" />,
+      "blueprint-settings",
+      ["metadata", "manifest", "validation", "disconnect"],
     ],
   ])("renders the %s contract", (component, shape, expectedRegions) => {
     const { container, unmount } = render(component);

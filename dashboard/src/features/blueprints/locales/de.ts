@@ -790,8 +790,9 @@ const deBlueprints: Record<string, TranslationEntry> = {
     description: "Toast when re-planning fails",
   },
   "blueprints.syncButton": {
-    message: "Synchronisieren",
-    description: "Button label that triggers an idempotent blueprint re-apply",
+    message: "Manuell synchronisieren",
+    description:
+      "The Blueprint header's one action, Render's Manual sync: opens the reviewed-commit sync dialog (w3/m677)",
   },
   "blueprints.syncConfirmTitle": {
     message: "Blueprint synchronisieren?",
@@ -974,6 +975,36 @@ const deBlueprints: Record<string, TranslationEntry> = {
       "Beheben Sie die bei der Prüfung gefundenen Probleme, um fortzufahren.",
     description:
       "Create-Blueprint action bar: why Deploy is held while the review found problems in the Blueprint file",
+  },
+  "blueprints.navResources": {
+    message: "Ressourcen",
+    description:
+      "Blueprint sidebar entry and page heading for the resources the Blueprint manages (Render's Resources, /blueprints/<id>/resources, w3/m677)",
+  },
+  "blueprints.navSyncs": {
+    message: "Synchronisierungen",
+    description:
+      "Blueprint sidebar entry and page heading for the Blueprint's syncs (Render's Syncs, /blueprints/<id>/syncs, w3/m677)",
+  },
+  "blueprints.navSettings": {
+    message: "Einstellungen",
+    description:
+      "Blueprint sidebar entry and page heading for the Blueprint's settings (Render's Settings, /blueprints/<id>/settings, w3/m677)",
+  },
+  "blueprints.colType": {
+    message: "Typ",
+    description:
+      "Blueprint Resources table column header for a managed resource's type",
+  },
+  "blueprints.manualSyncAwaitingApproval": {
+    message: "Genehmige zuerst den wartenden Plan unter Synchronisierungen.",
+    description:
+      "Tooltip on the disabled Manual sync button while a created Blueprint's first plan waits for approval on the Syncs page (w3/m677)",
+  },
+  "blueprints.resourcesViewSyncs": {
+    message: "Zu den Synchronisierungen",
+    description:
+      "Link from a Blueprint's empty Resources page to its Syncs page, where the waiting plan or the failed sync is (w3/m677)",
   },
 };
 

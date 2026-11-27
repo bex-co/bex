@@ -4,8 +4,9 @@ import { redirect, type ParsedLocation } from "@tanstack/react-router";
  * Render dashboard URL scheme → bex canonical routes
  * (docs/render-artifacts/dashboard-routes.md). Render's API and its official
  * CLI mint `<dashboard>/{segment}/{id}` deep links (`/web/srv-…`, `/d/dpg-…`,
- * `/r/red-…`); bex serves them as thin redirect aliases onto the canonical
- * `/services` / `/databases` / `/keyvalue` routes. Every service segment
+ * `/r/red-…`, `/blueprint/exs-…`); bex serves them as thin redirect aliases
+ * onto the canonical `/services` / `/databases` / `/keyvalue` / `/blueprints`
+ * routes. Every service segment
  * accepts any service id — the CLI falls back to `web` for unknown service
  * types, so segment↔type validation would break its links.
  */
@@ -17,6 +18,7 @@ const RENDER_ALIAS_TARGETS = {
   cron: "/services",
   d: "/databases",
   r: "/keyvalue",
+  blueprint: "/blueprints",
 } as const;
 
 export type RenderAliasSegment = keyof typeof RENDER_ALIAS_TARGETS;
@@ -27,7 +29,8 @@ export type RenderAliasSegment = keyof typeof RENDER_ALIAS_TARGETS;
  * 2026-07-16), and bex's service create pages live at those same paths; the
  * generic `${target}/${rest}` join would send them to `/services/new`, and
  * `/d/new` to a NONEXISTENT `/databases/new` (bex's Postgres create page is
- * Render's `/new/database`, its Key Value one `/new/redis`). Explicit
+ * Render's `/new/database`, its Key Value one `/new/redis`, its Blueprint one
+ * Render's `/blueprint/new`). Explicit
  * landings make the create shape a contract instead of an accident.
  */
 export const RENDER_CREATE_LANDINGS: Record<RenderAliasSegment, string> = {
@@ -38,6 +41,8 @@ export const RENDER_CREATE_LANDINGS: Record<RenderAliasSegment, string> = {
   cron: "/cron/new",
   d: "/new/database",
   r: "/new/redis",
+  // Its own route (routes/blueprint.new.tsx) answers before the alias does.
+  blueprint: "/blueprint/new",
 };
 
 /** Splat → path parts, tolerating a leading slash and empties — the one

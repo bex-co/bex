@@ -1,7 +1,9 @@
 import { PageScroll } from "@/common/components/page-frame";
-import { useState } from "react";
-import { Check, Loader2, Pencil, X } from "lucide-react";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import {
+  Outlet,
+  createFileRoute,
+  useRouterState,
+} from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { ResourceLoadError } from "@/common/components/resource-load-error";
@@ -13,47 +15,20 @@ import {
 } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/common/components/ui/card";
-import { Button } from "@/common/components/ui/button";
-import { Input } from "@/common/components/ui/input";
-import { Switch } from "@/common/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/common/components/ui/table";
-import { BlueprintDetailContentSkeleton } from "@/common/components/route-skeletons";
-import { PlannedSyncPanel } from "@/features/blueprints/components/planned-sync-panel";
-import { usePlannedSync } from "@/features/blueprints/hooks/use-planned-sync";
-import { Skeleton } from "@/common/components/ui/skeleton";
-import { ConfirmDialog } from "@/common/components/confirm-dialog";
+  BlueprintHeaderSkeleton,
+  BlueprintResourcesSkeleton,
+  BlueprintSettingsSkeleton,
+  BlueprintSyncsSkeleton,
+} from "@/common/components/route-skeletons";
 import { BlueprintStatusBadge } from "@/features/blueprints/components/blueprint-status-badge";
 import { BlueprintResourceSuffix } from "@/features/blueprints/components/blueprint-resource-suffix";
-import { blueprintResourceHref } from "@/features/blueprints/lib/resource-href";
+import { BlueprintManualSync } from "@/features/blueprints/components/blueprint-manual-sync";
+import { blueprintPageLabelKey } from "@/features/blueprints/components/blueprint-nav";
+import { BlueprintDetailProvider } from "@/features/blueprints/lib/blueprint-detail";
 import { canonicalBlueprintLinkId } from "@/features/blueprints/lib/link-id";
-import { ValidatePanel } from "@/features/blueprints/components/validate-panel";
 import { useBlueprint } from "@/features/blueprints/hooks/use-blueprint";
+import type { BlueprintView } from "@/features/blueprints/types";
 import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
-import { useBlueprintPreview } from "@/features/blueprints/hooks/use-blueprint-preview";
-import { BlueprintPlanSummary } from "@/features/blueprints/components/blueprint-plan-summary";
-import { BlueprintErrorList } from "@/features/blueprints/components/blueprint-error-list";
-import {
-  useSyncBlueprint,
-  type ReviewedBlueprintSource,
-} from "@/features/blueprints/hooks/use-sync-blueprint";
-import { useUpdateBlueprint } from "@/features/blueprints/hooks/use-update-blueprint";
-import { useDisconnectBlueprint } from "@/features/blueprints/hooks/use-disconnect-blueprint";
-import { useBlueprintSyncs } from "@/features/blueprints/hooks/use-blueprint-syncs";
-import { RelativeAge } from "@/common/components/relative-time";
-import { BlueprintConfirmationDialog } from "@/features/blueprints/components/blueprint-confirmation-dialog";
-import type { BlueprintConfirmationRequired } from "@/features/blueprints/lib/takeover";
 import { BlueprintDocument } from "@/graphql/definitions";
 import {
   loadRouteResource,
@@ -65,11 +40,15 @@ import {
 
 export const Route = createFileRoute("/blueprints/$blueprintId")({
   staticData: { chrome: true },
-  component: BlueprintDetailPage,
-  pendingComponent: BlueprintDetailPage,
+  component: RouteComponent,
+  // A dedicated pending frame at 0ms: the layout's chrome and the open page's
+  // skeleton without the live <Outlet/>, so the title-loader wait shows the
+  // real frame instead of the router-level blank that used to flash white,
+  // and never a second live copy of the page (as the datastore layouts do).
+  pendingComponent: PendingRouteComponent,
   pendingMs: 0,
-  // The pending frame is (or renders) the page itself: keep it in the page's
-  // chunk instead of the default reference-file placement (vite.config.ts).
+  // The pending frame is drawn with the layout: keep it in the layout's chunk
+  // instead of the default reference-file placement (vite.config.ts).
   codeSplitGroupings: [
     ["component", "pendingComponent"],
     ["errorComponent"],
@@ -89,6 +68,7 @@ export const Route = createFileRoute("/blueprints/$blueprintId")({
         }),
       (data) => (data?.blueprint?.name?.trim() ? data.blueprint : null),
     ),
+  // Each page leads this with its own name (blueprintPageHead).
   head: ({ loaderData, match }) =>
     titleHead(
       routeResourceTitle(loaderData, (blueprint) => [
@@ -99,669 +79,135 @@ export const Route = createFileRoute("/blueprints/$blueprintId")({
     ),
 });
 
-/** Client-side mirror of the backend's approvedBlueprintPath rule (m19):
- * clean repo-relative .yaml/.yml, no escapes. The backend re-validates. */
-function validBlueprintPath(path: string): boolean {
-  const p = path.trim();
-  if (!p || p.startsWith("/") || p.includes("\\")) return false;
-  if (p.split("/").some((seg) => seg === "" || seg === "." || seg === "..")) {
-    return false;
-  }
-  return /\.(yaml|yml)$/.test(p);
+function PendingRouteComponent() {
+  return <BlueprintDetailLayout routePending />;
 }
 
-function shortCommit(sha: string): string {
-  return sha.slice(0, 8);
+function RouteComponent() {
+  // A roll-window loader failure re-runs once (w1/m52) so the title recovers.
+  useLoaderErrorRetry(Route.useLoaderData(), Route.useParams().blueprintId);
+  return <BlueprintDetailLayout />;
 }
 
-/** Inline value editor for the metadata card (w8/m21 t003): pencil toggles
- * an input; save PATCHes only the changed field. */
-function InlineEdit({
-  value,
-  label,
-  mono,
-  validate,
-  invalidMessage,
-  onSave,
-  disabled,
+/**
+ * A Blueprint's pages share this layout (w3/m677), as Render's do: the header
+ * (the name with bex's resource suffix and status, and Render's one action,
+ * Manual sync), the open page's heading, which is its sidebar entry's label,
+ * and an `<Outlet/>` for Resources, Syncs or Settings. The sidebar is
+ * DashboardSidebar's BlueprintSidebar. The layout reads the Blueprint once and
+ * hands it to its pages through BlueprintDetailProvider.
+ */
+function BlueprintDetailLayout({
+  routePending = false,
 }: {
-  value: string;
-  label: string;
-  mono?: boolean;
-  validate?: (next: string) => boolean;
-  invalidMessage?: string;
-  onSave: (next: string) => Promise<void>;
-  disabled: boolean;
+  /**
+   * Rendered as the route's pendingComponent while its title loader runs:
+   * the same chrome with the page's skeleton, never the live `<Outlet/>`.
+   */
+  routePending?: boolean;
 }) {
-  const { t } = useTranslations();
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-  const invalid = editing && validate ? !validate(draft) : false;
-  if (!editing) {
-    return (
-      <span className="flex items-center gap-1.5">
-        <span className={mono ? "font-mono font-medium" : "font-medium"}>
-          {value}
-        </span>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="size-6"
-          aria-label={t("blueprints.editField", { field: label })}
-          disabled={disabled}
-          onClick={() => {
-            setDraft(value);
-            setEditing(true);
-          }}
-        >
-          <Pencil className="size-3.5" />
-        </Button>
-      </span>
-    );
-  }
-  return (
-    <span className="flex flex-col gap-1">
-      <span className="flex items-center gap-1.5">
-        <Input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          className={mono ? "h-8 font-mono" : "h-8"}
-          aria-label={label}
-          autoFocus
-        />
-        <Button
-          size="icon"
-          variant="ghost"
-          className="size-6"
-          aria-label={t("blueprints.saveField", { field: label })}
-          disabled={disabled || invalid || draft.trim() === ""}
-          onClick={() => {
-            const next = draft.trim();
-            setEditing(false);
-            if (next !== value) void onSave(next);
-          }}
-        >
-          <Check className="size-3.5" />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="size-6"
-          aria-label={t("blueprints.cancelEdit")}
-          onClick={() => setEditing(false)}
-        >
-          <X className="size-3.5" />
-        </Button>
-      </span>
-      {invalid && invalidMessage ? (
-        <span className="text-xs text-destructive">{invalidMessage}</span>
-      ) : null}
-    </span>
-  );
-}
-
-export function BlueprintDetailPage() {
-  // A bookmarked /blueprints/blp-… still opens: the page addresses the
+  const { blueprintId: linkId } = Route.useParams();
+  // A bookmarked /blueprints/blp-… still opens: the pages address the
   // Blueprint by the exs- id the API returns (w2/m269).
-  const blueprintId = canonicalBlueprintLinkId(Route.useParams().blueprintId);
+  const blueprintId = canonicalBlueprintLinkId(linkId);
   const { t } = useTranslations();
-  const router = useRouter();
   const {
     blueprint: loaded,
     loading,
     error,
     refetch,
   } = useBlueprint(blueprintId);
-  // Judge this page's controls in the Blueprint's own workspace (w4/641, as
+  // Judge the pages' controls in the Blueprint's own workspace (w4/641, as
   // w6/091 for services): until it is the selection, the skeleton stays up so
-  // no Sync or Disconnect paints for the wrong workspace first.
-  const adopting = useAdoptResourceWorkspace(blueprintId, loaded?.ownerId);
-  const blueprint = adopting ? null : loaded;
-  const { sync, busy: syncBusy } = useSyncBlueprint();
-  const { update, busy: updateBusy } = useUpdateBlueprint();
-  const { disconnect, busy: disconnectBusy } = useDisconnectBlueprint();
-  const { syncs, loading: syncsLoading } = useBlueprintSyncs(blueprintId);
-  // A Blueprint created through Render's plan-then-approve flow applies only by
-  // approving its plan; the legacy Sync refuses it (w2/m256 t012).
-  const awaitingApproval = blueprint?.status === "created";
-  // Any Blueprint can wait on a plan (a re-plan, or the first plan a
-  // no-changes re-plan kept, w32/073), and Render links every waiting plan to
-  // its dashboard, so the card shows whenever GraphQL returns one (w32/076).
-  // Only a created Blueprint, whose way forward is the plan, keeps the card
-  // while it loads or when none waits; any other reserves no card for a plan
-  // it usually does not have.
-  const plannedSync = usePlannedSync(blueprintId, !!blueprint);
-  const showPlannedSync = awaitingApproval || plannedSync.planned !== null;
-
-  const [confirming, setConfirming] = useState(false);
-  // Snapshot of the preview the user is about to confirm (w8/m41). Never
-  // silently adopt a newer preview after this is set — path/repo edits and
-  // dialog close clear it; source-changed forces an explicit refresh.
-  const [reviewedSource, setReviewedSource] =
-    useState<ReviewedBlueprintSource | null>(null);
-  const [sourceChangedHint, setSourceChangedHint] = useState(false);
-  // After BLUEPRINT_SOURCE_CHANGED, block auto-capture until the user
-  // explicitly refreshes — otherwise the still-cached valid preview re-pins.
-  const [awaitingFreshPreview, setAwaitingFreshPreview] = useState(false);
-  // Pre-sync plan (w8/m21 t002): fetched only while the dialog is open — an
-  // empty repo skips the query. Render shows a computed diff before sync;
-  // applying blindly is the pre-m21 behavior this replaces.
-  const {
-    preview: syncPreview,
-    loading: syncPreviewLoading,
-    error: syncPreviewError,
-    refetch: refetchSyncPreview,
-  } = useBlueprintPreview(
-    confirming && blueprint ? blueprint.repo : "",
-    confirming && blueprint ? blueprint.branch : "",
-    confirming ? (blueprint?.path ?? "") : "",
-    // On behalf of this blueprint: the sync is planned against its own
-    // resources, which a create's preview would report as already existing
-    // (w8/m153).
-    blueprint?.id,
+  // no Manual sync or Disconnect paints for the wrong workspace first.
+  const adopting = useAdoptResourceWorkspace(
+    blueprintId,
+    routePending ? null : loaded?.ownerId,
   );
-  const [disconnecting, setDisconnecting] = useState(false);
-  // The server's refusal awaiting its phrase (a protected environment, or a
-  // takeover of a resource another Blueprint manages), with the pin its retry
-  // resends. Closing the sync dialog drops the reviewed pin, and the phrase
-  // only arrives after that close, so the retry carries its own (w8/m41).
-  const [pendingConfirmation, setPendingConfirmation] = useState<
-    | (BlueprintConfirmationRequired & { reviewed: ReviewedBlueprintSource })
-    | null
-  >(null);
+  const blueprint = adopting || routePending ? null : loaded;
 
-  const busy = syncBusy || updateBusy || disconnectBusy || plannedSync.busy;
-
-  useNotFoundRedirect(resourceNotFound(loaded, loading, error));
-  useLoaderErrorRetry(Route.useLoaderData(), blueprintId);
-  const loadErrorVariant = resourceLoadErrorVariant(loaded, loading, error);
-
-  // Capture a reviewed pin only from a valid preview for the current
-  // blueprint settings. Do not overwrite an existing pin with a later fetch
-  // the user has not re-confirmed (w8/m41). Captured while rendering the
-  // preview the user is looking at, not in an effect one paint later.
-  if (
-    !reviewedSource &&
-    confirming &&
-    !awaitingFreshPreview &&
-    blueprint &&
-    syncPreview?.found &&
-    syncPreview.validation?.valid === true &&
-    syncPreview.commitId
-  ) {
-    setReviewedSource({
-      commitId: syncPreview.commitId,
-      path: blueprint.path,
-      repo: blueprint.repo,
-    });
-  }
-
-  function clearReviewedSource() {
-    setReviewedSource(null);
-  }
-
-  async function handleSync(
-    reviewed: ReviewedBlueprintSource,
-    confirmation?: string,
-  ) {
-    const result = await sync(blueprintId, { reviewed, confirmation });
-    if (result.status === "confirmation_required") {
-      setConfirming(false);
-      setPendingConfirmation({ ...result, reviewed });
-      return;
-    }
-    if (result.status === "source_changed") {
-      setPendingConfirmation(null);
-      setConfirming(true);
-      clearReviewedSource();
-      setAwaitingFreshPreview(true);
-      setSourceChangedHint(true);
-      return;
-    }
-    if (result.status === "success") {
-      setConfirming(false);
-      setPendingConfirmation(null);
-      clearReviewedSource();
-      setSourceChangedHint(false);
-      setAwaitingFreshPreview(false);
-      void router.invalidate();
-    }
-  }
-
-  async function handleRefreshPreview() {
-    clearReviewedSource();
-    setSourceChangedHint(false);
-    setAwaitingFreshPreview(false);
-    await refetchSyncPreview();
-  }
-
-  async function handleAutoSyncToggle(value: boolean) {
-    await update(blueprintId, { autoSync: value });
-    void router.invalidate();
-  }
-
-  async function handleDisconnect() {
-    setDisconnecting(false);
-    const ok = await disconnect(blueprintId);
-    if (ok) {
-      void router.navigate({ to: "/blueprints", replace: true });
-    }
-  }
-
-  const canConfirmSync = !!reviewedSource && !syncPreviewLoading;
+  // A dead id redirects home (w9/m55); a failed query stays put on the inline
+  // error state so an outage never masquerades as a deleted Blueprint.
+  useNotFoundRedirect(
+    !routePending && resourceNotFound(loaded, loading, error),
+  );
+  const loadErrorVariant = routePending
+    ? null
+    : resourceLoadErrorVariant(loaded, loading, error);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const pageLabelKey = blueprintPageLabelKey(pathname, linkId);
 
   return (
     <DashboardLayout>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6">
-        {blueprint ? (
-          <div className="flex items-center gap-2">
-            <h1 className="truncate text-xl font-semibold">{blueprint.name}</h1>
-            <BlueprintResourceSuffix suffix={blueprint.resourceSuffix} />
-            <BlueprintStatusBadge status={blueprint.status} />
-          </div>
-        ) : (
-          <div
-            aria-hidden="true"
-            className="flex items-center gap-2"
-            data-skeleton-region="page-header"
-          >
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-5 w-20 rounded-full" />
-          </div>
-        )}
-        {blueprint ? (
-          <div className="flex items-center gap-2">
-            {awaitingApproval ? null : (
-              <Button
-                size="sm"
-                onClick={() => setConfirming(true)}
-                disabled={busy}
-              >
-                {t("blueprints.syncButton")}
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setDisconnecting(true)}
-              disabled={busy}
-            >
-              {t("blueprints.disconnectButton")}
-            </Button>
-          </div>
-        ) : (
-          <div aria-hidden="true" className="flex items-center gap-2">
-            <Skeleton className="h-8 w-20" />
-            <Skeleton className="h-8 w-24" />
-          </div>
-        )}
-      </div>
-
-      <PageScroll>
-        <div className="mx-auto w-full max-w-5xl space-y-6">
-          {loadErrorVariant ? (
-            <ResourceLoadError onRetry={refetch} variant={loadErrorVariant} />
-          ) : blueprint ? (
-            <>
-              {showPlannedSync ? (
-                <PlannedSyncPanel
-                  key={plannedSync.planned?.id ?? "none"}
-                  planned={plannedSync.planned}
-                  loading={plannedSync.loading}
-                  busy={busy}
-                  onApprove={plannedSync.approve}
-                  onReplan={plannedSync.replan}
-                />
-              ) : null}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    <InlineEdit
-                      value={blueprint.name}
-                      label={t("blueprints.createNameLabel")}
-                      onSave={async (next) => {
-                        await update(blueprintId, { name: next });
-                        void router.invalidate();
-                      }}
-                      disabled={busy}
-                    />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
-                    <div>
-                      <dt className="text-muted-foreground">
-                        {t("blueprints.metaRepo")}
-                      </dt>
-                      <dd className="truncate font-medium">{blueprint.repo}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground">
-                        {t("blueprints.metaBranch")}
-                      </dt>
-                      <dd className="font-medium">{blueprint.branch}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground">
-                        {t("blueprints.metaPath")}
-                      </dt>
-                      <dd>
-                        <InlineEdit
-                          value={blueprint.path || "render.yaml"}
-                          label={t("blueprints.metaPath")}
-                          mono
-                          validate={validBlueprintPath}
-                          invalidMessage={t("blueprints.pathInvalid")}
-                          onSave={async (next) => {
-                            clearReviewedSource();
-                            await update(blueprintId, { path: next });
-                            void router.invalidate();
-                          }}
-                          disabled={busy}
-                        />
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground">
-                        {t("blueprints.metaAutoSync")}
-                      </dt>
-                      <dd className="flex items-center gap-2 font-medium">
-                        <Switch
-                          checked={blueprint.autoSync}
-                          onCheckedChange={(v) => void handleAutoSyncToggle(v)}
-                          disabled={busy}
-                          aria-label={t("blueprints.metaAutoSync")}
-                        />
-                        <span>
-                          {blueprint.autoSync
-                            ? t("blueprints.autoSyncOn")
-                            : t("blueprints.autoSyncOff")}
-                        </span>
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground">
-                        {t("blueprints.metaCreated")}
-                      </dt>
-                      <dd className="font-medium">
-                        <RelativeAge value={blueprint.createdAt} />
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground">
-                        {t("blueprints.metaUpdated")}
-                      </dt>
-                      <dd className="font-medium">
-                        <RelativeAge value={blueprint.lastSync} />
-                      </dd>
-                    </div>
-                  </dl>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    {t("blueprints.resourcesTitle")}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {blueprint.resources && blueprint.resources.length > 0 ? (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>{t("blueprints.colName")}</TableHead>
-                          <TableHead>Type</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {blueprint.resources.map((r) => {
-                          const href = blueprintResourceHref(r.type, r.id);
-                          return (
-                            <TableRow key={r.id}>
-                              <TableCell className="font-medium">
-                                {/* Every other resource table in the product
-                                    links its names; this one dead-ended
-                                    (w4/101). A resource kind this build has no
-                                    page for still renders as plain text — a
-                                    broken href would be worse than none. */}
-                                {href ? (
-                                  <Link to={href} className="hover:underline">
-                                    {r.name}
-                                  </Link>
-                                ) : (
-                                  r.name
-                                )}
-                              </TableCell>
-                              <TableCell className="text-muted-foreground capitalize">
-                                {r.type.replace(/_/g, " ")}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      {t(
-                        blueprint.status === "created"
-                          ? "blueprints.resourcesEmptyAwaitingApproval"
-                          : blueprint.status === "error" && blueprint.lastSync
-                            ? "blueprints.resourcesEmptyAfterError"
-                            : "blueprints.resourcesEmpty",
-                      )}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    {t("blueprints.syncHistoryTitle")}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {syncs.length > 0 || syncsLoading ? (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>{t("blueprints.syncColCommit")}</TableHead>
-                          <TableHead>{t("blueprints.syncColState")}</TableHead>
-                          <TableHead>
-                            {t("blueprints.syncColStarted")}
-                          </TableHead>
-                          <TableHead>
-                            {t("blueprints.syncColCompleted")}
-                          </TableHead>
-                          <TableHead>{t("blueprints.syncColError")}</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      {syncs.length > 0 ? (
-                        <TableBody>
-                          {syncs.map((run) => (
-                            <TableRow key={run.id}>
-                              <TableCell className="font-mono text-xs">
-                                {run.commitId ? run.commitId.slice(0, 8) : "—"}
-                              </TableCell>
-                              <TableCell>
-                                <BlueprintStatusBadge status={run.state} />
-                              </TableCell>
-                              <TableCell className="text-muted-foreground">
-                                <RelativeAge value={run.startedAt} />
-                              </TableCell>
-                              <TableCell className="text-muted-foreground">
-                                <RelativeAge value={run.completedAt} />
-                              </TableCell>
-                              <TableCell className="max-w-xs whitespace-normal break-words text-muted-foreground">
-                                {run.errorMessage && <p>{run.errorMessage}</p>}
-                                {run.note && <p>{run.note}</p>}
-                                {!run.errorMessage && !run.note && "—"}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      ) : (
-                        // The syncs query is not awaited by the route's title
-                        // loader, so a fresh visit has a real in-flight window.
-                        // Reserve the ready table's shape (same header, three
-                        // representative rows) instead of flashing the empty
-                        // copy (w6/043).
-                        <TableBody
-                          aria-hidden="true"
-                          data-skeleton-region="sync-history-rows"
-                          className="animate-pulse motion-reduce:animate-none"
-                        >
-                          {Array.from({ length: 3 }, (_, row) => (
-                            <TableRow key={row}>
-                              {Array.from({ length: 5 }, (_, column) => (
-                                <TableCell key={column}>
-                                  <Skeleton
-                                    className={
-                                      column === 0
-                                        ? "h-4 w-20 max-w-full"
-                                        : "h-4 w-16 max-w-full"
-                                    }
-                                  />
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      )}
-                    </Table>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      {t("blueprints.syncHistoryEmpty")}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    {t("blueprints.manifestTitle")}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <pre className="overflow-x-auto rounded-md bg-muted p-4 text-xs leading-relaxed">
-                    <code>{blueprint.manifest || "—"}</code>
-                  </pre>
-                </CardContent>
-              </Card>
-
-              <ValidatePanel
-                manifest={blueprint.manifest}
-                blueprintId={blueprintId}
-              />
-            </>
-          ) : (
-            <BlueprintDetailContentSkeleton />
-          )}
-        </div>
-      </PageScroll>
-
-      <ConfirmDialog
-        open={confirming}
-        onOpenChange={(open) => {
-          setConfirming(open);
-          if (!open) {
-            clearReviewedSource();
-            setSourceChangedHint(false);
-            setAwaitingFreshPreview(false);
-          }
-        }}
-        contentClassName="max-h-[85vh] overflow-y-auto sm:max-w-xl"
-        title={t("blueprints.syncConfirmTitle")}
-        description={t("blueprints.syncConfirmBody")}
-        cancelLabel={t("blueprints.syncCancel")}
-        confirmLabel={t("blueprints.syncConfirmAction")}
-        // Syncing is the primary action, and it is gated on a reviewed commit
-        // pin so nobody applies bytes they have not seen (w8/m41).
-        destructive={false}
-        confirmDisabled={!canConfirmSync || syncBusy}
-        onConfirm={() => reviewedSource && void handleSync(reviewedSource)}
+      <div
+        className="contents"
+        data-route-skeleton={!blueprint ? "blueprint-detail" : undefined}
       >
-        {syncPreviewLoading ? (
-          <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            {t("blueprints.syncPreviewLoading")}
+        {blueprint ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6">
+            <div className="flex min-w-0 max-w-full items-center gap-2">
+              <h1 className="truncate text-xl font-semibold">
+                {blueprint.name}
+              </h1>
+              <BlueprintResourceSuffix suffix={blueprint.resourceSuffix} />
+              <BlueprintStatusBadge status={blueprint.status} />
+            </div>
+            {/* BlueprintHeaderSkeleton reserves this container's box. */}
+            <div className="flex shrink-0 items-center gap-2">
+              <BlueprintManualSync blueprint={blueprint} />
+            </div>
           </div>
-        ) : syncPreview?.found && syncPreview.validation?.valid === true ? (
-          <div className="space-y-3">
-            <BlueprintPlanSummary
-              plan={syncPreview.validation.plan}
-              pricing={syncPreview.validation.estimatedPricing}
-              note={
-                reviewedSource ? (
-                  <p className="font-mono text-xs text-muted-foreground">
-                    {t("blueprints.syncPreviewCommit", {
-                      sha: shortCommit(reviewedSource.commitId),
-                    })}
-                  </p>
-                ) : null
-              }
-            />
-          </div>
-        ) : syncPreview ? (
-          <div className="space-y-2 rounded-md border border-destructive/50 p-3 text-sm">
-            <p className="font-medium text-destructive">
-              {t("blueprints.syncPreviewInvalid")}
-            </p>
-            <BlueprintErrorList
-              className="text-muted-foreground"
-              errors={(
-                syncPreview.validation?.errors ?? [syncPreview.error]
-              ).filter((e): e is string => !!e)}
-              details={syncPreview.validation?.errorDetails ?? []}
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => void handleRefreshPreview()}
-            >
-              {t("blueprints.syncRefreshPreview")}
-            </Button>
-          </div>
-        ) : syncPreviewError || sourceChangedHint ? (
-          <div className="space-y-2">
-            <p className="text-sm text-amber-600 dark:text-amber-500">
-              {sourceChangedHint
-                ? t("blueprints.syncSourceChanged")
-                : t("blueprints.syncPreviewUnavailable")}
-            </p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => void handleRefreshPreview()}
-            >
-              {t("blueprints.syncRefreshPreview")}
-            </Button>
-          </div>
-        ) : null}
-      </ConfirmDialog>
+        ) : (
+          <BlueprintHeaderSkeleton />
+        )}
 
-      <ConfirmDialog
-        open={disconnecting}
-        onOpenChange={setDisconnecting}
-        title={t("blueprints.disconnectTitle")}
-        description={t("blueprints.disconnectBody")}
-        cancelLabel={t("blueprints.disconnectCancel")}
-        confirmLabel={t("blueprints.disconnectAction")}
-        onConfirm={() => void handleDisconnect()}
-      />
-
-      <BlueprintConfirmationDialog
-        pending={pendingConfirmation}
-        actionLabel={t("blueprints.syncConfirmAction")}
-        busy={syncBusy}
-        onDismiss={() => setPendingConfirmation(null)}
-        onConfirm={async (confirmation) => {
-          if (pendingConfirmation)
-            await handleSync(pendingConfirmation.reviewed, confirmation);
-        }}
-      />
+        <PageScroll
+          data-skeleton-region={!blueprint ? "active-page" : undefined}
+        >
+          <div className="mx-auto w-full max-w-5xl space-y-6">
+            {pageLabelKey ? (
+              // Every page opens with its name, the sidebar's label for it.
+              <h2 className="text-lg leading-7 font-semibold tracking-tight">
+                {t(pageLabelKey)}
+              </h2>
+            ) : null}
+            {loadErrorVariant ? (
+              <ResourceLoadError onRetry={refetch} variant={loadErrorVariant} />
+            ) : blueprint ? (
+              <BlueprintDetailProvider value={{ blueprint }}>
+                <Outlet />
+              </BlueprintDetailProvider>
+            ) : (
+              <BlueprintPageSkeleton
+                labelKey={pageLabelKey}
+                blueprint={loaded}
+              />
+            )}
+          </div>
+        </PageScroll>
+      </div>
     </DashboardLayout>
   );
+}
+
+/**
+ * The open page's own pending frame, the one its route shows on a page
+ * switch, while the layout has no Blueprint yet. `blueprint` is the cache's
+ * copy when there is one (a workspace still being adopted).
+ */
+function BlueprintPageSkeleton({
+  labelKey,
+  blueprint,
+}: {
+  labelKey: ReturnType<typeof blueprintPageLabelKey>;
+  blueprint: BlueprintView | null;
+}) {
+  switch (labelKey) {
+    case "blueprints.navSyncs":
+      return <BlueprintSyncsSkeleton blueprint={blueprint} />;
+    case "blueprints.navSettings":
+      return <BlueprintSettingsSkeleton />;
+    default:
+      return <BlueprintResourcesSkeleton />;
+  }
 }

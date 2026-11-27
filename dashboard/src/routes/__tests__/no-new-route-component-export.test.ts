@@ -27,7 +27,6 @@ const ROUTES_DIR = join(import.meta.dirname, "..");
 // `${routeFile} ${ExportedComponentName}` for every route-file component export
 // that predates this guard. Do not extend it — new entries mean a regression.
 const ALLOWLIST = new Set<string>([
-  "blueprints.$blueprintId.tsx BlueprintDetailPage",
   "blueprints.tsx BlueprintsPage",
   "env-groups_.$groupId.tsx EnvGroupDetailPage",
   "env-groups.tsx EnvGroupsPage",

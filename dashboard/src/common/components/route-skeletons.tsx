@@ -17,10 +17,21 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableHead,
+  TableHeader,
   TableRow,
 } from "@/common/components/ui/table";
 import { useParams, useRouterState } from "@tanstack/react-router";
-import { Bell, Pencil, Plus, Settings2, Webhook } from "lucide-react";
+import {
+  Bell,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Settings2,
+  Webhook,
+} from "lucide-react";
+import type { BlueprintView } from "@/features/blueprints/types";
+import { PlannedSyncPanelSkeleton } from "@/features/blueprints/components/planned-sync-panel-skeleton";
 import { PushNotificationEvent } from "@/graphql/definitions";
 import {
   pushEventKeys,
@@ -1030,23 +1041,260 @@ export function BlueprintsTableSkeleton() {
   return <TableCardSkeleton rows={3} columns={5} action={false} />;
 }
 
-export function BlueprintDetailContentSkeleton() {
+/**
+ * A Blueprint layout's header while its Blueprint loads (w3/m677): the name
+ * and status, then Manual sync's reserved box, at the ready header's sizes.
+ */
+export function BlueprintHeaderSkeleton() {
+  const { t } = useTranslations();
   return (
-    <PendingFrame route="blueprint-detail" className="space-y-6">
-      <Region name="metadata">
-        <MetadataListSkeleton rows={6} />
-      </Region>
+    <div
+      data-skeleton-region="resource-header"
+      className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6"
+    >
+      <div
+        data-skeleton-region="resource-title"
+        className="flex min-w-0 max-w-full items-center gap-2"
+      >
+        {/* The h1's text-xl line box is 28px (w4/m209); the status badge is
+            22px. */}
+        <Skeleton className="h-7 w-48" />
+        <Skeleton className="h-[22px] w-16" />
+      </div>
+      <div
+        data-skeleton-region="resource-actions"
+        // The ready header's action container's classes.
+        className="flex shrink-0 items-center gap-2"
+      >
+        <ReservedButton variant="default" size="sm">
+          {t("blueprints.syncButton")}
+          <RefreshCw aria-hidden="true" />
+        </ReservedButton>
+      </div>
+    </div>
+  );
+}
+
+/** A table's rows of text placeholders, each as tall as its ready row. */
+function BlueprintTableRowsSkeleton({
+  rows,
+  cells,
+  className,
+  region,
+}: {
+  rows: number;
+  /** Each cell's placeholder classes, in column order. */
+  cells: readonly string[];
+  className?: string;
+  region?: string;
+}) {
+  return (
+    <TableBody
+      aria-hidden="true"
+      data-skeleton-region={region}
+      className={className}
+    >
+      {Array.from({ length: rows }, (_, row) => (
+        <TableRow key={row}>
+          {cells.map((cell, column) => (
+            <TableCell key={column}>
+              {/* A text line is 20px; a status badge's row is as tall as the
+                  badge, 22px. */}
+              <span className="flex min-h-5 items-center">
+                <Skeleton className={cn("max-w-full", cell)} />
+              </span>
+            </TableCell>
+          ))}
+        </TableRow>
+      ))}
+    </TableBody>
+  );
+}
+
+/**
+ * Three sync rows under the Sync History table's real header (w6/043): the
+ * Syncs page's in-flight rows and its pending frame's. The State column's
+ * badge makes a row 22px tall.
+ */
+export function BlueprintSyncRowsSkeleton({
+  className,
+}: {
+  className?: string;
+}) {
+  return (
+    <BlueprintTableRowsSkeleton
+      rows={3}
+      cells={["h-4 w-20", "h-[22px] w-16", "h-4 w-16", "h-4 w-16", "h-4 w-16"]}
+      className={className}
+      region="sync-history-rows"
+    />
+  );
+}
+
+/**
+ * A Blueprint's Resources page while it loads (w3/m677): the Managed
+ * Resources card, its Name and Type header and two rows.
+ */
+export function BlueprintResourcesSkeleton() {
+  const { t } = useTranslations();
+  return (
+    <PendingFrame route="blueprint-resources" className="space-y-6">
       <Region name="resources">
-        <TableCardSkeleton rows={2} columns={2} action={false} />
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              {t("blueprints.resourcesTitle")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("blueprints.colName")}</TableHead>
+                  <TableHead>{t("blueprints.colType")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <BlueprintTableRowsSkeleton
+                rows={2}
+                cells={["h-4 w-32", "h-4 w-24"]}
+              />
+            </Table>
+          </CardContent>
+        </Card>
       </Region>
+    </PendingFrame>
+  );
+}
+
+/**
+ * A Blueprint's Syncs page while it loads (w3/m677): the waiting plan's card
+ * for a Blueprint the cache knows is created, whose page always has one, then
+ * the Sync History card, its five columns and three rows (the State badge's
+ * row is 22px).
+ */
+export function BlueprintSyncsSkeleton({
+  blueprint = null,
+}: {
+  blueprint?: Pick<BlueprintView, "status"> | null;
+}) {
+  const { t } = useTranslations();
+  return (
+    <PendingFrame route="blueprint-syncs" className="space-y-6">
+      {blueprint?.status === "created" ? <PlannedSyncPanelSkeleton /> : null}
       <Region name="sync-history">
-        <TableCardSkeleton rows={3} columns={5} action={false} />
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              {t("blueprints.syncHistoryTitle")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("blueprints.syncColCommit")}</TableHead>
+                  <TableHead>{t("blueprints.syncColState")}</TableHead>
+                  <TableHead>{t("blueprints.syncColStarted")}</TableHead>
+                  <TableHead>{t("blueprints.syncColCompleted")}</TableHead>
+                  <TableHead>{t("blueprints.syncColError")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <BlueprintSyncRowsSkeleton />
+            </Table>
+          </CardContent>
+        </Card>
+      </Region>
+    </PendingFrame>
+  );
+}
+
+// The Settings metadata card's labels, in its order; the manifest path's
+// value carries a 24px edit button, the others a 20px line.
+const BLUEPRINT_METADATA_FIELDS = [
+  ["blueprints.metaRepo", "h-5"],
+  ["blueprints.metaBranch", "h-5"],
+  ["blueprints.metaPath", "h-6"],
+  ["blueprints.metaAutoSync", "h-5"],
+  ["blueprints.metaCreated", "h-5"],
+  ["blueprints.metaUpdated", "h-5"],
+] as const;
+
+/**
+ * A Blueprint's Settings page while it loads (w3/m677): the metadata card
+ * (the name's 24px editor line, then its six fields), the manifest's eight
+ * lines, the Validate card and Disconnect.
+ */
+export function BlueprintSettingsSkeleton() {
+  const { t } = useTranslations();
+  return (
+    <PendingFrame route="blueprint-settings" className="space-y-6">
+      <Region name="metadata">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              <span className="flex h-6 items-center">
+                <Skeleton className="h-4 w-40" />
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
+              {BLUEPRINT_METADATA_FIELDS.map(([labelKey, height]) => (
+                <div key={labelKey}>
+                  <dt className="text-muted-foreground">{t(labelKey)}</dt>
+                  <dd className={cn("flex items-center", height)}>
+                    <Skeleton className="h-4 w-24 max-w-full" />
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </CardContent>
+        </Card>
       </Region>
       <Region name="manifest">
-        <CardSkeleton rows={8} />
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              {t("blueprints.manifestTitle")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* The pre's p-4 and its text-xs leading-relaxed lines. */}
+            <div className="rounded-md bg-muted p-4 text-xs leading-relaxed">
+              {Array.from({ length: 8 }, (_, line) => (
+                <span key={line} className="flex h-[1.625em] items-center">
+                  <Skeleton
+                    className={cn(
+                      "h-3",
+                      line % 3 === 0
+                        ? "w-40"
+                        : line % 3 === 1
+                          ? "w-56"
+                          : "w-32",
+                    )}
+                  />
+                </span>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </Region>
       <Region name="validation">
-        <CardSkeleton rows={3} />
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-base">
+              {t("blueprints.validateTitle")}
+            </CardTitle>
+            <ReservedButton variant="outline" size="sm">
+              {t("blueprints.validateRun")}
+            </ReservedButton>
+          </CardHeader>
+        </Card>
+      </Region>
+      <Region name="disconnect">
+        <ReservedButton variant="outline" size="sm">
+          {t("blueprints.disconnectButton")}
+        </ReservedButton>
       </Region>
     </PendingFrame>
   );

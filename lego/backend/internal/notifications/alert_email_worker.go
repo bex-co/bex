@@ -464,8 +464,9 @@ func (w *AlertEmailWorker) dashboardURL(st store.AlertEmailStream) string {
 	cfg := resourcemeta.Config{DashboardBaseURL: w.DashboardBaseURL}
 	if st.Event == store.AlertEmailBlueprintSyncFailed {
 		// ResourceID holds the durable blp- id; the page is addressed by the
-		// public exs- id the dashboard and API show (w2/m269).
-		return cfg.DashboardURL("blueprints", id.BlueprintPublicID(st.ResourceID))
+		// public exs- id the dashboard and API show (w2/m269), in Render's
+		// `/blueprint/<id>` shape (w3/m677).
+		return cfg.DashboardURL(resourcemeta.BlueprintDashboardRoute, id.BlueprintPublicID(st.ResourceID))
 	}
 	if st.Event == store.AlertEmailCronFailed {
 		return cfg.DashboardURL(path.Join("services", st.ResourceID), "runs")

@@ -292,7 +292,7 @@ vi.mock("@/features/webhooks/components/webhook-detail-header", () => ({
 import { Route as KeyValueRoute } from "../keyvalue.$keyValueId";
 import { Route as DatabaseRoute } from "../databases.$databaseId";
 import { EnvGroupDetailPage } from "../env-groups_.$groupId";
-import { BlueprintDetailPage } from "../blueprints.$blueprintId";
+import { Route as BlueprintRoute } from "../blueprints.$blueprintId";
 import { Route as WebhookRoute } from "../webhook.$webhookId";
 import { Route as ProjectRoute } from "../project.$projectId";
 
@@ -335,11 +335,13 @@ const PAGES: PageCase[] = [
     ready: "group-name",
   },
   {
+    // A layout since w3/m677: its page must not mount while adopting.
     name: "Blueprint",
     path: "/blueprints/$blueprintId",
     url: "/blueprints/exs-1",
-    component: BlueprintDetailPage,
-    ready: "blueprint-name",
+    component: BlueprintRoute.options.component as RouteComponent,
+    ready: "child page",
+    child: true,
   },
   {
     name: "webhook",

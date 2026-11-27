@@ -1,13 +1,23 @@
 import type { SidebarNavGroup, SidebarNavItem } from "./sidebar-nav-groups";
 
 /**
- * The page model a datastore's resource sidebar shares (w3/m641, w3/m649):
- * a fixed list of pages under one resource's URL, each a sidebar entry whose
+ * The page model a resource sidebar shares (w3/m641, w3/m649, w3/m677): a
+ * fixed list of pages under one resource's URL, each a sidebar entry whose
  * label is also the page's heading.
  */
 export interface ResourcePageNavItem extends SidebarNavItem {
-  /** Other paths under the resource on which this entry is the open page. */
+  /**
+   * Other paths under the resource on which this entry is the open page. One
+   * ending in `/*` names every path below it, as Render's `hrefPatterns`
+   * `/blueprint/:id/sync/:syncId` does (`/sync/*`).
+   */
   alsoActiveOn: readonly string[];
+}
+
+function matchesPath(pattern: string, path: string): boolean {
+  return pattern.endsWith("/*")
+    ? path.startsWith(pattern.slice(0, -1))
+    : pattern === path;
 }
 
 export function resourcePageNavItem(
@@ -43,7 +53,7 @@ export function resourcePageNav(
       for (const item of group.items as ResourcePageNavItem[]) {
         if (
           item.to === `${routeBase}${path}` ||
-          item.alsoActiveOn.includes(path)
+          item.alsoActiveOn.some((pattern) => matchesPath(pattern, path))
         ) {
           return item;
         }

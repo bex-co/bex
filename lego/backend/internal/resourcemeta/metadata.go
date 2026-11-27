@@ -212,6 +212,10 @@ func UnknownRegionError() error {
 const (
 	PostgresDashboardRoute = "d"
 	KeyValueDashboardRoute = "r"
+	// BlueprintDashboardRoute is Render's `/blueprint/<exs-id>`, the
+	// Blueprint's Resources page (w3/m677,
+	// docs/render-artifacts/blueprint-pages.md).
+	BlueprintDashboardRoute = "blueprint"
 )
 
 // serviceTypesShort maps Render serviceType enum values to its serviceTypeShort

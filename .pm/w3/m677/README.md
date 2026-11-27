@@ -1,21 +1,21 @@
 # w3 · m677 — A Blueprint's pages are Render's: Resources, Syncs and Settings in a resource sidebar, each at its own URL
 
-**Worker:** worker3 **Goal:** a Blueprint's pages swap the workspace nav for a resource sidebar reading Resources / Syncs / Settings, as Render's do; each entry is its own URL under `/blueprints/<id>`, so Render's `/blueprint/<id>/…` links open the page they name; the single stacked page is gone. **Status:** todo
+**Worker:** worker3 **Goal:** a Blueprint's pages swap the workspace nav for a resource sidebar reading Resources / Syncs / Settings, as Render's do; each entry is its own URL under `/blueprints/<id>`, so Render's `/blueprint/<id>/…` links open the page they name; the single stacked page is gone. **Status:** todo (t001–t006 and t008–t010 done; t007 walked locally, its production walk waits for a pin carrying the milestone)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Record Render's Blueprint layout, routes and header in `docs/render-artifacts/blueprint-pages.md`, and map every bex card to its page | 25m | — |
-| [t002](t002.md) | A Blueprint's pages carry a resource sidebar: Blueprints back link, the name, Resources / Syncs / Settings | 45m | t001 |
-| [t003](t003.md) | Each page is its own route under one layout: Resources at the bare URL and `/resources`, then `/syncs` and `/settings` | 1h15m | t001 |
-| [t004](t004.md) | The header carries Render's one action, Manual sync, and Disconnect moves to Settings | 30m | t003 |
-| [t005](t005.md) | Render's `/blueprint/<id>/…` URLs, old bookmarks, in-app links and bex-api's Blueprint links open the page they name | 45m | t003 |
-| [t006](t006.md) | Each page's pending frame equals its ready page at 1440 and 390 | 30m | t002, t003 |
+| [t001](done/t001.md) | Record Render's Blueprint layout, routes and header in `docs/render-artifacts/blueprint-pages.md`, and map every bex card to its page — **DONE** | 25m | — |
+| [t002](done/t002.md) | A Blueprint's pages carry a resource sidebar: Blueprints back link, the name, Resources / Syncs / Settings — **DONE** | 45m | t001 |
+| [t003](done/t003.md) | Each page is its own route under one layout: Resources at the bare URL and `/resources`, then `/syncs` and `/settings` — **DONE** | 1h15m | t001 |
+| [t004](done/t004.md) | The header carries Render's one action, Manual sync, and Disconnect moves to Settings — **DONE** | 30m | t003 |
+| [t005](done/t005.md) | Render's `/blueprint/<id>/…` URLs, old bookmarks, in-app links and bex-api's Blueprint links open the page they name — **DONE** | 45m | t003 |
+| [t006](done/t006.md) | Each page's pending frame equals its ready page at 1440 and 390 — **DONE** | 30m | t002, t003 |
 | [t007](t007.md) | Verify in a real browser at 1440 and 390, locally and on production | 45m | t004, t005, t006 |
-| [t008](t008.md) | Render parity | 25m | t007 |
-| [t009](t009.md) | Simplify | 15m | t008 |
-| [t010](t010.md) | Test coverage | 40m | t008 |
+| [t008](done/t008.md) | Render parity — **DONE** | 25m | t007 |
+| [t009](done/t009.md) | Simplify — **DONE** | 15m | t008 |
+| [t010](done/t010.md) | Test coverage — **DONE** | 40m | t008 |
 | [t011](t011.md) | Closeout | 10m | t009, t010 |
 
 Total: **11 tasks, about 6h25m**.
@@ -58,3 +58,12 @@ Verified 2026-11-25 on main `c196617a8b`.
 - **Expected outcome:** someone who knows Render's Blueprint pages finds the same sidebar, pages and URLs; a pasted `/blueprint/<id>` link opens the Blueprint instead of a 404; w3/m678–m680 have the pages they fill.
 - **Why now:** after w3/m641 (Postgres) and w3/m649 (Key Value), a Blueprint is the last resource with a Render resource sidebar that bex draws as one stacked page, and their nav code is fresh to reuse. Run it after w3/m649 lands, which shares the resource-page nav helpers. It comes first of the five Blueprint milestones because the sync page (w3/m678), Settings (w3/m679) and Resources (w3/m680) build on its routes.
 - **Render parity task:** included (t008): the milestone changes the dashboard's pages and URLs and the Blueprint links bex-api emits on REST, GraphQL, MCP and email.
+
+## Local walk (2026-11-26)
+
+Walked in headless Chromium against `yarn local-bex` (port 8399) behind a throwaway proxy that answers the Blueprint reads with two fixture Blueprints (one in sync with two resources and three syncs, one `created` with a waiting plan and a resource suffix), the dashboard on `vite dev --port 5377`, at 1440 and 390. The shared Playwright browser was held by another session; the proxy and the walk script stayed in `/tmp` and are not committed.
+
+- Render's `/blueprint/<id>?from=cli#top`, `/resources`, `/syncs`, `/settings` and `/sync/<id>?from=email` land on `/blueprints/<id>[/<page>]` with the query and hash kept (`/sync/<id>` on Syncs); `/blueprints/<id>/sync` lands on Syncs and `/no-such-page` on Resources; a `blp-` bookmark stays on its spelling and opens; `/blueprint/new` and `/blueprints/new` are the create page with the workspace sidebar; `/blueprint/generate` goes to `/`.
+- Each page's title names it (`Syncs ・ platform ・ Blueprint ・ bex Dashboard`) and its heading reads Resources, Syncs or Settings. The sidebar reads Blueprints, the name, Resources / Syncs / Settings with the open page highlighted, at 1440 and in the 390 drawer; the breadcrumb reads Blueprints › name.
+- The header shows the name, the suffix, the status and Manual sync, disabled for the `created` Blueprint; its Syncs page shows the waiting plan with Approve and Plan again, and its empty Resources links Syncs.
+- Pending against ready, with the Blueprint read held on a client navigation from `/blueprints`: at 1440 the header (65 px), the heading, the Resources card (196 px), Sync History (239 px) and the Settings cards (182, 82 px) equal the ready page; the manifest card follows the file's length. At 390 a header whose name and badge share one row with Manual sync is 40 px shorter than the frame, which reserves the two-row header a repository-length name takes; the frame matches that case exactly. A sync's error text that wraps makes the ready table taller. The sidebar did not move. No page error was logged.

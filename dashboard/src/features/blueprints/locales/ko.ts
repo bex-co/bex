@@ -766,8 +766,9 @@ const koBlueprints: Record<string, TranslationEntry> = {
     description: "Toast when re-planning fails",
   },
   "blueprints.syncButton": {
-    message: "동기화",
-    description: "Button label that triggers an idempotent blueprint re-apply",
+    message: "수동 동기화",
+    description:
+      "The Blueprint header's one action, Render's Manual sync: opens the reviewed-commit sync dialog (w3/m677)",
   },
   "blueprints.syncConfirmTitle": {
     message: "Blueprint를 동기화하시겠습니까?",
@@ -949,6 +950,36 @@ const koBlueprints: Record<string, TranslationEntry> = {
     message: "계속하려면 검토에서 발견된 문제를 해결하세요.",
     description:
       "Create-Blueprint action bar: why Deploy is held while the review found problems in the Blueprint file",
+  },
+  "blueprints.navResources": {
+    message: "리소스",
+    description:
+      "Blueprint sidebar entry and page heading for the resources the Blueprint manages (Render's Resources, /blueprints/<id>/resources, w3/m677)",
+  },
+  "blueprints.navSyncs": {
+    message: "동기화 기록",
+    description:
+      "Blueprint sidebar entry and page heading for the Blueprint's syncs (Render's Syncs, /blueprints/<id>/syncs, w3/m677)",
+  },
+  "blueprints.navSettings": {
+    message: "설정",
+    description:
+      "Blueprint sidebar entry and page heading for the Blueprint's settings (Render's Settings, /blueprints/<id>/settings, w3/m677)",
+  },
+  "blueprints.colType": {
+    message: "유형",
+    description:
+      "Blueprint Resources table column header for a managed resource's type",
+  },
+  "blueprints.manualSyncAwaitingApproval": {
+    message: "먼저 동기화 기록에서 대기 중인 계획을 승인하세요.",
+    description:
+      "Tooltip on the disabled Manual sync button while a created Blueprint's first plan waits for approval on the Syncs page (w3/m677)",
+  },
+  "blueprints.resourcesViewSyncs": {
+    message: "동기화 기록으로 이동",
+    description:
+      "Link from a Blueprint's empty Resources page to its Syncs page, where the waiting plan or the failed sync is (w3/m677)",
   },
 };
 

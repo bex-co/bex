@@ -24,12 +24,13 @@ import (
 )
 
 // The failed-sync email links the Blueprint page by the public exs- id the
-// dashboard routes by, while the stream keeps the durable blp- key (w2/m269).
+// dashboard routes by, while the stream keeps the durable blp- key (w2/m269),
+// in Render's /blueprint/<id> shape (w3/m677).
 func TestBlueprintAlertEmailLinksThePublicID(t *testing.T) {
 	durable := ids.New(ids.Blueprint)
 	w := &AlertEmailWorker{DashboardBaseURL: "https://dashboard.example"}
 	got := w.dashboardURL(store.AlertEmailStream{Event: store.AlertEmailBlueprintSyncFailed, ResourceID: durable})
-	if want := "https://dashboard.example/blueprints/" + ids.BlueprintPublicID(durable); got != want {
+	if want := "https://dashboard.example/blueprint/" + ids.BlueprintPublicID(durable); got != want {
 		t.Fatalf("dashboardURL = %q, want %q", got, want)
 	}
 }

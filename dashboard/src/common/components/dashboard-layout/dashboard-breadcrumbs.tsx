@@ -43,6 +43,8 @@ import { useDatabase } from "@/features/databases/hooks/use-database";
 import { useKeyValue } from "@/features/keyvalue/hooks/use-key-value";
 import { useEnvGroup } from "@/features/env-groups/hooks/use-env-groups";
 import { useBuildSource } from "@/features/build-sources/hooks/use-build-source";
+import { useBlueprint } from "@/features/blueprints/hooks/use-blueprint";
+import { canonicalBlueprintLinkId } from "@/features/blueprints/lib/link-id";
 import {
   CREATE_TYPE_ITEMS,
   currentCreateType,
@@ -92,6 +94,9 @@ export function DashboardBreadcrumbs() {
   }
   if (params.buildSourceId) {
     return <BuildSourceBreadcrumbs id={params.buildSourceId} />;
+  }
+  if (params.blueprintId) {
+    return <BlueprintBreadcrumbs id={params.blueprintId} />;
   }
   return <PageBreadcrumb pathname={pathname} params={params} />;
 }
@@ -449,6 +454,39 @@ function BuildSourceBreadcrumbs({ id }: { id: string }) {
   );
 }
 
+/**
+ * Blueprints › name on a Blueprint's pages, as Render's breadcrumb reads
+ * (w3/m677): the name, read with the layout's own query and id, not the raw
+ * id; Render's menu of the other Blueprints is not offered, as no bex
+ * resource crumb offers one.
+ */
+function BlueprintBreadcrumbs({ id }: { id: string }) {
+  const { t } = useTranslations();
+  const { blueprint } = useBlueprint(canonicalBlueprintLinkId(id), {
+    poll: false,
+  });
+  return (
+    <nav
+      aria-label={t("common.topbarBreadcrumbs")}
+      className="flex min-w-0 items-center gap-0.5"
+    >
+      <BreadcrumbLink
+        to="/blueprints"
+        icon={Layers}
+        label={t("common.navBlueprints")}
+      />
+      <BreadcrumbSeparator />
+      <span className="flex min-w-0 items-center gap-1.5 px-2 text-sm font-medium">
+        {blueprint ? (
+          <span className="max-w-48 truncate">{blueprint.name}</span>
+        ) : (
+          <Skeleton className="h-4 w-24" />
+        )}
+      </span>
+    </nav>
+  );
+}
+
 function ProjectBreadcrumbs({ projectId }: { projectId: string }) {
   const { t } = useTranslations();
   const { projects } = useProjects({ poll: false });
@@ -574,7 +612,7 @@ function BreadcrumbLink({
   icon: Icon,
   label,
 }: {
-  to: "/" | "/env-groups" | "/build-sources";
+  to: "/" | "/env-groups" | "/build-sources" | "/blueprints";
   icon: LucideIcon;
   label: string;
 }) {
@@ -730,7 +768,6 @@ const DETAIL_ID_PARAMS = [
   "agentSessionId",
   "databaseId",
   "keyValueId",
-  "blueprintId",
   "webhookId",
 ] as const satisfies ReadonlyArray<keyof DashboardParams>;
 

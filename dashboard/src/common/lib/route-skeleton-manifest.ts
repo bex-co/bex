@@ -308,18 +308,49 @@ export const ROUTE_SKELETON_MANIFEST = {
     shape: "auth-verification",
     regions: ["language-action", "page-header", "auth-widget"],
   },
+  // A Blueprint's pages (w3/m677): the layout's header and the open page's
+  // frame; the bare URL and `/resources` are Resources.
   "/blueprints/$blueprintId": {
     kind: "render",
     owner: "routes/blueprints.$blueprintId.tsx",
     shape: "blueprint-detail",
-    regions: [
-      "page-header",
-      "metadata",
-      "resources",
-      "sync-history",
-      "manifest",
-      "validation",
-    ],
+    regions: ["resource-header", "active-page"],
+  },
+  "/blueprints/$blueprintId/": {
+    kind: "render",
+    owner: "routes/blueprints.$blueprintId.index.tsx",
+    shape: "blueprint-resources",
+    regions: ["resources"],
+  },
+  "/blueprints/$blueprintId/resources": {
+    kind: "render",
+    owner: "routes/blueprints.$blueprintId.resources.tsx",
+    shape: "blueprint-resources",
+    regions: ["resources"],
+  },
+  "/blueprints/$blueprintId/syncs": {
+    kind: "render",
+    owner: "routes/blueprints.$blueprintId.syncs.tsx",
+    shape: "blueprint-syncs",
+    regions: ["sync-history"],
+  },
+  "/blueprints/$blueprintId/settings": {
+    kind: "render",
+    owner: "routes/blueprints.$blueprintId.settings.tsx",
+    shape: "blueprint-settings",
+    regions: ["metadata", "manifest", "validation", "disconnect"],
+  },
+  // Render's `sync[/<id>]` lands on Syncs, any other sub-path on Resources.
+  "/blueprints/$blueprintId/$": {
+    kind: "redirect",
+    owner: "routes/blueprints.$blueprintId.$.tsx",
+    destination: "Syncs for a sync's path, else Resources",
+  },
+  // Render's `/blueprint/<id>[/<page>]` (w3/m677).
+  "/blueprint/$": {
+    kind: "redirect",
+    owner: "routes/blueprint.$.tsx",
+    destination: "canonical Blueprint route",
   },
   "/blueprint/new": {
     kind: "render",

@@ -15,14 +15,27 @@ export interface UseBlueprintResult {
   refetch: () => void;
 }
 
-export function useBlueprint(id: string): UseBlueprintResult {
+export function useBlueprint(
+  id: string,
+  {
+    poll = true,
+  }: {
+    /**
+     * Pass `false` on a secondary consumer (the sidebar, the topbar
+     * breadcrumb) mounted beside the layout that owns polling: it reads the
+     * same cached query, and a second timer would drift into its own round
+     * trips.
+     */
+    poll?: boolean;
+  } = {},
+): UseBlueprintResult {
   const { data, loading, error, refetch } = useQuery(BlueprintDocument, {
     // No ownerId: a Blueprint id resolves its own workspace server-side, so a
     // link to one in another of the caller's workspaces opens (w4/m169).
     variables: { id },
     fetchPolicy: "cache-first",
     errorPolicy: "all",
-    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    pollInterval: poll ? RESOURCE_POLL_INTERVAL_MS : undefined,
     skipPollAttempt: skipPollWhenHidden,
   });
 

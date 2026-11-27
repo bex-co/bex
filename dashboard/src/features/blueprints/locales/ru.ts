@@ -827,8 +827,9 @@ const ruBlueprints: Record<string, TranslationEntry> = {
     description: "Toast when re-planning fails",
   },
   "blueprints.syncButton": {
-    message: "Синхронизировать",
-    description: "Button label that triggers an idempotent blueprint re-apply",
+    message: "Ручная синхронизация",
+    description:
+      "The Blueprint header's one action, Render's Manual sync: opens the reviewed-commit sync dialog (w3/m677)",
   },
   "blueprints.syncConfirmTitle": {
     message: "Синхронизировать Blueprint?",
@@ -1010,6 +1011,36 @@ const ruBlueprints: Record<string, TranslationEntry> = {
     message: "Устраните проблемы, найденные при проверке, чтобы продолжить.",
     description:
       "Create-Blueprint action bar: why Deploy is held while the review found problems in the Blueprint file",
+  },
+  "blueprints.navResources": {
+    message: "Ресурсы",
+    description:
+      "Blueprint sidebar entry and page heading for the resources the Blueprint manages (Render's Resources, /blueprints/<id>/resources, w3/m677)",
+  },
+  "blueprints.navSyncs": {
+    message: "Синхронизации",
+    description:
+      "Blueprint sidebar entry and page heading for the Blueprint's syncs (Render's Syncs, /blueprints/<id>/syncs, w3/m677)",
+  },
+  "blueprints.navSettings": {
+    message: "Настройки",
+    description:
+      "Blueprint sidebar entry and page heading for the Blueprint's settings (Render's Settings, /blueprints/<id>/settings, w3/m677)",
+  },
+  "blueprints.colType": {
+    message: "Тип",
+    description:
+      "Blueprint Resources table column header for a managed resource's type",
+  },
+  "blueprints.manualSyncAwaitingApproval": {
+    message: "Сначала подтвердите ожидающий план в разделе «Синхронизации».",
+    description:
+      "Tooltip on the disabled Manual sync button while a created Blueprint's first plan waits for approval on the Syncs page (w3/m677)",
+  },
+  "blueprints.resourcesViewSyncs": {
+    message: "Перейти к синхронизациям",
+    description:
+      "Link from a Blueprint's empty Resources page to its Syncs page, where the waiting plan or the failed sync is (w3/m677)",
   },
 };
 

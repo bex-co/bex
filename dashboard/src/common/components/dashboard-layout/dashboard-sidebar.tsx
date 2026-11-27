@@ -33,6 +33,9 @@ const DatabaseSidebar = lazy(() =>
 const KeyValueSidebar = lazy(() =>
   import("./key-value-sidebar").then((m) => ({ default: m.KeyValueSidebar })),
 );
+const BlueprintSidebar = lazy(() =>
+  import("./blueprint-sidebar").then((m) => ({ default: m.BlueprintSidebar })),
+);
 const SandboxGroupSidebar = lazy(() =>
   import("./sandbox-group-sidebar").then((m) => ({
     default: m.SandboxGroupSidebar,
@@ -41,10 +44,16 @@ const SandboxGroupSidebar = lazy(() =>
 
 export function DashboardSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { projectId, serviceId, databaseId, keyValueId, sandboxGroupId } =
-    useParams({
-      strict: false,
-    });
+  const {
+    projectId,
+    serviceId,
+    databaseId,
+    keyValueId,
+    blueprintId,
+    sandboxGroupId,
+  } = useParams({
+    strict: false,
+  });
   const agentsEnabled = useAgentsFeatureEnabled();
   const isItemActive = useCallback(
     (to: string) => isNavItemActive(pathname, to),
@@ -79,6 +88,13 @@ export function DashboardSidebar() {
       </Suspense>
     );
   }
+  if (blueprintId) {
+    return (
+      <Suspense fallback={<SidebarShell />}>
+        <BlueprintSidebar blueprintId={blueprintId} />
+      </Suspense>
+    );
+  }
   if (sandboxGroupId) {
     return (
       <Suspense fallback={<SidebarShell />}>
@@ -98,7 +114,8 @@ export function DashboardSidebar() {
           isItemActive={isItemActive}
         />
         {/* The contextual list slot (w5/m64). Unlike ProjectSidebar,
-            ServiceSidebar, DatabaseSidebar and KeyValueSidebar above — which
+            ServiceSidebar, DatabaseSidebar, KeyValueSidebar and
+            BlueprintSidebar above — which
             REPLACE the rail for a deep hierarchy and offer a back link — an
             agents-context section AUGMENTS the nav, Devin's own shape: global
             nav on top, the section's working set beneath. Section-scoped on purpose: sessions never follow you onto

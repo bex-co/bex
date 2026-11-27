@@ -759,8 +759,9 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   // --- Sync action ---
   "blueprints.syncButton": {
-    message: "同步",
-    description: "Button label that triggers an idempotent blueprint re-apply",
+    message: "手动同步",
+    description:
+      "The Blueprint header's one action, Render's Manual sync: opens the reviewed-commit sync dialog (w3/m677)",
   },
   "blueprints.syncConfirmTitle": {
     message: "确认同步蓝图？",
@@ -943,6 +944,36 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "请先解决检查发现的问题再继续。",
     description:
       "Create-Blueprint action bar: why Deploy is held while the review found problems in the Blueprint file",
+  },
+  "blueprints.navResources": {
+    message: "资源",
+    description:
+      "Blueprint sidebar entry and page heading for the resources the Blueprint manages (Render's Resources, /blueprints/<id>/resources, w3/m677)",
+  },
+  "blueprints.navSyncs": {
+    message: "同步记录",
+    description:
+      "Blueprint sidebar entry and page heading for the Blueprint's syncs (Render's Syncs, /blueprints/<id>/syncs, w3/m677)",
+  },
+  "blueprints.navSettings": {
+    message: "设置",
+    description:
+      "Blueprint sidebar entry and page heading for the Blueprint's settings (Render's Settings, /blueprints/<id>/settings, w3/m677)",
+  },
+  "blueprints.colType": {
+    message: "类型",
+    description:
+      "Blueprint Resources table column header for a managed resource's type",
+  },
+  "blueprints.manualSyncAwaitingApproval": {
+    message: "请先在“同步记录”中批准等待中的计划。",
+    description:
+      "Tooltip on the disabled Manual sync button while a created Blueprint's first plan waits for approval on the Syncs page (w3/m677)",
+  },
+  "blueprints.resourcesViewSyncs": {
+    message: "前往同步记录",
+    description:
+      "Link from a Blueprint's empty Resources page to its Syncs page, where the waiting plan or the failed sync is (w3/m677)",
   },
 };
 

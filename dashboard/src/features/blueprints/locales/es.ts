@@ -812,8 +812,9 @@ const esBlueprints: Record<string, TranslationEntry> = {
     description: "Toast when re-planning fails",
   },
   "blueprints.syncButton": {
-    message: "Sincronizar",
-    description: "Button label that triggers an idempotent blueprint re-apply",
+    message: "Sincronización manual",
+    description:
+      "The Blueprint header's one action, Render's Manual sync: opens the reviewed-commit sync dialog (w3/m677)",
   },
   "blueprints.syncConfirmTitle": {
     message: "¿Sincronizar el Blueprint?",
@@ -995,6 +996,36 @@ const esBlueprints: Record<string, TranslationEntry> = {
     message: "Resuelve los problemas que encontró la revisión para continuar.",
     description:
       "Create-Blueprint action bar: why Deploy is held while the review found problems in the Blueprint file",
+  },
+  "blueprints.navResources": {
+    message: "Recursos",
+    description:
+      "Blueprint sidebar entry and page heading for the resources the Blueprint manages (Render's Resources, /blueprints/<id>/resources, w3/m677)",
+  },
+  "blueprints.navSyncs": {
+    message: "Sincronizaciones",
+    description:
+      "Blueprint sidebar entry and page heading for the Blueprint's syncs (Render's Syncs, /blueprints/<id>/syncs, w3/m677)",
+  },
+  "blueprints.navSettings": {
+    message: "Configuración",
+    description:
+      "Blueprint sidebar entry and page heading for the Blueprint's settings (Render's Settings, /blueprints/<id>/settings, w3/m677)",
+  },
+  "blueprints.colType": {
+    message: "Tipo",
+    description:
+      "Blueprint Resources table column header for a managed resource's type",
+  },
+  "blueprints.manualSyncAwaitingApproval": {
+    message: "Primero aprueba el plan pendiente en Sincronizaciones.",
+    description:
+      "Tooltip on the disabled Manual sync button while a created Blueprint's first plan waits for approval on the Syncs page (w3/m677)",
+  },
+  "blueprints.resourcesViewSyncs": {
+    message: "Ir a Sincronizaciones",
+    description:
+      "Link from a Blueprint's empty Resources page to its Syncs page, where the waiting plan or the failed sync is (w3/m677)",
   },
 };
 
