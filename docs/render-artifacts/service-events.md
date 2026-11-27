@@ -105,8 +105,8 @@ Both features shipped before their events: edge caching in w5/m151 and pipeline 
 
   | Blueprint field | Event (audit verb) | Recorded when |
   | --- | --- | --- |
-  | `numInstances` | `instance_count_changed` (`apps.Scale`), Render's `from`/`to` | the instance-count row changes |
-  | `scaling`, or a `numInstances` that turns autoscaling off | `autoscaling_config_changed` (`apps.SetAutoscaling` / `apps.DeleteAutoscaling`) | the patch lands |
+  | `numInstances` | `instance_count_changed` (`apps.Scale`), Render's `from`/`to` | the instance-count row changes while autoscaling is off; a count stored under autoscaling records nothing, as a scale does (w4/m364, w4/m694) |
+  | `scaling` (`numInstances` leaves autoscaling as it is, w4/m694) | `autoscaling_config_changed` (`apps.SetAutoscaling` / `apps.DeleteAutoscaling`) | the patch lands |
   | `disk` | `disk_created` (`apps.AddDisk`) or `disk_updated` (`apps.UpdateDisk`), with the disk's id and size(s) | the disk row changes; a managed service only, as the disk verbs are |
   | `repo`, `image`, `branch`, `registryCredential` | `source_changed` (`apps.SetSourceAndRegistryCredential`), plus the `branch_changed` fact when the service's own branch moves | the source row changes |
   | `buildSource` (attach, switch, or detach since `w4/m510`) | `artifact_source_changed` (`apps.LinkBuildSource`), Render's `fromBuildSourceId`/`toBuildSourceId` (absent side omitted) | the build-source link row changes |

@@ -165,9 +165,7 @@ func (s *Service) recordStackSettingChanges(ctx context.Context, a *appv1alpha1.
 		if before.Tier != after.Tier {
 			s.recordStackPlanChange(ctx, a, before, after)
 		}
-		if before.Replicas != after.Replicas {
-			s.RecordScaleEffect(ctx, a, before.Replicas, after.Replicas)
-		}
+		s.recordInstanceCountChange(ctx, a, before.Replicas, after.Replicas, after.Autoscaling)
 		s.recordStackDomainChanges(ctx, a, s.customDomainHosts(a, before), s.customDomainHosts(a, after))
 	}
 	switch from, to := before.Autoscaling, after.Autoscaling; {

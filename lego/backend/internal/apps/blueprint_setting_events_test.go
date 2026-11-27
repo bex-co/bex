@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -185,8 +186,10 @@ var blueprintSettingCases = []struct {
 	{"scaling", "autoscaling settings changed", imageService + threeToFive,
 		imageService + "    scaling: {minInstances: 2, maxInstances: 5, targetCPUPercent: 60}\n",
 		[]string{"apps.SetAutoscaling 1..3->2..5 cpu 60 by id-a"}},
-	{"numInstances", "autoscaling turned off by an instance count", imageService + threeToFive, imageService + "    numInstances: 2\n",
-		[]string{"apps.Scale 1->2 by id-a", "apps.DeleteAutoscaling 1..3->off by id-a"}},
+	// numInstances leaves autoscaling on (w4/m694), and a count stored
+	// under it changes no running count, so nothing records, as a scale
+	// under autoscaling records nothing (w4/m364).
+	{"numInstances", "an instance count stored under autoscaling", imageService + threeToFive, imageService + "    numInstances: 2\n", nil},
 	{"plan", "plan", imageService, strings.Replace(imageService, "starter", "standard", 1),
 		[]string{"apps.SetPlan starter->standard by id-a"}},
 	{"image", "image", imageService, strings.Replace(imageService, "nginx:1", "nginx:2", 1),
@@ -537,6 +540,50 @@ func TestManagedBlueprintDiskChangesRecordDiskEvents(t *testing.T) {
 			}
 		}
 		requireServiceTargets(t, sink, app)
+	}
+}
+
+// A managed App's instance count is a row, written whenever a Blueprint's
+// numInstances changes it. Under autoscaling the write stores the manual count
+// and changes no running count, so it records no instance_count_changed and
+// leaves autoscaling as it was, as Scale does (w4/m364, w4/m694); with
+// autoscaling off the same write is a scale and records one.
+func TestManagedBlueprintCountUnderAutoscalingRecordsNothing(t *testing.T) {
+	rec := &recordingStore{}
+	svc, base, sink, ctx := managedStackService(t, rec)
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: imageService + threeToFive}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	app := getTenantApp(t, base, "tea-a", "web")
+	if svc.blueprintIntentRow(app) == "" {
+		t.Fatal("want a managed App")
+	}
+	scaling := app.Spec.Autoscaling.DeepCopy()
+
+	sink.events = nil
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: imageService + "    numInstances: 2\n"}); err != nil {
+		t.Fatalf("sync: %v", err)
+	}
+	if got := serviceRows(sink); len(got) != 0 {
+		t.Fatalf("a count stored under autoscaling recorded %v, want nothing", got)
+	}
+	got := getTenantApp(t, base, "tea-a", "web").Spec
+	if n := len(rec.replicasCalls); n == 0 || rec.replicasCalls[n-1].replicas != 2 || got.Replicas != 2 {
+		t.Fatalf("instance count row writes %v, spec.replicas %d; want the count 2 stored", rec.replicasCalls, got.Replicas)
+	}
+	if !reflect.DeepEqual(got.Autoscaling, scaling) {
+		t.Fatalf("autoscaling = %+v, want %+v as it was", got.Autoscaling, scaling)
+	}
+
+	if err := svc.DeleteAutoscaling(ctx, core.AppPublicID(app)); err != nil {
+		t.Fatalf("turn autoscaling off: %v", err)
+	}
+	sink.events = nil
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: imageService + "    numInstances: 3\n"}); err != nil {
+		t.Fatalf("sync: %v", err)
+	}
+	if got, want := serviceRows(sink), []string{"apps.Scale 2->3 by id-a"}; !slices.Equal(got, want) {
+		t.Fatalf("a count with autoscaling off recorded %v, want %v", got, want)
 	}
 }
 

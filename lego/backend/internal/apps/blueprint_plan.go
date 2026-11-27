@@ -461,9 +461,11 @@ func probeBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 		dst.BuildFilter = nil
 	}
 
-	// A declared scaling block owns autoscaling. Conversely, an explicit manual
-	// count returns the service to manual scaling if no autoscaling block was
-	// declared. Omission of both preserves the currently active scaling mode.
+	// A declared scaling block owns autoscaling, and no count is applied beside
+	// it. numInstances alone stores the manual count and leaves autoscaling as
+	// it is: Render's numInstances "has no effect for services with autoscaling
+	// enabled", and a service "retains any existing autoscaling settings unless
+	// you add the scaling field" (render.com/docs/blueprint-spec, w4/m694).
 	if applies("scaling") {
 		if want.Autoscaling == nil {
 			turnOffAutoscaling(dst)
@@ -478,7 +480,6 @@ func probeBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 			dst.Autoscaling = next
 		}
 	} else if applies("numInstances") && !present("scaling") {
-		turnOffAutoscaling(dst)
 		dst.Replicas = want.Replicas
 	}
 
@@ -499,8 +500,11 @@ func probeBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 				continue
 			}
 			field, message := refusal.field, refusal.message
+			// The autoscaling is the live service's, and no field of the file
+			// turns it off (numInstances leaves it on, w4/m694), so the way
+			// out is on the service, as validateDisk words it.
 			if field == "scaling" && !present("scaling") {
-				message += "; declare numInstances in the file to turn autoscaling off"
+				message += "; turn autoscaling off on the service first"
 			}
 			if before.Disk == nil {
 				field = "disk"

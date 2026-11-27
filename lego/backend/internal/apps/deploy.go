@@ -4528,7 +4528,7 @@ func (s *Service) persistBlueprintIntent(ctx context.Context, a *appv1alpha1.App
 			return err
 		}
 		if changed {
-			s.RecordScaleEffect(ctx, a, cur.Replicas, want.Replicas)
+			s.recordInstanceCountChange(ctx, a, cur.Replicas, want.Replicas, want.Autoscaling)
 		}
 	}
 	if want.Disk != nil && !equalDiskFields(cur.Disk, want.Disk) {

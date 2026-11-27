@@ -5292,14 +5292,20 @@ func (s *Service) Scale(ctx context.Context, name string, replicas int32) (AppVi
 	// skipping it means a no-op scale produces no event at all, closing a cheap
 	// repeatable amplifier of the shared outbound-webhook queue (scan finding #3).
 	//
-	// With autoscaling on the running count does not change either: "Render
-	// ignores this value as long as autoscaling is enabled for the service".
-	// The count is stored, and is what the service runs once autoscaling is
-	// turned off; the operator keeps running the autoscaler's count (w4/m364).
-	if fromReplicas != replicas && !autoscalingOn(a.Spec.Autoscaling) {
-		s.RecordScaleEffect(ctx, a, fromReplicas, replicas)
-	}
+	s.recordInstanceCountChange(ctx, a, fromReplicas, replicas, a.Spec.Autoscaling)
 	return result, nil
+}
+
+// recordInstanceCountChange records instance_count_changed for a stored count
+// that changed what the service runs. With autoscaling on the running count
+// does not change: "Render ignores this value as long as autoscaling is
+// enabled for the service". The count is stored, and is what the service runs
+// once autoscaling is turned off; the operator keeps running the autoscaler's
+// count (w4/m364). A Scale and a Blueprint's numInstances (w4/m694) alike.
+func (s *Service) recordInstanceCountChange(ctx context.Context, a *appv1alpha1.App, from, to int32, autoscaling *appv1alpha1.AutoscalingSpec) {
+	if from != to && !autoscalingOn(autoscaling) {
+		s.RecordScaleEffect(ctx, a, from, to)
+	}
 }
 
 // MaxIdleTTLSeconds bounds the idle-timeout a caller may set (7 days). Free-tier

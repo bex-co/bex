@@ -30,6 +30,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+	"k8s.io/utils/ptr"
 )
 
 // w8/279: a Blueprint that gave one service a disk and a scaling block was
@@ -109,18 +110,26 @@ func TestBlueprintSyncKeepsTheDiskRulesOnAnExistingService(t *testing.T) {
 			fields:   declares("scaling"),
 			path:     "scaling", message: "a service with a disk cannot use autoscaling",
 		},
-		// The scaling range is the live service's, so the file is told how
-		// to turn it off.
+		// The scaling range is the live service's, and no field of the file
+		// turns it off, so the file is told where to.
 		"a disk declared for a service that autoscales": {
 			existing: appv1alpha1.AppSpec{Tier: "starter", Replicas: 1, Autoscaling: scaling},
 			want:     appv1alpha1.AppSpec{Disk: disk},
 			fields:   declares("disk"),
-			path:     "disk", message: "a service with a disk cannot use autoscaling; declare numInstances in the file to turn autoscaling off",
+			path:     "disk", message: "a service with a disk cannot use autoscaling; turn autoscaling off on the service first",
 		},
+		// numInstances leaves autoscaling on (w4/m694), so it does not make
+		// room for the disk either.
 		"a disk and one instance declared together for a service that autoscales": {
 			existing: appv1alpha1.AppSpec{Tier: "starter", Replicas: 1, Autoscaling: scaling},
 			want:     appv1alpha1.AppSpec{Replicas: 1, Disk: disk},
 			fields:   declares("disk", "numInstances"),
+			path:     "disk", message: "a service with a disk cannot use autoscaling; turn autoscaling off on the service first",
+		},
+		"a disk declared for a service whose autoscaling was turned off": {
+			existing: appv1alpha1.AppSpec{Tier: "starter", Replicas: 1, Autoscaling: &appv1alpha1.AutoscalingSpec{MinReplicas: 1, MaxReplicas: 2}},
+			want:     appv1alpha1.AppSpec{Disk: disk},
+			fields:   declares("disk"),
 		},
 		"a disk declared for a service on two instances": {
 			existing: appv1alpha1.AppSpec{Tier: "starter", Replicas: 2},
@@ -217,6 +226,48 @@ func TestBlueprintSyncOntoAServiceWithADiskAnswersInProductWords(t *testing.T) {
 	}
 	if got := getApp(t, svc.Client, "qa-bp-web"); got.Spec.Autoscaling != nil {
 		t.Fatalf("a refused sync still set autoscaling: %+v", got.Spec.Autoscaling)
+	}
+}
+
+// Validate locates a refusal on an existing service at the field the file
+// declares that breaks the rule (ADR082), not at a field its sentence happens
+// to name: the free plan is refused at plan though the sentence says "disks",
+// and a disk added to an autoscaled service at the disk though it says
+// "autoscaling" (w4/m694).
+func TestBlueprintValidateLocatesADiskRefusalAtTheFieldThatBreaksIt(t *testing.T) {
+	ctx := context.Background()
+	withDisk := &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10}
+	for name, tc := range map[string]struct {
+		disk        *appv1alpha1.DiskSpec
+		autoscaling *appv1alpha1.AutoscalingSpec
+		manifest    string
+		path        string
+	}{
+		"the free plan beside a disk": {disk: withDisk,
+			manifest: strings.Replace(diskRuleWeb, "plan: starter", "plan: free", 1), path: "services[0].plan"},
+		"two instances beside a disk": {disk: withDisk,
+			manifest: diskRuleWeb + "    numInstances: 2\n", path: "services[0].numInstances"},
+		"a smaller disk": {disk: withDisk,
+			manifest: diskRuleWeb + diskRuleDisk, path: "services[0].disk.sizeGB"},
+		"a disk for a service that autoscales": {autoscaling: &appv1alpha1.AutoscalingSpec{Enabled: true, MinReplicas: 1, MaxReplicas: 2},
+			manifest: diskRuleWeb + diskRuleDisk, path: "services[0].disk"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			svc, cl := newService(&recordingStore{})
+			if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: diskRuleWeb}); err != nil {
+				t.Fatal(err)
+			}
+			existing := manage(getApp(t, cl, "qa-bp-web"), id.New(id.Service))
+			existing.Spec.Disk, existing.Spec.Autoscaling = tc.disk, tc.autoscaling
+			svc.Client = fakeClient(serializedBlueprintApp(t, existing))
+			validation, err := svc.ValidateBlueprint(ctx, "", tc.manifest, "")
+			if err != nil || validation.Valid || len(validation.Errors) != 1 {
+				t.Fatalf("validation = %+v, err %v; want the one refusal", validation, err)
+			}
+			if got := validation.Errors[0]; got.Path == nil || *got.Path != tc.path {
+				t.Fatalf("refusal %q at %q, want it at %s", got.Error, ptr.Deref(got.Path, ""), tc.path)
+			}
+		})
 	}
 }
 

@@ -34,12 +34,12 @@ import (
 )
 
 // w9/092 on real Postgres: Blueprint syncs that change an existing service's
-// instance count, turn autoscaling on and then off again, and add a disk land
-// their instance_count_changed, autoscaling_config_changed and disk_created
-// rows through the store's audit sink, by the member who synced, and the
-// service's events feed lists each with Render's details. The sync that
-// created the service lists none, and a re-sync that changes nothing adds
-// nothing.
+// instance count, turn autoscaling on and add a disk land their
+// instance_count_changed, autoscaling_config_changed and disk_created rows
+// through the store's audit sink, by the member who synced, and the service's
+// events feed lists each with Render's details. The sync that created the
+// service lists none, a count stored under autoscaling lists none (w4/m694),
+// and a re-sync that changes nothing adds nothing.
 func TestPGBlueprintSyncSettingChangesListInTheServiceFeed(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
@@ -130,14 +130,26 @@ func TestPGBlueprintSyncSettingChangesListInTheServiceFeed(t *testing.T) {
 	for _, step := range []struct {
 		manifest string
 		adds     []string
+		before   func() // runs before the sync; its own rows are in adds
 	}{
-		{imageService + "    numInstances: 3\n", []string{"instance_count_changed 1->3"}},
-		{imageService + threeToFive, []string{"autoscaling_config_changed none->1..3"}},
-		{imageService + "    numInstances: 2\n", []string{"autoscaling_config_changed 1..3->off", "instance_count_changed 3->2"}},
-		{imageService + "    numInstances: 1\n    disk: {name: data, mountPath: /var/data, sizeGB: 10}\n",
-			[]string{"disk_created 10GB", "instance_count_changed 2->1"}},
-		{imageService + "    numInstances: 1\n    disk: {name: data, mountPath: /var/data, sizeGB: 10}\n", nil},
+		{manifest: imageService + "    numInstances: 3\n", adds: []string{"instance_count_changed 1->3"}},
+		{manifest: imageService + threeToFive, adds: []string{"autoscaling_config_changed none->1..3"}},
+		// numInstances leaves autoscaling on and the count it stores changes
+		// no running count, so it lists nothing (w4/m694, as w4/m364's scale).
+		{manifest: imageService + "    numInstances: 2\n"},
+		// A disk needs autoscaling off, which only the service turns off.
+		{manifest: imageService + "    numInstances: 1\n    disk: {name: data, mountPath: /var/data, sizeGB: 10}\n",
+			adds: []string{"autoscaling_config_changed 1..3->off", "disk_created 10GB", "instance_count_changed 2->1"},
+			before: func() {
+				if err := svc.DeleteAutoscaling(ctx, serviceID); err != nil {
+					t.Fatalf("turn autoscaling off: %v", err)
+				}
+			}},
+		{manifest: imageService + "    numInstances: 1\n    disk: {name: data, mountPath: /var/data, sizeGB: 10}\n"},
 	} {
+		if step.before != nil {
+			step.before()
+		}
 		sync(step.manifest)
 		want = append(want, step.adds...)
 		slices.Sort(want)

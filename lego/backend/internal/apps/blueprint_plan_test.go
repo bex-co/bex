@@ -150,14 +150,41 @@ func TestApplyBlueprintServiceSpecScalingOwnership(t *testing.T) {
 		},
 	}
 
-	t.Run("manual numInstances disables declared autoscaling mode", func(t *testing.T) {
+	// Render: numInstances "has no effect for services with autoscaling
+	// enabled", and a service "retains any existing autoscaling settings
+	// unless you add the scaling field" (w4/m694).
+	t.Run("numInstances stores the manual count and leaves autoscaling on", func(t *testing.T) {
 		got := *initial.DeepCopy()
+		changed, err := ApplyBlueprintServiceSpec(&got, appv1alpha1.AppSpec{Replicas: 5}, map[string]BlueprintField{"numInstances": {}})
+		if err != nil {
+			t.Fatalf("apply: %v", err)
+		}
+		if !changed || got.Replicas != 5 || !reflect.DeepEqual(got.Autoscaling, initial.Autoscaling) {
+			t.Fatalf("changed %v, spec %#v; want the manual count 5 stored and autoscaling %#v as it was", changed, got, initial.Autoscaling)
+		}
+	})
+
+	t.Run("numInstances is the running count of a service with autoscaling off", func(t *testing.T) {
+		got := *initial.DeepCopy()
+		got.Autoscaling.Enabled = false // kept by a disable (w4/597)
+		kept := got.Autoscaling.DeepCopy()
 		if _, err := ApplyBlueprintServiceSpec(&got, appv1alpha1.AppSpec{Replicas: 5}, map[string]BlueprintField{"numInstances": {}}); err != nil {
 			t.Fatalf("apply: %v", err)
 		}
-		// The settings stay, turned off, for the next enable (w4/597).
-		if as := got.Autoscaling; as == nil || as.Enabled || as.MaxReplicas != 4 || got.Replicas != 5 {
-			t.Fatalf("manual scaling = %#v, want replicas 5 with the autoscaling settings kept, turned off", got)
+		if got.Replicas != 5 || !reflect.DeepEqual(got.Autoscaling, kept) {
+			t.Fatalf("spec %#v; want replicas 5 beside the kept, turned-off settings %#v", got, kept)
+		}
+	})
+
+	t.Run("numInstances beside a scaling block is not applied", func(t *testing.T) {
+		got := *initial.DeepCopy()
+		next := &appv1alpha1.AutoscalingSpec{Enabled: true, MinReplicas: 2, MaxReplicas: 6, TargetCPUPercent: &cpu}
+		if _, err := ApplyBlueprintServiceSpec(&got, appv1alpha1.AppSpec{Replicas: 5, Autoscaling: next},
+			map[string]BlueprintField{"numInstances": {}, "scaling": {}}); err != nil {
+			t.Fatalf("apply: %v", err)
+		}
+		if got.Replicas != 2 || !reflect.DeepEqual(got.Autoscaling, next) {
+			t.Fatalf("spec %#v; want the declared scaling %#v and the manual count 2 kept", got, next)
 		}
 	})
 

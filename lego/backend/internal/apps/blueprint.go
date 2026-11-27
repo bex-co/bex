@@ -1001,6 +1001,8 @@ func blueprintResourceValidationErrors(source *BlueprintSource, ir BlueprintIR, 
 				pointer = resource.SourcePath + rule
 			} else if field, ok := blueprintCodedField(problem.err, resource); ok {
 				pointer = resource.SourcePath + "/" + field
+			} else if field, ok := blueprintConflictField(problem.err, resource); ok {
+				pointer = resource.SourcePath + "/" + field
 			}
 			entry = blueprintLocatedError(source, msg, pointer)
 		} else {
@@ -1020,6 +1022,22 @@ func blueprintResourceValidationErrors(source *BlueprintSource, ir BlueprintIR, 
 		return *out[i].Line < *out[j].Line
 	})
 	return out
+}
+
+// blueprintConflictField is the declared field a sync's field conflict names
+// (BlueprintFieldConflictError.Path): a disk the file adds to a service that
+// autoscales is refused at the disk, though its sentence names autoscaling
+// (ADR082: refused "at the field that breaks them", w4/m694).
+func blueprintConflictField(err error, resource BlueprintResourceIR) (string, bool) {
+	var conflict *BlueprintFieldConflictError
+	if !errors.As(err, &conflict) || conflict.Path == "" {
+		return "", false
+	}
+	top, _, _ := strings.Cut(conflict.Path, ".")
+	if _, declared := resource.Fields[top]; !declared {
+		return "", false
+	}
+	return strings.ReplaceAll(conflict.Path, ".", "/"), true
 }
 
 // blueprintCodedField is the declared field a coded refusal names. It locates
