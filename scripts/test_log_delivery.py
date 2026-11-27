@@ -127,7 +127,11 @@ loki.source.api "%s" {
                                if metric == name and all(actual.get(key) == wanted for key, wanted in labels.items()))
 
                 def emit(line, age=0, database=False):
-                    labels = {"namespace": "fixture", "pod": "fixture", "container": "fixture"}
+                    # The database pipeline keeps only CNPG's postgres and
+                    # major-upgrade containers, and drops the instance
+                    # manager's own chatter from postgres alone (w3/m676).
+                    labels = {"namespace": "fixture", "pod": "fixture",
+                              "container": "postgres" if database else "fixture"}
                     labels.update({"database": "dpg-fixture"} if database else {"app": "fixture"})
                     body = {"streams": [{"stream": labels,
                                          "values": [[str(int((time.time() - age) * 1e9)), line]]}]}
