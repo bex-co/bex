@@ -57,6 +57,35 @@ wal_level = logical
 EOF
 # Production's projection, with production's allowlist.
 sh "$scripts/config.sh" "$major" "$admitted" app 256 >>"$data/postgresql.conf"
+
+# Property 0: the image is an upgrade source. CloudNativePG's major-upgrade
+# Job copies the bindir, pkglibdir and sharedir with cp -a to the same paths
+# under /controller/old (instance upgrade prepare) and pg_upgrade starts that
+# copy, with this projection, on the target's image, where none of the
+# original paths exist (w3/m702). So the copy must load every library it
+# preloads from itself: one resolved from the original pkglibdir is missing
+# there, and the old server does not start.
+lib="/usr/lib/postgresql/${major}/lib"
+old="$work/old"
+for dir in "$bin" "$lib" "/usr/share/postgresql/${major}"; do
+  mkdir -p "$old$dir"
+  cp -a "$dir/." "$old$dir/"
+done
+trap '"$old$bin/pg_ctl" -D "$data" -m immediate stop >/dev/null 2>&1 || true' EXIT
+"$old$bin/pg_ctl" -D "$data" -w -l "$work/old.log" start >/dev/null || {
+  cat "$work/old.log"
+  fail "the copy of the server pg_upgrade starts did not start"
+}
+maps="$(cat "/proc/$(head -1 "$data/postmaster.pid")/maps")"
+if grep -F " $lib/" <<<"$maps"; then fail "the copy of the server loaded libraries from the original $lib"; fi
+grep -qF " $old$lib/pgaudit.so" <<<"$maps" || fail "the copy of the server did not preload its own pgaudit"
+if has pg_duckdb; then
+  grep -qF " $old$lib/libduckdb.so" <<<"$maps" || fail "the copy of the server did not load the libduckdb.so beside its pg_duckdb"
+fi
+"$old$bin/pg_ctl" -D "$data" -w stop >/dev/null
+rm -rf "$old"
+echo "upgrade_source=PASS"
+
 "$bin/pg_ctl" -D "$data" -w -l "$work/log" start >/dev/null || {
   cat "$work/log"
   exit 1

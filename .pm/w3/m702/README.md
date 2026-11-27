@@ -1,12 +1,12 @@
 # w3 · m702 — Every in-place Postgres major upgrade succeeds on bex's operands: a relocatable `pg_duckdb`, and the source major's settings while `pg_upgrade` runs
 
-**Worker:** worker3 **Goal:** a database on any bex operand major 13–17 upgrades in place to 18 through the verb (REST, GraphQL, MCP and the dashboard's guided page) and ends `SUCCEEDED` with its data, as Render's does from any supported version. Today every such upgrade ends `FAILED` after its downtime, because `pg_upgrade` cannot start the old server. **Status:** todo
+**Worker:** worker3 **Goal:** a database on any bex operand major 13–17 upgrades in place to 18 through the verb (REST, GraphQL, MCP and the dashboard's guided page) and ends `SUCCEEDED` with its data, as Render's does from any supported version. Today every such upgrade ends `FAILED` after its downtime, because `pg_upgrade` cannot start the old server. **Status:** todo (t001 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [The operand's `pg_duckdb` loads the `libduckdb.so` beside it, wherever CloudNativePG copies it](t001.md) | 45m | — |
+| t001 | [The operand's `pg_duckdb` loads the `libduckdb.so` beside it, wherever CloudNativePG copies it](done/t001.md) — **DONE** | 45m | — |
 | t002 | [Publish the operands and adopt 16, 17 and 18 from one run](t002.md) | 1h | t001 |
 | t003 | [While a major upgrade is pending, the Cluster carries the source major's extension settings](t003.md) | 1h15m | — |
 | t004 | [Walk real upgrades on dev-3: 13, 15 and 16 to 18, and 16 with `pg_duckdb` installed](t004.md) | 1h30m | t002, t003 |

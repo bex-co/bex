@@ -32,6 +32,16 @@ RUN set -eu; mkdir -p /out; \
     mkdir -p "/out$lib" "/out$share"; \
     cp -a "$lib/pg_duckdb.so" "$lib"/libduckdb*.so* "/out$lib/"; \
     cp -a "$share"/pg_duckdb* "/out$share/"; \
+    # pg_duckdb's Makefile links libduckdb.so through an absolute RUNPATH,
+    # /usr/lib/postgresql/<major>/lib/. CloudNativePG's major-upgrade Job
+    # copies this pkglibdir with cp -a to /controller/old/<same path>
+    # (instance upgrade prepare) and starts that copy on the target's image,
+    # where the absolute path does not exist, so the old server could not
+    # load pg_duckdb and every upgrade from 16 or 17 failed (w3/m702).
+    # $ORIGIN finds libduckdb.so beside pg_duckdb.so wherever it is copied.
+    apt-get update; apt-get install -y --no-install-recommends patchelf; \
+    patchelf --set-rpath '$ORIGIN' "/out$lib/pg_duckdb.so"; \
+    test "$(patchelf --print-rpath "/out$lib/pg_duckdb.so")" = '$ORIGIN'; \
     # Upstream leaves these owned by postgres; the server must not be able to
     # rewrite its own code.
     chown -R root:root /out; chmod -R go-w /out; \
@@ -101,6 +111,21 @@ RUN set -eu; \
   rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb /var/log/apt /var/log/dpkg.log /tmp/*
 
 COPY --from=duckdb /out/ /
+# A relocated copy of the pkglibdir, as CloudNativePG's major-upgrade Job
+# makes it, resolves nothing from the original: every library the image
+# ships there is found beside the copy (w3/m702). The ldd above cannot see
+# this, because the original path exists here. check.sh starts such a copy.
+RUN set -eu; lib="/usr/lib/postgresql/${PG_MAJOR}/lib"; old="/tmp/old$lib"; \
+  mkdir -p "$old"; cp -a "$lib/." "$old/"; \
+  deps="$(find "$old" -type f -name '*.so*' -exec ldd {} + 2>/dev/null || true)"; \
+  [ -n "$deps" ]; \
+  if printf '%s\n' "$deps" | grep -F "=> $lib/"; then \
+    echo "a relocated library resolves from $lib" >&2; exit 1; \
+  fi; \
+  if [ -e "$lib/pg_duckdb.so" ]; then \
+    ldd "$old/pg_duckdb.so" | grep -F "libduckdb.so => $old/libduckdb.so"; \
+  fi; \
+  rm -rf /tmp/old
 # pgextwlist's custom scripts (extwlist.custom_path): the grants that let the
 # owner use what a whitelisted extension created as superuser.
 COPY extwlist/ /usr/share/bex/extwlist/
