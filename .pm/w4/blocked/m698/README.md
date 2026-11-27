@@ -1,6 +1,6 @@
 # w4 · m698 — `*` in a redirect or rewrite rule works anywhere in the path, as on Render
 
-**Worker:** worker4 **Goal:** a static site's redirect/rewrite rule matches a `*` at any position of its source and expands a `*` at any position of its destination, as Render documents, instead of treating every `*` except a trailing `/*` as literal text and saving rules that never fire. **Status:** todo (t001, t002, t004–t006 done; t003's ADR029/ADR018 record done, its production walk waits for a deploy carrying the change)
+**Worker:** worker4 **Goal:** a static site's redirect/rewrite rule matches a `*` at any position of its source and expands a `*` at any position of its destination, as Render documents, instead of treating every `*` except a trailing `/*` as literal text and saving rules that never fire. **Status:** blocked (pin must carry `e3a10a9958`: t003's walk of `/old-*` → `/new-*` and `/guides/*` → `/*/index.html` on a static site in production, then t007; t001, t002, t004–t006 done, and t003's ADR029/ADR018 record shipped in `e3a10a9958`)
 
 ## Tasks (in order)
 
@@ -32,7 +32,7 @@ Total: **7 tasks, about 4h20m**.
   - The destination substitutes only a trailing `/*` (`:1022-1047`).
   - `validateRoutes` (`lego/backend/internal/apps/service.go:6835-6841`) only checks that a source starts with `/`, so such a rule saves on every surface and then never fires.
   - `matchHeaderPattern` (`staticserver.go:1095-1106`) falls back to `matchPattern`, and headers follow different, segment-bounded rules, so the change must stay on the route path.
-- **Goal linkage:** [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first) and [ADR029](../../../docs/ADR029-static-sites.md).
+- **Goal linkage:** [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first) and [ADR029](../../../../docs/ADR029-static-sites.md).
 - **Expected outcome:** a static site moved from Render keeps its wildcard redirects; visitors get the page, not a 404.
 - **Why now:** the failure is silent: the rule saves without error and simply never matches.
 - **Render parity:** included: runtime behavior, plus route validation on REST, GraphQL, MCP and the dashboard.
