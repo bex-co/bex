@@ -1,6 +1,6 @@
 # w3 · m681 — Generate Blueprint starts from selected resources and opens Render's Create Blueprint page
 
-**Worker:** worker3 **Goal:** Generate Blueprint is offered where Render offers it (the selection bar, each resource row's menu, a project environment's menu) and opens Render's three-step Create Blueprint page at `/blueprint/generate`; the Blueprints list's own Generate Blueprint button and dialog, which Render's list does not have, are gone. **Status:** blocked (t001–t004 and t006–t008 done; t005 walked locally, its production walk waits for a pin carrying `2902ee1877`)
+**Worker:** worker3 **Goal:** Generate Blueprint is offered where Render offers it (the selection bar, each resource row's menu, a project environment's menu) and opens Render's three-step Create Blueprint page at `/blueprint/generate`; the Blueprints list's own Generate Blueprint button and dialog, which Render's list does not have, are gone. **Status:** done (walked locally and on production pin `546d61ac7343`)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | The Create Blueprint page at `/blueprint/generate`, built on `generateBlueprint` — **DONE** | 1h15m | t001 |
 | [t003](done/t003.md) | Generate Blueprint on the selection bar, each resource row's menu and a project environment's menu — **DONE** | 45m | t002 |
 | [t004](done/t004.md) | The Blueprints list drops its Generate Blueprint button and dialog, as Render's list has none — **DONE** | 20m | t003 |
-| [t005](t005.md) | Verify in a real browser at 1440 and 390, locally and on production | 40m | t004 |
+| [t005](done/t005.md) | Verify in a real browser at 1440 and 390, locally and on production — **DONE** | 40m | t004 |
 | [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 35m | t006 |
-| [t009](t009.md) | Closeout | 10m | t007, t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t007, t008 |
 
 Total: **9 tasks, about 4h45m**.
 
@@ -48,6 +48,35 @@ Walked in headless Chrome (a private Playwright install; the shared browser stay
 - **A reload** kept the page and its selection. It first kept the server's "from your services" document title under the environment's heading; the page now re-runs its title loader in the browser when the two differ, and a reload reads the environment in both.
 - **A direct load** in a fresh tab went to `/`. The Blueprints list's header reads New Blueprint Instance only.
 - **Pending against ready:** with `GenerateBlueprint` held, the page's generating state and its server-rendered pending frame (scripts blocked on a reload) had equal boxes for every step, step title and the Helpful Resources card at 1440 and at 390; only the title's width differed at 1440, because the server cannot see the environment the page came from (the generic title at 390 wraps to the same two lines).
+
+## Production walk (2026-11-27, t005 step 2)
+
+Pin `546d61ac7343` (`d465649ee4`, carries `2902ee1877`): the `dashboard` pod ran `bex-dashboard@sha256:28dafd897168…` and both `bex-api` pods `bex-operator@sha256:91cf7828761c…`, the pin's digests, read through the admin kubeconfig before the walk. Walked 18:49–19:04Z as the QA user (`scripts/qa-login.sh`) in `bex-canary` (`tea-daif693dqjvc73e7as3g`) with a run-minted API key, in a headless Chrome for Testing of its own through `playwright-core`, `en-US`, at 1440×900 and 390×900. The walk scripts stayed in `/tmp` and are not committed.
+
+Created through REST for the walk: the project `qa-20261127-m681` (disposable, `prj-dc4t1d8jnsts73b033g0`) with one environment, Production, holding the web service `qa-20261127-m681-web` (`traefik/whoami`, free), the Postgres `qa-20261127-m681-db` (Basic 256MB, as `bex-canary`'s free Postgres slot is taken) and the Key Value `qa-20261127-m681-kv` (Starter); and the ungrouped web service `qa-20261127-m681-solo` (disposable), because the Overview's table and its selection bar hold ungrouped resources only. No Blueprint and no GitHub read were needed.
+
+Every point held at both widths, and each width downloaded the same bytes:
+
+| Point (DoD) | Production | Verdict |
+| --- | --- | --- |
+| The Overview's selection bar (1, 2) | Selecting `qa-20261127-m681-solo` read Selected: 1 with the environment picker, Move, Generate Blueprint and Suspend. Generate Blueprint opened `/blueprint/generate`: "Create a new Blueprint from your services" as heading and document title, "Includes 1 service: **qa-20261127-m681-solo**", the YAML, the three steps with Render's words, the commit snippet and Helpful Resources (Learn about Blueprints, bex's Blueprint docs); the breadcrumb Blueprints › Create Blueprint with Blueprints highlighted at 1440, Create Blueprint in the topbar at 390 | holds |
+| Download and Copy (2) | Download render.yaml saved `render.yaml`; Copy put the same bytes on the clipboard, read Copied!, then Copy again after 2 seconds. Connect a new Blueprint links `/blueprint/new` with `target=_blank` | holds |
+| A reload (2) | Kept the page, its title and its selection, from the selection bar and from the environment's menu | holds |
+| Row menus (1) | The Overview's web service: Suspend, Restart, Move to project, Generate Blueprint. The environment's Postgres and Key Value: Delete, Move to project, Generate Blueprint. Each opened the page for that one resource ("Includes 1 service: **qa-20261127-m681-db**", and the same for the Key Value) | holds |
+| The environment's ••• menu (1, 2) | Generate Blueprint, then All settings. The page read "Create a new Blueprint from qa-20261127-m681 / Production" as heading and document title, and "Includes 3 services: **qa-20261127-m681-web**, **qa-20261127-m681-db**, and **qa-20261127-m681-kv**" | holds |
+| The environment's selection bar (1) | Selecting all three gave the same file as the environment's menu, under the "from your services" title | holds |
+| `POST /v1/blueprints/validate` (5) | All six downloads (the solo service from the bar and from its row, the environment from its menu and from its bar, the Postgres and the Key Value from their rows) at each width answered `valid: true`, each resource a `noop` against the resource it came from (the env var `WHOAMI_PORT_NUMBER` exported as `sync: false`) | holds |
+| A direct load (2) | `/blueprint/generate` in a fresh tab went to `/` | holds |
+| The Blueprints list (3) | Its header reads Blueprints and New Blueprint Instance; no Generate Blueprint button | holds |
+| Pending against ready (4) | With `GenerateBlueprint` held, the generating state and the server-rendered pending frame (scripts blocked on a reload) had equal boxes for every step, step title and Helpful Resources at 1440 and at 390; only the title's width differed at 1440 (363 against 532 px), as locally, because the server cannot see the environment the page came from | holds |
+
+A Blueprint's Resources page (DoD 1) was walked on the same pin by w3/m680: its selection bar and every row menu offer Generate Blueprint. The disabled state for a role that cannot create a Blueprint was not walked, as the QA user holds no lesser role in a workspace; the dashboard tests pin it (t008). The YAML wraps its long lines at 390, as Render's `wrapLines` snippet does; its line numbers and expand view are w3/145.
+
+**Cleanup.** The four resources and the project were deleted through REST (204, then 404); `bex-canary` holds none of the walk's resources. The run key was revoked and the QA session logged out (`qa-login.sh --logout`).
+
+## Unblock record
+
+- **2026-11-27, `/loopx w3` (verified evidence, no user decision):** the gate, pin must carry `2902ee1877`, holds. The newest pin on `origin/main` is `d465649ee4` `chore(deploy): pin platform images to 546d61ac7343`, `git merge-base --is-ancestor 2902ee1877 546d61ac7343` exits 0, and production's `dashboard` and `bex-api` run that pin's digests. t005 step 2 walked it (§ Production walk) and t009 closed the milestone.
 
 ## Decisions (2026-11-27)
 
