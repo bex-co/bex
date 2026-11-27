@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -11,6 +11,7 @@ import {
 import { DeployRollback } from "../deploy-rollback";
 import { RollbackComparisonBody } from "../rollback-comparison";
 import { DeployRollbackSectionSkeleton } from "../deploy-page-skeletons";
+import { DeployRollbackSkeleton } from "@/common/components/route-skeletons";
 import { toResourceSnapshot } from "@/features/capabilities/lib/resource-actions";
 import { ServiceBaseProvider } from "@/features/services/lib/service-base";
 import { codedGraphQLError } from "@/test/mocks/apollo";
@@ -26,7 +27,7 @@ let comparisonResult: {
   error?: Error;
   data?: RollbackComparisonQuery;
 } = { loading: true };
-const comparisonOptions: Array<{ skip?: boolean }> = [];
+const comparisonOptions: Array<{ skip?: boolean; fetchPolicy?: string }> = [];
 
 vi.mock("@apollo/client/react", () => ({
   useMutation: vi.fn(
@@ -38,11 +39,28 @@ vi.mock("@apollo/client/react", () => ({
       return [rollbackService, { loading: false }];
     },
   ),
-  useQuery: vi.fn((_doc: unknown, options: { skip?: boolean }) => {
-    comparisonOptions.push(options);
-    return options.skip ? { loading: false } : comparisonResult;
-  }),
+  useQuery: vi.fn(
+    (_doc: unknown, options: { skip?: boolean; fetchPolicy?: string }) => {
+      comparisonOptions.push(options);
+      return options.skip ? { loading: false } : comparisonResult;
+    },
+  ),
   useApolloClient: () => ({ query: apolloQuery }),
+}));
+
+// The cached service the route's pending frame reads (DeployRollbackSkeleton).
+const cachedService = { autoDeploy: null as boolean | null };
+const serverReads: string[] = [];
+vi.mock("@/features/services/hooks/use-server", () => ({
+  useServer: (id: string) => {
+    serverReads.push(id);
+    return {
+      service: { id, autoDeploy: cachedService.autoDeploy },
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    };
+  },
 }));
 
 const toastError = vi.fn();
@@ -482,6 +500,9 @@ describe("DeployRollback", () => {
       within(section).getByRole("heading", { name: "Start Command" }),
     ).toBeInTheDocument();
     expect(comparisonOptions.at(-1)?.skip).toBe(false);
+    // The route loader read it (prefetchRollbackPage, w1/m660): the page
+    // draws that answer on its first render instead of asking again.
+    expect(comparisonOptions.at(-1)?.fetchPolicy).toBe("cache-first");
   });
 
   it("rolls back and opens the new deploy", async () => {
@@ -766,4 +787,103 @@ describe("DeployRollbackSectionSkeleton", () => {
       expect(boxes[i]).toHaveClass("max-lg:h-11", "pointer-coarse:h-11");
     });
   });
+
+  // w1/m660: on production a static site's ready section always showed its
+  // redirects notice, which the skeleton did not reserve, so the buttons
+  // dropped 65 px at 1440 and 88 px at 390 when the page landed. The
+  // skeleton reserves each notice the ready section shows, in its own box
+  // and copy.
+  it("reserves the notices the ready section shows, in their own copy", async () => {
+    renderPage({ autoDeployOn: true }, "/static");
+    const section = await screen.findByRole("region", {
+      name: "Confirm Rollback",
+    });
+    const readyNotes = within(section).getAllByRole("note");
+    expect(readyNotes).toHaveLength(2);
+
+    const { container } = render(
+      <DeployRollbackSectionSkeleton staticSite autoDeployOn />,
+    );
+    const notes = [...container.querySelectorAll('[data-slot="alert"]')];
+    const parts = (el: Element) =>
+      [...el.children].map(
+        (child) => child.getAttribute("data-slot") ?? child.tagName,
+      );
+    const copy = (el: Element) =>
+      [...el.querySelectorAll("span.invisible")]
+        .map((span) => span.textContent)
+        .join("");
+
+    expect(notes.map(parts)).toEqual(readyNotes.map(parts));
+    expect(notes.map(copy)).toEqual(readyNotes.map((n) => n.textContent));
+    // Between the comparison card and the buttons, as on the ready page.
+    const region = container.querySelector(
+      '[data-skeleton-region="rollback-notices"]',
+    )!;
+    expect(region.previousElementSibling).toHaveClass("rounded-md");
+    expect(region.nextElementSibling).toHaveClass("flex-wrap");
+    expect(region).toHaveClass("space-y-2");
+  });
+
+  it("reserves no notice where the ready section shows none", async () => {
+    renderPage({ autoDeployOn: false });
+    const section = await screen.findByRole("region", {
+      name: "Confirm Rollback",
+    });
+    expect(within(section).queryAllByRole("note")).toEqual([]);
+
+    const { container } = render(<DeployRollbackSectionSkeleton />);
+    expect(container.querySelector('[data-slot="alert"]')).toBeNull();
+    expect(
+      container.querySelector('[data-skeleton-region="rollback-notices"]'),
+    ).toBeNull();
+  });
+});
+
+describe("DeployRollbackSkeleton", () => {
+  function renderPending(base: "/services" | "/static") {
+    const root = createRootRoute();
+    const page = createRoute({
+      getParentRoute: () => root,
+      path: `${base}/$serviceId/deploys/$deployId/rollback`,
+      component: () => (
+        <ServiceBaseProvider value={base}>
+          <DeployRollbackSkeleton />
+        </ServiceBaseProvider>
+      ),
+    });
+    const router = createRouter({
+      routeTree: root.addChildren([page]),
+      history: createMemoryHistory({
+        initialEntries: [`${base}/srv-1/deploys/dep-1/rollback`],
+      }),
+      context: { client: {} as never, session: null },
+    });
+    return render(<RouterProvider router={router} />);
+  }
+
+  it.each([
+    ["/static" as const, false, 1],
+    ["/static" as const, true, 2],
+    ["/services" as const, true, 1],
+    ["/services" as const, false, 0],
+  ])(
+    "on %s with auto-deploy %s reserves %i notices",
+    async (base, autoDeploy, count) => {
+      cachedService.autoDeploy = autoDeploy;
+      serverReads.length = 0;
+      const { container } = renderPending(base);
+      await waitFor(() =>
+        expect(
+          container.querySelector('[data-route-skeleton="deploy-rollback"]'),
+        ).not.toBeNull(),
+      );
+      expect(
+        container.querySelectorAll(
+          '[data-skeleton-region="deploy-rollback"] [data-slot="alert"]',
+        ),
+      ).toHaveLength(count);
+      expect(serverReads).toContain("srv-1");
+    },
+  );
 });

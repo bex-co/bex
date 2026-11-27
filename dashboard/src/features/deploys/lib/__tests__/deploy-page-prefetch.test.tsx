@@ -16,7 +16,11 @@ import type { DeployView } from "@/features/deploys/hooks/use-deploy";
 import { DeployNotices } from "@/features/deploys/components/deploy-notices";
 import { ServiceBaseProvider } from "@/features/services/lib/service-base";
 import type { ServiceView } from "@/features/services/types";
-import { prefetchDeployPage } from "../deploy-page-prefetch";
+import { RollbackComparisonDocument } from "@/graphql/definitions";
+import {
+  prefetchDeployPage,
+  prefetchRollbackPage,
+} from "../deploy-page-prefetch";
 import { Route as ServiceDeployRoute } from "@/routes/services.$serviceId.deploys.$deployId";
 import { Route as StaticDeployRoute } from "@/routes/static.$serviceId.deploys.$deployId";
 import { Route as ServiceRollbackRoute } from "@/routes/services.$serviceId.deploys.$deployId_.rollback";
@@ -305,6 +309,88 @@ describe("prefetchDeployPage", () => {
   });
 });
 
+const COMPARISON: Answers = {
+  rollbackComparison: {},
+  "rollbackComparison.__typename": "RollbackComparison",
+  "rollbackComparison.currentPlanLower": false,
+  "rollbackComparison.currentLiveDeploy": {},
+  "rollbackComparison.currentLiveDeploy.__typename": "RollbackComparisonDeploy",
+  "rollbackComparison.currentLiveDeploy.id": "dep-3",
+  "rollbackComparison.deploy": {},
+  "rollbackComparison.deploy.__typename": "RollbackComparisonDeploy",
+  "rollbackComparison.deploy.id": "dep-2",
+};
+
+// The Confirm Rollback page's own read (deploy-rollback.tsx).
+const pageReadsComparison = (client: ApolloClient) =>
+  client.query({
+    query: RollbackComparisonDocument,
+    variables: { serviceId: "srv-1", deployId: "dep-2" },
+    fetchPolicy: "cache-first",
+  });
+
+// w1/m660: the Confirm Rollback page mounted over the comparison's spinner
+// frame and then grew by the changes when they landed, 211 px at 1440 and
+// 475 px at 390 on production. Its route loader now reads the comparison
+// too, so the page draws it on its first render.
+describe("prefetchRollbackPage", () => {
+  it("reads the comparison beside the deploy, so the page draws it without asking again", async () => {
+    const api = bexApi({
+      Deploy: deployAnswer({ status: "deactivated" }),
+      Server: SERVER,
+      RollbackComparison: COMPARISON,
+    });
+    await prefetchRollbackPage(api.client, "srv-1", "dep-2");
+    expect(api.names().sort()).toEqual([
+      "Deploy",
+      "RollbackComparison",
+      "Server",
+    ]);
+    expect(
+      api.asked.find((r) => r.name === "RollbackComparison")?.variables,
+    ).toEqual({ serviceId: "srv-1", deployId: "dep-2" });
+
+    const { data } = await pageReadsComparison(api.client);
+    expect(data?.rollbackComparison?.currentLiveDeploy?.id).toBe("dep-3");
+    expect(api.names().filter((n) => n === "RollbackComparison")).toHaveLength(
+      1,
+    );
+  });
+
+  it("compares against what is live now on every entry, and only a retained match answers from the cache", async () => {
+    const api = bexApi({
+      Deploy: deployAnswer({ status: "deactivated" }),
+      Server: SERVER,
+      RollbackComparison: COMPARISON,
+    });
+    await prefetchRollbackPage(api.client, "srv-1", "dep-2", "preload");
+    await prefetchRollbackPage(api.client, "srv-1", "dep-2", "enter");
+    expect(api.names().filter((n) => n === "RollbackComparison")).toHaveLength(
+      2,
+    );
+    await prefetchRollbackPage(api.client, "srv-1", "dep-2", "stay");
+    expect(api.names().filter((n) => n === "RollbackComparison")).toHaveLength(
+      2,
+    );
+  });
+
+  it("never blocks a navigation on a failed comparison", async () => {
+    const api = bexApi({
+      Deploy: deployAnswer({ status: "deactivated" }),
+      Server: SERVER,
+      RollbackComparison: "fail",
+    });
+    await expect(
+      prefetchRollbackPage(api.client, "srv-1", "dep-2"),
+    ).resolves.toBeUndefined();
+    // The page's own read then goes to bex-api behind its spinner frame.
+    await expect(pageReadsComparison(api.client)).rejects.toThrow();
+    expect(api.names().filter((n) => n === "RollbackComparison")).toHaveLength(
+      2,
+    );
+  });
+});
+
 describe("the deploy page's routes", () => {
   it.each([
     ["/services/…/deploys/$deployId", ServiceDeployRoute],
@@ -330,5 +416,31 @@ describe("the deploy page's routes", () => {
       serviceId: "srv-1",
       deployId: "dep-2",
     });
+  });
+});
+
+describe("the Confirm Rollback page's routes", () => {
+  it.each([
+    ["/services/…/deploys/$deployId/rollback", ServiceRollbackRoute],
+    ["/static/…/deploys/$deployId/rollback", StaticRollbackRoute],
+  ])("%s reads the comparison before the page mounts", async (_, route) => {
+    const api = bexApi({
+      Deploy: deployAnswer({ status: "deactivated" }),
+      Server: SERVER,
+      RollbackComparison: COMPARISON,
+    });
+    const loader = route.options.loader as unknown as (ctx: {
+      context: Pick<RouterContext, "client">;
+      params: { serviceId: string; deployId: string };
+      cause: "preload" | "enter" | "stay";
+    }) => Promise<void>;
+    await loader({
+      context: { client: api.client },
+      params: { serviceId: "srv-1", deployId: "dep-2" },
+      cause: "enter",
+    });
+    expect(
+      api.asked.find((r) => r.name === "RollbackComparison")?.variables,
+    ).toEqual({ serviceId: "srv-1", deployId: "dep-2" });
   });
 });

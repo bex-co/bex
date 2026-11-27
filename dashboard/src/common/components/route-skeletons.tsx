@@ -12,7 +12,7 @@ import {
   TableCell,
   TableRow,
 } from "@/common/components/ui/table";
-import { useRouterState } from "@tanstack/react-router";
+import { useParams, useRouterState } from "@tanstack/react-router";
 import { Bell, Pencil, Plus, Settings2, Webhook } from "lucide-react";
 import { PushNotificationEvent } from "@/graphql/definitions";
 import {
@@ -207,6 +207,8 @@ import {
   planSleeps,
 } from "@/features/services/lib/idle-timeout";
 import { isNativeRuntime } from "@/features/services/lib/runtime";
+import { useServiceBase } from "@/features/services/lib/service-base";
+import { useServer } from "@/features/services/hooks/use-server";
 import {
   deriveServiceType,
   isCronType,
@@ -2589,8 +2591,16 @@ export function DeployDetailSkeleton() {
 }
 
 /** A deploy's Confirm Rollback page (w1/m646): the deploy header, then the
- *  rollback section in place of the log and timeline. */
+ *  rollback section in place of the log and timeline, with the notices the
+ *  ready section shows for this service: a static site's, and the
+ *  Auto-Deploy warning when the cached service has auto-deploy on (w1/m660). */
 export function DeployRollbackSkeleton() {
+  const base = useServiceBase();
+  const { serviceId = "" } = useParams({ strict: false }) as {
+    serviceId?: string;
+  };
+  // The service layout's loader already read it: this is a cache read.
+  const { service } = useServer(serviceId, { poll: false });
   return (
     <PendingFrame route="deploy-rollback" className="space-y-6">
       <Region name="deploy-header" className={DEPLOY_PAGE_TOP_CLASS}>
@@ -2598,7 +2608,10 @@ export function DeployRollbackSkeleton() {
         <DeployHeaderSkeleton />
       </Region>
       <Region name="deploy-rollback">
-        <DeployRollbackSectionSkeleton />
+        <DeployRollbackSectionSkeleton
+          staticSite={base === "/static"}
+          autoDeployOn={service?.autoDeploy === true}
+        />
       </Region>
     </PendingFrame>
   );

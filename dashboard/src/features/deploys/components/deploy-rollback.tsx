@@ -141,9 +141,12 @@ export function DeployRollback({
     if (rollbackable && !pending && !reason) openConfirm("rollback");
   }, [rollbackable, pending, reason, openConfirm]);
 
+  // The route loader read it fresh (prefetchRollbackPage), so the page mounts
+  // with the comparison drawn instead of growing by it (w1/m660). A miss, as
+  // when that read failed, still goes to bex-api behind the spinner frame.
   const comparison = useQuery(RollbackComparisonDocument, {
     variables: { serviceId, deployId },
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first",
     skip: !rollbackable,
   });
   const [rollbackService, { loading: rollingBack }] = useMutation(

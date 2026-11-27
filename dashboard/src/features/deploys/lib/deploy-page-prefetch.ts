@@ -1,10 +1,12 @@
 import {
   DeployDocument,
   DeploysDocument,
+  RollbackComparisonDocument,
   ServerDocument,
   WorkspaceOverlappingDeployPolicyDocument,
 } from "@/graphql/definitions";
 import { prefetchInParallel } from "@/common/lib/prefetch";
+import { titleLoaderFetchPolicy } from "@/common/lib/document-head";
 import type { RouterContext } from "@/common/types/router-context";
 import { inProgressDeploysVariables, noticeReads } from "./deploy-notices";
 
@@ -75,4 +77,31 @@ export async function prefetchDeployPage(
     );
   }
   await prefetchInParallel(thunks);
+}
+
+/**
+ * Warms a deploy's Confirm Rollback page (w1/m660): the deploy page's reads,
+ * and beside them the rollback comparison, which the page then reads from the
+ * cache. The page mounts with its comparison drawn, rather than over the
+ * comparison's spinner frame that then grows by the changes the rollback
+ * reverts. The comparison is read fresh on entering or hovering the route,
+ * since it compares against whatever is live now; a retained match answers
+ * from the cache. Best effort, like the deploy page's reads.
+ */
+export async function prefetchRollbackPage(
+  client: RouterContext["client"],
+  serviceId: string,
+  deployId: string,
+  cause: "preload" | "enter" | "stay" = "enter",
+): Promise<void> {
+  await prefetchInParallel([
+    () => prefetchDeployPage(client, serviceId, deployId),
+    () =>
+      client.query({
+        query: RollbackComparisonDocument,
+        variables: { serviceId, deployId },
+        fetchPolicy: titleLoaderFetchPolicy(cause),
+        errorPolicy: "all",
+      }),
+  ]);
 }

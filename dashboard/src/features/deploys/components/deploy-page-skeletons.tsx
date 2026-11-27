@@ -1,10 +1,20 @@
+import { Info, TriangleAlert } from "lucide-react";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/common/components/ui/alert";
 import {
   ReservedButton,
   ReservedText,
 } from "@/common/components/reserved-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils";
+import {
+  PLACEHOLDER_SENTINEL,
+  aroundPlaceholder,
+} from "@/common/lib/i18n-placeholder";
 import {
   DEPLOY_FACT_CLASS,
   DEPLOY_FACT_ICON_CLASS,
@@ -155,14 +165,27 @@ const ROLLBACK_BUTTON = "max-lg:h-11 pointer-coarse:h-11";
 
 /**
  * The Confirm Rollback section while the page loads (w1/m646): the block's
- * title and lead over the comparison's 9.25rem frame, then the two buttons
- * and the gate status line, at the ready section's spacing. The title, lead
- * and buttons are the ready page's own copy laid out invisibly, so the lead
- * wraps onto a second line on a phone exactly where the ready one does. The
- * notices depend on the service, so none is reserved.
+ * title and lead over the comparison's 9.25rem frame, then the notices, the
+ * two buttons and the gate status line, at the ready section's spacing. The
+ * title, lead, notices and buttons are the ready page's own copy laid out
+ * invisibly, so the lead wraps onto a second line on a phone exactly where
+ * the ready one does. The notices are the ones the ready section will show:
+ * a static site's always (its redirects, rewrites and headers stay), and the
+ * Auto-Deploy warning when the cached service has auto-deploy on, so the
+ * buttons land where the ready ones do (w1/m660). The comparison's rows are
+ * the deploy's own, so the frame reserves the empty comparison's height.
  */
-export function DeployRollbackSectionSkeleton() {
+export function DeployRollbackSectionSkeleton({
+  staticSite = false,
+  autoDeployOn = false,
+}: {
+  staticSite?: boolean;
+  autoDeployOn?: boolean;
+} = {}) {
   const { t } = useTranslations();
+  const [noticeBefore, noticeAfter] = aroundPlaceholder(
+    t("deploys.rollbackStaticNotice", { what: PLACEHOLDER_SENTINEL }),
+  );
   return (
     <div className="space-y-4">
       <div className="rounded-md border bg-card">
@@ -181,6 +204,43 @@ export function DeployRollbackSectionSkeleton() {
         </div>
         <div className="min-h-[9.25rem]" />
       </div>
+      {staticSite || autoDeployOn ? (
+        <div className="space-y-2" data-skeleton-region="rollback-notices">
+          {staticSite ? (
+            <Alert role="none">
+              <Info className="invisible" />
+              <AlertDescription>
+                <p className="relative">
+                  <ReservedText>
+                    {noticeBefore}
+                    <span className="font-semibold">
+                      {t("deploys.rollbackStaticNoticeWhat")}
+                    </span>
+                    {noticeAfter}
+                  </ReservedText>
+                </p>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {autoDeployOn ? (
+            <Alert role="none">
+              <TriangleAlert className="invisible" />
+              <AlertTitle className="relative">
+                <ReservedText>
+                  {t("deploys.rollbackAutoDeployTitle")}
+                </ReservedText>
+              </AlertTitle>
+              <AlertDescription>
+                <p className="relative">
+                  <ReservedText>
+                    {t("deploys.rollbackAutoDeployBody")}
+                  </ReservedText>
+                </p>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <ReservedButton variant="default" className={ROLLBACK_BUTTON}>
           {t("deploys.rollbackConfirm")}
