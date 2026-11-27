@@ -86,6 +86,36 @@ jobs:
       - name: Every Render dashboard operation and flag gate has a disposition
         run: scripts/render-dashboard-ops.sh
 
+  # Render's docs pages (w4/m688). Render states its limits, defaults and
+  # behaviours on its docs pages and rewrites them without a changelog entry,
+  # so every page llms.txt lists needs a row in
+  # docs/render-artifacts/docs-pages.md with the hash of the text it was read
+  # at. Fails on a new, gone or rewritten page, naming its row's pointer. The
+  # cache keeps each page's text under its hash (never in git), so a rewritten
+  # page's failure quotes the paragraphs that changed since its row was read; a
+  # green run saves the cache, so it always holds the rows' versions.
+  render-docs:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/render-docs
+          key: render-docs-${{ github.run_id }}
+          restore-keys: render-docs-
+      - name: Every Render docs page has a row, and none changed since it was read
+        env:
+          RENDER_DOCS_CACHE: ${{ runner.temp }}/render-docs
+        run: scripts/render-docs-drift.sh
+
   # render-oss/skills (w4/m630). `bex skills install` ships a pack derived
   # from it at packgen.UpstreamCommit, and nothing watched it: the pin fell
   # behind Render's Blueprint plan-and-approve rewrite of the deploy skill.

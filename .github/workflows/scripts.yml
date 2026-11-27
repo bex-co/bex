@@ -362,6 +362,12 @@ jobs:
       # committed ledger is well formed.
       - name: Render dashboard operations ledger unit tests
         run: bash scripts/render-dashboard-ops.test.sh
+      # w4/m688: a new, gone, rewritten or unreadable docs page fails naming its
+      # row's pointer, a banner, image or whitespace re-render passes, the cache
+      # quotes a rewritten page's changed paragraphs; the committed ledger is
+      # well formed.
+      - name: Render docs pages ledger unit tests
+        run: bash scripts/render-docs-drift.test.sh
       # w3/m637: Render's real version pages match bex's dated defaults; a moved
       # current default, a new or back-dated row, a removed or eighth page and
       # markup the parser does not read all fail by name. The comparison is the
@@ -414,6 +420,7 @@ jobs:
           scripts/render-schema-drift.sh scripts/render-schema-drift.test.sh
           scripts/render-changelog-drift.sh scripts/render-changelog-drift.test.sh
           scripts/render-dashboard-ops.sh scripts/render-dashboard-ops.test.sh
+          scripts/render-docs-drift.sh scripts/render-docs-drift.test.sh
           scripts/render-version-drift.sh scripts/render-version-drift.test.sh
           scripts/render-skills-drift.sh scripts/render-skills-drift.test.sh
           scripts/render-examples-corpus.sh scripts/render-examples-corpus.test.sh
