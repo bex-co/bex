@@ -206,6 +206,10 @@ func TestReadReplicaSourceSettles(t *testing.T) {
 		{"major unknown", 1, 0, "Cluster in healthy state", "", false, false},
 		{"upgrade running", 1, 17, "Upgrading Postgres major version", "18", false, false},
 		{"upgrade accepted, not started", 1, 17, "Cluster in healthy state", "18", false, false},
+		// pg_upgrade succeeded and the primary already carries the target's
+		// settings (pendingUpgradeSource), but its instance is not up yet.
+		{"upgraded, target instance starting", 0, 18, "Waiting for the instances to become active", "18", false, false},
+		{"upgraded, target instance ready", 1, 18, "Waiting for the instances to become active", "18", false, true},
 		{"suspended", 1, 18, "Cluster in healthy state", "18", true, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
