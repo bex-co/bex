@@ -625,6 +625,12 @@ const ruDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_rate_limited, w4/m669): Render's Rate limited (429 error) cause with its three remedies; params are the sentence's values",
   },
+  "deploys.reason.image_too_large": {
+    message:
+      "образ {image} занимает {size} ГБ в сжатом виде, что превышает лимит 10 ГБ на сжатый размер образа. Уменьшите размер образа, например с помощью многоэтапной сборки или меньшего базового образа, и выполните деплой снова",
+    description:
+      "A deploy failure reason by its code (bex-api DeployReason image_too_large, w4/734): a prebuilt image over Render's 10 GB compressed-size limit, refused before any pull; {size} is its compressed size in decimal GB, a number such as 10.40; params are the sentence's values",
+  },
   "deploys.reason.image_unavailable_serving": {
     message:
       "{cause}. Работающие инстансы не затронуты, но любое действие, которое заново загружает образ, например перезапуск или масштабирование, завершится ошибкой, пока образ снова не станет доступен",

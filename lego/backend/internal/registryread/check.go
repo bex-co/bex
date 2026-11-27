@@ -33,6 +33,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 
 	"github.com/bex-co/bex/lego/types/netutil"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // The image check before a service is created (w1/m673): Render's
@@ -92,11 +93,6 @@ func ParsePlatform(value string) (v1.Platform, error) {
 	return v1.Platform{}, fmt.Errorf("image platform %q is not linux/amd64 or linux/arm64", value)
 }
 
-// MaxImageBytes is Render's limit on an image's compressed size ("The Docker
-// image's compressed size cannot exceed 10 GB."), the sum of the platform
-// manifest's layer sizes.
-const MaxImageBytes int64 = 10_000_000_000
-
 const (
 	defaultTimeout      = 10 * time.Second
 	defaultPerWorkspace = 3
@@ -111,7 +107,8 @@ type Checker struct {
 	// Platform is the hosting node pool's (BEX_IMAGE_PLATFORM); zero is
 	// DefaultPlatform.
 	Platform v1.Platform
-	// MaxBytes is the compressed-size limit; 0 is MaxImageBytes.
+	// MaxBytes is the compressed-size limit; 0 is Render's 10 GB
+	// (appv1alpha1.MaxImageCompressedBytes), as the deploy applies it.
 	MaxBytes int64
 	// Timeout bounds the whole read; 0 is 10 s.
 	Timeout time.Duration
@@ -240,7 +237,7 @@ func (c *Checker) Check(ctx context.Context, ref string, cred *Credential) Verdi
 	}
 	limit := c.MaxBytes
 	if limit <= 0 {
-		limit = MaxImageBytes
+		limit = appv1alpha1.MaxImageCompressedBytes
 	}
 	if size > limit {
 		return Refused(FailureImageTooLarge,

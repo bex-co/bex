@@ -56,6 +56,10 @@ const (
 	// a network error stopped.
 	DeployReasonImageRegistryRateLimited = "image_registry_rate_limited"
 	DeployReasonImageRegistryUnavailable = "image_registry_unavailable"
+	// w4/734: a prebuilt image whose compressed layers total more than
+	// MaxImageCompressedBytes, refused before any node pulls it. {size} is
+	// its compressed size in decimal GB, rounded up to the hundredth.
+	DeployReasonImageTooLarge = "image_too_large"
 	// w4/m671: the image a running service runs is no longer served (its
 	// ConditionImageAvailable turned False). {cause} is one of the image
 	// reasons above, worded as a part of its own; the sentence says what
@@ -243,6 +247,7 @@ var deployReasonTemplates = map[string]string{
 	DeployReasonImageRegistryUnreachable: "the registry {host} did not answer the read of the image {image} for {minutes} minutes. " + registryUnavailableRemedy,
 	DeployReasonImageRegistryUnavailable: "the registry {host} is unavailable and could not serve the image {image}. " + registryUnavailableRemedy,
 	DeployReasonImageRegistryRateLimited: "the registry {host} rate-limited the pull of the image {image} (HTTP 429). Wait for the rate limit to reset, use a registry credential for an account with a higher rate limit, or mirror the image to another registry",
+	DeployReasonImageTooLarge:            "the image {image} is {size} GB compressed, over the 10 GB limit on an image's compressed size. Reduce the image's size, for example with a multi-stage build or a smaller base image, then deploy again",
 	DeployReasonImageUnavailableServing:  "{cause}. Running instances are unaffected, but any action that pulls the image again, such as a restart or a scale-up, will fail until the image is reachable again",
 	DeployReasonBuildTimedOut:            "the build did not finish within the build window; check the build logs",
 	DeployReasonPreDeployTimedOut:        "the pre-deploy command did not finish within its window; check the pre-deploy logs",

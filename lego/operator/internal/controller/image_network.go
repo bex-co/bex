@@ -310,6 +310,9 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 		if err != nil {
 			return "", 0, err
 		}
+		if metadata.CompressedBytes > appv1alpha1.MaxImageCompressedBytes {
+			return "", 0, newImageTooLargeError(image, metadata.CompressedBytes)
+		}
 		prefix = repoPath
 	} else {
 		return "", 0, fmt.Errorf("image port discovery requires this service's built image repository")
@@ -795,17 +798,39 @@ const (
 	imageRegistryRateLimitedMessage = "Waiting for the image registry: it rate-limited the image metadata read (HTTP 429); bex retries it automatically"
 )
 
+// imageTooLargeError refuses a prebuilt image whose compressed layers total
+// more than Render's 10 GB (appv1alpha1.MaxImageCompressedBytes, w4/734)
+// before any node pulls it. One oversized image could otherwise fill a shared
+// node's disk. A bex build's own image is not refused: the limit is Render's
+// rule for deploying an image.
+type imageTooLargeError struct{ msg string }
+
+func (e *imageTooLargeError) Error() string { return e.msg }
+
+// newImageTooLargeError names image and its compressed size in GB, rounded up
+// to the hundredth so a size just over the limit never reads as 10.00 GB.
+func newImageTooLargeError(image string, size int64) error {
+	const hundredthGB = 10_000_000
+	hundredths := (size + hundredthGB - 1) / hundredthGB
+	return &imageTooLargeError{msg: appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageTooLarge,
+		appv1alpha1.DeployReasonParam{Name: "image", Value: image},
+		appv1alpha1.DeployReasonParam{Name: "size", Value: fmt.Sprintf("%d.%02d", hundredths/100, hundredths%100)},
+	)}
+}
+
 // imageMetadataFailureReason is the reason a failed image metadata read fails
 // its deploy under. A registry refusal (missing image or tag, refused
 // credential) is what Render reports as Image Pull Failed, so it fails under
 // ReasonImagePullFailed and bex-api emits image_pull_failed for it (w2/072),
 // as does a registry that never answered within the deploy's rollout budget
-// (registryUnreachableError, w4/692); any other failure stays
+// (registryUnreachableError, w4/692) and an image over the size limit
+// (imageTooLargeError, w4/734); any other failure stays
 // ImageMetadataUnavailable.
 func imageMetadataFailureReason(err error) string {
 	_, refused := errors.AsType[*registry.RefusedError](err)
 	_, unreachable := errors.AsType[*unreachableRegistryError](err)
-	if refused || unreachable {
+	_, tooLarge := errors.AsType[*imageTooLargeError](err)
+	if refused || unreachable || tooLarge {
 		return appv1alpha1.ReasonImagePullFailed
 	}
 	return reasonImageMetadataUnavailable

@@ -582,6 +582,12 @@ const koDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_rate_limited, w4/m669): Render's Rate limited (429 error) cause with its three remedies; params are the sentence's values",
   },
+  "deploys.reason.image_too_large": {
+    message:
+      "{image} 이미지의 압축 크기가 {size} GB로, 이미지 압축 크기 한도인 10 GB를 초과합니다. 멀티 스테이지 빌드나 더 작은 베이스 이미지 등으로 이미지 크기를 줄인 뒤 다시 배포하세요",
+    description:
+      "A deploy failure reason by its code (bex-api DeployReason image_too_large, w4/734): a prebuilt image over Render's 10 GB compressed-size limit, refused before any pull; {size} is its compressed size in decimal GB, a number such as 10.40; params are the sentence's values",
+  },
   "deploys.reason.image_unavailable_serving": {
     message:
       "{cause}. 실행 중인 인스턴스에는 영향이 없지만, 재시작이나 스케일 업처럼 이미지를 다시 pull하는 작업은 이미지에 다시 접근할 수 있을 때까지 실패합니다",

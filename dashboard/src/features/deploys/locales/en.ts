@@ -597,6 +597,12 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_rate_limited, w4/m669): Render's Rate limited (429 error) cause with its three remedies; params are the sentence's values",
   },
+  "deploys.reason.image_too_large": {
+    message:
+      "the image {image} is {size} GB compressed, over the 10 GB limit on an image's compressed size. Reduce the image's size, for example with a multi-stage build or a smaller base image, then deploy again",
+    description:
+      "A deploy failure reason by its code (bex-api DeployReason image_too_large, w4/734): a prebuilt image over Render's 10 GB compressed-size limit, refused before any pull; {size} is its compressed size in decimal GB, a number such as 10.40; params are the sentence's values",
+  },
   "deploys.reason.image_unavailable_serving": {
     message:
       "{cause}. Running instances are unaffected, but any action that pulls the image again, such as a restart or a scale-up, will fail until the image is reachable again",

@@ -572,6 +572,12 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_rate_limited, w4/m669): Render's Rate limited (429 error) cause with its three remedies; params are the sentence's values",
   },
+  "deploys.reason.image_too_large": {
+    message:
+      "镜像 {image} 压缩后大小为 {size} GB，超过了镜像压缩大小 10 GB 的上限。请减小镜像大小（例如使用多阶段构建或更小的基础镜像），然后重新部署",
+    description:
+      "A deploy failure reason by its code (bex-api DeployReason image_too_large, w4/734): a prebuilt image over Render's 10 GB compressed-size limit, refused before any pull; {size} is its compressed size in decimal GB, a number such as 10.40; params are the sentence's values",
+  },
   "deploys.reason.image_unavailable_serving": {
     message:
       "{cause}。正在运行的实例不受影响，但任何需要重新拉取镜像的操作（例如重启或扩容）都会失败，直到镜像再次可访问",

@@ -584,6 +584,12 @@ const jaDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason image_registry_rate_limited, w4/m669): Render's Rate limited (429 error) cause with its three remedies; params are the sentence's values",
   },
+  "deploys.reason.image_too_large": {
+    message:
+      "イメージ {image} の圧縮後のサイズは {size} GB で、イメージの圧縮サイズの上限 10 GB を超えています。マルチステージビルドやより小さなベースイメージを使うなどしてイメージのサイズを減らし、もう一度デプロイしてください",
+    description:
+      "A deploy failure reason by its code (bex-api DeployReason image_too_large, w4/734): a prebuilt image over Render's 10 GB compressed-size limit, refused before any pull; {size} is its compressed size in decimal GB, a number such as 10.40; params are the sentence's values",
+  },
   "deploys.reason.image_unavailable_serving": {
     message:
       "{cause}。実行中のインスタンスには影響しませんが、再起動やスケールアップなどイメージを再度 pull する操作は、イメージに再びアクセスできるようになるまで失敗します",

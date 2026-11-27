@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -144,6 +145,26 @@ func TestImageRefusalNamesTheImageAndTheFix(t *testing.T) {
 	}
 }
 
+// w4/734: the refusal names the image's compressed size in GB rounded up to
+// the hundredth, so a size just over the limit never reads as the limit, and
+// bex-api parses it back as image_too_large with both values.
+func TestImageTooLargeNamesItsSizeRoundedUp(t *testing.T) {
+	for size, want := range map[int64]string{
+		10_000_000_001: "10.01",
+		10_010_000_000: "10.01",
+		10_010_000_001: "10.02",
+		12_345_678_901: "12.35",
+		99_999_999_999: "100.00",
+	} {
+		msg := newImageTooLargeError("ghcr.io/acme/web:v1", size).Error()
+		code, params, ok := appv1alpha1.ParseDeployReason(msg)
+		wantParams := []appv1alpha1.DeployReasonParam{{Name: "image", Value: "ghcr.io/acme/web:v1"}, {Name: "size", Value: want}}
+		if !ok || code != appv1alpha1.DeployReasonImageTooLarge || !reflect.DeepEqual(params, wantParams) {
+			t.Errorf("%d bytes: %q parses as %s %v (ok=%v), want size %s", size, msg, code, params, ok, want)
+		}
+	}
+}
+
 // w2/072: Render reports a missing image or tag, and a refused credential, as
 // an Image Pull Failed service event and email. The registry's refusal of the
 // image metadata read is that case caught before any pod is dispatched, so it
@@ -171,6 +192,7 @@ func TestImageRefusalFailsUnderImagePullFailed(t *testing.T) {
 		{"refused credential", fmt.Errorf("wrapped: %w", &registry.RefusedError{Status: http.StatusUnauthorized}), appv1alpha1.ReasonImagePullFailed},
 		{"forbidden", &registry.RefusedError{Status: http.StatusForbidden}, appv1alpha1.ReasonImagePullFailed},
 		{"other refusal", &registry.RefusedError{Status: http.StatusBadRequest}, appv1alpha1.ReasonImagePullFailed},
+		{"image over 10 GB (w4/734)", newImageTooLargeError("docker.io/acme/big:v1", 10_000_000_001), appv1alpha1.ReasonImagePullFailed},
 		{"unparseable image", errors.New("image port discovery cannot parse image"), "ImageMetadataUnavailable"},
 	} {
 		if got := imageMetadataFailureReason(tc.err); got != tc.want {

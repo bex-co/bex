@@ -69,10 +69,23 @@ func newMovableTagRegistry() *movableTagRegistry {
 }
 
 // push points tag at a new manifest for build and returns its digest.
-func (m *movableTagRegistry) push(tag, build string) string {
+func (m *movableTagRegistry) push(tag, build string) string { return m.pushSized(tag, build) }
+
+// pushSized is push for a manifest whose layers have the compressed sizes
+// given (w4/734). No blob behind them is ever served: the metadata read never
+// fetches a layer.
+func (m *movableTagRegistry) pushSized(tag, build string, sizes ...int64) string {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	body := fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"digest":%q},"annotations":{"build":%q}}`, m.configSum, build)
+	layers := make([]string, len(sizes))
+	for i, size := range sizes {
+		layers[i] = fmt.Sprintf(`{"mediaType":"application/vnd.oci.image.layer.v1.tar+gzip","digest":"sha256:%x","size":%d}`, sha256.Sum256([]byte(build+strconv.Itoa(i))), size)
+	}
+	layerList := ""
+	if len(layers) > 0 {
+		layerList = `,"layers":[` + strings.Join(layers, ",") + `]`
+	}
+	body := fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"digest":%q}%s,"annotations":{"build":%q}}`, m.configSum, layerList, build)
 	digest := fmt.Sprintf("sha256:%x", sha256.Sum256([]byte(body)))
 	m.tags[tag], m.manifests[digest] = body, body
 	return digest

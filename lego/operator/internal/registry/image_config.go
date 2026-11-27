@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -89,6 +90,9 @@ type ImageConfig struct {
 	// TCPPorts is every usable TCP port the config declares (privateTCPPorts),
 	// ascending and not yet capped at 75.
 	TCPPorts []int32
+	// CompressedBytes is the sum of the platform manifest's compressed layer
+	// sizes: the image's size as Render's 10 GB limit counts it (w4/734).
+	CompressedBytes int64
 }
 
 // TransientError is a registry answer a later read may not repeat: a rate
@@ -184,7 +188,24 @@ func readImageConfig(ctx context.Context, httpClient *http.Client, registryHost,
 	if err != nil {
 		return ImageConfig{}, err
 	}
-	return ImageConfig{Digest: digest, PlatformDigest: platformDigest, TCPPorts: privateTCPPorts(document.Config.ExposedPorts)}, nil
+	size, err := compressedBytes(document.layers)
+	if err != nil {
+		return ImageConfig{}, err
+	}
+	return ImageConfig{Digest: digest, PlatformDigest: platformDigest, TCPPorts: privateTCPPorts(document.Config.ExposedPorts), CompressedBytes: size}, nil
+}
+
+// compressedBytes sums a manifest's compressed layer sizes, refusing the
+// negative or overflowing sizes a hostile manifest could carry.
+func compressedBytes(layers []layerDescriptor) (int64, error) {
+	var total int64
+	for _, layer := range layers {
+		if layer.Size < 0 || total > math.MaxInt64-layer.Size {
+			return 0, errors.New("image manifest layer sizes are out of range")
+		}
+		total += layer.Size
+	}
+	return total, nil
 }
 
 // RevisionLabel is the OCI annotation bex's builds stamp with the commit the

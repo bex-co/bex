@@ -37,6 +37,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/random"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 const (
@@ -319,8 +321,8 @@ func TestCheckReadsTheConfigBehindAnIndexEntry(t *testing.T) {
 
 func TestCheckSizeLimit(t *testing.T) {
 	f := newFakeRegistry(t, false)
-	f.pushSized("acme/at:1", MaxImageBytes)
-	f.pushSized("acme/over:1", MaxImageBytes+1)
+	f.pushSized("acme/at:1", appv1alpha1.MaxImageCompressedBytes)
+	f.pushSized("acme/over:1", appv1alpha1.MaxImageCompressedBytes+1)
 	f.pushSized("acme/under:1", 9_900_000_000)
 	c := f.checker()
 	ctx := context.Background()

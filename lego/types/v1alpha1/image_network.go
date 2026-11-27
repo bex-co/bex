@@ -77,6 +77,14 @@ func IsReservedImagePort(port int32) bool {
 	return slices.Contains(reservedImagePorts, port)
 }
 
+// MaxImageCompressedBytes is Render's limit on a prebuilt image's size ("The
+// Docker image's compressed size cannot exceed 10 GB",
+// render.com/docs/deploying-an-image § Image size): the sum of the hosting
+// platform manifest's compressed layer sizes, in decimal bytes. bex-api's
+// check before create (w1/m673) and the operator's refusal at deploy (w4/734)
+// both apply it.
+const MaxImageCompressedBytes int64 = 10_000_000_000
+
 // ImageNetworkStatus binds a private port set to an immutable image and release.
 type ImageNetworkStatus struct {
 	Image string `json:"image"`

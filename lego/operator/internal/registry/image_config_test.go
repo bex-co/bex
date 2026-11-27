@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -92,6 +93,68 @@ func TestReadImageConfigResolvesPlatformIndex(t *testing.T) {
 				if err != nil || result.Digest != top || result.PlatformDigest != platform || !reflect.DeepEqual(result.TCPPorts, []int32{8123, 9000, 9009}) {
 					t.Fatalf("reference=%s metadata=%+v err=%v want top=%s platform=%s", reference, result, err, top, platform)
 				}
+			}
+		})
+	}
+}
+
+// sizedManifest adds a manifest whose layers have sizes to the fixture's
+// routes, under tag and its digest, and returns the digest.
+func sizedManifest(routes map[string][]byte, tag string, sizes ...int64) string {
+	var config struct {
+		Config struct {
+			Digest string `json:"digest"`
+		} `json:"config"`
+	}
+	_ = json.Unmarshal(routes["/v2/owned/clickhouse/manifests/gen-1"], &config)
+	layers := make([]string, len(sizes))
+	for i, size := range sizes {
+		layers[i] = fmt.Sprintf(`{"mediaType":"application/vnd.oci.image.layer.v1.tar+gzip","digest":"sha256:%x","size":%d}`, sha256.Sum256([]byte(strconv.Itoa(i))), size)
+	}
+	manifest := []byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"digest":%q},"layers":[%s]}`,
+		config.Config.Digest, strings.Join(layers, ",")))
+	digest := fmt.Sprintf("sha256:%x", sha256.Sum256(manifest))
+	routes["/v2/owned/clickhouse/manifests/"+tag] = manifest
+	routes["/v2/owned/clickhouse/manifests/"+digest] = manifest
+	return digest
+}
+
+// w4/734: the read sums the platform manifest's compressed layer sizes, the
+// image's size as Render's 10 GB limit counts it. Through an index, the sizes
+// are the hosting platform's manifest's, never another platform's.
+func TestReadImageConfigSumsTheCompressedLayerSizes(t *testing.T) {
+	server, _, routes := imageMetadataFixture(t)
+	sizedManifest(routes, "sized", 4_000_000_000, 5_900_000_000, 123)
+	result, err := ReadImageConfig(t.Context(), server, "https://registry.test", "owned/clickhouse", "sized", "Basic fixture")
+	if err != nil || result.CompressedBytes != 9_900_000_123 {
+		t.Fatalf("metadata = %+v, err = %v; want 9900000123 compressed bytes", result, err)
+	}
+	amd64 := sizedManifest(routes, "amd64", 7)
+	arm64 := sizedManifest(routes, "arm64", 11_000_000_000)
+	index := []byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[{"digest":%q,"platform":{"os":"linux","architecture":"arm64"}},{"digest":%q,"platform":{"os":"linux","architecture":"amd64"}}]}`, arm64, amd64))
+	routes["/v2/owned/clickhouse/manifests/multi"] = index
+	result, err = ReadImageConfig(t.Context(), server, "https://registry.test", "owned/clickhouse", "multi", "Basic fixture")
+	if err != nil || result.CompressedBytes != 7 {
+		t.Fatalf("index metadata = %+v, err = %v; want the amd64 manifest's 7 bytes", result, err)
+	}
+	result, err = ReadImageConfig(t.Context(), server, "https://registry.test", "owned/clickhouse", "gen-1", "Basic fixture")
+	if err != nil || result.CompressedBytes != 0 {
+		t.Fatalf("a manifest with no layers = %+v, err = %v", result, err)
+	}
+}
+
+// A hostile manifest's negative or overflowing layer sizes fail the read
+// rather than summing under the limit.
+func TestReadImageConfigRefusesOutOfRangeLayerSizes(t *testing.T) {
+	for name, sizes := range map[string][]int64{
+		"negative": {11_000_000_000, -2_000_000_000},
+		"overflow": {math.MaxInt64, 1},
+	} {
+		t.Run(name, func(t *testing.T) {
+			server, _, routes := imageMetadataFixture(t)
+			sizedManifest(routes, "hostile", sizes...)
+			if result, err := ReadImageConfig(t.Context(), server, "https://registry.test", "owned/clickhouse", "hostile", "Basic fixture"); err == nil {
+				t.Fatalf("metadata = %+v, want an error", result)
 			}
 		})
 	}

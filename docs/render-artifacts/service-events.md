@@ -141,6 +141,8 @@ Render's Image Pull Failed details require `imageURL` and `message` (`render-pub
 | Registry unavailable | `image_registry_unavailable` / `image_registry_unreachable` | the kubelet's pull met a 5xx or a network error; the metadata read failed for the whole 15-minute registry wait |
 | Rate limited (`429` error) | `image_registry_rate_limited` | the kubelet's pull or the registry wait's last read answered 429 |
 
+A prebuilt image whose compressed layers total more than 10 GB, Render's documented limit ("The Docker image's compressed size cannot exceed 10 GB"), fails at the metadata read as `image_pull_failed` with the cause `image_too_large`, naming the image and its compressed size, before any node pulls it (w4/734).
+
 A kubelet message that names no registry answer (a back-off line from a kubelet older than 1.30, an unpacking error) keeps the kubelet's text, and a fact with no stored cause answers "The image could not be pulled". Render's own event wording is not public (`w10/blocked/002`); the doc's headings and remedies are the reference. Render's webhook payload carries only `data.id`, `serviceId` and `serviceName`, so a receiver reads the cause from `GET /v1/events/{id}`, as on Render.
 
 ### A running service's image that disappears (`w4/m671`, 2026-11-26)
