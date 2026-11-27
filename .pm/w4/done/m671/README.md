@@ -1,6 +1,6 @@
 # w4 · m671 — bex checks a running image service's image and tells the workspace when it disappears, as Render does
 
-**Worker:** worker4 **Goal:** when the image a running image-backed service serves is deleted from its registry, or its credential stops working, the workspace hears about it (event, webhook, email) while the instances keep serving, before a restart, a scale-up or a rollback fails on it. **Status:** blocked (t001–t003, t005–t007 done; t004 dev-4 half done and production fixture `srv-dc4foouiskfc73d4gkfg` created; its outage reading waits for the date gate)
+**Worker:** worker4 **Goal:** when the image a running image-backed service serves is deleted from its registry, or its credential stops working, the workspace hears about it (event, webhook, email) while the instances keep serving, before a restart, a scale-up or a rollback fails on it. **Status:** done
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | [t001](done/t001.md) | Design note: what is checked, how often, and when a failure counts — **DONE** | 30m | w4/m669/t001 |
 | [t002](done/t002.md) | The operator checks each running image service's served image and records `ImageAvailable` with its cause — **DONE** | 1h45m | t001 |
 | [t003](done/t003.md) | bex-api records one `image_pull_failed` per outage with no deploy, says the instances still serve, and sends one email — **DONE** | 1h | t002 |
-| [t004](t004.md) | dev-4 and production: an image that expires from `ttl.sh` raises the event and the email, and a recovery clears it | 45m | t003 |
+| [t004](done/t004.md) | dev-4 and production: an image that expires from `ttl.sh` raises the event and the email, and a recovery clears it — **DONE** | 45m | t003 |
 | [t005](done/t005.md) | Render parity — **DONE** | 25m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005, t006 |
-| [t008](t008.md) | Closeout | 10m | t007 |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t007 |
 
 Total: **8 tasks, about 5h20m**.
 
@@ -97,3 +97,16 @@ A redundant `|| imageUnavailable` branch survived its revert and was removed. Su
 - The run's API key was revoked and its session logged out. The worker is left running on purpose for the resuming worker.
 
 **Parked again 2026-11-27: the outage half of t004 and t008.** `date gate: 2026-11-27T11:45Z` (about an hour after the latest confirmation). Then, as the QA user in bex-canary with a run-minted key: read `srv-dc4foouiskfc73d4gkfg`'s one `image_pull_failed` with no deploy (`imageURL` `ttl.sh/bex-m671-3d331967:1h`; `details.message` "the image … was not found in its registry: …" followed by "Running instances are unaffected, but any action that pulls the image again, such as a restart or a scale-up, will fail until the image is reachable again") on REST `GET /v1/services/{id}/events`, `GET /v1/events/{id}`, GraphQL (`messageTemplate.code` `image_unavailable_serving` with `image_not_found` as its part) and MCP `list_events` / `get_service_event`, and the "Image pull failed" email with its running-service lead if the QA mailbox is readable (say so if it is not). Confirm the worker still runs (deploy still `dep-dc4foouiskfc73d4gkg0` `live`, an instance listed, no new deploy), delete it (`DELETE` 204, then `GET` 404), record the walk here and close out (t008). If no event has arrived, read `ImageAvailable` and `status.imageCheck` on the App with the production kubeconfig before concluding anything.
+
+**Unblocked 2026-11-27 (verified finding).** The `date gate: 2026-11-27T11:45Z` passed (read at 12:31 UTC), and production's pin `486e3f4afbf6` (`a6f9307d74`, the newest `chore(deploy): pin platform images to` on `origin/main`, pinned 09:42 UTC) still carries `89fd36b809` (`git merge-base --is-ancestor` holds). Next: read the fixture worker's outage, delete it and close out.
+
+**Production (t004, steps 2–3), 2026-11-27, pin `486e3f4afbf6`.** As the QA user in bex-canary (`tea-daif693dqjvc73e7as3g`), with a run-minted API key scoped to that workspace:
+
+- REST `GET /v1/services/srv-dc4foouiskfc73d4gkfg/events?startTime=2026-11-27T03:00:00Z` listed three events: the first deploy's `deploy_started` and `deploy_ended` (03:43) and exactly one `image_pull_failed`, **`evt-8357gj3ih27r7mjgkbed`** at **10:09:11 UTC**, with no `deployId`, `imageURL` `ttl.sh/bex-m671-3d331967:1h` and `details.message` "the image ttl.sh/bex-m671-3d331967:1h was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists. Running instances are unaffected, but any action that pulls the image again, such as a restart or a scale-up, will fail until the image is reachable again". Its cursor carries the availability fact's transition key (`fact:availability:srv-dc4foouiskfc73d4gkfg:<transition>`), so it was recorded by the `ImageAvailable` False transition, inside the predicted 09:07–10:35 UTC window. (Without `startTime` the list answers `[]`: REST's first page covers the last hour, as `events.DefaultWindow` says.)
+- `GET /v1/events/evt-8357gj3ih27r7mjgkbed` (what a webhook receiver reads by `data.id`) answered the same event and details. MCP `list_events` (`eventTypes` `["image_pull_failed"]`) and `get_service_event` (`id`) answered the same `imageURL` and `details.message`.
+- GraphQL `serviceEvents(type: "image_pull_failed")` answered the same id and timestamp, `deployId` empty, `image` the reference, and `messageTemplate.code` `image_unavailable_serving` whose one part is `image_not_found` (param `image` the reference) and whose `cause` param is the cause sentence.
+- The worker still ran: phase `Running`, one replica, the only deploy still `dep-dc4foouiskfc73d4gkg0` `live`, and its one instance the one created at 03:43:31 UTC. The 09:42 platform roll and the outage changed nothing that serves.
+- Not read on production: the "Image pull failed" email, because the QA mailbox is not readable from this run (the Gmail connector is not connected; dev-4's Mailpit read above is the email's proof); `ImageAvailable` and `status.imageCheck` themselves, because `fetch-app-kubeconfig.sh` stops on a missing `HCLOUD_TOKEN` (no `.env` in this checkout, and `muse.env` names none); and a webhook delivery, because bex-canary has no webhook (`GET /v1/webhooks` answered `[]`). No recovery was walked on production; dev-4's re-push covers it.
+- `DELETE /v1/services/srv-dc4foouiskfc73d4gkfg` answered 204 at 12:34 UTC, then `GET` 404. The run's API key was revoked and its session logged out.
+
+**Closed 2026-11-27 (t004, t008).** Every line of the definition of done holds: the check, the rule and the no-deploy event on every surface by the shipped code and t007's tests, the event, the email, the single report and the recovery on dev-4, and on production a background worker whose `ttl.sh` tag expired raised one `image_pull_failed` saying the running instances are unaffected while it kept serving. The production email went unread, as the parked plan allowed when the QA mailbox is not readable; the same stream's email was read on dev-4.
