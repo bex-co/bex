@@ -1,22 +1,22 @@
 # w3 · m678 — Every Blueprint sync has its own page, and Manual sync opens it for review and Approve, as Render's does
 
-**Worker:** worker3 **Goal:** each sync opens at `/blueprints/<id>/sync/<syncId>` with its commit, its state, the actions it planned and their states, and **Approve** while it waits; Syncs lists Render's sync cards linking there; Manual sync plans a sync and opens its page; every sync `dashboardUrl` bex-api emits opens that sync's page. **Status:** todo
+**Worker:** worker3 **Goal:** each sync opens at `/blueprints/<id>/sync/<syncId>` with its commit, its state, the actions it planned and their states, and **Approve** while it waits; Syncs lists Render's sync cards linking there; Manual sync plans a sync and opens its page; every sync `dashboardUrl` bex-api emits opens that sync's page. **Status:** todo (t001–t007 and t009–t011 done; t008 walked locally)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Record Render's sync page, sync card, Syncs page and Manual sync in `docs/render-artifacts/blueprint-pages.md` | 30m | — |
-| [t002](t002.md) | bex-api records each sync's actions and commit message on every path, not only planned syncs | 1h15m | t001 |
-| [t003](t003.md) | GraphQL reads one sync by id with its actions, their states, its errors and its required manual env vars, and lists syncs with their commit messages | 45m | t002 |
-| [t004](t004.md) | The sync page at `/blueprints/<id>/sync/<syncId>` | 1h30m | t003, w3/m677 t003 |
-| [t005](t005.md) | Syncs lists Render's sync cards, each linking to its page | 40m | t003, w3/m677 t003 |
-| [t006](t006.md) | Manual sync plans a sync and opens its page; the sync dialog and the plan panel retire | 1h | t004 |
-| [t007](t007.md) | Every sync `dashboardUrl` bex-api emits opens that sync's page | 20m | t004 |
+| [t001](done/t001.md) | Record Render's sync page, sync card, Syncs page and Manual sync in `docs/render-artifacts/blueprint-pages.md` — **DONE** | 30m | — |
+| [t002](done/t002.md) | bex-api records each sync's actions and commit message on every path, not only planned syncs — **DONE** | 1h15m | t001 |
+| [t003](done/t003.md) | GraphQL reads one sync by id with its actions, their states, its errors and its required manual env vars, and lists syncs with their commit messages — **DONE** | 45m | t002 |
+| [t004](done/t004.md) | The sync page at `/blueprints/<id>/sync/<syncId>` — **DONE** | 1h30m | t003, w3/m677 t003 |
+| [t005](done/t005.md) | Syncs lists Render's sync cards, each linking to its page — **DONE** | 40m | t003, w3/m677 t003 |
+| [t006](done/t006.md) | Manual sync plans a sync and opens its page; the sync dialog and the plan panel retire — **DONE** | 1h | t004 |
+| [t007](done/t007.md) | Every sync `dashboardUrl` bex-api emits opens that sync's page — **DONE** | 20m | t004 |
 | [t008](t008.md) | Verify in a real browser at 1440 and 390, locally and on production | 45m | t005, t006, t007 |
-| [t009](t009.md) | Render parity | 25m | t008 |
-| [t010](t010.md) | Simplify | 15m | t009 |
-| [t011](t011.md) | Test coverage | 45m | t009 |
+| [t009](done/t009.md) | Render parity — **DONE** | 25m | t008 |
+| [t010](done/t010.md) | Simplify — **DONE** | 15m | t009 |
+| [t011](done/t011.md) | Test coverage — **DONE** | 45m | t009 |
 | [t012](t012.md) | Closeout | 10m | t010, t011 |
 
 Total: **12 tasks, about 8h20m**.
@@ -58,3 +58,12 @@ Verified 2026-11-25 on main `c196617a8b`.
 - **Expected outcome:** a link printed by the CLI, MCP or an agent opens the sync it names; a person reviews a plan and approves it on the page Render uses; the sync history shows what each sync did.
 - **Why now:** plan-then-approve is how Render's MCP server and CLI create and change Blueprints, so every agent-driven plan prints a link that today lands on the Blueprint, not the plan. It builds on w3/m677's routes and comes before Settings (w3/m679), whose saves may open a sync.
 - **Render parity task:** included (t009): GraphQL gains a read, the dashboard gains pages, and the `dashboardUrl` REST, GraphQL and MCP emit changes.
+
+## Local walk (2026-11-27)
+
+Walked in headless Chromium against `yarn local-bex` (port 8499) behind a throwaway proxy that answers the Blueprint reads, `planBlueprintSync` and `approveBlueprint` statefully: an in-sync Blueprint with 25 syncs (one running, one failed, one recorded before syncs kept their actions, one with a detachment note), a `created` one whose plan waits with a `sync: false` value and whose Manual sync the proxy refuses, and one whose plan changes nothing; the dashboard on `vite dev --port 5477`, at 1440 and 390. The shared Playwright browser stayed free for other sessions; the proxy and the scripts stayed in `/tmp` and are not committed.
+
+- Syncs lists 20 cards (state icon, linked short sha and message, View details, a Running badge on the running one, the relative time); Load more appends the older ones and leaves. View details opens the sync's page (at 390 too, once the commit link's enlarged touch target stopped covering it), and Render's `/blueprint/<id>/sync/<id>` lands there; Syncs is the open entry in the sidebar and in the 390 drawer, and the title reads `Sync ・ platform ・ Blueprint ・ bex Dashboard`.
+- A sync's page: `Sync: <short sha>`, its card, the actions with their states; the failed sync's error under "There was a problem syncing with your Blueprint:"; the failed plan's two located notices under "There were a few problems …" with no actions card; the older sync's "recorded before syncs kept their actions" line; the detachment note; an unknown id says it does not exist and links Syncs.
+- Manual sync on the in-sync Blueprint opened the new plan's page with Approve; Approve turned it Running and the page followed it to Success without a reload. The waiting plan's Approve stayed disabled until its `API_TOKEN` field had a value. The refused plan showed the Sync Error banner with the server's reason, and its close button removed it. The no-change plan opened `/blueprints/<id>/sync` reading Resources already up to date, and a reload kept it (the browser keeps the navigation's state, as on Render).
+- Pending against ready, with the sync and the syncs reads held on a client navigation: the heading (28 px), the sync's card (48 px at 1440, 76 px at 390) and Syncs' three cards (70 px, 100 px) matched to the pixel; the actions card follows its plan's length (94 px framed for two plain rows, 112 px for the walked plan whose second row lists changed fields). No horizontal overflow at 390, and no page error once the handed-over state waited for hydration (fixed in the walk).

@@ -1050,10 +1050,32 @@ type BlueprintResourceRef {
 
 type BlueprintSync {
   commitId: String
+  commitMessage: String
   completedAt: String
   errorMessage: String
   id: String
   note: String
+  startedAt: String
+  state: String
+}
+
+type BlueprintSyncActionState {
+  state: String
+}
+
+type BlueprintSyncDetail {
+  actionStates: [BlueprintSyncActionState]
+  actions: [BlueprintPlanAction]
+  actionsRecorded: Boolean
+  commitId: String
+  commitMessage: String
+  completedAt: String
+  dashboardUrl: String
+  errorMessage: String
+  errors: [BlueprintNotice]
+  id: String
+  note: String
+  requiredManualEnvVars: [BlueprintManualEnvVar]
   startedAt: String
   state: String
 }
@@ -2742,6 +2764,7 @@ type Query {
   blueprint(id: String!, ownerId: String): Blueprint
   blueprintPlannedSync(id: String!, ownerId: String): BlueprintPlannedSync
   blueprintPreview(blueprintId: String, branch: String, existingResources: String, name: String, ownerId: String, path: String, repo: String!): BlueprintPreview
+  blueprintSync(id: String!, ownerId: String, syncId: String!): BlueprintSyncDetail
   blueprintSyncs(cursor: String, id: String!, limit: Int, ownerId: String): [BlueprintSync]
   blueprints(ownerId: String): [Blueprint]
   build(buildSourceId: String!, id: String!): Build

@@ -640,37 +640,13 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description:
       "Blueprint managed-resources empty state when status is error after a sync",
   },
-  // --- Sync history ---
-  "blueprints.syncHistoryTitle": {
-    message: "同步历史",
-    description: "Blueprint detail section heading for the sync run table",
-  },
+  // --- Syncs (w3/m678) ---
   "blueprints.syncHistoryEmpty": {
     message: "暂无同步记录。",
-    description: "Blueprint sync history empty state",
-  },
-  "blueprints.syncColCommit": {
-    message: "提交",
-    description: "Sync history table column — commit SHA",
-  },
-  "blueprints.syncColState": {
-    message: "状态",
-    description: "Sync history table column — sync run state",
-  },
-  "blueprints.syncColStarted": {
-    message: "开始时间",
-    description: "Sync history table column — sync run start time",
-  },
-  "blueprints.syncColCompleted": {
-    message: "完成时间",
-    description: "Sync history table column — sync run completion time",
+    description: "Syncs page: no syncs yet, Render's wording (w3/m678)",
   },
   "blueprints.detachPreviewTitle": {
     message: "资源将不再受此蓝图管理",
-    description: "Blueprint resource detachment notice.",
-  },
-  "blueprints.detachSuccessTitle": {
-    message: "同步完成，部分资源已解除关联",
     description: "Blueprint resource detachment notice.",
   },
   "blueprints.detachEstimateNote": {
@@ -682,147 +658,51 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "这些资源将继续运行，并可能继续产生费用。此蓝图将不再管理它们。",
     description: "Blueprint resource detachment notice.",
   },
-  "blueprints.syncColError": {
-    message: "详情",
-    description: "Sync history table column — errors and durable sync notes",
-  },
   "blueprints.manifestTitle": {
     message: "render.yaml 清单",
     description: "Blueprint detail section heading for the stored manifest",
   },
-  // --- Planned sync (w2/m256 t012) ---
-  "blueprints.plannedTitle": {
-    message: "计划同步",
-    description:
-      "Blueprint detail: heading of the planned-sync card a Blueprint shows while a plan waits for approval",
-  },
-  "blueprints.plannedBody": {
-    message:
-      "此计划正在等待批准。请查看批准后将在提交 {commit} 上发生的变更，然后批准以应用。",
-    description:
-      "Planned-sync card: explains plan-then-approve; {commit} is a short commit SHA",
-  },
+  // --- A sync's page (w3/m678) ---
   "blueprints.plannedActions": {
     message: "计划的变更",
-    description: "Planned-sync card: accessible label of the action list",
+    description:
+      "A sync's page: accessible label of its list of planned actions (w3/m678)",
   },
   "blueprints.plannedAction": {
     message: "{operation} {kind} {name}",
     description:
       "Planned-sync card: one plan action, e.g. 'create service api'",
   },
-  "blueprints.plannedActionsUnavailable": {
-    message:
-      "此计划记录于计划保存变更明细之前。重新计划以查看变更，或直接批准以应用。",
-    description:
-      "Planned-sync card: a plan stored without its actions (recorded before migration 0187)",
-  },
   "blueprints.plannedManualEnvVars": {
     message: "这些值不在 Blueprint 文件中（sync: false）。请输入它们以批准。",
     description:
-      "Planned-sync card: intro to the required manual env var fields",
+      "A waiting sync's page: intro to the fields for the sync: false values approving it needs (w3/m678)",
   },
   "blueprints.plannedManualEnvVarLabel": {
     message: "{service}：{key}",
-    description: "Planned-sync card: label of one manual env var field",
+    description:
+      "A waiting sync's page: label of one sync: false value's field (w3/m678)",
   },
   "blueprints.plannedApprove": {
     message: "批准",
-    description: "Planned-sync card: button that applies the planned sync",
-  },
-  "blueprints.plannedReplan": {
-    message: "重新计划",
     description:
-      "Planned-sync card: button that plans a new sync at the branch head",
-  },
-  "blueprints.plannedNone": {
-    message: "没有等待批准的计划。重新计划以读取分支最新提交。",
-    description:
-      "Planned-sync card: shown when a created Blueprint has no approvable plan",
-  },
-  "blueprints.plannedApproved": {
-    message: "计划同步已批准",
-    description: "Toast after approving a planned sync",
-  },
-  "blueprints.plannedApproveFailed": {
-    message: "无法批准计划同步",
-    description: "Toast when approving fails",
+      "A waiting sync's page: the button that applies the planned sync, Render's Approve (w3/m678)",
   },
   "blueprints.plannedChanged": {
     message: "有人重新规划了此 Blueprint。请查看最新的计划后再批准。",
     description:
-      "Toast when the plan on screen was replaced before it was approved (BLUEPRINT_PLAN_CHANGED)",
+      "A sync's page: inline alert when the plan on screen was replaced before it was approved (BLUEPRINT_PLAN_CHANGED)",
   },
   "blueprints.plannedReplanFailed": {
     message: "无法计划新的同步",
-    description: "Toast when re-planning fails",
+    description:
+      "Sync Error banner: Manual sync could not plan a sync and the server gave no reason (w3/m678)",
   },
   // --- Sync action ---
   "blueprints.syncButton": {
     message: "手动同步",
     description:
-      "The Blueprint header's one action, Render's Manual sync: opens the reviewed-commit sync dialog (w3/m677)",
-  },
-  "blueprints.syncConfirmTitle": {
-    message: "确认同步蓝图？",
-    description: "Sync confirm dialog title",
-  },
-  "blueprints.syncConfirmBody": {
-    message:
-      "此操作会按下方所示提交中的 render.yaml 原样应用，而不是分支上更新的推送。已与其一致的资源将保持不变。",
-    description: "Sync confirm dialog description",
-  },
-  "blueprints.syncConfirmAction": {
-    message: "同步",
-    description: "Sync confirm dialog primary action button label",
-  },
-  "blueprints.syncCancel": {
-    message: "取消",
-    description: "Sync confirm dialog cancel button label",
-  },
-  "blueprints.syncPreviewLoading": {
-    message: "正在从仓库计算同步计划…",
-    description: "Pre-sync dialog — loading line while blueprintPreview runs",
-  },
-  "blueprints.syncPreviewInvalid": {
-    message:
-      "分支上当前的蓝图文件存在问题——现在同步可能失败或回退到已存储的清单：",
-    description:
-      "Pre-sync dialog — heading above validation errors from the fetched manifest",
-  },
-  "blueprints.syncPreviewUnavailable": {
-    message:
-      "无法计算同步计划（预览不可用）。请在预览成功后再刷新——同步需要已审阅的提交。",
-    description:
-      "Pre-sync dialog — preview transport failure; sync is disabled until a valid preview pins a commit (w8/m41)",
-  },
-  "blueprints.syncPreviewCommit": {
-    message: "已审阅提交 {sha}",
-    description: "Pre-sync dialog — short SHA of the previewed Git revision",
-  },
-  "blueprints.syncRefreshPreview": {
-    message: "刷新预览",
-    description:
-      "Pre-sync dialog — refetch Git + re-validate after BLUEPRINT_SOURCE_CHANGED or an invalid preview",
-  },
-  "blueprints.syncSourceChanged": {
-    message: "蓝图源自审阅后已变更——请刷新预览并重新确认",
-    description:
-      "Toast when syncBlueprint refuses with BLUEPRINT_SOURCE_CHANGED (path/repo drift or stale pin)",
-  },
-  "blueprints.syncSuccess": {
-    message: "蓝图同步成功",
-    description: "Toast shown after a successful syncBlueprint call",
-  },
-  "blueprints.syncError": {
-    message: "同步失败",
-    description: "Toast shown when syncBlueprint returns an error",
-  },
-  "blueprints.syncBusy": {
-    message:
-      "此同步已失去执行权（忙碌、中断或被取代）——请重新同步；部分写入不会自动重放",
-    description:
-      "Toast shown when syncBlueprint refuses with BLUEPRINT_SYNC_BUSY",
+      "The Blueprint header's one action, Render's Manual sync: plans a sync and opens its page (w3/m678)",
   },
   // --- Update action ---
   "blueprints.editField": {
@@ -965,15 +845,115 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description:
       "Blueprint Resources table column header for a managed resource's type",
   },
-  "blueprints.manualSyncAwaitingApproval": {
-    message: "请先在“同步记录”中批准等待中的计划。",
-    description:
-      "Tooltip on the disabled Manual sync button while a created Blueprint's first plan waits for approval on the Syncs page (w3/m677)",
-  },
   "blueprints.resourcesViewSyncs": {
     message: "前往同步记录",
     description:
       "Link from a Blueprint's empty Resources page to its Syncs page, where the waiting plan or the failed sync is (w3/m677)",
+  },
+  "blueprints.syncViewDetails": {
+    message: "查看详情",
+    description:
+      "Sync card: link to the sync's own page (Render's View details, w3/m678)",
+  },
+  "blueprints.syncsLoadMore": {
+    message: "加载更多",
+    description:
+      "Syncs page: button reading the next page of older syncs (w3/m678)",
+  },
+  "blueprints.syncsLoadMoreError": {
+    message: "无法加载更早的同步。",
+    description:
+      "Syncs page: toast when reading an older page of syncs fails (w3/m678)",
+  },
+  "blueprints.syncPageTitle": {
+    message: "同步：{sha}",
+    description:
+      "A sync's page heading, Render's 'Sync: <short commit id>'; {sha} is the 7-character commit id (w3/m678)",
+  },
+  "blueprints.syncPageTitleNoCommit": {
+    message: "同步",
+    description:
+      "A sync's page heading when the sync read no commit, Render's 'Sync' (w3/m678)",
+  },
+  "blueprints.syncDocumentTitle": {
+    message: "同步",
+    description:
+      "Document title's page name on a sync's page: 'Sync ・ <name> ・ Blueprint' (w3/m678)",
+  },
+  "blueprints.syncUpToDate": {
+    message: "资源已是最新",
+    description:
+      "A sync's page when its plan has no actions, Render's wording (w3/m678)",
+  },
+  "blueprints.syncNotFullySynced": {
+    message: "我们未能完全同步这些资源。",
+    description:
+      "A failed sync's page with no actions and no errors, Render's critical line (w3/m678)",
+  },
+  "blueprints.syncNotFullySyncedBody": {
+    message: "如果此错误持续出现，请联系支持团队。",
+    description:
+      "Under blueprints.syncNotFullySynced: what to do if it keeps happening (w3/m678)",
+  },
+  "blueprints.syncActionsNotRecorded": {
+    message: "此同步记录于同步开始保存其操作之前，因此无法显示其操作。",
+    description:
+      "A sync's page for a sync recorded before every sync kept its actions (w3/m678)",
+  },
+  "blueprints.syncActionCreate": {
+    message: "创建{kind} {name}",
+    description:
+      "A sync's planned action: create a resource; {kind} is its kind label, {name} its name, drawn bold (w3/m678)",
+  },
+  "blueprints.syncActionUpdate": {
+    message: "更新{kind} {name}",
+    description:
+      "A sync's planned action: change a resource; {kind} is its kind label, {name} its name (w3/m678)",
+  },
+  "blueprints.syncActionDetach": {
+    message: "停止管理{kind} {name}",
+    description:
+      "A sync's planned action: stop managing a resource the file no longer names; {kind}, {name} (w3/m678)",
+  },
+  "blueprints.syncActionError": {
+    message: "无法应用{kind} {name}",
+    description:
+      "A sync's planned action the planner refused; {kind}, {name}; the reason follows (w3/m678)",
+  },
+  "blueprints.syncActionDetachNote": {
+    message: "它会继续运行，并可能产生费用。",
+    description:
+      "Under a 'stop managing' action: the resource is not deleted (w3/m678)",
+  },
+  "blueprints.syncActionStateUnknown": {
+    message: "状态未知",
+    description:
+      "Accessible name of a planned action's state icon when bex can't say which state it reached (a failed sync's actions, w3/m678)",
+  },
+  "blueprints.syncApproveFailed": {
+    message: "无法批准此同步，请重试。",
+    description:
+      "A sync's page: inline alert when Approve fails without the server's reason, Render's wording (w3/m678)",
+  },
+  "blueprints.syncNotFound": {
+    message: "此同步不存在。24 小时内未批准的计划同步会被删除。",
+    description:
+      "A sync's page for an id that is not one of this Blueprint's syncs, e.g. a plan deleted after 24 hours (w3/m678)",
+  },
+  "blueprints.syncErrorBannerTitle": {
+    message: "同步错误",
+    description:
+      "Title of Render's dismissible banner when Manual sync could not plan a sync (w3/m678)",
+  },
+  "blueprints.syncErrorBannerDismiss": {
+    message: "关闭",
+    description:
+      "Accessible name of the Sync Error banner's close button (w3/m678)",
+  },
+  "blueprints.syncErrorsIntro_other": {
+    message: "与你的 Blueprint 同步时出现问题：",
+    description:
+      "A sync's page: the line above its errors, Render's 'There was a problem' / 'There were a few problems' (w3/m678)",
   },
 };
 

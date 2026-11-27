@@ -3,11 +3,10 @@ import { blueprintSubpathLanding } from "@/features/blueprints/lib/blueprint-pag
 import { blueprintPageRoute } from "@/features/blueprints/components/blueprint-nav";
 
 /**
- * Every sub-path of a Blueprint with no page of its own (w3/m677): Render's
- * `/sync` and `/sync/<syncId>` arrive here through the `/blueprint/<id>/…`
- * alias (and bex-api's sync links once w3/m678 points them there) and land on
- * Syncs; anything else lands on Resources, as Render's `*` route shows
- * Resources. The query and hash are kept.
+ * Every sub-path of a Blueprint with no page of its own (w3/m677): one under
+ * `sync` past a sync's page lands on Syncs, anything else on Resources, as
+ * Render's `*` route shows Resources. A sync's page, `/sync[/<syncId>]`, is
+ * its own route (w3/m678). The query and hash are kept.
  */
 export const Route = createFileRoute("/blueprints/$blueprintId/$")({
   beforeLoad: ({ params, location }) => {

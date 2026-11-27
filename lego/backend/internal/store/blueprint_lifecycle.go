@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -97,7 +98,7 @@ const blueprintColumns = `id, tenant_id, name, repo, branch, path, auto_sync, ma
 	existing_resources, resource_suffix`
 
 const blueprintSyncColumns = `id, blueprint_id, commit_id, state, started_at, completed_at, created_at, error_message, execution_generation, note,
- COALESCE(auto_intent_id, ''), auto_claim_generation, auto_source_repo, auto_source_branch, auto_source_path`
+ COALESCE(auto_intent_id, ''), auto_claim_generation, auto_source_repo, auto_source_branch, auto_source_path, commit_message`
 
 // insertAdmittedRun records the running run of an admission inside the claim
 // transaction, so claim and run always commit together.
@@ -108,21 +109,22 @@ func insertAdmittedRun(ctx context.Context, tx pgx.Tx, run BlueprintSync) (Bluep
 	// reports as approved keeps its id. Any other existing id is a conflict.
 	err := tx.QueryRow(ctx, `
 		INSERT INTO blueprint_syncs (id, blueprint_id, commit_id, state, started_at, execution_generation, note,
-		 auto_intent_id, auto_claim_generation, auto_source_repo, auto_source_branch, auto_source_path)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''), $9, $10, $11, $12)
+		 auto_intent_id, auto_claim_generation, auto_source_repo, auto_source_branch, auto_source_path, commit_message)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''), $9, $10, $11, $12, $13)
 		ON CONFLICT (id) DO UPDATE SET state = EXCLUDED.state, started_at = EXCLUDED.started_at,
 			execution_generation = EXCLUDED.execution_generation,
-			-- The planned row's own note survives an approval that brings
-			-- none.
-			note = COALESCE(NULLIF(EXCLUDED.note, ''), blueprint_syncs.note)
+			-- The planned row's own note and commit message survive an
+			-- approval that brings none.
+			note = COALESCE(NULLIF(EXCLUDED.note, ''), blueprint_syncs.note),
+			commit_message = COALESCE(NULLIF(EXCLUDED.commit_message, ''), blueprint_syncs.commit_message)
 		WHERE blueprint_syncs.state = 'created' AND blueprint_syncs.blueprint_id = EXCLUDED.blueprint_id
 		  AND blueprint_syncs.commit_id = EXCLUDED.commit_id
 		RETURNING `+blueprintSyncColumns,
 		run.ID, run.BlueprintID, run.CommitID, run.State, run.StartedAt, run.ExecutionGeneration, run.Note,
-		run.AutoIntentID, run.AutoClaimGeneration, run.AutoSourceRepo, run.AutoSourceBranch, run.AutoSourcePath,
+		run.AutoIntentID, run.AutoClaimGeneration, run.AutoSourceRepo, run.AutoSourceBranch, run.AutoSourcePath, run.CommitMessage,
 	).Scan(&out.ID, &out.BlueprintID, &out.CommitID, &out.State,
 		&out.StartedAt, &out.CompletedAt, &out.CreatedAt, &out.ErrorMessage, &out.ExecutionGeneration, &out.Note,
-		&out.AutoIntentID, &out.AutoClaimGeneration, &out.AutoSourceRepo, &out.AutoSourceBranch, &out.AutoSourcePath)
+		&out.AutoIntentID, &out.AutoClaimGeneration, &out.AutoSourceRepo, &out.AutoSourceBranch, &out.AutoSourcePath, &out.CommitMessage)
 	if errors.Is(err, pgx.ErrNoRows) {
 		// The planned row was already applied or no longer matches the plan.
 		return BlueprintSync{}, ErrBlueprintSyncBusy
@@ -654,5 +656,15 @@ func (s *PGStore) AbandonBlueprintSync(ctx context.Context, runID string, now ti
 // succeeded.
 func (s *PGStore) SetBlueprintSyncNote(ctx context.Context, runID, note string) error {
 	_, err := s.Pool.Exec(ctx, `UPDATE blueprint_syncs SET note = $2 WHERE id = $1`, runID, note)
+	return err
+}
+
+// RecordBlueprintSyncPlan stores the actions an admitted run planned (JSON the
+// apps layer owns), so the sync's page lists them while it runs and after
+// (w3/m678). A run that already has actions keeps them: an approved plan's are
+// the ones the user approved.
+func (s *PGStore) RecordBlueprintSyncPlan(ctx context.Context, runID string, actions json.RawMessage) error {
+	_, err := s.Pool.Exec(ctx, `UPDATE blueprint_syncs SET plan_actions = $2 WHERE id = $1 AND plan_actions IS NULL`,
+		runID, nullJSON(actions))
 	return err
 }

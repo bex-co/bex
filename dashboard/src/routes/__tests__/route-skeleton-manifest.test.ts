@@ -25,8 +25,9 @@ describe("route skeleton manifest (w5/m79)", () => {
     const classified = Object.keys(ROUTE_SKELETON_MANIFEST).sort();
 
     expect(classified).toEqual(generated);
-    // 147: + an environment's settings page and its other pages' landing on
-    // the project (w1/m683).
+    // 149: + a Blueprint sync's page and Render's `/sync` with no id (w3/m678).
+    // 147 before them: + an environment's settings page and its other pages'
+    // landing on the project (w1/m683).
     // 145 before them: + a Blueprint's index, Resources, Syncs and Settings pages, its
     // sub-path landing and Render's `/blueprint/<id>` alias (w3/m677).
     // 139 before them: + a Postgres database's guided version-upgrade page (w3/m676).
@@ -42,7 +43,7 @@ describe("route skeleton manifest (w5/m79)", () => {
     // 116 before them: + /build-sources/$buildSourceId detail layout, Builds index,
     // Build Detail, Services, Environment, and Settings routes (w2/m614).
     // 110 before them: + /build-sources and /build-sources/new (w2/m613).
-    expect(classified).toHaveLength(147);
+    expect(classified).toHaveLength(149);
   });
 
   it("points every classification at a real route owner", () => {

@@ -38,8 +38,6 @@ import {
   Settings2,
   Webhook,
 } from "lucide-react";
-import type { BlueprintView } from "@/features/blueprints/types";
-import { PlannedSyncPanelSkeleton } from "@/features/blueprints/components/planned-sync-panel-skeleton";
 import { PushNotificationEvent } from "@/graphql/definitions";
 import {
   pushEventKeys,
@@ -1090,27 +1088,18 @@ export function BlueprintHeaderSkeleton() {
 function BlueprintTableRowsSkeleton({
   rows,
   cells,
-  className,
-  region,
 }: {
   rows: number;
   /** Each cell's placeholder classes, in column order. */
   cells: readonly string[];
-  className?: string;
-  region?: string;
 }) {
   return (
-    <TableBody
-      aria-hidden="true"
-      data-skeleton-region={region}
-      className={className}
-    >
+    <TableBody aria-hidden="true">
       {Array.from({ length: rows }, (_, row) => (
         <TableRow key={row}>
           {cells.map((cell, column) => (
             <TableCell key={column}>
-              {/* A text line is 20px; a status badge's row is as tall as the
-                  badge, 22px. */}
+              {/* A text line is 20px. */}
               <span className="flex min-h-5 items-center">
                 <Skeleton className={cn("max-w-full", cell)} />
               </span>
@@ -1123,22 +1112,55 @@ function BlueprintTableRowsSkeleton({
 }
 
 /**
- * Three sync rows under the Sync History table's real header (w6/043): the
- * Syncs page's in-flight rows and its pending frame's. The State column's
- * badge makes a row 22px tall.
+ * One sync card's placeholder, in the ready card's own boxes (w3/m678,
+ * blueprint-sync-card.tsx): the 18px state icon, the commit line and View
+ * details (20px each) beside the start time on a wide page, the time under
+ * them on a narrow one.
  */
-export function BlueprintSyncRowsSkeleton({
-  className,
-}: {
-  className?: string;
-}) {
+function BlueprintSyncCardSkeleton({ details = true }: { details?: boolean }) {
   return (
-    <BlueprintTableRowsSkeleton
-      rows={3}
-      cells={["h-4 w-20", "h-[22px] w-16", "h-4 w-16", "h-4 w-16", "h-4 w-16"]}
-      className={className}
-      region="sync-history-rows"
-    />
+    <div className="flex items-start gap-3 rounded-lg border bg-card px-4 py-3">
+      <span className="flex h-5 items-center">
+        <Skeleton className="size-[18px] rounded-full" />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-4">
+        <div className="min-w-0 space-y-1">
+          <div className="flex h-5 items-center leading-5">
+            <Skeleton className="h-4 w-64 max-w-full" />
+          </div>
+          {details ? (
+            <div className="flex h-5 items-center leading-5">
+              <Skeleton className="h-4 w-20" />
+            </div>
+          ) : null}
+        </div>
+        <div className="flex min-h-[22px] shrink-0 items-center gap-3">
+          <span className="flex h-5 items-center leading-5">
+            <Skeleton className="h-4 w-16" />
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Three sync cards, Syncs' list while its first page loads. */
+function BlueprintSyncCardList() {
+  return [0, 1, 2].map((i) => <BlueprintSyncCardSkeleton key={i} />);
+}
+
+/**
+ * Syncs' list while its first page loads (w3/m678), inside its ready page.
+ */
+export function BlueprintSyncCardsSkeleton() {
+  return (
+    <div
+      aria-hidden="true"
+      data-skeleton-region="sync-history-rows"
+      className="space-y-3 animate-pulse motion-reduce:animate-none"
+    >
+      <BlueprintSyncCardList />
+    </div>
   );
 }
 
@@ -1178,40 +1200,44 @@ export function BlueprintResourcesSkeleton() {
 }
 
 /**
- * A Blueprint's Syncs page while it loads (w3/m677): the waiting plan's card
- * for a Blueprint the cache knows is created, whose page always has one, then
- * the Sync History card, its five columns and three rows (the State badge's
- * row is 22px).
+ * A Blueprint's Syncs page while it loads (w3/m678): its sync cards. The
+ * heading is the layout's.
  */
-export function BlueprintSyncsSkeleton({
-  blueprint = null,
-}: {
-  blueprint?: Pick<BlueprintView, "status"> | null;
-}) {
-  const { t } = useTranslations();
+export function BlueprintSyncsSkeleton() {
   return (
     <PendingFrame route="blueprint-syncs" className="space-y-6">
-      {blueprint?.status === "created" ? <PlannedSyncPanelSkeleton /> : null}
-      <Region name="sync-history">
+      <Region name="sync-history" className="space-y-3">
+        <BlueprintSyncCardList />
+      </Region>
+    </PendingFrame>
+  );
+}
+
+/**
+ * A sync's page while it loads (w3/m678, blueprint-sync-page.tsx): its
+ * heading's 28px line, its card without View details, and the card of its
+ * actions with two rows.
+ */
+export function BlueprintSyncPageSkeleton() {
+  return (
+    <PendingFrame route="blueprint-sync" className="space-y-6">
+      <Region name="sync-heading">
+        <span className="flex h-7 items-center">
+          <Skeleton className="h-5 w-36" />
+        </span>
+      </Region>
+      <Region name="sync-card">
+        <BlueprintSyncCardSkeleton details={false} />
+      </Region>
+      <Region name="sync-actions">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">
-              {t("blueprints.syncHistoryTitle")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("blueprints.syncColCommit")}</TableHead>
-                  <TableHead>{t("blueprints.syncColState")}</TableHead>
-                  <TableHead>{t("blueprints.syncColStarted")}</TableHead>
-                  <TableHead>{t("blueprints.syncColCompleted")}</TableHead>
-                  <TableHead>{t("blueprints.syncColError")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <BlueprintSyncRowsSkeleton />
-            </Table>
+          <CardContent className="space-y-3">
+            {[0, 1].map((i) => (
+              <span key={i} className="flex h-5 items-center gap-3">
+                <Skeleton className="size-4 rounded-full" />
+                <Skeleton className="h-4 w-48 max-w-full" />
+              </span>
+            ))}
           </CardContent>
         </Card>
       </Region>

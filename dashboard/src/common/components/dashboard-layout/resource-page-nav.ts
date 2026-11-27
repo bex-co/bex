@@ -63,6 +63,11 @@ export function resourcePageNav(
   }
 
   return {
+    /** Whether `pathname` is a page under the resource matching a pattern. */
+    isOn(pathname: string, id: string, patterns: readonly string[]): boolean {
+      const path = pagePath(pathname, id);
+      return path !== null && patterns.some((p) => matchesPath(p, path));
+    },
     /** Whether the sidebar entry `to` is the page `pathname` is on. */
     isActive(pathname: string, id: string, to: string): boolean {
       const path = pagePath(pathname, id);

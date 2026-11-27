@@ -68,9 +68,16 @@ func (s *Service) blueprintActionPlan(ctx context.Context, ir BlueprintIR, st pa
 		return BlueprintPlan{}, false, err
 	}
 	for _, resource := range detached {
-		plan.Actions = append(plan.Actions, BlueprintPlanAction{Operation: BlueprintPlanDetach, Kind: resource.kind, Name: resource.Name, ResourceID: resource.ID, Message: "Stops being managed by this blueprint; continues running and may incur charges."})
+		plan.Actions = append(plan.Actions, blueprintDetachAction(resource))
 	}
 	return plan, true, nil
+}
+
+// blueprintDetachAction is a plan's action for a resource the manifest no
+// longer names: the plan shows it, and a sync records it (w3/m678).
+func blueprintDetachAction(resource blueprintDetachment) BlueprintPlanAction {
+	return BlueprintPlanAction{Operation: BlueprintPlanDetach, Kind: resource.kind, Name: resource.Name, ResourceID: resource.ID,
+		Message: "Stops being managed by this blueprint; continues running and may incur charges."}
 }
 
 type blueprintActionResolver struct {

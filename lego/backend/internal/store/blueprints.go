@@ -79,6 +79,10 @@ type BlueprintSync struct {
 	CompletedAt  *time.Time `json:"completedAt"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	ErrorMessage *string    `json:"errorMessage"`
+	// CommitMessage is CommitID's message, read from the Git host when the
+	// sync is recorded (migration 0353, w3/m678); "" when the host could not
+	// say.
+	CommitMessage string `json:"commitMessage,omitempty"`
 	// Note annotates what the run did when its state cannot say it — today,
 	// the resources a sync detached from the Blueprint (migration 0131).
 	// Empty means nothing to report, the same convention
@@ -323,12 +327,12 @@ func (s *PGStore) InsertBlueprintSync(ctx context.Context, run BlueprintSync) (B
 	}
 	var out BlueprintSync
 	err := s.Pool.QueryRow(ctx,
-		`INSERT INTO blueprint_syncs (id, blueprint_id, commit_id, state, started_at, completed_at, error_message, execution_generation, note)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		 RETURNING id, blueprint_id, commit_id, state, started_at, completed_at, created_at, error_message, execution_generation, note`,
-		run.ID, run.BlueprintID, run.CommitID, run.State, run.StartedAt, run.CompletedAt, run.ErrorMessage, run.ExecutionGeneration, run.Note,
+		`INSERT INTO blueprint_syncs (id, blueprint_id, commit_id, state, started_at, completed_at, error_message, execution_generation, note, commit_message)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		 RETURNING id, blueprint_id, commit_id, state, started_at, completed_at, created_at, error_message, execution_generation, note, commit_message`,
+		run.ID, run.BlueprintID, run.CommitID, run.State, run.StartedAt, run.CompletedAt, run.ErrorMessage, run.ExecutionGeneration, run.Note, run.CommitMessage,
 	).Scan(&out.ID, &out.BlueprintID, &out.CommitID, &out.State,
-		&out.StartedAt, &out.CompletedAt, &out.CreatedAt, &out.ErrorMessage, &out.ExecutionGeneration, &out.Note)
+		&out.StartedAt, &out.CompletedAt, &out.CreatedAt, &out.ErrorMessage, &out.ExecutionGeneration, &out.Note, &out.CommitMessage)
 	if err != nil {
 		return BlueprintSync{}, classify("blueprint_sync", err)
 	}
@@ -376,14 +380,14 @@ func (s *PGStore) ListBlueprintSyncs(ctx context.Context, blueprintID, cursor st
 	var err error
 	if cursor == "" {
 		rows, err = s.Pool.Query(ctx,
-			`SELECT id, blueprint_id, commit_id, state, started_at, completed_at, created_at, error_message, note
+			`SELECT id, blueprint_id, commit_id, state, started_at, completed_at, created_at, error_message, note, commit_message
 			 FROM blueprint_syncs WHERE blueprint_id = $1 AND state <> 'created'
 			 ORDER BY started_at DESC, id DESC LIMIT $2`,
 			blueprintID, limit)
 	} else {
 		// Resume after cursor: find the cursor row's (started_at, id) then page past it.
 		rows, err = s.Pool.Query(ctx,
-			`SELECT bs.id, bs.blueprint_id, bs.commit_id, bs.state, bs.started_at, bs.completed_at, bs.created_at, bs.error_message, bs.note
+			`SELECT bs.id, bs.blueprint_id, bs.commit_id, bs.state, bs.started_at, bs.completed_at, bs.created_at, bs.error_message, bs.note, bs.commit_message
 			 FROM blueprint_syncs bs
 			 WHERE bs.blueprint_id = $1 AND bs.state <> 'created'
 			   AND (bs.started_at, bs.id) < (
@@ -400,7 +404,7 @@ func (s *PGStore) ListBlueprintSyncs(ctx context.Context, blueprintID, cursor st
 	for rows.Next() {
 		var r BlueprintSync
 		if err := rows.Scan(&r.ID, &r.BlueprintID, &r.CommitID, &r.State,
-			&r.StartedAt, &r.CompletedAt, &r.CreatedAt, &r.ErrorMessage, &r.Note); err != nil {
+			&r.StartedAt, &r.CompletedAt, &r.CreatedAt, &r.ErrorMessage, &r.Note, &r.CommitMessage); err != nil {
 			return nil, err
 		}
 		out = append(out, r)

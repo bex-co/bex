@@ -646,36 +646,12 @@ const koBlueprints: Record<string, TranslationEntry> = {
     description:
       "Blueprint managed-resources empty state when status is error after a sync",
   },
-  "blueprints.syncHistoryTitle": {
-    message: "동기화 기록",
-    description: "Blueprint detail section heading for the sync run table",
-  },
   "blueprints.syncHistoryEmpty": {
     message: "아직 동기화 기록이 없습니다.",
-    description: "Blueprint sync history empty state",
-  },
-  "blueprints.syncColCommit": {
-    message: "커밋",
-    description: "Sync history table column — commit SHA",
-  },
-  "blueprints.syncColState": {
-    message: "상태",
-    description: "Sync history table column — sync run state",
-  },
-  "blueprints.syncColStarted": {
-    message: "시작",
-    description: "Sync history table column — sync run start time",
-  },
-  "blueprints.syncColCompleted": {
-    message: "완료",
-    description: "Sync history table column — sync run completion time",
+    description: "Syncs page: no syncs yet, Render's wording (w3/m678)",
   },
   "blueprints.detachPreviewTitle": {
     message: "리소스가 더 이상 관리되지 않습니다",
-    description: "Blueprint resource detachment notice.",
-  },
-  "blueprints.detachSuccessTitle": {
-    message: "동기화 완료 — 리소스 분리됨",
     description: "Blueprint resource detachment notice.",
   },
   "blueprints.detachEstimateNote": {
@@ -688,149 +664,51 @@ const koBlueprints: Record<string, TranslationEntry> = {
       "이 리소스는 계속 실행되며 요금이 계속 발생할 수 있습니다. 이 Blueprint는 더 이상 이 리소스를 관리하지 않습니다.",
     description: "Blueprint resource detachment notice.",
   },
-  "blueprints.syncColError": {
-    message: "세부 정보",
-    description: "Sync history table column — errors and durable sync notes",
-  },
   "blueprints.manifestTitle": {
     message: "render.yaml 매니페스트",
     description: "Blueprint detail section heading for the stored manifest",
   },
-  "blueprints.plannedTitle": {
-    message: "계획된 동기화",
-    description:
-      "Blueprint detail: heading of the planned-sync card a Blueprint shows while a plan waits for approval",
-  },
-  "blueprints.plannedBody": {
-    message:
-      "이 계획은 승인을 기다리고 있습니다. 커밋 {commit}에서 승인 시 변경될 내용을 검토한 후 승인하여 적용하세요.",
-    description:
-      "Planned-sync card: explains plan-then-approve; {commit} is a short commit SHA",
-  },
   "blueprints.plannedActions": {
     message: "계획된 변경 사항",
-    description: "Planned-sync card: accessible label of the action list",
+    description:
+      "A sync's page: accessible label of its list of planned actions (w3/m678)",
   },
   "blueprints.plannedAction": {
     message: "{operation} {kind} {name}",
     description:
       "Planned-sync card: one plan action, e.g. 'create service api'",
   },
-  "blueprints.plannedActionsUnavailable": {
-    message:
-      "이 계획은 계획에 변경 내용을 보관하기 전에 기록되었습니다. 다시 계획하여 확인하거나 승인하여 적용하세요.",
-    description:
-      "Planned-sync card: a plan stored without its actions (recorded before migration 0187)",
-  },
   "blueprints.plannedManualEnvVars": {
     message:
       "이 값은 Blueprint 파일에 없습니다(sync: false). 승인하려면 입력하세요.",
     description:
-      "Planned-sync card: intro to the required manual env var fields",
+      "A waiting sync's page: intro to the fields for the sync: false values approving it needs (w3/m678)",
   },
   "blueprints.plannedManualEnvVarLabel": {
     message: "{service}: {key}",
-    description: "Planned-sync card: label of one manual env var field",
+    description:
+      "A waiting sync's page: label of one sync: false value's field (w3/m678)",
   },
   "blueprints.plannedApprove": {
     message: "승인",
-    description: "Planned-sync card: button that applies the planned sync",
-  },
-  "blueprints.plannedReplan": {
-    message: "다시 계획",
     description:
-      "Planned-sync card: button that plans a new sync at the branch head",
-  },
-  "blueprints.plannedNone": {
-    message:
-      "승인을 기다리는 계획이 없습니다. 다시 계획하여 브랜치의 최신 상태를 읽으세요.",
-    description:
-      "Planned-sync card: shown when a created Blueprint has no approvable plan",
-  },
-  "blueprints.plannedApproved": {
-    message: "계획된 동기화를 승인했습니다",
-    description: "Toast after approving a planned sync",
-  },
-  "blueprints.plannedApproveFailed": {
-    message: "계획된 동기화를 승인하지 못했습니다",
-    description: "Toast when approving fails",
+      "A waiting sync's page: the button that applies the planned sync, Render's Approve (w3/m678)",
   },
   "blueprints.plannedChanged": {
     message:
       "다른 사용자가 이 Blueprint를 다시 계획했습니다. 최신 계획을 검토한 후 승인하세요.",
     description:
-      "Toast when the plan on screen was replaced before it was approved (BLUEPRINT_PLAN_CHANGED)",
+      "A sync's page: inline alert when the plan on screen was replaced before it was approved (BLUEPRINT_PLAN_CHANGED)",
   },
   "blueprints.plannedReplanFailed": {
     message: "새 동기화를 계획하지 못했습니다",
-    description: "Toast when re-planning fails",
+    description:
+      "Sync Error banner: Manual sync could not plan a sync and the server gave no reason (w3/m678)",
   },
   "blueprints.syncButton": {
     message: "수동 동기화",
     description:
-      "The Blueprint header's one action, Render's Manual sync: opens the reviewed-commit sync dialog (w3/m677)",
-  },
-  "blueprints.syncConfirmTitle": {
-    message: "Blueprint를 동기화하시겠습니까?",
-    description: "Sync confirm dialog title",
-  },
-  "blueprints.syncConfirmBody": {
-    message:
-      "아래에 표시된 커밋 시점의 render.yaml을 그대로 적용하며, 브랜치에 새로 푸시된 내용은 반영하지 않습니다. 이미 일치하는 리소스는 그대로 유지됩니다.",
-    description: "Sync confirm dialog description",
-  },
-  "blueprints.syncConfirmAction": {
-    message: "동기화",
-    description: "Sync confirm dialog primary action button label",
-  },
-  "blueprints.syncCancel": {
-    message: "취소",
-    description: "Sync confirm dialog cancel button label",
-  },
-  "blueprints.syncPreviewLoading": {
-    message: "저장소에서 동기화 계획을 계산하는 중…",
-    description: "Pre-sync dialog — loading line while blueprintPreview runs",
-  },
-  "blueprints.syncPreviewInvalid": {
-    message:
-      "현재 브랜치의 Blueprint 파일에 문제가 있습니다. 지금 동기화하면 실패하거나 저장된 매니페스트로 대체될 수 있습니다:",
-    description:
-      "Pre-sync dialog — heading above validation errors from the fetched manifest",
-  },
-  "blueprints.syncPreviewUnavailable": {
-    message:
-      "동기화 계획을 계산하지 못했습니다(미리보기 사용 불가). 미리보기가 성공한 후 새로 고치세요. 동기화하려면 검토된 커밋이 필요합니다.",
-    description:
-      "Pre-sync dialog — preview transport failure; sync is disabled until a valid preview pins a commit (w8/m41)",
-  },
-  "blueprints.syncPreviewCommit": {
-    message: "검토한 커밋 {sha}",
-    description: "Pre-sync dialog — short SHA of the previewed Git revision",
-  },
-  "blueprints.syncRefreshPreview": {
-    message: "미리보기 새로 고침",
-    description:
-      "Pre-sync dialog — refetch Git + re-validate after BLUEPRINT_SOURCE_CHANGED or an invalid preview",
-  },
-  "blueprints.syncSourceChanged": {
-    message:
-      "검토한 이후 Blueprint 소스가 변경되었습니다. 미리보기를 새로 고친 후 다시 확인하세요",
-    description:
-      "Toast when syncBlueprint refuses with BLUEPRINT_SOURCE_CHANGED (path/repo drift or stale pin)",
-  },
-  "blueprints.syncSuccess": {
-    message: "Blueprint를 동기화했습니다",
-    description: "Toast shown after a successful syncBlueprint call",
-  },
-  "blueprints.syncError": {
-    message: "동기화에 실패했습니다",
-    description: "Toast shown when syncBlueprint returns an error",
-  },
-  "blueprints.syncBusy": {
-    message:
-      "이 동기화는 더 이상 실행 권한이 없습니다(사용 중, 중단됨 또는 대체됨). 새 동기화를 시작하세요. 부분적으로 완료된 작업은 다시 실행되지 않습니다",
-    description:
-      "Toast shown when syncBlueprint refuses with BLUEPRINT_SYNC_BUSY (admission race, mid-apply fence, or disconnect-busy)",
+      "The Blueprint header's one action, Render's Manual sync: plans a sync and opens its page (w3/m678)",
   },
   "blueprints.editField": {
     message: "{field} 편집",
@@ -971,15 +849,117 @@ const koBlueprints: Record<string, TranslationEntry> = {
     description:
       "Blueprint Resources table column header for a managed resource's type",
   },
-  "blueprints.manualSyncAwaitingApproval": {
-    message: "먼저 동기화 기록에서 대기 중인 계획을 승인하세요.",
-    description:
-      "Tooltip on the disabled Manual sync button while a created Blueprint's first plan waits for approval on the Syncs page (w3/m677)",
-  },
   "blueprints.resourcesViewSyncs": {
     message: "동기화 기록으로 이동",
     description:
       "Link from a Blueprint's empty Resources page to its Syncs page, where the waiting plan or the failed sync is (w3/m677)",
+  },
+  "blueprints.syncViewDetails": {
+    message: "세부 정보 보기",
+    description:
+      "Sync card: link to the sync's own page (Render's View details, w3/m678)",
+  },
+  "blueprints.syncsLoadMore": {
+    message: "더 보기",
+    description:
+      "Syncs page: button reading the next page of older syncs (w3/m678)",
+  },
+  "blueprints.syncsLoadMoreError": {
+    message: "이전 동기화를 불러오지 못했습니다.",
+    description:
+      "Syncs page: toast when reading an older page of syncs fails (w3/m678)",
+  },
+  "blueprints.syncPageTitle": {
+    message: "동기화: {sha}",
+    description:
+      "A sync's page heading, Render's 'Sync: <short commit id>'; {sha} is the 7-character commit id (w3/m678)",
+  },
+  "blueprints.syncPageTitleNoCommit": {
+    message: "동기화",
+    description:
+      "A sync's page heading when the sync read no commit, Render's 'Sync' (w3/m678)",
+  },
+  "blueprints.syncDocumentTitle": {
+    message: "동기화",
+    description:
+      "Document title's page name on a sync's page: 'Sync ・ <name> ・ Blueprint' (w3/m678)",
+  },
+  "blueprints.syncUpToDate": {
+    message: "리소스가 이미 최신 상태입니다",
+    description:
+      "A sync's page when its plan has no actions, Render's wording (w3/m678)",
+  },
+  "blueprints.syncNotFullySynced": {
+    message: "이 리소스를 완전히 동기화하지 못했습니다.",
+    description:
+      "A failed sync's page with no actions and no errors, Render's critical line (w3/m678)",
+  },
+  "blueprints.syncNotFullySyncedBody": {
+    message: "이 오류가 계속 표시되면 지원팀에 문의하세요.",
+    description:
+      "Under blueprints.syncNotFullySynced: what to do if it keeps happening (w3/m678)",
+  },
+  "blueprints.syncActionsNotRecorded": {
+    message:
+      "이 동기화는 동기화가 작업을 저장하기 전에 기록되어 작업을 표시할 수 없습니다.",
+    description:
+      "A sync's page for a sync recorded before every sync kept its actions (w3/m678)",
+  },
+  "blueprints.syncActionCreate": {
+    message: "{kind} {name} 생성",
+    description:
+      "A sync's planned action: create a resource; {kind} is its kind label, {name} its name, drawn bold (w3/m678)",
+  },
+  "blueprints.syncActionUpdate": {
+    message: "{kind} {name} 업데이트",
+    description:
+      "A sync's planned action: change a resource; {kind} is its kind label, {name} its name (w3/m678)",
+  },
+  "blueprints.syncActionDetach": {
+    message: "{kind} {name} 관리 중지",
+    description:
+      "A sync's planned action: stop managing a resource the file no longer names; {kind}, {name} (w3/m678)",
+  },
+  "blueprints.syncActionError": {
+    message: "{kind} {name} 적용 불가",
+    description:
+      "A sync's planned action the planner refused; {kind}, {name}; the reason follows (w3/m678)",
+  },
+  "blueprints.syncActionDetachNote": {
+    message: "계속 실행되며 요금이 발생할 수 있습니다.",
+    description:
+      "Under a 'stop managing' action: the resource is not deleted (w3/m678)",
+  },
+  "blueprints.syncActionStateUnknown": {
+    message: "상태 알 수 없음",
+    description:
+      "Accessible name of a planned action's state icon when bex can't say which state it reached (a failed sync's actions, w3/m678)",
+  },
+  "blueprints.syncApproveFailed": {
+    message: "이 동기화를 승인하지 못했습니다. 다시 시도하세요.",
+    description:
+      "A sync's page: inline alert when Approve fails without the server's reason, Render's wording (w3/m678)",
+  },
+  "blueprints.syncNotFound": {
+    message:
+      "이 동기화가 없습니다. 24시간 이내에 승인되지 않은 계획된 동기화는 삭제됩니다.",
+    description:
+      "A sync's page for an id that is not one of this Blueprint's syncs, e.g. a plan deleted after 24 hours (w3/m678)",
+  },
+  "blueprints.syncErrorBannerTitle": {
+    message: "동기화 오류",
+    description:
+      "Title of Render's dismissible banner when Manual sync could not plan a sync (w3/m678)",
+  },
+  "blueprints.syncErrorBannerDismiss": {
+    message: "닫기",
+    description:
+      "Accessible name of the Sync Error banner's close button (w3/m678)",
+  },
+  "blueprints.syncErrorsIntro_other": {
+    message: "Blueprint와 동기화하는 중에 문제가 발생했습니다:",
+    description:
+      "A sync's page: the line above its errors, Render's 'There was a problem' / 'There were a few problems' (w3/m678)",
   },
 };
 

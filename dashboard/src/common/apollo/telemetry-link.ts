@@ -54,7 +54,8 @@ export const MUTATION_EVENTS: Readonly<Record<string, MutationEvent>> = {
   UpdateKeyValuePlan: { event: "keyvalue_plan_changed", params: plan },
   DeleteKeyValue: { event: "keyvalue_deleted" },
   CreateBlueprint: { event: "blueprint_created" },
-  SyncBlueprint: { event: "blueprint_synced" },
+  // A Blueprint syncs when its plan is approved on the sync's page (w3/m678).
+  ApproveBlueprint: { event: "blueprint_synced" },
   CreateEnvGroup: { event: "env_group_created" },
   CreateProject: { event: "project_created" },
 

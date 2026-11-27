@@ -1,7 +1,7 @@
 import type {
   BlueprintPreviewQuery,
+  BlueprintSyncQuery,
   BlueprintSyncsQuery,
-  SyncBlueprintMutation,
   ValidateBlueprintQuery,
 } from "@/graphql/definitions";
 import type {
@@ -9,11 +9,11 @@ import type {
   BlueprintPreviewReason,
   BlueprintPreviewResult,
   BlueprintPreviewValidation,
+  BlueprintSyncDetailView,
   BlueprintSyncView,
   BlueprintValidationError,
   BlueprintValidationResult,
   BlueprintView,
-  SyncBlueprintResult,
 } from "@/features/blueprints/types";
 import { nonNull } from "@/common/lib/non-null";
 
@@ -50,7 +50,6 @@ type PreviewData = NonNullable<BlueprintPreviewQuery["blueprintPreview"]>;
 type ValidationData = NonNullable<PreviewData["validation"]>;
 type PlanData = NonNullable<ValidationData["plan"]>;
 type PricingData = NonNullable<ValidationData["estimatedPricing"]>;
-type SyncResultData = NonNullable<SyncBlueprintMutation["syncBlueprint"]>;
 type SyncRow = NonNullable<
   NonNullable<BlueprintSyncsQuery["blueprintSyncs"]>[number]
 >;
@@ -90,15 +89,51 @@ export function toBlueprintView(row: BlueprintRowLike): BlueprintView {
   };
 }
 
-export function toBlueprintSyncView(row: SyncRow): BlueprintSyncView {
+export function toBlueprintSyncView(
+  row: Omit<SyncRow, "__typename">,
+): BlueprintSyncView {
   return {
     id: row.id ?? "",
     commitId: row.commitId ?? "",
+    commitMessage: row.commitMessage ?? "",
     state: row.state ?? "",
     startedAt: row.startedAt ?? null,
     completedAt: row.completedAt ?? null,
     errorMessage: row.errorMessage ?? null,
     note: row.note ?? null,
+  };
+}
+
+type SyncDetailData = NonNullable<BlueprintSyncQuery["blueprintSync"]>;
+
+/** toBlueprintSyncDetailView maps the sync page's read (w3/m678). Each action
+ *  takes its state from the parallel actionStates. */
+export function toBlueprintSyncDetailView(
+  row: SyncDetailData,
+): BlueprintSyncDetailView {
+  const states = row.actionStates ?? [];
+  return {
+    ...toBlueprintSyncView(row),
+    actionsRecorded: row.actionsRecorded ?? false,
+    actions: (row.actions ?? []).flatMap((action, i) =>
+      action
+        ? [{ action: toPlanAction(action), state: states[i]?.state ?? "" }]
+        : [],
+    ),
+    errors: (row.errors ?? []).filter(nonNull).map((e) => ({
+      code: "",
+      error: e.message ?? "",
+      path: e.path ?? "",
+      line: e.line ?? 0,
+      column: e.column ?? 0,
+    })),
+    requiredManualEnvVars: (row.requiredManualEnvVars ?? [])
+      .filter(nonNull)
+      .map((v) => ({
+        serviceType: v.serviceType ?? "",
+        serviceName: v.serviceName ?? "",
+        key: v.key ?? "",
+      })),
   };
 }
 
@@ -156,7 +191,11 @@ type PlanActionData = NonNullable<PlanData["actions"]>[number];
 export function toPlanActions(
   actions: ReadonlyArray<PlanActionData> | null | undefined,
 ): BlueprintPlanAction[] {
-  return (actions ?? []).filter(nonNull).map((a) => ({
+  return (actions ?? []).filter(nonNull).map(toPlanAction);
+}
+
+function toPlanAction(a: NonNullable<PlanActionData>): BlueprintPlanAction {
+  return {
     operation: a.operation ?? "",
     kind: a.kind ?? "",
     name: a.name ?? "",
@@ -166,7 +205,7 @@ export function toPlanActions(
       ? a.changedFields.filter(nonNull).map((c) => ({ path: c.path ?? "" }))
       : null,
     message: a.message,
-  }));
+  };
 }
 
 function toEstimatedPricing(pricing: PricingData) {
@@ -212,22 +251,5 @@ export function toBlueprintPreviewResult(
     validation: preview.validation
       ? toPreviewValidation(preview.validation)
       : null,
-  };
-}
-
-export function toSyncBlueprintResult(
-  result: SyncResultData,
-): SyncBlueprintResult {
-  return {
-    blueprint: result.blueprint ? toBlueprintView(result.blueprint) : null,
-    services: result.services
-      ? result.services.map((s) =>
-          s ? { id: s.id ?? "", name: s.name ?? "" } : null,
-        )
-      : null,
-    databases: strings(result.databases),
-    detachedResources: (result.detachedResources ?? [])
-      .filter(nonNull)
-      .map(toBlueprintResource),
   };
 }

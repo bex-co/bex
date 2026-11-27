@@ -334,17 +334,32 @@ export const ROUTE_SKELETON_MANIFEST = {
     shape: "blueprint-syncs",
     regions: ["sync-history"],
   },
+  // A sync's page (w3/m678), and `/sync` with no id: the plan Manual sync
+  // handed over, else Syncs.
+  "/blueprints/$blueprintId/sync/$syncId": {
+    kind: "render",
+    owner: "routes/blueprints.$blueprintId.sync.$syncId.tsx",
+    shape: "blueprint-sync",
+    regions: ["sync-heading", "sync-card", "sync-actions"],
+  },
+  "/blueprints/$blueprintId/sync/": {
+    kind: "render",
+    owner: "routes/blueprints.$blueprintId.sync.index.tsx",
+    shape: "blueprint-sync",
+    regions: ["sync-heading", "sync-card", "sync-actions"],
+  },
   "/blueprints/$blueprintId/settings": {
     kind: "render",
     owner: "routes/blueprints.$blueprintId.settings.tsx",
     shape: "blueprint-settings",
     regions: ["metadata", "manifest", "validation", "disconnect"],
   },
-  // Render's `sync[/<id>]` lands on Syncs, any other sub-path on Resources.
+  // A path under `sync` past a sync's page lands on Syncs, any other
+  // sub-path on Resources.
   "/blueprints/$blueprintId/$": {
     kind: "redirect",
     owner: "routes/blueprints.$blueprintId.$.tsx",
-    destination: "Syncs for a sync's path, else Resources",
+    destination: "Syncs for a path under sync, else Resources",
   },
   // Render's `/blueprint/<id>[/<page>]` (w3/m677).
   "/blueprint/$": {

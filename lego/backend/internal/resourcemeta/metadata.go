@@ -259,6 +259,17 @@ func (c Config) DashboardURL(route, id string) string {
 	return u.String()
 }
 
+// BlueprintSyncDashboardURL is Render's `/blueprint/<exs-id>/sync/<exe-id>`,
+// one sync's page: Render documents a sync's dashboardUrl as "Link to this
+// Sync in the Render Dashboard" (w3/m678,
+// docs/render-artifacts/blueprint-pages.md). Either id empty omits it.
+func (c Config) BlueprintSyncDashboardURL(blueprintID, syncID string) string {
+	if blueprintID == "" || syncID == "" {
+		return ""
+	}
+	return c.DashboardURL(BlueprintDashboardRoute, path.Join(blueprintID, "sync", syncID))
+}
+
 // Touch records a real API mutation on obj. Callers invoke it immediately
 // before the Kubernetes write so a failed write never reports a new time.
 func Touch(obj metav1.Object, now time.Time) {

@@ -31,13 +31,15 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// w32/077 on real Postgres, through REST, GraphQL and MCP: a Blueprint's sync
-// history never lists a plan waiting for approval, as Render's leaves out
-// every `created` sync ("Syncs that are planned but not yet approved (in the
+// w32/077 on real Postgres, through REST and MCP: a Blueprint's sync history
+// never lists a plan waiting for approval, as Render's leaves out every
+// `created` sync ("Syncs that are planned but not yet approved (in the
 // `created` state) are not included", the pinned CLI's ListBlueprintSyncs and
 // api-docs.render.com's list-blueprint-syncs). A cursor naming the waiting
 // plan pages from where it stands, and an approved plan is listed under the
-// same id.
+// same id. bex's GraphQL, the dashboard's Syncs, lists the same history with
+// the waiting plan at the top of its first page, as Render's dashboard does
+// (w3/m678).
 func TestBlueprintSyncHistoryLeavesOutWaitingPlansOnEverySurfacePG(t *testing.T) {
 	svc, _, _, ctx, wsID := newRecreatePGService(t)
 	mux := http.NewServeMux()
@@ -93,6 +95,10 @@ func TestBlueprintSyncHistoryLeavesOutWaitingPlansOnEverySurfacePG(t *testing.T)
 			t.Fatalf("MCP list_blueprint_syncs = %s (%v)", raw, err)
 		}
 
+		// GraphQL's first page leads with the waiting plan, if there is one.
+		if cursor == "" && len(gqlRuns) > 0 && gqlRuns[0].State == store.BlueprintSyncStateCreated {
+			gqlRuns = gqlRuns[1:]
+		}
 		var ids []string
 		for surface, runs := range map[string][]BlueprintSyncView{"REST": restRuns, "GraphQL": gqlRuns, "MCP": listed.Syncs} {
 			got := make([]string, len(runs))

@@ -49,6 +49,64 @@ Under the layout, one `*` child (the header shell) holds the pages:
 - **Syncs** opens with the title "Syncs", then the sync cards, newest first, each linking to its page (w3/m678), or `No syncs yet.`.
 - **Settings** is one card titled "Settings": Name, Auto Sync, Sync Hook (when the Blueprint has a sync key), Branch, Blueprint Path, Git Credentials (w3/m679). Below the card, **Disconnect Blueprint** (a critical button, behind the same tooltip without `updateBlueprint`).
 
+## A sync's page, Syncs and the sync card (w3/m678)
+
+Read 2026-11-26 for w3/m678 from the same bundle, without sign-in: `index-D5V4ZgbE.js` (sha256 `8d15889ace2d…`, unchanged), `IACSyncCard-CwII5eI4.js` (`1f4ec599d75e…`, the card), `iac-D9RnC10j.js` (`be64bc010544…`, the GraphQL documents and the sync states) and `urls-ubVUii_6.js` (`830179d15f15…`). Find the page by `Couldn't approve this sync. Try again.`, the card by `View details`, the list by `No syncs yet.`. No signed-in Render session was available, so this too is bundle-only.
+
+### Sync states
+
+`created`, `pending`, `running`, `success`, `error` (`iac-*.js`). `success` and `error` are terminal; every other state is still moving, and `created` is a plan waiting for **Approve**.
+
+### The sync card
+
+One `EventCard` per sync (`IACSyncCard-*.js`):
+
+| State | Icon | Tone | Animated | Badge |
+| --- | --- | --- | --- | --- |
+| `created` | workflow | neutral | no | none |
+| `pending`, `running` | workflow | neutral | yes | the state's name, small, animated |
+| `success` | a check | success | no | none |
+| `error` | a cross | critical | no | none |
+
+- The first line is the commit, monospace: its short id, linked to the commit on the Git provider in a new tab, a colon, then the commit message (one line, the full message as its title). A sync without a commit has no first line.
+- **View details** links to the sync's page.
+- On the right, the relative creation time, refreshed every 30 seconds.
+
+### Syncs
+
+- The title "Syncs", then the cards, newest first, read 20 at a time with infinite scroll (`executions(before, limit)`, `hasMore`), or "No syncs yet.".
+- A subscription prepends each new sync as it starts, so a push or a Manual sync appears at the top without a reload.
+- The list includes a sync still `created` (the card has an icon for it): a plan waiting for approval is on Syncs.
+
+### A sync's page
+
+`/blueprint/<id>/sync/<syncId>` reads the sync (`iacExecution(id)`: `plan`, `state`, `actionStates { state message }`, `commit { id shortId message }`, `errors`) and draws:
+
+1. The title `Sync: <short id>` (`Sync` alone when the sync has no commit).
+2. The sync's card, without View details.
+3. A card listing the plan's actions, one row per action, an update split into one row per changed sub-resource. Each row starts with its state's icon (`created` an outlined next arrow, `pending` a warning clock, `running` a spinner, `success` a green check, `error` a red cross, anything else an unknown mark), then the action's sentence by kind ("Create web service **api**", "Update … to …", "Associate … with this Blueprint"), the plan in parentheses where one applies, and an errored action's reason ("deploy failed" links the failed deploy). There is no delete: a resource dropped from the file is not removed.
+   - A plan with no actions reads **Resources already up to date**, and a failed sync with no actions and no errors reads the critical callout **We weren’t able to fully sync these resources.** ("If you continue to see this error, " and a link that opens support chat).
+   - The card shows only when the plan has actions or the sync has no errors, so a failed plan shows its errors alone.
+4. While the sync is `created`, **Approve** under the actions (`approveIACSync(sourceId, executionId)`). It stays while the mutation runs or after it failed; a failure reads the server's message, or "Couldn't approve this sync. Try again.". The page sends no env var values: the create flow is where Render asks for `sync: false` values.
+5. When the sync has errors, a card: "There was a problem syncing with your Blueprint:" ("There were a few problems" for several), then each error's path and message, and the Blueprint file at the commit with the erroring lines marked.
+
+A sync that is not terminal subscribes to its state and action states, so the page follows it to the end, Approve's run included. The sidebar's **Syncs** is the open entry.
+
+`/blueprint/<id>/sync` with no id draws the sync handed over in the navigation's state (a plan Manual sync just made that saved no sync, so a plan with no changes reads Resources already up to date) and redirects to `/blueprint/<id>/syncs` when there is none.
+
+### Manual sync
+
+The header's **Manual sync** runs `planIACSync` with the Blueprint's repository, branch and path, then navigates to `/blueprint/<id>/sync/<executionId>` (or `/sync` when the plan saved none) with the planned sync in the navigation's state. A failed plan shows a dismissible **Sync Error** banner with the server's message above the page. Settings' branch change opens the sync it returns the same way.
+
+### What Approve must check (bex, t001 step 2)
+
+Render's Approve carries no confirmation phrase, and neither does bex's `approveBlueprint`. bex refuses, at planning and again when the approved plan applies, what the reviewed-commit sync dialog asked about:
+
+- **A protected environment.** A non-Admin's plan that would create a resource in a protected environment, or move one in or out, fails with a located notice (`blueprintProtectedPlacementProblems`, w3/m281), and the apply runs the same check before its first write ([protected-environments.md](protected-environments.md): Admins only). bex-api issues no confirmation phrase for a protected environment since w8/187, so the dialog's protected branch no longer fires.
+- **Another Blueprint's resource.** A plan naming a resource another Blueprint manages fails with a notice naming the owner and Render's two ways forward, a `create_new` Blueprint or releasing it from the other Blueprint's file (`plannedOwnershipNotice`, w8/251), and an approved plan's apply refuses it without a phrase (`withPlannedApply`).
+
+So Approve needs no guard of its own, and the sync dialog can retire. What retires with it is the dashboard's typed takeover of a resource another Blueprint manages: Render has no such takeover, and `syncBlueprint` with `confirm` stays on REST, GraphQL and MCP for the clients that use it.
+
 ## Page map (bex, w3/m677)
 
 Every card and control of bex's former single page (`routes/blueprints.$blueprintId.tsx`), moved unchanged to the page Render puts its counterpart on. What has no Render counterpart goes with the page it belongs to.
@@ -66,19 +124,25 @@ Every card and control of bex's former single page (`routes/blueprints.$blueprin
 | Validate (`ValidatePanel`) | Settings, 3rd | none: a bex extra |
 | **Disconnect** and its dialog | Settings, last | Disconnect Blueprint (w3/m679 gives it Render's words and modal) |
 
-## What bex does (w3/m677)
+## What bex does (w3/m677, w3/m678)
 
 - A Blueprint's pages swap the workspace nav for this sidebar: the **Blueprints** back link, the name, then Resources, Syncs and Settings, with the open page highlighted (Resources on the bare URL, Syncs on `/sync` and `/sync/<id>`).
-- Each page is its own URL under `/blueprints/<id>`: the bare URL and `/resources`, then `/syncs` and `/settings`. Any other sub-path lands on Resources, and `/sync` and `/sync/<id>` land on Syncs until w3/m678 gives a sync its page.
+- Each page is its own URL under `/blueprints/<id>`: the bare URL and `/resources`, then `/syncs`, a sync's `/sync/<syncId>`, and `/settings`. Any other sub-path lands on Resources, and a path past a sync's page on Syncs.
 - Render's `/blueprint/<id>` and its sub-paths redirect there with the query and hash kept. `/blueprint/new` stays the create page, and `/blueprint/generate` goes to `/`, as Render's does with nothing selected, until w3/m681 builds the page.
-- The header names the Blueprint with its suffix and status and carries **Manual sync**, which still opens today's reviewed-commit dialog until w3/m678.
-- bex-api's Blueprint links use Render's shape, `<dashboard>/blueprint/<exs-id>`: a planned and an approved sync's `dashboardUrl`, and the sync-failure email.
+- The header names the Blueprint with its suffix and status and carries **Manual sync**, which plans a sync and opens its page, or `/sync` with the plan handed over when it changed nothing; a refused plan shows the dismissible **Sync Error** banner (w3/m678).
+- Syncs lists the sync cards, newest first, with **Load more** for older ones; bex's GraphQL lists a plan waiting for approval among them, as Render's dashboard does, where REST and MCP leave it out as Render's API does (w3/m678).
+- A sync's page draws `Sync: <short sha>`, its card, its actions with their states, **Resources already up to date**, Render's critical line, the errors and **Approve** as Render's does, with a field per `sync: false` value the plan needs (bex-api's approve requires them; Render's page asks for none). It reads the sync until it settles. A sync recorded before syncs kept their actions (migration 0353) says so; an id that is not one of this Blueprint's syncs (a plan deleted after 24 hours) says it does not exist and links Syncs (w3/m678).
+- bex-api's Blueprint links use Render's shape: a planned and an approved sync's `dashboardUrl` is the sync's page, `<dashboard>/blueprint/<exs-id>/sync/<exe-id>` (w3/m678), and the sync-failure email links `<dashboard>/blueprint/<exs-id>`.
 - The breadcrumb is **Blueprints** → the name.
 
 ### Still apart
 
-- **Each page's title names the page first** (`Syncs ・ <name> ・ Blueprint ・ bex Dashboard`), as bex's Postgres and Key Value pages do, where Render's is `<name> ・ Blueprint` on every page.
+- **Each page's title names the page first** (`Syncs ・ <name> ・ Blueprint ・ bex Dashboard`; a sync's page `Sync ・ <name> ・ Blueprint`), as bex's Postgres and Key Value pages do, where Render's is `<name> ・ Blueprint` on every page.
 - **Every page opens with a heading.** Render's Resources has none; bex's Resources opens with "Resources", as each bex resource page names its page, so a phone with the sidebar in its drawer still says which page is open.
-- **Manual sync is disabled while a Blueprint's first plan waits for approval,** with the reason, because the reviewed-commit sync refuses a `created` Blueprint (w2/m256 t012). w3/m678 makes it plan a sync, as Render's does, which removes that rule.
-- **The breadcrumb's name has no menu of the other Blueprints.** bex's datastore breadcrumbs have none either.
-- The waiting plan's panel and the sync history table stand in for Render's sync page and sync cards until w3/m678, the metadata card for Render's Settings card until w3/m679, and the two-column table for Render's resource tables until w3/m680.
+- **The breadcrumb's name has no menu of the other Blueprints.** bex's datastore breadcrumbs have none either ([w3/135](../../.pm/w3/135.md)).
+- **A failed sync's actions show no state of their own,** and a sync's page polls (every 3 seconds while it applies, every 25 while it waits) where Render subscribes. bex records a sync's state and error, not each action's result.
+- **An action names its resource's kind** ("Create Service **api**") where Render names the service's type ("Create web service **api**") and links a resource that exists; bex adds **Stop managing** for a resource the file dropped, which Render's plan has no row for.
+- **The errors are a list with their line and column.** Render also draws the Blueprint file at the sync's commit with the erroring lines marked.
+- **Syncs loads older syncs with Load more**, as bex's deploy history does, where Render's list scrolls on.
+- **The sync-failure email links the Blueprint**, not the failed sync: Render's email was not seen.
+- The metadata card stands in for Render's Settings card until w3/m679, and the two-column table for Render's resource tables until w3/m680.

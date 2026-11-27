@@ -34,7 +34,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
-	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -360,8 +359,9 @@ func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStor
 	}
 	now := s.Now().UTC()
 	planned, err := plans.InsertPlannedBlueprintSync(ctx, store.PlannedBlueprintSync{
-		BlueprintSync: store.BlueprintSync{BlueprintID: b.ID, CommitID: commitSHA, State: store.BlueprintSyncStateCreated, StartedAt: now},
-		Path:          b.Path, Branch: b.Branch, RequiredManualEnvVars: rawRequired, PlanActions: rawActions,
+		BlueprintSync: store.BlueprintSync{BlueprintID: b.ID, CommitID: commitSHA, State: store.BlueprintSyncStateCreated, StartedAt: now,
+			CommitMessage: s.blueprintCommitMessage(ctx, b.TenantID, b.Repo, commitSHA)},
+		Path: b.Path, Branch: b.Branch, RequiredManualEnvVars: rawRequired, PlanActions: rawActions,
 	})
 	if err != nil {
 		return BlueprintPlanResult{}, err
@@ -390,11 +390,17 @@ func (s *Service) recordFailedPlan(ctx context.Context, plans blueprintPlanStore
 		messages = append(messages, n.Message)
 	}
 	summary := "planning failed: " + strings.Join(messages, "; ")
+	// The sync's page lists each notice where the file has it (w3/m678).
+	rawNotices, err := json.Marshal(notices)
+	if err != nil {
+		return BlueprintPlanResult{}, err
+	}
 	now := s.Now().UTC()
 	failed, err := plans.InsertPlannedBlueprintSync(ctx, store.PlannedBlueprintSync{
 		BlueprintSync: store.BlueprintSync{BlueprintID: b.ID, CommitID: commitSHA, State: store.BlueprintSyncStateError,
-			StartedAt: now, CompletedAt: &now, ErrorMessage: &summary},
-		Path: b.Path, Branch: b.Branch,
+			StartedAt: now, CompletedAt: &now, ErrorMessage: &summary,
+			CommitMessage: s.blueprintCommitMessage(ctx, b.TenantID, b.Repo, commitSHA)},
+		Path: b.Path, Branch: b.Branch, ErrorNotices: rawNotices,
 	})
 	if err != nil {
 		return BlueprintPlanResult{}, err
@@ -459,7 +465,8 @@ func (s *Service) syncWithPlan(b store.Blueprint, p store.PlannedBlueprintSync, 
 	return &SyncWithPlan{
 		ID: ids.BlueprintSyncPublicID(p.ID), Commit: BlueprintCommitRef{ID: p.CommitID}, CommitID: p.CommitID, RawPlanJSON: rawPlanJSON(rawPlan), State: p.State,
 		StartedAt: &started, CompletedAt: p.CompletedAt,
-		DashboardURL: s.Metadata.DashboardURL(resourcemeta.BlueprintDashboardRoute, ids.BlueprintPublicID(b.ID)),
+		// Render: "Link to this Sync in the Render Dashboard" (w3/m678).
+		DashboardURL: s.blueprintSyncDashboardURL(b.ID, p.ID),
 		RawPlan:      rawPlan, RequiredManualEnvVars: required, Actions: actions,
 	}
 }
@@ -483,7 +490,21 @@ func (s *Service) PlannedSync(ctx context.Context, bpID, ownerID string) (*SyncW
 	if err != nil {
 		return nil, store.MapError(err)
 	}
-	p, err := plans.LatestBlueprintPlan(ctx, b.ID, s.Now())
+	p, err := waitingPlan(ctx, plans, b.ID, s.Now())
+	if err != nil || p == nil {
+		return nil, err
+	}
+	actions, required, err := plannedSyncRecord(*p)
+	if err != nil {
+		return nil, err
+	}
+	return s.syncWithPlan(b, *p, actions, required), nil
+}
+
+// waitingPlan is the newest planning attempt of Blueprint blueprintID while
+// it still waits for approval, or nil when none waits.
+func waitingPlan(ctx context.Context, plans blueprintPlanStore, blueprintID string, now time.Time) (*store.PlannedBlueprintSync, error) {
+	p, err := plans.LatestBlueprintPlan(ctx, blueprintID, now)
 	if errors.Is(err, store.ErrNotFound) {
 		return nil, nil
 	}
@@ -493,19 +514,25 @@ func (s *Service) PlannedSync(ctx context.Context, bpID, ownerID string) (*SyncW
 	if p.State != store.BlueprintSyncStateCreated {
 		return nil, nil
 	}
+	return &p, nil
+}
+
+// plannedSyncRecord decodes the actions a sync recorded (nil when it recorded
+// none) and the manual env vars approving it needs.
+func plannedSyncRecord(p store.PlannedBlueprintSync) ([]BlueprintPlanAction, []ManualEnvVar, error) {
 	var actions []BlueprintPlanAction
 	if len(p.PlanActions) > 0 {
 		if err := json.Unmarshal(p.PlanActions, &actions); err != nil {
-			return nil, fmt.Errorf("read the planned sync's actions: %w", err)
+			return nil, nil, fmt.Errorf("read sync %s's actions: %w", ids.BlueprintSyncPublicID(p.ID), err)
 		}
 	}
 	required := []ManualEnvVar{}
 	if len(p.RequiredManualEnvVars) > 0 {
 		if err := json.Unmarshal(p.RequiredManualEnvVars, &required); err != nil {
-			return nil, fmt.Errorf("read the planned sync's manual env vars: %w", err)
+			return nil, nil, fmt.Errorf("read sync %s's manual env vars: %w", ids.BlueprintSyncPublicID(p.ID), err)
 		}
 	}
-	return s.syncWithPlan(b, p, actions, required), nil
+	return actions, required, nil
 }
 
 // ApproveBlueprint applies the Blueprint's newest planned sync, with the
@@ -603,7 +630,8 @@ func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID, planned s
 	started := applied.StartedAt
 	return ApprovedSync{
 		ID: ids.BlueprintSyncPublicID(applied.ID), Commit: BlueprintCommitRef{ID: applied.CommitID}, CommitID: applied.CommitID, State: applied.State,
-		DashboardURL: s.Metadata.DashboardURL(resourcemeta.BlueprintDashboardRoute, ids.BlueprintPublicID(b.ID)), StartedAt: &started, CompletedAt: applied.CompletedAt,
+		// Render: "Link to the sync in the Render Dashboard" (w3/m678).
+		DashboardURL: s.blueprintSyncDashboardURL(b.ID, applied.ID), StartedAt: &started, CompletedAt: applied.CompletedAt,
 	}, nil
 }
 

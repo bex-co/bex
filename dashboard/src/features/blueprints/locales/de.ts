@@ -670,36 +670,12 @@ const deBlueprints: Record<string, TranslationEntry> = {
     description:
       "Blueprint managed-resources empty state when status is error after a sync",
   },
-  "blueprints.syncHistoryTitle": {
-    message: "Sync-Verlauf",
-    description: "Blueprint detail section heading for the sync run table",
-  },
   "blueprints.syncHistoryEmpty": {
     message: "Noch keine Synchronisierungen.",
-    description: "Blueprint sync history empty state",
-  },
-  "blueprints.syncColCommit": {
-    message: "Commit",
-    description: "Sync history table column — commit SHA",
-  },
-  "blueprints.syncColState": {
-    message: "Zustand",
-    description: "Sync history table column — sync run state",
-  },
-  "blueprints.syncColStarted": {
-    message: "Gestartet",
-    description: "Sync history table column — sync run start time",
-  },
-  "blueprints.syncColCompleted": {
-    message: "Abgeschlossen",
-    description: "Sync history table column — sync run completion time",
+    description: "Syncs page: no syncs yet, Render's wording (w3/m678)",
   },
   "blueprints.detachPreviewTitle": {
     message: "Ressourcen werden nicht mehr verwaltet",
-    description: "Blueprint resource detachment notice.",
-  },
-  "blueprints.detachSuccessTitle": {
-    message: "Synchronisierung abgeschlossen — Ressourcen getrennt",
     description: "Blueprint resource detachment notice.",
   },
   "blueprints.detachEstimateNote": {
@@ -712,149 +688,51 @@ const deBlueprints: Record<string, TranslationEntry> = {
       "Diese Ressourcen laufen weiter und können weiterhin Kosten verursachen. Dieser Blueprint verwaltet sie nicht mehr.",
     description: "Blueprint resource detachment notice.",
   },
-  "blueprints.syncColError": {
-    message: "Details",
-    description: "Sync history table column — errors and durable sync notes",
-  },
   "blueprints.manifestTitle": {
     message: "render.yaml-Manifest",
     description: "Blueprint detail section heading for the stored manifest",
   },
-  "blueprints.plannedTitle": {
-    message: "Geplante Synchronisierung",
-    description:
-      "Blueprint detail: heading of the planned-sync card a Blueprint shows while a plan waits for approval",
-  },
-  "blueprints.plannedBody": {
-    message:
-      "Dieser Plan wartet auf Genehmigung. Prüfe, was die Genehmigung bei Commit {commit} ändert, und genehmige dann, um den Plan anzuwenden.",
-    description:
-      "Planned-sync card: explains plan-then-approve; {commit} is a short commit SHA",
-  },
   "blueprints.plannedActions": {
     message: "Geplante Änderungen",
-    description: "Planned-sync card: accessible label of the action list",
+    description:
+      "A sync's page: accessible label of its list of planned actions (w3/m678)",
   },
   "blueprints.plannedAction": {
     message: "{operation} {kind} {name}",
     description:
       "Planned-sync card: one plan action, e.g. 'create service api'",
   },
-  "blueprints.plannedActionsUnavailable": {
-    message:
-      "Dieser Plan wurde aufgezeichnet, bevor Pläne ihre Änderungen speicherten. Plane erneut, um sie zu sehen, oder genehmige, um ihn anzuwenden.",
-    description:
-      "Planned-sync card: a plan stored without its actions (recorded before migration 0187)",
-  },
   "blueprints.plannedManualEnvVars": {
     message:
       "Diese Werte stehen nicht in der Blueprint-Datei (sync: false). Gib sie zur Genehmigung ein.",
     description:
-      "Planned-sync card: intro to the required manual env var fields",
+      "A waiting sync's page: intro to the fields for the sync: false values approving it needs (w3/m678)",
   },
   "blueprints.plannedManualEnvVarLabel": {
     message: "{service}: {key}",
-    description: "Planned-sync card: label of one manual env var field",
+    description:
+      "A waiting sync's page: label of one sync: false value's field (w3/m678)",
   },
   "blueprints.plannedApprove": {
     message: "Genehmigen",
-    description: "Planned-sync card: button that applies the planned sync",
-  },
-  "blueprints.plannedReplan": {
-    message: "Erneut planen",
     description:
-      "Planned-sync card: button that plans a new sync at the branch head",
-  },
-  "blueprints.plannedNone": {
-    message:
-      "Es wartet kein Plan auf Genehmigung. Plane erneut, um den Branch-Stand zu lesen.",
-    description:
-      "Planned-sync card: shown when a created Blueprint has no approvable plan",
-  },
-  "blueprints.plannedApproved": {
-    message: "Geplante Synchronisierung genehmigt",
-    description: "Toast after approving a planned sync",
-  },
-  "blueprints.plannedApproveFailed": {
-    message: "Die geplante Synchronisierung konnte nicht genehmigt werden",
-    description: "Toast when approving fails",
+      "A waiting sync's page: the button that applies the planned sync, Render's Approve (w3/m678)",
   },
   "blueprints.plannedChanged": {
     message:
       "Jemand hat diesen Blueprint erneut geplant. Prüfe den neuesten Plan und genehmige ihn dann.",
     description:
-      "Toast when the plan on screen was replaced before it was approved (BLUEPRINT_PLAN_CHANGED)",
+      "A sync's page: inline alert when the plan on screen was replaced before it was approved (BLUEPRINT_PLAN_CHANGED)",
   },
   "blueprints.plannedReplanFailed": {
     message: "Eine neue Synchronisierung konnte nicht geplant werden",
-    description: "Toast when re-planning fails",
+    description:
+      "Sync Error banner: Manual sync could not plan a sync and the server gave no reason (w3/m678)",
   },
   "blueprints.syncButton": {
     message: "Manuell synchronisieren",
     description:
-      "The Blueprint header's one action, Render's Manual sync: opens the reviewed-commit sync dialog (w3/m677)",
-  },
-  "blueprints.syncConfirmTitle": {
-    message: "Blueprint synchronisieren?",
-    description: "Sync confirm dialog title",
-  },
-  "blueprints.syncConfirmBody": {
-    message:
-      "Dadurch wird render.yaml exakt im Stand des unten gezeigten Commits angewendet — nicht ein neuerer Push auf den Branch. Ressourcen, die bereits übereinstimmen, bleiben unverändert.",
-    description: "Sync confirm dialog description",
-  },
-  "blueprints.syncConfirmAction": {
-    message: "Synchronisieren",
-    description: "Sync confirm dialog primary action button label",
-  },
-  "blueprints.syncCancel": {
-    message: "Abbrechen",
-    description: "Sync confirm dialog cancel button label",
-  },
-  "blueprints.syncPreviewLoading": {
-    message: "Sync-Plan wird aus dem Repository berechnet…",
-    description: "Pre-sync dialog — loading line while blueprintPreview runs",
-  },
-  "blueprints.syncPreviewInvalid": {
-    message:
-      "Die aktuell auf dem Branch liegende Blueprint-Datei hat Probleme — eine Synchronisierung jetzt kann fehlschlagen oder auf das gespeicherte Manifest zurückfallen:",
-    description:
-      "Pre-sync dialog — heading above validation errors from the fetched manifest",
-  },
-  "blueprints.syncPreviewUnavailable": {
-    message:
-      "Der Sync-Plan konnte nicht berechnet werden (Vorschau nicht verfügbar). Aktualisiere, nachdem die Vorschau erfolgreich war — die Synchronisierung erfordert einen geprüften Commit.",
-    description:
-      "Pre-sync dialog — preview transport failure; sync is disabled until a valid preview pins a commit (w8/m41)",
-  },
-  "blueprints.syncPreviewCommit": {
-    message: "Geprüfter Commit {sha}",
-    description: "Pre-sync dialog — short SHA of the previewed Git revision",
-  },
-  "blueprints.syncRefreshPreview": {
-    message: "Vorschau aktualisieren",
-    description:
-      "Pre-sync dialog — refetch Git + re-validate after BLUEPRINT_SOURCE_CHANGED or an invalid preview",
-  },
-  "blueprints.syncSourceChanged": {
-    message:
-      "Die Blueprint-Quelle hat sich seit deiner Prüfung geändert — aktualisiere die Vorschau und bestätige erneut",
-    description:
-      "Toast when syncBlueprint refuses with BLUEPRINT_SOURCE_CHANGED (path/repo drift or stale pin)",
-  },
-  "blueprints.syncSuccess": {
-    message: "Blueprint synchronisiert",
-    description: "Toast shown after a successful syncBlueprint call",
-  },
-  "blueprints.syncError": {
-    message: "Synchronisierung fehlgeschlagen",
-    description: "Toast shown when syncBlueprint returns an error",
-  },
-  "blueprints.syncBusy": {
-    message:
-      "Diese Synchronisierung hat die Ausführung nicht mehr inne (ausgelastet, unterbrochen oder abgelöst) — starte eine neue Synchronisierung; Teilarbeit wird nie wiederholt",
-    description:
-      "Toast shown when syncBlueprint refuses with BLUEPRINT_SYNC_BUSY (admission race, mid-apply fence, or disconnect-busy)",
+      "The Blueprint header's one action, Render's Manual sync: plans a sync and opens its page (w3/m678)",
   },
   "blueprints.editField": {
     message: "{field} bearbeiten",
@@ -996,15 +874,126 @@ const deBlueprints: Record<string, TranslationEntry> = {
     description:
       "Blueprint Resources table column header for a managed resource's type",
   },
-  "blueprints.manualSyncAwaitingApproval": {
-    message: "Genehmige zuerst den wartenden Plan unter Synchronisierungen.",
-    description:
-      "Tooltip on the disabled Manual sync button while a created Blueprint's first plan waits for approval on the Syncs page (w3/m677)",
-  },
   "blueprints.resourcesViewSyncs": {
     message: "Zu den Synchronisierungen",
     description:
       "Link from a Blueprint's empty Resources page to its Syncs page, where the waiting plan or the failed sync is (w3/m677)",
+  },
+  "blueprints.syncViewDetails": {
+    message: "Details anzeigen",
+    description:
+      "Sync card: link to the sync's own page (Render's View details, w3/m678)",
+  },
+  "blueprints.syncsLoadMore": {
+    message: "Mehr laden",
+    description:
+      "Syncs page: button reading the next page of older syncs (w3/m678)",
+  },
+  "blueprints.syncsLoadMoreError": {
+    message: "Ältere Synchronisierungen konnten nicht geladen werden.",
+    description:
+      "Syncs page: toast when reading an older page of syncs fails (w3/m678)",
+  },
+  "blueprints.syncPageTitle": {
+    message: "Synchronisierung: {sha}",
+    description:
+      "A sync's page heading, Render's 'Sync: <short commit id>'; {sha} is the 7-character commit id (w3/m678)",
+  },
+  "blueprints.syncPageTitleNoCommit": {
+    message: "Synchronisierung",
+    description:
+      "A sync's page heading when the sync read no commit, Render's 'Sync' (w3/m678)",
+  },
+  "blueprints.syncDocumentTitle": {
+    message: "Synchronisierung",
+    description:
+      "Document title's page name on a sync's page: 'Sync ・ <name> ・ Blueprint' (w3/m678)",
+  },
+  "blueprints.syncUpToDate": {
+    message: "Ressourcen sind bereits auf dem neuesten Stand",
+    description:
+      "A sync's page when its plan has no actions, Render's wording (w3/m678)",
+  },
+  "blueprints.syncNotFullySynced": {
+    message: "Wir konnten diese Ressourcen nicht vollständig synchronisieren.",
+    description:
+      "A failed sync's page with no actions and no errors, Render's critical line (w3/m678)",
+  },
+  "blueprints.syncNotFullySyncedBody": {
+    message:
+      "Wenn dieser Fehler weiterhin auftritt, wende dich an den Support.",
+    description:
+      "Under blueprints.syncNotFullySynced: what to do if it keeps happening (w3/m678)",
+  },
+  "blueprints.syncActionsNotRecorded": {
+    message:
+      "Diese Synchronisierung wurde erfasst, bevor Synchronisierungen ihre Aktionen speicherten, daher können sie nicht angezeigt werden.",
+    description:
+      "A sync's page for a sync recorded before every sync kept its actions (w3/m678)",
+  },
+  "blueprints.syncActionCreate": {
+    message: "{kind} {name} erstellen",
+    description:
+      "A sync's planned action: create a resource; {kind} is its kind label, {name} its name, drawn bold (w3/m678)",
+  },
+  "blueprints.syncActionUpdate": {
+    message: "{kind} {name} aktualisieren",
+    description:
+      "A sync's planned action: change a resource; {kind} is its kind label, {name} its name (w3/m678)",
+  },
+  "blueprints.syncActionDetach": {
+    message: "{kind} {name} nicht mehr verwalten",
+    description:
+      "A sync's planned action: stop managing a resource the file no longer names; {kind}, {name} (w3/m678)",
+  },
+  "blueprints.syncActionError": {
+    message: "{kind} {name} kann nicht angewendet werden",
+    description:
+      "A sync's planned action the planner refused; {kind}, {name}; the reason follows (w3/m678)",
+  },
+  "blueprints.syncActionDetachNote": {
+    message: "Sie läuft weiter und kann Kosten verursachen.",
+    description:
+      "Under a 'stop managing' action: the resource is not deleted (w3/m678)",
+  },
+  "blueprints.syncActionStateUnknown": {
+    message: "Status unbekannt",
+    description:
+      "Accessible name of a planned action's state icon when bex can't say which state it reached (a failed sync's actions, w3/m678)",
+  },
+  "blueprints.syncApproveFailed": {
+    message:
+      "Diese Synchronisierung konnte nicht genehmigt werden. Versuche es erneut.",
+    description:
+      "A sync's page: inline alert when Approve fails without the server's reason, Render's wording (w3/m678)",
+  },
+  "blueprints.syncNotFound": {
+    message:
+      "Diese Synchronisierung existiert nicht. Eine geplante Synchronisierung, die nicht innerhalb von 24 Stunden genehmigt wird, wird gelöscht.",
+    description:
+      "A sync's page for an id that is not one of this Blueprint's syncs, e.g. a plan deleted after 24 hours (w3/m678)",
+  },
+  "blueprints.syncErrorBannerTitle": {
+    message: "Synchronisierungsfehler",
+    description:
+      "Title of Render's dismissible banner when Manual sync could not plan a sync (w3/m678)",
+  },
+  "blueprints.syncErrorBannerDismiss": {
+    message: "Schließen",
+    description:
+      "Accessible name of the Sync Error banner's close button (w3/m678)",
+  },
+  "blueprints.syncErrorsIntro_one": {
+    message:
+      "Beim Synchronisieren mit deinem Blueprint ist ein Problem aufgetreten:",
+    description:
+      "A sync's page: the line above its errors, Render's 'There was a problem' / 'There were a few problems' (w3/m678)",
+  },
+  "blueprints.syncErrorsIntro_other": {
+    message:
+      "Beim Synchronisieren mit deinem Blueprint sind einige Probleme aufgetreten:",
+    description:
+      "A sync's page: the line above its errors, Render's 'There was a problem' / 'There were a few problems' (w3/m678)",
   },
 };
 

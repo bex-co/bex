@@ -535,6 +535,9 @@ type BlueprintSyncView struct {
 	// a sync detached from the Blueprint. Absent when there is nothing to
 	// report.
 	Note string `json:"note,omitempty"`
+	// CommitMessage is the commit's message for bex's GraphQL, which the sync
+	// card shows (w3/m678). REST and MCP keep Render's shape without it.
+	CommitMessage string `json:"-"`
 }
 
 // BlueprintValidationError is Render's validation-error shape.
@@ -746,6 +749,10 @@ func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML, bluep
 const (
 	AuditVerbValidateBlueprint = "apps.ValidateBlueprint"
 	AuditVerbPreviewBlueprint  = "apps.PreviewBlueprint"
+	// AuditVerbListBlueprintSyncs names the sync history's read on every
+	// surface, GraphQL's included, which reaches it through
+	// dashboardBlueprintSyncs (w3/m678).
+	AuditVerbListBlueprintSyncs = "apps.ListBlueprintSyncs"
 	// AuditVerbUpdateBlueprint is the verb of MCP's update_blueprint edit check,
 	// the one UpdateBlueprint derives for the write itself.
 	AuditVerbUpdateBlueprint = core.AuditVerbUpdateBlueprint
@@ -1490,7 +1497,8 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	if err := s.requireStackBilling(ctx, parsed, preflight); err != nil {
 		return BlueprintView{}, err
 	}
-	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed, "", preflight); err != nil {
+	plan, _, err := s.blueprintActionPlan(ctx, ir, parsed, "", preflight)
+	if err != nil {
 		return BlueprintView{}, err
 	}
 	// The per-service create checks the apply would run first, now, so a
@@ -1525,9 +1533,10 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 		ExistingResources: mode,
 		ResourceSuffix:    suffix,
 	}, store.BlueprintSync{
-		CommitID:  commitSHA,
-		State:     store.BlueprintSyncStateRunning,
-		StartedAt: now,
+		CommitID:      commitSHA,
+		CommitMessage: s.blueprintCommitMessage(ctx, tenantID, req.Repo, commitSHA),
+		State:         store.BlueprintSyncStateRunning,
+		StartedAt:     now,
 	}, retryOf)
 	if err != nil {
 		if isBlueprintBusy(err) {
@@ -1536,6 +1545,8 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 		return BlueprintView{}, err
 	}
 
+	// The first sync's page lists what the create planned (w3/m678).
+	s.recordBlueprintSyncPlan(ctx, run.ID, plan.Actions)
 	prepareReq.Confirm = req.Confirm
 	prepareReq.BlueprintID = b.ID
 	prepareReq.BlueprintGeneration = b.ExecutionGeneration
@@ -1762,25 +1773,29 @@ const BlueprintAwaitingApprovalCode = "BLUEPRINT_AWAITING_APPROVAL"
 // settings survive the sync (w8/m37 t005). branch is the one the manifest was
 // read from, which the services on the Blueprint's repo inherit: the
 // Blueprint's, or an approved plan's own (w32/074).
-func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, branch string, run store.BlueprintSync, manifest string, envVarValues map[string]string, snap *workspaceSnapshot) (store.Blueprint, *parsedStack, error) {
+//
+// It also returns the plan's actions, which the run records for its page
+// (w3/m678).
+func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, branch string, run store.BlueprintSync, manifest string, envVarValues map[string]string, snap *workspaceSnapshot) (store.Blueprint, *parsedStack, []BlueprintPlanAction, error) {
 	parsed, ir, err := compileStack(DeployRequest{Repo: b.Repo, Branch: branch, ContainingSource: true, Manifest: manifest, EnvVarValues: envVarValues, resourceSuffix: b.ResourceSuffix})
 	if err != nil {
-		return store.Blueprint{}, nil, err
+		return store.Blueprint{}, nil, nil, err
 	}
 	if err := s.requireStackBilling(ctx, parsed, snap); err != nil {
-		return store.Blueprint{}, nil, err
+		return store.Blueprint{}, nil, nil, err
 	}
-	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed, "", snap); err != nil {
-		return store.Blueprint{}, nil, err
+	plan, _, err := s.blueprintActionPlan(ctx, ir, parsed, "", snap)
+	if err != nil {
+		return store.Blueprint{}, nil, nil, err
 	}
 	staged, err := s.Blueprints.StageBlueprintManifest(ctx, b.ID, b.TenantID, run.ExecutionGeneration, run.ID, manifest)
 	if err != nil {
 		if isBlueprintBusy(err) {
-			return store.Blueprint{}, nil, errBlueprintSyncBusy("this sync no longer owns blueprint execution (superseded or disconnected); start a new sync")
+			return store.Blueprint{}, nil, nil, errBlueprintSyncBusy("this sync no longer owns blueprint execution (superseded or disconnected); start a new sync")
 		}
-		return store.Blueprint{}, nil, err
+		return store.Blueprint{}, nil, nil, err
 	}
-	return staged, &parsed, nil
+	return staged, &parsed, plan.Actions, nil
 }
 
 // failSync records a failed attempt for an existing Blueprint and returns the
@@ -1794,12 +1809,13 @@ func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, br
 func (s *Service) failSync(ctx context.Context, b store.Blueprint, commitSHA string, startedAt time.Time, srcErr error) (SyncBlueprintResult, error) {
 	completedAt := s.Now().UTC()
 	_, _ = s.Blueprints.InsertBlueprintSync(ctx, store.BlueprintSync{
-		BlueprintID:  b.ID,
-		CommitID:     commitSHA,
-		State:        store.BlueprintSyncStateError,
-		StartedAt:    startedAt,
-		CompletedAt:  &completedAt,
-		ErrorMessage: errMsgPtr(srcErr),
+		BlueprintID:   b.ID,
+		CommitID:      commitSHA,
+		CommitMessage: s.blueprintCommitMessage(ctx, b.TenantID, b.Repo, commitSHA),
+		State:         store.BlueprintSyncStateError,
+		StartedAt:     startedAt,
+		CompletedAt:   &completedAt,
+		ErrorMessage:  errMsgPtr(srcErr),
 	})
 	return SyncBlueprintResult{}, srcErr
 }
@@ -1864,6 +1880,9 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 	var commitSHA string
 	var manifest string
 	var prepared *parsedStack
+	// planned is what the apply plans to do, which the run records for its
+	// page (w3/m678).
+	var planned []BlueprintPlanAction
 	// useStored covers only legacy non-Git rows (no Repo to fetch from): the
 	// one path that still applies the stored manifest. A Git-backed source
 	// that cannot be fetched is a failure, never an implicit reapply (w8/m36
@@ -1935,7 +1954,8 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 	// failed admission blocks every workload side effect below. A competing
 	// live claim loses with the documented busy conflict (recorded in history);
 	// a disconnect that lands first fences here the same way.
-	run := store.BlueprintSync{CommitID: commitSHA, State: store.BlueprintSyncStateRunning, StartedAt: now}
+	run := store.BlueprintSync{CommitID: commitSHA, CommitMessage: s.blueprintCommitMessage(ctx, tenantID, src.Repo, commitSHA),
+		State: store.BlueprintSyncStateRunning, StartedAt: now}
 	var envVarValues map[string]string
 	if reviewed != nil {
 		run.ID, envVarValues = reviewed.PlannedRunID, reviewed.EnvVarValues
@@ -2004,11 +2024,11 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		}
 		b = staged
 	} else {
-		staged, parsed, err := s.prepareSyncManifest(ctx, b, src.Branch, run, manifest, envVarValues, snap)
+		staged, parsed, actions, err := s.prepareSyncManifest(ctx, b, src.Branch, run, manifest, envVarValues, snap)
 		if err != nil {
 			return settleStage(err)
 		}
-		b, prepared = staged, parsed
+		b, prepared, planned = staged, parsed, actions
 	}
 
 	deployReq := DeployRequest{
@@ -2029,7 +2049,9 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		applyErr = err
 		if applyErr == nil {
 			prepared = &parsed
-			_, _, applyErr = s.blueprintActionPlan(ctx, ir, parsed, "", snap)
+			var plan BlueprintPlan
+			plan, _, applyErr = s.blueprintActionPlan(ctx, ir, parsed, "", snap)
+			planned = plan.Actions
 		}
 	}
 	baseline := []BlueprintResource{}
@@ -2044,6 +2066,11 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		baseline = make([]BlueprintResource, 0, len(detached))
 		for _, resource := range detached {
 			baseline = append(baseline, resource.BlueprintResource)
+			planned = append(planned, blueprintDetachAction(resource))
+		}
+		// An approved plan already carries the actions it was approved with.
+		if reviewed == nil || reviewed.PlannedRunID == "" {
+			s.recordBlueprintSyncPlan(ctx, run.ID, planned)
 		}
 		stack, applyErr = s.deployParsedStack(ctx, deployReq, *prepared, snap)
 	}
@@ -2073,7 +2100,14 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 // A plan still waiting for approval is not listed, as on Render (the store
 // leaves `created` rows out, w32/077); PlannedSync reads it.
 func (s *Service) ListBlueprintSyncs(ctx context.Context, bpID, ownerID, cursor string, limit int) ([]BlueprintSyncView, error) {
-	ctx, bpID, err := s.blueprintScope(ctx, core.RelCanView, bpID, ownerID)
+	return s.listBlueprintSyncs(ctx, bpID, ownerID, cursor, limit, false)
+}
+
+// listBlueprintSyncs is ListBlueprintSyncs, with, when withWaiting is set, the
+// plan waiting for approval placed on the first page (dashboardBlueprintSyncs,
+// w3/m678).
+func (s *Service) listBlueprintSyncs(ctx context.Context, bpID, ownerID, cursor string, limit int, withWaiting bool) ([]BlueprintSyncView, error) {
+	ctx, bpID, err := s.blueprintScopeAs(ctx, AuditVerbListBlueprintSyncs, core.RelCanView, bpID, ownerID)
 	if err != nil {
 		return nil, err
 	}
@@ -2081,7 +2115,8 @@ func (s *Service) ListBlueprintSyncs(ctx context.Context, bpID, ownerID, cursor 
 	if _, err := s.Blueprints.GetBlueprint(ctx, bpID, tenantID); err != nil {
 		return nil, store.MapError(err)
 	}
-	runs, err := s.Blueprints.ListBlueprintSyncs(ctx, bpID, ids.BlueprintSyncStorageID(cursor), core.PageLimitOrAbsent(limit))
+	limit = core.PageLimitOrAbsent(limit)
+	runs, err := s.Blueprints.ListBlueprintSyncs(ctx, bpID, ids.BlueprintSyncStorageID(cursor), limit)
 	if err != nil {
 		return nil, store.MapError(err)
 	}
@@ -2089,7 +2124,14 @@ func (s *Service) ListBlueprintSyncs(ctx context.Context, bpID, ownerID, cursor 
 	for i, r := range runs {
 		out[i] = toBlueprintSyncView(r)
 	}
-	return out, nil
+	if !withWaiting || cursor != "" {
+		return out, nil
+	}
+	waiting, err := s.waitingBlueprintPlan(ctx, bpID)
+	if err != nil || waiting == nil {
+		return out, err
+	}
+	return withWaitingPlan(out, toBlueprintSyncView(*waiting), limit), nil
 }
 
 // UpdateBlueprint applies a partial update to name/autoSync/path.
@@ -2757,6 +2799,8 @@ func toBlueprintSyncView(r store.BlueprintSync) BlueprintSyncView {
 		StartedAt:    r.StartedAt.UTC().Format(time.RFC3339),
 		ErrorMessage: r.ErrorMessage,
 		Note:         r.Note,
+		// Render's sync card shows the commit's message (w3/m678).
+		CommitMessage: r.CommitMessage,
 	}
 	if r.CompletedAt != nil {
 		s := r.CompletedAt.UTC().Format(time.RFC3339)

@@ -226,8 +226,8 @@ vi.mock("@/features/blueprints/hooks/use-blueprint", () => ({
     refetch: vi.fn(),
   }),
 }));
-vi.mock("@/features/blueprints/hooks/use-sync-blueprint", () => ({
-  useSyncBlueprint: () => ({ sync: vi.fn(), busy: false }),
+vi.mock("@/features/blueprints/hooks/use-plan-blueprint-sync", () => ({
+  usePlanBlueprintSync: () => ({ plan: vi.fn(), busy: false }),
 }));
 vi.mock("@/features/blueprints/hooks/use-update-blueprint", () => ({
   useUpdateBlueprint: () => ({ update: vi.fn(), busy: false }),
@@ -236,23 +236,13 @@ vi.mock("@/features/blueprints/hooks/use-disconnect-blueprint", () => ({
   useDisconnectBlueprint: () => ({ disconnect: vi.fn(), busy: false }),
 }));
 vi.mock("@/features/blueprints/hooks/use-blueprint-syncs", () => ({
-  useBlueprintSyncs: () => ({ syncs: [], loading: false, error: undefined }),
-}));
-vi.mock("@/features/blueprints/hooks/use-planned-sync", () => ({
-  usePlannedSync: () => ({
-    planned: null,
+  useBlueprintSyncs: () => ({
+    syncs: [],
     loading: false,
-    busy: false,
-    approve: vi.fn(),
-    replan: vi.fn(),
-  }),
-}));
-vi.mock("@/features/blueprints/hooks/use-blueprint-preview", () => ({
-  useBlueprintPreview: () => ({
-    preview: null,
-    loading: false,
+    loadingMore: false,
     error: undefined,
-    refetch: vi.fn(),
+    hasMore: false,
+    loadMore: vi.fn(),
   }),
 }));
 vi.mock("@/features/blueprints/components/validate-panel", () => ({

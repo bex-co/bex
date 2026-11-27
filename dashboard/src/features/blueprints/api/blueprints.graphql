@@ -56,11 +56,57 @@ query BlueprintSyncs(
   blueprintSyncs(id: $id, ownerId: $ownerId, cursor: $cursor, limit: $limit) {
     id
     commitId
+    # Render's sync card shows the commit's message beside its short id
+    # (w3/m678).
+    commitMessage
     state
     startedAt
     completedAt
     errorMessage
     note
+  }
+}
+
+# One sync for its own page, Render's /blueprint/<id>/sync/<syncId> (w3/m678):
+# the actions it planned with a state each, its errors and, while it waits for
+# approval, the sync:false values approving it needs.
+query BlueprintSync($id: String!, $syncId: String!, $ownerId: String) {
+  blueprintSync(id: $id, syncId: $syncId, ownerId: $ownerId) {
+    id
+    commitId
+    commitMessage
+    state
+    startedAt
+    completedAt
+    errorMessage
+    note
+    actionsRecorded
+    actions {
+      operation
+      kind
+      name
+      sourcePath
+      resourceId
+      changedFields {
+        path
+      }
+      message
+    }
+    actionStates {
+      state
+    }
+    errors {
+      severity
+      message
+      path
+      line
+      column
+    }
+    requiredManualEnvVars {
+      serviceType
+      serviceName
+      key
+    }
   }
 }
 
@@ -267,77 +313,19 @@ mutation DisconnectBlueprint($id: String!, $ownerId: String) {
   disconnectBlueprint(id: $id, ownerId: $ownerId)
 }
 
-mutation SyncBlueprint(
-  $id: String!
-  $ownerId: String
-  $bexYaml: String
-  $confirm: String
-  $commitId: String
-  $path: String
-  $repo: String
-) {
-  syncBlueprint(
-    id: $id
-    ownerId: $ownerId
-    bexYaml: $bexYaml
-    confirm: $confirm
-    commitId: $commitId
-    path: $path
-    repo: $repo
-  ) {
-    blueprint {
-      id
-      name
-      status
-      lastSync
-      updatedAt
-    }
-    services {
-      id
-      name
-    }
-    databases
-    detachedResources {
-      id
-      name
-      type
-    }
-  }
-}
-
 # --- plan-then-approve (w2/m256 t012) ---
 
-# The plan a created Blueprint waits to have approved; null when there is none.
-query BlueprintPlannedSync($id: String!, $ownerId: String) {
-  blueprintPlannedSync(id: $id, ownerId: $ownerId) {
-    id
-    commitId
-    state
-    actions {
-      operation
-      kind
-      name
-      sourcePath
-      resourceId
-      changedFields {
-        path
-      }
-      message
-    }
-    requiredManualEnvVars {
-      serviceType
-      serviceName
-      key
-    }
-  }
-}
-
+# Manual sync (w3/m678): the planned sync's page opens with its id.
 mutation PlanBlueprintSync($id: String!, $ownerId: String) {
   planBlueprintSync(id: $id, ownerId: $ownerId) {
     planningOutcome
     notices {
       severity
       message
+    }
+    sync {
+      id
+      state
     }
   }
 }

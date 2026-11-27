@@ -47,6 +47,8 @@ export const ROUTE_HEAD_INVENTORY: Record<
     "blueprints.$blueprintId.resources.tsx",
     "blueprints.$blueprintId.settings.tsx",
     "blueprints.$blueprintId.syncs.tsx",
+    "blueprints.$blueprintId.sync.$syncId.tsx",
+    "blueprints.$blueprintId.sync.index.tsx",
     "blueprints.tsx",
     "build-sources.tsx",
     "build-sources_.$buildSourceId.tsx",

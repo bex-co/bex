@@ -24,9 +24,13 @@ export function blueprintPageRoute<P extends BlueprintPagePath>(page: P) {
   return `/blueprints/$blueprintId${page}` as const;
 }
 
+// A sync's own pages (w3/m678): `/sync/<syncId>`, and `/sync` for the plan
+// Manual sync hands over.
+const SYNC_PAGES = ["/sync", "/sync/*"] as const;
+
 // Resources is also the bare URL's page (Render's `hrefPatterns` name
 // `/blueprint/:id`), and Syncs the open page on a sync's own URL
-// (`/blueprint/:id/sync/:syncId`, w3/m678).
+// (`/blueprint/:id/sync/:syncId`).
 const RESOURCES = resourcePageNavItem(
   blueprintPageRoute("/resources"),
   "blueprints.navResources",
@@ -37,7 +41,7 @@ const SYNCS = resourcePageNavItem(
   blueprintPageRoute("/syncs"),
   "blueprints.navSyncs",
   RefreshCcw,
-  ["/sync", "/sync/*"],
+  SYNC_PAGES,
 );
 const SETTINGS = resourcePageNavItem(
   blueprintPageRoute("/settings"),
@@ -61,6 +65,18 @@ export function isBlueprintNavItemActive(
   to: string,
 ): boolean {
   return NAV.isActive(pathname, blueprintId, to);
+}
+
+/**
+ * Whether `pathname` is a sync's page, `/sync` or `/sync/<syncId>` (w3/m678):
+ * Syncs is its open entry, and its heading is the sync's own. `blueprintId`
+ * is the id as the URL spells it.
+ */
+export function isBlueprintSyncPage(
+  pathname: string,
+  blueprintId: string,
+): boolean {
+  return NAV.isOn(pathname, blueprintId, SYNC_PAGES);
 }
 
 /**

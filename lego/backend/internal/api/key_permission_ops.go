@@ -352,6 +352,7 @@ var keyPermissionOps = map[string][]core.KeyAction{
 	"GQL Query.blueprint":                                                   {core.KeyBlueprintsView},
 	"GQL Query.blueprintPlannedSync":                                        {core.KeyBlueprintsView},
 	"GQL Query.blueprintPreview":                                            {core.KeyBlueprintsView, core.KeyServicesEnv},
+	"GQL Query.blueprintSync":                                               {core.KeyBlueprintsView},
 	"GQL Query.blueprintSyncs":                                              {core.KeyBlueprintsView},
 	"GQL Query.blueprints":                                                  {core.KeyBlueprintsView},
 	"GQL Query.build":                                                       {core.KeyBuildSourcesView},

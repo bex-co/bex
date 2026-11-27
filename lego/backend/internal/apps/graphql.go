@@ -1088,6 +1088,9 @@ var blueprintSyncGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// note says what a run did that its state cannot — a confirmed
 		// takeover naming the blueprint it replaced (w4/m125).
 		"note": gqlutil.StrField(func(r BlueprintSyncView) any { return r.Note }),
+		// commitMessage is the commit's message, which Render's sync card
+		// shows beside its short id (w3/m678); "" when the host could not say.
+		"commitMessage": gqlutil.StrField(func(r BlueprintSyncView) any { return r.CommitMessage }),
 	},
 })
 
@@ -1531,7 +1534,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 						ExistingResources: gqlutil.Str(p.Args, "existingResources"), Name: gqlutil.Str(p.Args, "name")})
 			},
 		},
-		// blueprintSyncs: sync run history for a blueprint (w2/m62).
+		// blueprintSyncs: sync run history for a blueprint (w2/m62), with the
+		// plan waiting for approval on its first page, as Render's dashboard
+		// lists it (w3/m678).
 		"blueprintSyncs": &graphql.Field{
 			Type: graphql.NewList(blueprintSyncGQLType),
 			Args: gqlutil.PageArgs(graphql.FieldConfigArgument{
@@ -1540,7 +1545,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			}),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				limit := gqlutil.Int(p.Args, "limit")
-				return s.ListBlueprintSyncs(p.Context, p.Args["id"].(string),
+				return s.dashboardBlueprintSyncs(p.Context, p.Args["id"].(string),
 					gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "cursor"), limit)
 			},
 		},
@@ -1550,6 +1555,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	maps.Copy(fields, s.diskSnapshotGQLQueryFields())
 	maps.Copy(fields, s.buildSourceGQLQueryFields())
 	maps.Copy(fields, s.postgresAdminAppGQLQueryFields())
+	maps.Copy(fields, s.blueprintSyncGQLQueryFields())
 	return fields
 }
 

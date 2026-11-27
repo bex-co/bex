@@ -10,6 +10,9 @@ import type { BlueprintView } from "@/features/blueprints/types";
  */
 export interface BlueprintDetail {
   blueprint: BlueprintView;
+  /** The Blueprint's id as the URL spells it (a `blp-` bookmark keeps its
+   *  spelling), for links between its pages. */
+  linkId: string;
 }
 
 const BlueprintDetailContext = createContext<BlueprintDetail | null>(null);

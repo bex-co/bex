@@ -52,8 +52,12 @@ type PlannedBlueprintSync struct {
 	Branch                string
 	RequiredManualEnvVars json.RawMessage
 	// PlanActions is the plan's actions (JSON the apps layer owns), null for a
-	// failed plan.
+	// failed plan. Every sync that plans records them (w3/m678); a row from
+	// before migration 0353 that was not a planned sync has none.
 	PlanActions json.RawMessage
+	// ErrorNotices are a failed plan's notices (JSON the apps layer owns), null
+	// for every other sync (migration 0353).
+	ErrorNotices json.RawMessage
 }
 
 // CreatePlannedBlueprint inserts a Blueprint in the `created` status: its
@@ -148,11 +152,11 @@ func (s *PGStore) InsertPlannedBlueprintSync(ctx context.Context, p PlannedBluep
 	}
 	err := s.Pool.QueryRow(ctx, `
 		INSERT INTO blueprint_syncs (id, blueprint_id, commit_id, state, started_at, completed_at, error_message,
-			plan_path, plan_branch, required_manual_env_vars, plan_actions, note)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			plan_path, plan_branch, required_manual_env_vars, plan_actions, note, commit_message, error_notices)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		RETURNING created_at`,
 		p.ID, p.BlueprintID, p.CommitID, p.State, p.StartedAt, p.CompletedAt, p.ErrorMessage,
-		p.Path, nullIfEmpty(p.Branch), required, nullJSON(p.PlanActions), p.Note,
+		p.Path, nullIfEmpty(p.Branch), required, nullJSON(p.PlanActions), p.Note, p.CommitMessage, nullJSON(p.ErrorNotices),
 	).Scan(&p.CreatedAt)
 	if err != nil {
 		return PlannedBlueprintSync{}, classify("blueprint_sync", err)
@@ -229,7 +233,8 @@ func (s *PGStore) SettleNoChangesPlan(ctx context.Context, blueprintID, tenantID
 	return s.GetBlueprint(ctx, blueprintID, tenantID)
 }
 
-// BlueprintPlannedSync returns one sync by id within its Blueprint.
+// BlueprintPlannedSync returns one sync by id within its Blueprint, planned or
+// not: a sync's page reads every sync through it (w3/m678).
 func (s *PGStore) BlueprintPlannedSync(ctx context.Context, blueprintID, syncID string) (PlannedBlueprintSync, error) {
 	return s.scanPlannedSync(ctx, `WHERE blueprint_id = $1 AND id = $2`, blueprintID, syncID)
 }
@@ -247,10 +252,10 @@ func (s *PGStore) scanPlannedSync(ctx context.Context, where string, args ...any
 	var path, branch *string
 	err := s.Pool.QueryRow(ctx, `
 		SELECT id, blueprint_id, commit_id, state, started_at, completed_at, created_at, error_message,
-		       plan_path, plan_branch, required_manual_env_vars, plan_actions
+		       plan_path, plan_branch, required_manual_env_vars, plan_actions, note, commit_message, error_notices
 		FROM blueprint_syncs `+where, args...,
 	).Scan(&p.ID, &p.BlueprintID, &p.CommitID, &p.State, &p.StartedAt, &p.CompletedAt, &p.CreatedAt, &p.ErrorMessage,
-		&path, &branch, &p.RequiredManualEnvVars, &p.PlanActions)
+		&path, &branch, &p.RequiredManualEnvVars, &p.PlanActions, &p.Note, &p.CommitMessage, &p.ErrorNotices)
 	if err != nil {
 		return PlannedBlueprintSync{}, classify("blueprint_sync", err)
 	}

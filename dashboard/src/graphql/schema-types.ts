@@ -1322,10 +1322,34 @@ export type BlueprintResourceRef = {
 export type BlueprintSync = {
   __typename: 'BlueprintSync';
   commitId: Maybe<Scalars['String']['output']>;
+  commitMessage: Maybe<Scalars['String']['output']>;
   completedAt: Maybe<Scalars['String']['output']>;
   errorMessage: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   note: Maybe<Scalars['String']['output']>;
+  startedAt: Maybe<Scalars['String']['output']>;
+  state: Maybe<Scalars['String']['output']>;
+};
+
+export type BlueprintSyncActionState = {
+  __typename: 'BlueprintSyncActionState';
+  state: Maybe<Scalars['String']['output']>;
+};
+
+export type BlueprintSyncDetail = {
+  __typename: 'BlueprintSyncDetail';
+  actionStates: Maybe<Array<Maybe<BlueprintSyncActionState>>>;
+  actions: Maybe<Array<Maybe<BlueprintPlanAction>>>;
+  actionsRecorded: Maybe<Scalars['Boolean']['output']>;
+  commitId: Maybe<Scalars['String']['output']>;
+  commitMessage: Maybe<Scalars['String']['output']>;
+  completedAt: Maybe<Scalars['String']['output']>;
+  dashboardUrl: Maybe<Scalars['String']['output']>;
+  errorMessage: Maybe<Scalars['String']['output']>;
+  errors: Maybe<Array<Maybe<BlueprintNotice>>>;
+  id: Maybe<Scalars['String']['output']>;
+  note: Maybe<Scalars['String']['output']>;
+  requiredManualEnvVars: Maybe<Array<Maybe<BlueprintManualEnvVar>>>;
   startedAt: Maybe<Scalars['String']['output']>;
   state: Maybe<Scalars['String']['output']>;
 };
@@ -5125,6 +5149,7 @@ export type Query = {
   blueprint: Maybe<Blueprint>;
   blueprintPlannedSync: Maybe<BlueprintPlannedSync>;
   blueprintPreview: Maybe<BlueprintPreview>;
+  blueprintSync: Maybe<BlueprintSyncDetail>;
   blueprintSyncs: Maybe<Array<Maybe<BlueprintSync>>>;
   blueprints: Maybe<Array<Maybe<Blueprint>>>;
   build: Maybe<Build>;
@@ -5485,6 +5510,13 @@ export type QueryBlueprintPreviewArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
   path?: InputMaybe<Scalars['String']['input']>;
   repo: Scalars['String']['input'];
+};
+
+
+export type QueryBlueprintSyncArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  syncId: Scalars['String']['input'];
 };
 
 

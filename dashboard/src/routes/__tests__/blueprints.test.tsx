@@ -1,12 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -21,9 +15,15 @@ import { Route as LayoutRoute } from "../blueprints.$blueprintId";
 import { Route as IndexRoute } from "../blueprints.$blueprintId.index";
 import { Route as ResourcesRoute } from "../blueprints.$blueprintId.resources";
 import { Route as SyncsRoute } from "../blueprints.$blueprintId.syncs";
+import { Route as SyncRoute } from "../blueprints.$blueprintId.sync.$syncId";
+import { Route as HandedOverSyncRoute } from "../blueprints.$blueprintId.sync.index";
 import { Route as SettingsRoute } from "../blueprints.$blueprintId.settings";
-import type { BlueprintView } from "@/features/blueprints/types";
-import type { BlueprintSyncActionResult } from "@/features/blueprints/hooks/use-sync-blueprint";
+import type {
+  BlueprintSyncDetailView,
+  BlueprintSyncView,
+  BlueprintView,
+} from "@/features/blueprints/types";
+import type { PlanBlueprintSyncResult } from "@/features/blueprints/hooks/use-plan-blueprint-sync";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
   CREATE_REASON,
@@ -31,7 +31,7 @@ import {
   viewerCapabilities,
 } from "@/test/mocks/capabilities";
 import { datastoreHeaderGeometry } from "@/test/datastore-pages";
-import { BlueprintSyncsSkeleton } from "@/common/components/route-skeletons";
+import { BlueprintSyncPageSkeleton } from "@/common/components/route-skeletons";
 
 // The page's own chrome is the shell's; a Blueprint's pages render inside it.
 vi.mock("@/common/components/dashboard-layout", () => ({
@@ -63,71 +63,45 @@ const blueprintDetailState: {
   error: Error | undefined;
   refetch: () => void;
 } = { blueprint: null, loading: false, error: undefined, refetch: vi.fn() };
-const syncPreviewState: {
-  preview: import("@/features/blueprints/types").BlueprintPreviewResult | null;
-  loading: boolean;
-  error: Error | undefined;
-  refetch: () => Promise<unknown>;
-} = {
-  preview: null,
-  loading: false,
-  error: undefined,
-  refetch: async () => undefined,
-};
 
 vi.mock("@/features/blueprints/hooks/use-blueprint", () => ({
   useBlueprint: () => blueprintDetailState,
 }));
 
-// --- sync hook mock ---
-const sync = vi.fn(async (): Promise<BlueprintSyncActionResult> => ({
-  status: "success",
-  result: null,
+// --- Manual sync's plan (w3/m678) ---
+const plan = vi.fn(async (): Promise<PlanBlueprintSyncResult> => ({
+  status: "planned",
+  syncId: "exe-planned",
 }));
-vi.mock("@/features/blueprints/hooks/use-sync-blueprint", () => ({
-  useSyncBlueprint: () => ({ sync, busy: false }),
+vi.mock("@/features/blueprints/hooks/use-plan-blueprint-sync", () => ({
+  usePlanBlueprintSync: () => ({ plan, busy: false }),
 }));
 
-// --- planned-sync hook mock (w2/m256 t012) ---
-type PlannedSyncView =
-  import("@/features/blueprints/hooks/use-planned-sync").PlannedSyncView;
-const waitingPlan: PlannedSyncView = {
-  id: "exe-1",
-  commitId: "0123456789abcdef",
-  actions: [
-    {
-      operation: "create",
-      kind: "service",
-      name: "express-hello-world",
-      sourcePath: "#/services/0",
-      resourceId: null,
-      changedFields: [],
-      message: null,
-    },
-  ],
-  requiredManualEnvVars: [],
-};
-const approvePlanned = vi.fn(async () => true);
-const plannedSyncState = {
-  planned: null as PlannedSyncView | null,
+// --- one sync's read (w3/m678) ---
+const approve = vi.fn(async () => undefined);
+const blueprintSyncState: {
+  sync: BlueprintSyncDetailView | null;
+  loading: boolean;
+  error: Error | undefined;
+  approving: boolean;
+  approveError: string | null;
+} = {
+  sync: null,
   loading: false,
-  busy: false,
-  approve: approvePlanned,
-  replan: vi.fn(async () => undefined),
+  error: undefined,
+  approving: false,
+  approveError: null,
 };
-vi.mock(
-  "@/features/blueprints/hooks/use-planned-sync",
-  async (importOriginal) => ({
-    ...(await importOriginal<
-      typeof import("@/features/blueprints/hooks/use-planned-sync")
-    >()),
-    // A disabled query is skipped, as the real hook's is: it reads no plan.
-    usePlannedSync: (_id: string, enabled: boolean) =>
-      enabled
-        ? plannedSyncState
-        : { ...plannedSyncState, planned: null, loading: false },
-  }),
-);
+const readSync = vi.fn();
+vi.mock("@/features/blueprints/hooks/use-blueprint-sync", async (orig) => ({
+  ...(await orig<
+    typeof import("@/features/blueprints/hooks/use-blueprint-sync")
+  >()),
+  useBlueprintSync: (blueprintId: string, syncId: string) => {
+    readSync(blueprintId, syncId);
+    return { ...blueprintSyncState, refetch: vi.fn(), approve };
+  },
+}));
 
 // --- validate hook stub (used by ValidatePanel inside detail page) ---
 vi.mock("@/features/blueprints/hooks/use-validate-blueprint", () => ({
@@ -151,17 +125,22 @@ vi.mock("@/features/blueprints/hooks/use-disconnect-blueprint", () => ({
 }));
 
 // --- syncs hook stub ---
-vi.mock("@/features/blueprints/hooks/use-blueprint-preview", () => ({
-  useBlueprintPreview: () => syncPreviewState,
-}));
-
+const loadMore = vi.fn();
 const blueprintSyncsState: {
-  syncs: import("@/features/blueprints/types").BlueprintSyncView[];
+  syncs: BlueprintSyncView[];
   loading: boolean;
+  loadingMore: boolean;
   error: Error | undefined;
-} = { syncs: [], loading: false, error: undefined };
+  hasMore: boolean;
+} = {
+  syncs: [],
+  loading: false,
+  loadingMore: false,
+  error: undefined,
+  hasMore: false,
+};
 vi.mock("@/features/blueprints/hooks/use-blueprint-syncs", () => ({
-  useBlueprintSyncs: () => blueprintSyncsState,
+  useBlueprintSyncs: () => ({ ...blueprintSyncsState, loadMore }),
 }));
 
 function bp(overrides: Partial<BlueprintView> = {}): BlueprintView {
@@ -183,64 +162,51 @@ function bp(overrides: Partial<BlueprintView> = {}): BlueprintView {
   };
 }
 
-/** A valid pre-sync preview — the only state that arms the sync button (w8/m41). */
-function validPreview(
-  commitId = "abc1234",
-): import("@/features/blueprints/types").BlueprintPreviewResult {
+/** One sync as Syncs lists it. */
+function run(overrides: Partial<BlueprintSyncView> = {}): BlueprintSyncView {
   return {
-    found: true,
-    commitId,
-    branch: "main",
-    error: null,
-    reason: null,
-    retryable: false,
-    // A preview on behalf of an existing Blueprint carries none of these.
-    existingResources: null,
-    resourceSuffix: null,
-    suggestedName: null,
-    autoSync: true,
-    matchedResources: [],
-    validation: {
-      valid: true,
-      errors: [],
-      errorDetails: [],
-      plan: {
-        mode: "current_state",
-        services: ["web"],
-        databases: ["db"],
-        keyValue: [],
-        envGroups: [],
-        syncFalseVars: null,
-        totalActions: 2,
-        actions: null,
-      },
-      estimatedPricing: {
-        totalUsd: "17.50",
-        lines: [
-          {
-            name: "web",
-            tierLabel: "Standard",
-            monthlyUsd: "17.50",
-            instanceUsd: "17.50",
-            storageUsd: null,
-            storageGb: null,
-          },
-        ],
-        variable: [],
-      },
-    },
+    id: "exe-1",
+    commitId: "deadbeefcafe",
+    commitMessage: "Serve the api from nginx",
+    state: "success",
+    startedAt: "2026-08-20T00:00:00Z",
+    completedAt: "2026-08-20T00:01:00Z",
+    errorMessage: null,
+    note: null,
+    ...overrides,
   };
 }
 
-/** What the page pins from `validPreview()` for a `bp()` blueprint. */
-const reviewedFrom = (blueprint: BlueprintView, commitId = "abc1234") => ({
-  reviewed: {
-    commitId,
-    path: blueprint.path,
-    repo: blueprint.repo,
-  },
-  confirmation: undefined as string | undefined,
-});
+/** One sync as its page reads it. */
+function detail(
+  overrides: Partial<BlueprintSyncDetailView> = {},
+): BlueprintSyncDetailView {
+  return {
+    ...run({
+      id: "exe-planned",
+      commitId: "0123456789abcdef",
+      state: "created",
+    }),
+    actionsRecorded: true,
+    actions: [
+      {
+        action: {
+          operation: "create",
+          kind: "service",
+          name: "express-hello-world",
+          sourcePath: "#/services/0",
+          resourceId: null,
+          changedFields: [],
+          message: null,
+        },
+        state: "created",
+      },
+    ],
+    errors: [],
+    requiredManualEnvVars: [],
+    ...overrides,
+  };
+}
 
 function renderBlueprintsPage() {
   const rootRoute = createRootRoute();
@@ -267,6 +233,8 @@ const DETAIL_PAGES = {
   "/": IndexRoute,
   "/resources": ResourcesRoute,
   "/syncs": SyncsRoute,
+  "/sync/$syncId": SyncRoute,
+  "/sync/": HandedOverSyncRoute,
   "/settings": SettingsRoute,
 };
 
@@ -335,20 +303,22 @@ beforeEach(() => {
   blueprintDetailState.refetch = vi.fn();
   blueprintSyncsState.syncs = [];
   blueprintSyncsState.loading = false;
+  blueprintSyncsState.loadingMore = false;
   blueprintSyncsState.error = undefined;
-  // Reset here, not at the end of each test: a failing assertion would
-  // otherwise leak one test's preview into the next one's dialog.
-  syncPreviewState.preview = null;
-  syncPreviewState.loading = false;
-  syncPreviewState.error = undefined;
-  plannedSyncState.planned = null;
-  plannedSyncState.loading = false;
-  approvePlanned.mockClear();
+  blueprintSyncsState.hasMore = false;
+  loadMore.mockClear();
+  blueprintSyncState.sync = null;
+  blueprintSyncState.loading = false;
+  blueprintSyncState.error = undefined;
+  blueprintSyncState.approving = false;
+  blueprintSyncState.approveError = null;
+  approve.mockClear();
+  readSync.mockClear();
   disconnect.mockClear();
   update.mockClear();
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
-  sync.mockReset();
-  sync.mockResolvedValue({ status: "success", result: null });
+  plan.mockReset();
+  plan.mockResolvedValue({ status: "planned", syncId: "exe-planned" });
 });
 
 describe("BlueprintsPage (list)", () => {
@@ -449,7 +419,7 @@ describe("a Blueprint's pages (w3/m677)", () => {
   it.each([
     ["/blueprints/exs-abc123", "Resources", "Managed Resources"],
     ["/blueprints/exs-abc123/resources", "Resources", "Managed Resources"],
-    [SYNCS, "Syncs", "Sync History"],
+    [SYNCS, "Syncs", "No syncs yet."],
     [SETTINGS, "Settings", "render.yaml manifest"],
   ])(
     "%s opens with its heading, %s, and holds its own cards",
@@ -464,7 +434,7 @@ describe("a Blueprint's pages (w3/m677)", () => {
       // The stacked page is gone: each page holds only its own cards.
       const others = [
         "Managed Resources",
-        "Sync History",
+        "No syncs yet.",
         "render.yaml manifest",
       ].filter((other) => other !== card);
       for (const other of others) {
@@ -537,12 +507,19 @@ describe("a Blueprint's pages (w3/m677)", () => {
 
   it("links a waiting Blueprint's empty Resources to Syncs, where its plan is", async () => {
     blueprintDetailState.blueprint = bp({ status: "created", resources: [] });
+    blueprintSyncsState.syncs = [run({ id: "exe-planned", state: "created" })];
     const user = userEvent.setup();
     const router = renderDetailPage();
 
     await user.click(await screen.findByRole("link", { name: "Go to Syncs" }));
     expect(router.state.location.pathname).toBe(SYNCS);
-    expect(await screen.findByText("Planned sync")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("img", { name: "Awaiting approval" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View details" })).toHaveAttribute(
+      "href",
+      "/blueprints/exs-abc123/sync/exe-planned",
+    );
   });
 
   it("offers no Syncs link on a never-synced Blueprint's empty Resources", async () => {
@@ -568,7 +545,8 @@ describe("each Blueprint page's pending frame (w3/m677)", () => {
       .split(" ")
       .filter((name) => name && name !== "invisible")
       .join(" ");
-  // The page under the layout's heading: its cards, then its loose controls.
+  // The page under the layout's heading: its cards, its sync cards (w3/m678),
+  // then its loose controls.
   const pageShape = (heading: Element) => {
     const page = heading.parentElement!;
     return {
@@ -579,6 +557,12 @@ describe("each Blueprint page's pending frame (w3/m677)", () => {
         columns: [...card.querySelectorAll("th")].map((th) => th.textContent),
         labels: [...card.querySelectorAll("dt")].map((dt) => dt.textContent),
       })),
+      syncCards: [...page.querySelectorAll(".rounded-lg.border.bg-card")].map(
+        (card) => ({
+          box: boxClasses(card),
+          lines: [...card.querySelectorAll(".h-5, .leading-5")].length,
+        }),
+      ),
       controls: [...page.querySelectorAll("[data-slot=button], .invisible")]
         .filter((control) => control.textContent)
         .map((control) => ({
@@ -640,17 +624,10 @@ describe("each Blueprint page's pending frame (w3/m677)", () => {
     [SETTINGS, null],
   ])("%s pends in its ready shape", async (href, resources) => {
     blueprintDetailState.blueprint = bp({ resources });
-    blueprintSyncsState.syncs = [
-      {
-        id: "exe-1",
-        commitId: "deadbeef",
-        state: "success",
-        startedAt: "2026-08-20T00:00:00Z",
-        completedAt: "2026-08-20T00:01:00Z",
-        errorMessage: null,
-        note: null,
-      },
-    ];
+    // Syncs' frame holds three sync cards.
+    blueprintSyncsState.syncs = ["exe-3", "exe-2", "exe-1"].map((id) =>
+      run({ id }),
+    );
     const readyShape = await ready(href);
     blueprintDetailState.blueprint = null;
     blueprintDetailState.loading = true;
@@ -658,110 +635,425 @@ describe("each Blueprint page's pending frame (w3/m677)", () => {
     expect(await pending(href)).toEqual(readyShape);
   });
 
-  // A created Blueprint's Syncs always has the waiting plan's card; the
-  // frame reserves it when the cache already knows the Blueprint is created
-  // (its workspace still being adopted), and never otherwise.
-  it("reserves the waiting plan's card for a Blueprint the cache knows is created", () => {
-    const { container, unmount } = render(
-      <BlueprintSyncsSkeleton blueprint={{ status: "created" }} />,
-    );
-    const regionNames = [
-      ...container.querySelectorAll("[data-skeleton-region]"),
-    ].map((region) => region.getAttribute("data-skeleton-region"));
-    expect(regionNames).toEqual([
-      "planned-sync",
-      "sync-history",
-      "sync-history-rows",
-    ]);
-    unmount();
-    const { container: other } = render(<BlueprintSyncsSkeleton />);
+  // A sync's page heads itself (w3/m678): its frame holds the heading's line,
+  // the sync's card without View details and the card of its actions.
+  it("frames a sync's page in its ready shape", async () => {
+    blueprintDetailState.blueprint = bp();
+    blueprintSyncState.sync = detail();
+    renderDetailPage("/blueprints/exs-abc123/sync/exe-planned");
+    const heading = await screen.findByRole("heading", {
+      level: 2,
+      name: "Sync: 0123456",
+    });
+    const readyPage = heading.parentElement!;
+    const readyCard = readyPage.querySelector(".rounded-lg.border.bg-card")!;
+    const readyShape = {
+      lineBox: heading.className.includes("leading-7"),
+      card: boxClasses(readyCard),
+      // The text column's lines, and the columns beside the icon.
+      cardLines: readyCard.querySelector(":scope > div > div")!.children.length,
+      cardColumns: readyCard.querySelectorAll(":scope > div > div").length,
+      sections: readyPage.querySelectorAll("[data-slot=card]").length,
+    };
+    cleanup();
+
+    const { container } = render(<BlueprintSyncPageSkeleton />);
+    const frame = container.querySelector(
+      '[data-route-skeleton="blueprint-sync"]',
+    )!;
+    const pendingCard = frame.querySelector(".rounded-lg.border.bg-card")!;
+    expect({
+      lineBox: !!frame.querySelector(
+        '[data-skeleton-region="sync-heading"] .h-7',
+      ),
+      card: boxClasses(pendingCard),
+      cardLines:
+        pendingCard.querySelector(":scope > div > div")!.children.length,
+      cardColumns: pendingCard.querySelectorAll(":scope > div > div").length,
+      sections: frame.querySelectorAll("[data-slot=card]").length,
+    }).toEqual(readyShape);
+  });
+});
+
+describe("Syncs (w3/m678)", () => {
+  it("lists Render's sync cards: state, linked commit and message, View details, the time", async () => {
+    blueprintDetailState.blueprint = bp();
+    blueprintSyncsState.syncs = [
+      run({ id: "exe-3", state: "running", commitId: "aaaaaaa1111" }),
+      run({ id: "exe-2", state: "error", commitId: "bbbbbbb2222" }),
+      run({ id: "exe-1", commitId: "ccccccc3333", commitMessage: "" }),
+    ];
+    renderDetailPage(SYNCS);
+
+    const cards = await screen.findAllByTestId("blueprint-sync-card");
+    expect(cards).toHaveLength(3);
+    const [running, failed, succeeded] = cards;
+    expect(within(running).getByRole("img", { name: "Running" })).toBeVisible();
+    // Only a sync that is applying carries a badge.
+    expect(within(running).getByText("Running")).toBeVisible();
+    expect(within(failed).getByRole("img", { name: "Error" })).toBeVisible();
+    expect(within(failed).queryByText("Error")).not.toBeInTheDocument();
     expect(
-      other.querySelector('[data-skeleton-region="planned-sync"]'),
-    ).toBeNull();
+      within(succeeded).getByRole("img", { name: "Success" }),
+    ).toBeVisible();
+
+    const commit = within(running).getByRole("link", { name: "aaaaaaa" });
+    expect(commit).toHaveAttribute(
+      "href",
+      "https://github.com/example/hello-go/commit/aaaaaaa1111",
+    );
+    expect(commit).toHaveAttribute("target", "_blank");
+    expect(within(running).getByText("Serve the api from nginx")).toBeVisible();
+    // No message: the short id alone, no dangling colon.
+    expect(within(succeeded).queryByText(":")).not.toBeInTheDocument();
+    expect(
+      within(failed).getByRole("link", { name: "View details" }),
+    ).toHaveAttribute("href", "/blueprints/exs-abc123/sync/exe-2");
+    expect(within(failed).getByRole("time")).toHaveAttribute(
+      "dateTime",
+      "2026-08-20T00:00:00Z",
+    );
+  });
+
+  it("reads older syncs with Load more while there are more", async () => {
+    blueprintDetailState.blueprint = bp();
+    blueprintSyncsState.syncs = [run()];
+    blueprintSyncsState.hasMore = true;
+    const user = userEvent.setup();
+    renderDetailPage(SYNCS);
+
+    await user.click(await screen.findByRole("button", { name: "Load more" }));
+    expect(loadMore).toHaveBeenCalledOnce();
+  });
+
+  it("offers no Load more on the last page", async () => {
+    blueprintDetailState.blueprint = bp();
+    blueprintSyncsState.syncs = [run()];
+    renderDetailPage(SYNCS);
+
+    await screen.findByTestId("blueprint-sync-card");
+    expect(
+      screen.queryByRole("button", { name: "Load more" }),
+    ).not.toBeInTheDocument();
+  });
+
+  // w6/043: the syncs read is not awaited by the route's title loader, so a
+  // fresh visit has an in-flight window: it never reads "No syncs yet.".
+  it("shows the cards' shape, not the empty copy, while syncs load", async () => {
+    blueprintDetailState.blueprint = bp();
+    blueprintSyncsState.loading = true;
+    renderDetailPage(SYNCS);
+
+    await screen.findAllByText("hello-go");
+    expect(screen.queryByText("No syncs yet.")).not.toBeInTheDocument();
+    expect(
+      document.querySelectorAll(
+        '[data-skeleton-region="sync-history-rows"] .rounded-lg.border.bg-card',
+      ),
+    ).toHaveLength(3);
+  });
+
+  it("keeps the cards during a refetch", async () => {
+    blueprintDetailState.blueprint = bp();
+    blueprintSyncsState.loading = true;
+    blueprintSyncsState.syncs = [run()];
+    renderDetailPage(SYNCS);
+
+    expect(await screen.findByTestId("blueprint-sync-card")).toBeVisible();
+    expect(
+      document.querySelector('[data-skeleton-region="sync-history-rows"]'),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("a sync's page (w3/m678)", () => {
+  const PAGE = "/blueprints/exs-abc123/sync/exe-planned";
+
+  it("reviews a waiting plan and approves it with the values it needs", async () => {
+    blueprintDetailState.blueprint = bp({ status: "created" });
+    blueprintSyncState.sync = detail({
+      requiredManualEnvVars: [
+        {
+          serviceType: "web",
+          serviceName: "express-hello-world",
+          key: "API_TOKEN",
+        },
+      ],
+    });
+    const user = userEvent.setup();
+    renderDetailPage(PAGE);
+
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Sync: 0123456" }),
+    ).toBeVisible();
+    // The layout's own page heading gives way to the sync's.
+    expect(
+      screen.queryByRole("heading", { level: 2, name: "Syncs" }),
+    ).not.toBeInTheDocument();
+    expect(readSync).toHaveBeenCalledWith("exs-abc123", "exe-planned");
+    const card = screen.getByTestId("blueprint-sync-card");
+    expect(within(card).queryByText("View details")).not.toBeInTheDocument();
+    const actions = screen.getByRole("list", { name: "Planned changes" });
+    expect(actions).toHaveTextContent("Create Service express-hello-world");
+    expect(
+      within(actions).getByRole("img", { name: "Awaiting approval" }),
+    ).toBeVisible();
+
+    const approveButton = screen.getByRole("button", { name: "Approve" });
+    expect(approveButton).toBeDisabled();
+    await user.type(
+      screen.getByLabelText("express-hello-world: API_TOKEN"),
+      "s3cret",
+    );
+    await user.click(approveButton);
+    expect(approve).toHaveBeenCalledWith({
+      "express-hello-world/API_TOKEN": "s3cret",
+    });
+  });
+
+  it("says why Approve failed, under the button", async () => {
+    blueprintDetailState.blueprint = bp({ status: "created" });
+    blueprintSyncState.sync = detail();
+    blueprintSyncState.approveError = "Couldn't approve this sync. Try again.";
+    renderDetailPage(PAGE);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Couldn't approve this sync. Try again.",
+    );
+    expect(screen.getByRole("button", { name: "Approve" })).toBeEnabled();
+  });
+
+  it("holds Approve for a role that cannot change the Blueprint", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(viewerCapabilities());
+    blueprintDetailState.blueprint = bp({ status: "created" });
+    blueprintSyncState.sync = detail();
+    renderDetailPage(PAGE);
+
+    expect(
+      await screen.findByRole("button", { name: "Approve" }),
+    ).toBeDisabled();
+  });
+
+  it.each([
+    ["running", "Running"],
+    ["success", "Success"],
+  ])("follows a %s sync's actions, with no Approve", async (state, label) => {
+    blueprintDetailState.blueprint = bp();
+    const base = detail();
+    blueprintSyncState.sync = detail({
+      state,
+      actions: base.actions.map((a) => ({ ...a, state })),
+    });
+    renderDetailPage(PAGE);
+
+    const actions = await screen.findByRole("list", {
+      name: "Planned changes",
+    });
+    expect(within(actions).getByRole("img", { name: label })).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Approve" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reads Resources already up to date for a plan that changes nothing", async () => {
+    blueprintDetailState.blueprint = bp();
+    blueprintSyncState.sync = detail({
+      state: "success",
+      actions: [
+        {
+          ...detail().actions[0],
+          action: { ...detail().actions[0].action, operation: "noop" },
+          state: "success",
+        },
+      ],
+    });
+    renderDetailPage(PAGE);
+
+    expect(
+      await screen.findByText("Resources already up to date"),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("list", { name: "Planned changes" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a failed plan's located errors alone", async () => {
+    blueprintDetailState.blueprint = bp();
+    blueprintSyncState.sync = detail({
+      state: "error",
+      actionsRecorded: false,
+      actions: [],
+      errors: [
+        {
+          code: "",
+          error: "runtime rocket is not supported",
+          path: "services[0].runtime",
+          line: 4,
+          column: 14,
+        },
+        { code: "", error: "name is required", path: "", line: 0, column: 0 },
+      ],
+    });
+    renderDetailPage(PAGE);
+
+    const errors = await screen.findByTestId("blueprint-sync-errors");
+    expect(errors).toHaveTextContent(
+      "There were a few problems syncing with your Blueprint:",
+    );
+    expect(errors).toHaveTextContent(
+      "line 4, column 14 · services[0].runtimeruntime rocket is not supported",
+    );
+    expect(
+      screen.queryByTestId("blueprint-sync-actions"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reads Render's critical line for a failed sync with neither actions nor errors", async () => {
+    blueprintDetailState.blueprint = bp();
+    blueprintSyncState.sync = detail({ state: "error", actions: [] });
+    renderDetailPage(PAGE);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "We weren't able to fully sync these resources.",
+    );
+  });
+
+  it("says an older sync's actions were not recorded, and shows its note", async () => {
+    blueprintDetailState.blueprint = bp();
+    blueprintSyncState.sync = detail({
+      state: "success",
+      actionsRecorded: false,
+      actions: [],
+      note: "Detached old-api (srv-old); it remains running and may continue to incur charges.",
+    });
+    renderDetailPage(PAGE);
+
+    expect(
+      await screen.findByText(/recorded before syncs kept their actions/),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "Detached old-api (srv-old); it remains running and may continue to incur charges.",
+      ),
+    ).toBeVisible();
+  });
+
+  it("says a sync that is gone is gone, and links Syncs", async () => {
+    blueprintDetailState.blueprint = bp();
+    renderDetailPage(PAGE);
+
+    expect(
+      await screen.findByText(/A planned sync not approved within 24 hours/),
+    ).toBeVisible();
+    expect(screen.getByRole("link", { name: "Go to Syncs" })).toHaveAttribute(
+      "href",
+      SYNCS,
+    );
+  });
+
+  it("frames the page while the sync loads", async () => {
+    blueprintDetailState.blueprint = bp();
+    blueprintSyncState.loading = true;
+    renderDetailPage(PAGE);
+
+    await screen.findAllByText("hello-go");
+    expect(
+      document.querySelector('[data-route-skeleton="blueprint-sync"]'),
+    ).toBeInTheDocument();
+  });
+
+  it("sends /sync with nothing handed over to Syncs", async () => {
+    blueprintDetailState.blueprint = bp();
+    const router = renderDetailPage("/blueprints/exs-abc123/sync");
+
+    expect(await screen.findByText("No syncs yet.")).toBeVisible();
+    expect(router.state.location.pathname).toBe(SYNCS);
+  });
+});
+
+describe("Manual sync (w3/m678)", () => {
+  it("plans a sync and opens its page", async () => {
+    blueprintDetailState.blueprint = bp();
+    blueprintSyncState.sync = detail();
+    const user = userEvent.setup();
+    const router = renderDetailPage(SETTINGS);
+
+    await user.click(await manualSync());
+    expect(plan).toHaveBeenCalledWith("exs-abc123");
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Sync: 0123456" }),
+    ).toBeVisible();
+    expect(router.state.location.pathname).toBe(
+      "/blueprints/exs-abc123/sync/exe-planned",
+    );
+  });
+
+  // Render's Manual sync is offered whatever the Blueprint's status: a created
+  // Blueprint's new plan is approved on its page too.
+  it("plans a created Blueprint's sync too", async () => {
+    blueprintDetailState.blueprint = bp({ status: "created" });
+    renderDetailPage(SYNCS);
+
+    expect(await manualSync()).toBeEnabled();
+  });
+
+  it("opens a page saying Resources already up to date for a plan with no changes", async () => {
+    plan.mockResolvedValueOnce({ status: "no_changes" });
+    blueprintDetailState.blueprint = bp();
+    const user = userEvent.setup();
+    const router = renderDetailPage(SYNCS);
+
+    await user.click(await manualSync());
+    expect(
+      await screen.findByText("Resources already up to date"),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Sync" }),
+    ).toBeVisible();
+    expect(router.state.location.pathname).toBe("/blueprints/exs-abc123/sync");
+  });
+
+  it("shows a refused plan in Render's dismissible Sync Error banner", async () => {
+    plan.mockResolvedValueOnce({
+      status: "error",
+      reason: "Blueprint file not found on branch main",
+    });
+    blueprintDetailState.blueprint = bp();
+    const user = userEvent.setup();
+    const router = renderDetailPage(SYNCS);
+
+    await user.click(await manualSync());
+    const banner = await screen.findByTestId("blueprint-sync-error");
+    expect(banner).toHaveTextContent("Sync Error");
+    expect(banner).toHaveTextContent("Blueprint file not found on branch main");
+    expect(router.state.location.pathname).toBe(SYNCS);
+    await user.click(within(banner).getByRole("button", { name: "Dismiss" }));
+    expect(
+      screen.queryByTestId("blueprint-sync-error"),
+    ).not.toBeInTheDocument();
+  });
+
+  // w2/m269: links carry the API's exs- id; a bookmarked blp- URL still
+  // opens, plans by the exs- id and keeps its spelling.
+  it.each([
+    ["exs-db136288mmqc73d4hpug", "exs-db136288mmqc73d4hpug"],
+    ["blp-db136288mmqc73d4hpug", "exs-db136288mmqc73d4hpug"],
+  ])("plans /blueprints/%s by %s", async (urlId, apiId) => {
+    blueprintDetailState.blueprint = bp({ id: apiId });
+    blueprintSyncState.sync = detail();
+    const user = userEvent.setup();
+    const router = renderDetailPage(urlId);
+
+    await user.click(await manualSync());
+    expect(plan).toHaveBeenCalledWith(apiId);
+    await screen.findByRole("heading", { level: 2, name: "Sync: 0123456" });
+    expect(router.state.location.pathname).toBe(
+      `/blueprints/${urlId}/sync/exe-planned`,
+    );
   });
 });
 
 describe("BlueprintDetailPage", () => {
-  // w2/m256 t012: a created Blueprint shows its plan and Approve, and offers no
-  // Sync that would apply it past the plan: Manual sync is held, with where
-  // to go (w3/m677).
-  it("shows a created Blueprint's plan with Approve, and holds Manual sync", async () => {
-    blueprintDetailState.blueprint = bp({ status: "created" });
-    plannedSyncState.planned = waitingPlan;
-    const user = userEvent.setup();
-    renderDetailPage(SYNCS);
-
-    await screen.findAllByText("hello-go");
-    expect(screen.getByText("express-hello-world")).toBeInTheDocument();
-    const button = await manualSync();
-    expect(button).toBeDisabled();
-    await user.hover(button.parentElement!);
-    expect(
-      (await screen.findAllByText("Approve the waiting plan on Syncs first."))
-        .length,
-    ).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: /approve/i }));
-    expect(approvePlanned).toHaveBeenCalledWith({});
-  });
-
-  // w32/076: a no-changes re-plan takes a created Blueprint to in_sync and
-  // keeps its waiting first plan (w32/073), and an approved Blueprint can wait
-  // on a re-plan. Render links every waiting plan to its dashboard for review,
-  // and the CLI, REST, GraphQL and MCP can approve it, so the page shows it.
-  it.each(["in_sync", "paused", "error"])(
-    "shows a waiting plan and its Approve on a Blueprint that is %s",
-    async (status) => {
-      blueprintDetailState.blueprint = bp({ status });
-      plannedSyncState.planned = waitingPlan;
-      renderDetailPage(SYNCS);
-
-      await screen.findAllByText("hello-go");
-      expect(screen.getByText("Planned sync")).toBeInTheDocument();
-      expect(
-        screen.getByText(/this plan is waiting for approval/i),
-      ).toHaveTextContent("commit 0123456");
-      expect(screen.getByText("express-hello-world")).toBeInTheDocument();
-      fireEvent.click(screen.getByRole("button", { name: /^approve$/i }));
-      expect(approvePlanned).toHaveBeenCalledWith({});
-      // Past created, the Blueprint still syncs as before.
-      expect(await manualSync()).toBeEnabled();
-    },
-  );
-
-  it("shows no planned-sync card on a Blueprint past created with no waiting plan (w32/076)", async () => {
-    blueprintDetailState.blueprint = bp({ status: "in_sync" });
-    renderDetailPage(SYNCS);
-
-    await screen.findAllByText("hello-go");
-    expect(screen.queryByText("Planned sync")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /^approve$/i }),
-    ).not.toBeInTheDocument();
-    expect(await manualSync()).toBeEnabled();
-  });
-
-  // The skeleton rule: a loading frame never invents a region the ready page
-  // lacks. A created Blueprint always has the card; any other has it only
-  // when a plan waits, which it usually does not.
-  it.each([
-    ["created", true],
-    ["in_sync", false],
-  ] as const)(
-    "while the plan loads, a %s Blueprint reserves the planned-sync card: %s (w32/076)",
-    async (status, reserved) => {
-      blueprintDetailState.blueprint = bp({ status });
-      plannedSyncState.loading = true;
-      renderDetailPage(SYNCS);
-
-      await screen.findAllByText("hello-go");
-      const frame = document.querySelector(
-        '[data-skeleton-region="planned-sync"]',
-      );
-      if (reserved) expect(frame).toBeInTheDocument();
-      else expect(frame).not.toBeInTheDocument();
-    },
-  );
-
   it("renders the manifest and metadata for a found blueprint on Settings", async () => {
     blueprintDetailState.blueprint = bp();
     renderDetailPage(SETTINGS);
@@ -785,165 +1077,6 @@ describe("BlueprintDetailPage", () => {
     const suffix = screen.getByTitle("Resource name suffix");
     expect(suffix).toHaveTextContent("-ab12");
     expect(heading.parentElement).toContainElement(suffix);
-  });
-
-  // w6/043: the syncs query is independent of the route's blocking title
-  // loader, so a fresh visit has an in-flight window where zero rows have
-  // arrived yet. The card must not read "No syncs yet." during that window.
-  describe("Sync History loading window", () => {
-    it("shows a table-shaped skeleton, not the empty copy, while syncs are loading", async () => {
-      blueprintDetailState.blueprint = bp();
-      blueprintSyncsState.loading = true;
-      renderDetailPage(SYNCS);
-
-      await screen.findAllByText("hello-go");
-      expect(screen.queryByText("No syncs yet.")).not.toBeInTheDocument();
-      const skeletonBody = document.querySelector(
-        '[data-skeleton-region="sync-history-rows"]',
-      );
-      expect(skeletonBody).toBeInTheDocument();
-      // Structural parity with the ready state: the real header plus
-      // placeholder rows spanning the same five columns.
-      expect(screen.getByText("Commit")).toBeInTheDocument();
-      const skeletonRows = skeletonBody?.querySelectorAll("tr") ?? [];
-      expect(skeletonRows.length).toBeGreaterThan(0);
-      expect(skeletonRows[0].children).toHaveLength(5);
-    });
-
-    it("shows the empty copy only once settled with zero syncs", async () => {
-      blueprintDetailState.blueprint = bp();
-      blueprintSyncsState.loading = false;
-      renderDetailPage(SYNCS);
-
-      expect(await screen.findByText("No syncs yet.")).toBeInTheDocument();
-      expect(
-        document.querySelector('[data-skeleton-region="sync-history-rows"]'),
-      ).not.toBeInTheDocument();
-    });
-
-    it("keeps the real rows during a cache-and-network refetch", async () => {
-      blueprintDetailState.blueprint = bp();
-      blueprintSyncsState.loading = true;
-      blueprintSyncsState.syncs = [
-        {
-          id: "exe-1",
-          commitId: "deadbeef",
-          state: "success",
-          startedAt: "2026-08-20T00:00:00Z",
-          completedAt: "2026-08-20T00:01:00Z",
-          errorMessage: null,
-          note: null,
-        },
-      ];
-      renderDetailPage(SYNCS);
-
-      expect(await screen.findByText("deadbeef")).toBeInTheDocument();
-      expect(screen.queryByText("No syncs yet.")).not.toBeInTheDocument();
-      expect(
-        document.querySelector('[data-skeleton-region="sync-history-rows"]'),
-      ).not.toBeInTheDocument();
-    });
-  });
-
-  it("shows a durable detachment note on an otherwise successful sync", async () => {
-    blueprintDetailState.blueprint = bp();
-    blueprintSyncsState.syncs = [
-      {
-        id: "exe-detach",
-        commitId: "abc12345",
-        state: "success",
-        startedAt: null,
-        completedAt: null,
-        errorMessage: null,
-        note: "Detached old-api (srv-old); it remains running and may continue to incur charges.",
-      },
-    ];
-    renderDetailPage(SYNCS);
-    expect(
-      await screen.findByText(
-        "Detached old-api (srv-old); it remains running and may continue to incur charges.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("columnheader", { name: "Details" }),
-    ).toBeInTheDocument();
-  });
-
-  // w2/074: a Blueprint reconnected twice shows the reconnection note on
-  // exactly the two rows the API marks, the first sync of each connection,
-  // and on none of the syncs around them.
-  it("shows one reconnection note per reconnection boundary", async () => {
-    const note =
-      "re-established a previously disconnected connection to https://github.com/a/app@main; earlier sync history below belongs to that connection";
-    const run = (id: string, commitId: string, boundary = false) => ({
-      id,
-      commitId,
-      state: "success",
-      startedAt: "2026-11-08T00:00:00Z",
-      completedAt: "2026-11-08T00:01:00Z",
-      errorMessage: null,
-      note: boundary ? note : null,
-    });
-    blueprintDetailState.blueprint = bp();
-    // Newest first: connection 3 (two syncs), 2 (two syncs), 1 (one sync).
-    blueprintSyncsState.syncs = [
-      run("exe-dbo4cl1jg4r0393ruu50", "c3000002"),
-      run("exe-dbo4cl1jg4r0393ruu30", "c3000001", true),
-      run("exe-dbo4cl1jg4r0393ruu20", "c2000002"),
-      run("exe-dbo4cl1jg4r0393ruu00", "c2000001", true),
-      run("exe-dbo4cl1jg4r0393rutsg", "c1000001"),
-    ];
-    renderDetailPage(SYNCS);
-
-    expect(await screen.findByText("c3000002")).toBeInTheDocument();
-    const rowOf = (commit: string) =>
-      screen
-        .getAllByRole("row")
-        .find((row) => row.textContent?.includes(commit)) as HTMLElement;
-    expect(screen.getAllByText(note)).toHaveLength(2);
-    for (const commit of ["c3000001", "c2000001"]) {
-      expect(within(rowOf(commit)).getByText(note)).toBeInTheDocument();
-    }
-    for (const commit of ["c3000002", "c2000002", "c1000001"]) {
-      expect(within(rowOf(commit)).queryByText(note)).not.toBeInTheDocument();
-    }
-  });
-
-  it("shows the failure reason for an error-state sync row and nothing extraneous for a success row (w6/m50)", async () => {
-    blueprintDetailState.blueprint = bp();
-    blueprintSyncsState.syncs = [
-      {
-        id: "exe-1",
-        commitId: "deadbeef",
-        state: "error",
-        startedAt: "2026-08-20T00:00:00Z",
-        completedAt: "2026-08-20T00:01:00Z",
-        errorMessage: "quota exceeded: workspace at service limit",
-        note: null,
-      },
-      {
-        id: "exe-2",
-        commitId: "cafef00d",
-        state: "success",
-        startedAt: "2026-08-21T00:00:00Z",
-        completedAt: "2026-08-21T00:01:00Z",
-        errorMessage: null,
-        note: null,
-      },
-    ];
-    renderDetailPage(SYNCS);
-
-    expect(
-      await screen.findByText("quota exceeded: workspace at service limit"),
-    ).toBeInTheDocument();
-
-    const successRow = screen
-      .getAllByRole("row")
-      .find((row) => row.textContent?.includes("cafef00d"));
-    expect(successRow).toBeDefined();
-    expect(
-      within(successRow as HTMLElement).getAllByText("—").length,
-    ).toBeGreaterThan(0);
   });
 
   it("does not tell a failed empty blueprint to sync (w4/065)", async () => {
@@ -998,126 +1131,6 @@ describe("BlueprintDetailPage", () => {
     expect(router.state.location.pathname).toBe("/blueprints/blp-missing");
   });
 
-  it("syncs the commit the dialog reviewed (w8/m41)", async () => {
-    const blueprint = bp();
-    blueprintDetailState.blueprint = blueprint;
-    syncPreviewState.preview = validPreview();
-    renderDetailPage();
-
-    await userEvent.click(await manualSync());
-    await userEvent.click(screen.getByRole("button", { name: /^sync$/i }));
-
-    expect(sync).toHaveBeenCalledWith("exs-abc123", reviewedFrom(blueprint));
-    expect(blueprintDetailState.refetch).not.toHaveBeenCalled();
-  });
-
-  // w2/m269: links carry the API's exs- id; a bookmarked blp- URL still
-  // opens and addresses the same Blueprint by its exs- id.
-  it.each([
-    ["exs-db136288mmqc73d4hpug", "exs-db136288mmqc73d4hpug"],
-    ["blp-db136288mmqc73d4hpug", "exs-db136288mmqc73d4hpug"],
-  ])("opens /blueprints/%s and acts on %s", async (urlId, apiId) => {
-    const blueprint = bp({ id: apiId });
-    blueprintDetailState.blueprint = blueprint;
-    syncPreviewState.preview = validPreview();
-    const router = renderDetailPage(urlId);
-
-    await userEvent.click(await manualSync());
-    await userEvent.click(screen.getByRole("button", { name: /^sync$/i }));
-
-    expect(sync).toHaveBeenCalledWith(apiId, reviewedFrom(blueprint));
-    expect(router.state.location.pathname).toBe(`/blueprints/${urlId}`);
-  });
-
-  it("keeps the reviewed pin when a later preview arrives (w8/m41)", async () => {
-    const blueprint = bp();
-    blueprintDetailState.blueprint = blueprint;
-    syncPreviewState.preview = validPreview();
-    renderDetailPage();
-
-    await userEvent.click(await manualSync());
-    expect(await screen.findByText(/reviewed commit/i)).toBeInTheDocument();
-
-    // A refetch lands a newer commit while the dialog is open: the user
-    // confirmed what they read, so the pin must not follow it.
-    syncPreviewState.preview = validPreview("f00dcafe");
-    await userEvent.click(screen.getByRole("button", { name: /^sync$/i }));
-
-    expect(sync).toHaveBeenCalledWith("exs-abc123", reviewedFrom(blueprint));
-  });
-
-  // Each opening reviews the file as it is now (w3/m677): a pin left by a
-  // dismissed protected-environment retry never carries into the next one.
-  it("reviews afresh each time the dialog opens", async () => {
-    sync.mockResolvedValueOnce({
-      status: "confirmation_required",
-      confirmation: "sudo deploy service api",
-    });
-    const blueprint = bp();
-    blueprintDetailState.blueprint = blueprint;
-    syncPreviewState.preview = validPreview();
-    const user = userEvent.setup();
-    renderDetailPage();
-
-    await user.click(await manualSync());
-    await user.click(screen.getByRole("button", { name: /^sync$/i }));
-    const protectedDialog = await screen.findByRole("dialog");
-    await user.click(
-      within(protectedDialog).getByRole("button", { name: /cancel/i }),
-    );
-
-    // The file moved on while the user was away.
-    syncPreviewState.preview = validPreview("f00dcafe");
-    await user.click(await manualSync());
-    await user.click(screen.getByRole("button", { name: /^sync$/i }));
-    expect(sync).toHaveBeenLastCalledWith(
-      "exs-abc123",
-      reviewedFrom(blueprint, "f00dcafe"),
-    );
-  });
-
-  it("shows the computed sync plan in the dialog before applying (w8/m21)", async () => {
-    const blueprint = bp();
-    blueprintDetailState.blueprint = blueprint;
-    syncPreviewState.preview = validPreview();
-    renderDetailPage();
-
-    await userEvent.click(await manualSync());
-    expect(
-      await screen.findByText(/parsed successfully — 2 resources/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText("(Standard) $17.50 / month")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /^sync$/i }));
-    expect(sync).toHaveBeenCalledWith("exs-abc123", reviewedFrom(blueprint));
-  });
-
-  it("blocks sync when the preview is unavailable (w8/m41)", async () => {
-    blueprintDetailState.blueprint = bp();
-    syncPreviewState.error = new Error("network");
-    renderDetailPage();
-
-    await userEvent.click(await manualSync());
-    expect(
-      await screen.findByText(/couldn't compute the sync plan/i),
-    ).toBeInTheDocument();
-    // No reviewed commit, no sync: proceed-anyway is gone (w8/m41).
-    expect(screen.getByRole("button", { name: /^sync$/i })).toBeDisabled();
-    expect(
-      screen.getByRole("button", { name: /refresh preview/i }),
-    ).toBeInTheDocument();
-    expect(sync).not.toHaveBeenCalled();
-  });
-
-  it("does not call sync when the confirm dialog is cancelled", async () => {
-    blueprintDetailState.blueprint = bp();
-    renderDetailPage();
-
-    await userEvent.click(await manualSync());
-    await userEvent.click(screen.getByRole("button", { name: /cancel/i }));
-
-    expect(sync).not.toHaveBeenCalled();
-  });
-
   it("edits name and path via PATCH on Settings; branch stays read-only (w8/m21)", async () => {
     blueprintDetailState.blueprint = bp();
     const user = userEvent.setup();
@@ -1163,43 +1176,6 @@ describe("BlueprintDetailPage", () => {
     expect(
       screen.queryByRole("button", { name: /edit branch/i }),
     ).not.toBeInTheDocument();
-  });
-
-  it("retries a protected deploy override only with the exact server phrase", async () => {
-    sync
-      .mockResolvedValueOnce({
-        status: "confirmation_required",
-        confirmation: "sudo deploy service api",
-      })
-      .mockResolvedValueOnce({ status: "success", result: null });
-    const blueprint = bp();
-    blueprintDetailState.blueprint = blueprint;
-    syncPreviewState.preview = validPreview();
-    const user = userEvent.setup();
-    renderDetailPage();
-
-    await user.click(await manualSync());
-    await user.click(screen.getByRole("button", { name: /^sync$/i }));
-
-    const protectedDialog = await screen.findByRole("dialog");
-    // The backend's phrase is body copy; the input is labeled "Sudo Command".
-    expect(
-      within(protectedDialog).getByText("sudo deploy service api"),
-    ).toBeInTheDocument();
-    const input = within(protectedDialog).getByLabelText("Sudo Command");
-    const retry = within(protectedDialog).getByRole("button", {
-      name: /^sync$/i,
-    });
-    await user.type(input, "sudo deploy service ap");
-    expect(retry).toBeDisabled();
-    await user.type(input, "i");
-    await user.click(retry);
-
-    expect(sync).toHaveBeenNthCalledWith(2, "exs-abc123", {
-      ...reviewedFrom(blueprint),
-      confirmation: "sudo deploy service api",
-    });
-    expect(blueprintDetailState.refetch).not.toHaveBeenCalled();
   });
 });
 

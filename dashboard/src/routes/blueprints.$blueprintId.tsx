@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { X } from "lucide-react";
 import { PageScroll } from "@/common/components/page-frame";
 import {
   Outlet,
@@ -15,19 +17,28 @@ import {
 } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/common/components/ui/alert";
+import { Button } from "@/common/components/ui/button";
+import {
   BlueprintHeaderSkeleton,
   BlueprintResourcesSkeleton,
   BlueprintSettingsSkeleton,
+  BlueprintSyncPageSkeleton,
   BlueprintSyncsSkeleton,
 } from "@/common/components/route-skeletons";
 import { BlueprintStatusBadge } from "@/features/blueprints/components/blueprint-status-badge";
 import { BlueprintResourceSuffix } from "@/features/blueprints/components/blueprint-resource-suffix";
 import { BlueprintManualSync } from "@/features/blueprints/components/blueprint-manual-sync";
-import { blueprintPageLabelKey } from "@/features/blueprints/components/blueprint-nav";
+import {
+  blueprintPageLabelKey,
+  isBlueprintSyncPage,
+} from "@/features/blueprints/components/blueprint-nav";
 import { BlueprintDetailProvider } from "@/features/blueprints/lib/blueprint-detail";
 import { canonicalBlueprintLinkId } from "@/features/blueprints/lib/link-id";
 import { useBlueprint } from "@/features/blueprints/hooks/use-blueprint";
-import type { BlueprintView } from "@/features/blueprints/types";
 import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import { BlueprintDocument } from "@/graphql/definitions";
 import {
@@ -92,10 +103,12 @@ function RouteComponent() {
 /**
  * A Blueprint's pages share this layout (w3/m677), as Render's do: the header
  * (the name with bex's resource suffix and status, and Render's one action,
- * Manual sync), the open page's heading, which is its sidebar entry's label,
- * and an `<Outlet/>` for Resources, Syncs or Settings. The sidebar is
- * DashboardSidebar's BlueprintSidebar. The layout reads the Blueprint once and
- * hands it to its pages through BlueprintDetailProvider.
+ * Manual sync), Render's dismissible Sync Error banner when Manual sync could
+ * not plan (w3/m678), the open page's heading, which is its sidebar entry's
+ * label (a sync's page heads itself), and an `<Outlet/>` for Resources, Syncs,
+ * a sync or Settings. The sidebar is DashboardSidebar's BlueprintSidebar. The
+ * layout reads the Blueprint once and hands it to its pages through
+ * BlueprintDetailProvider.
  */
 function BlueprintDetailLayout({
   routePending = false,
@@ -136,6 +149,14 @@ function BlueprintDetailLayout({
     : resourceLoadErrorVariant(loaded, loading, error);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const pageLabelKey = blueprintPageLabelKey(pathname, linkId);
+  const syncPage = isBlueprintSyncPage(pathname, linkId);
+  // Manual sync's refusal (the server's reason, mutationErrorMessage), kept
+  // with the Blueprint it is about: another Blueprint's pages reuse this
+  // layout without remounting it.
+  const [planRefusal, setPlanRefusal] = useState<{
+    blueprintId: string;
+    reason: string;
+  } | null>(null);
 
   return (
     <DashboardLayout>
@@ -154,18 +175,47 @@ function BlueprintDetailLayout({
             </div>
             {/* BlueprintHeaderSkeleton reserves this container's box. */}
             <div className="flex shrink-0 items-center gap-2">
-              <BlueprintManualSync blueprint={blueprint} />
+              <BlueprintManualSync
+                blueprintId={blueprint.id}
+                linkId={linkId}
+                onError={(reason) =>
+                  setPlanRefusal(
+                    reason ? { blueprintId: blueprint.id, reason } : null,
+                  )
+                }
+              />
             </div>
           </div>
         ) : (
           <BlueprintHeaderSkeleton />
         )}
+        {blueprint && planRefusal?.blueprintId === blueprint.id ? (
+          <div className="px-4 pt-4 sm:px-6">
+            <Alert
+              variant="destructive"
+              className="mx-auto max-w-5xl pr-12"
+              data-testid="blueprint-sync-error"
+            >
+              <AlertTitle>{t("blueprints.syncErrorBannerTitle")}</AlertTitle>
+              <AlertDescription>{planRefusal.reason}</AlertDescription>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 size-8"
+                aria-label={t("blueprints.syncErrorBannerDismiss")}
+                onClick={() => setPlanRefusal(null)}
+              >
+                <X aria-hidden="true" />
+              </Button>
+            </Alert>
+          </div>
+        ) : null}
 
         <PageScroll
           data-skeleton-region={!blueprint ? "active-page" : undefined}
         >
           <div className="mx-auto w-full max-w-5xl space-y-6">
-            {pageLabelKey ? (
+            {pageLabelKey && !syncPage ? (
               // Every page opens with its name, the sidebar's label for it.
               <h2 className="text-lg leading-7 font-semibold tracking-tight">
                 {t(pageLabelKey)}
@@ -174,13 +224,13 @@ function BlueprintDetailLayout({
             {loadErrorVariant ? (
               <ResourceLoadError onRetry={refetch} variant={loadErrorVariant} />
             ) : blueprint ? (
-              <BlueprintDetailProvider value={{ blueprint }}>
+              <BlueprintDetailProvider value={{ blueprint, linkId }}>
                 <Outlet />
               </BlueprintDetailProvider>
             ) : (
               <BlueprintPageSkeleton
                 labelKey={pageLabelKey}
-                blueprint={loaded}
+                syncPage={syncPage}
               />
             )}
           </div>
@@ -192,19 +242,19 @@ function BlueprintDetailLayout({
 
 /**
  * The open page's own pending frame, the one its route shows on a page
- * switch, while the layout has no Blueprint yet. `blueprint` is the cache's
- * copy when there is one (a workspace still being adopted).
+ * switch, while the layout has no Blueprint yet.
  */
 function BlueprintPageSkeleton({
   labelKey,
-  blueprint,
+  syncPage,
 }: {
   labelKey: ReturnType<typeof blueprintPageLabelKey>;
-  blueprint: BlueprintView | null;
+  syncPage: boolean;
 }) {
+  if (syncPage) return <BlueprintSyncPageSkeleton />;
   switch (labelKey) {
     case "blueprints.navSyncs":
-      return <BlueprintSyncsSkeleton blueprint={blueprint} />;
+      return <BlueprintSyncsSkeleton />;
     case "blueprints.navSettings":
       return <BlueprintSettingsSkeleton />;
     default:

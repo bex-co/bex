@@ -13,9 +13,9 @@ import { Route as AliasRoute } from "../blueprint.$";
 
 // w3/m677: a Blueprint's single page became Render's pages, each at its own
 // URL under /blueprints/<id>. Render's own /blueprint/<id>/… links, and its
-// sub-paths bex has no page for yet, open the page they mean, with the query
-// and hash kept. The real alias and sub-path redirects run; each page is a
-// stub naming itself.
+// sub-paths bex has no page for, open the page they mean, with the query and
+// hash kept; a sync has its own page (w3/m678). The real alias and sub-path
+// redirects run; each page is a stub naming itself.
 
 const PAGES = ["resources", "syncs", "settings"] as const;
 
@@ -55,6 +55,16 @@ async function land(href: string) {
         component: stub(page),
       }),
     ),
+    createRoute({
+      getParentRoute: () => layout,
+      path: "/sync/$syncId",
+      component: stub("sync"),
+    }),
+    createRoute({
+      getParentRoute: () => layout,
+      path: "/sync/",
+      component: stub("handed-over sync"),
+    }),
     createRoute({
       getParentRoute: () => layout,
       path: "/$",
@@ -111,13 +121,30 @@ describe("Render's Blueprint URLs and a Blueprint's sub-paths (w3/m677)", () => 
     );
   });
 
-  // Until w3/m678 gives a sync its page, Render's sync links open Syncs.
-  it.each([
-    [`/blueprint/${ID}/sync/exe-d0k8jv3e4t2s73a1b2d0`],
-    [`/blueprint/${ID}/sync`],
-    [`/blueprints/${ID}/sync/exe-d0k8jv3e4t2s73a1b2d0`],
-  ])("lands %s on Syncs", async (href) => {
-    const location = await land(`${href}?from=email#latest`);
+  // Render's sync link, the dashboardUrl bex-api emits (w3/m678), opens the
+  // sync's own page.
+  it("opens Render's /blueprint/<id>/sync/<syncId> on the sync's page, query and hash kept", async () => {
+    const location = await land(
+      `/blueprint/${ID}/sync/exe-d0k8jv3e4t2s73a1b2d0?from=cli#actions`,
+    );
+    expect(location.pathname).toBe(
+      `/blueprints/${ID}/sync/exe-d0k8jv3e4t2s73a1b2d0`,
+    );
+    expect(location.search).toEqual({ from: "cli" });
+    expect(location.hash).toBe("actions");
+    expect(await screen.findByText("page:sync")).toBeVisible();
+  });
+
+  it("opens Render's /blueprint/<id>/sync on the handed-over sync's page", async () => {
+    const location = await land(`/blueprint/${ID}/sync`);
+    expect(location.pathname).toBe(`/blueprints/${ID}/sync`);
+    expect(await screen.findByText("page:handed-over sync")).toBeVisible();
+  });
+
+  it("lands a path past a sync's page on Syncs", async () => {
+    const location = await land(
+      `/blueprints/${ID}/sync/exe-d0k8jv3e4t2s73a1b2d0/more?from=email#latest`,
+    );
     expect(location.pathname).toBe(`/blueprints/${ID}/syncs`);
     expect(location.search).toEqual({ from: "email" });
     expect(location.hash).toBe("latest");

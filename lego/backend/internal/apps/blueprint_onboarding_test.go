@@ -228,9 +228,10 @@ func TestBlueprintOnboardingCreatePlanApprove(t *testing.T) {
 	}
 	bpID := res.Blueprint.ID
 	// w2/m269: the create answers with Render's exs- spelling (the pinned CLI
-	// refuses anything else) and links the dashboard page by it, in Render's
-	// /blueprint/<id> shape (w3/m677).
-	if want := "https://dashboard.example/blueprint/" + bpID; !strings.HasPrefix(bpID, "exs-") || res.Sync.DashboardURL != want {
+	// refuses anything else) and links the planned sync's own page by it, in
+	// Render's /blueprint/<id>/sync/<syncId> shape ("Link to this Sync in the
+	// Render Dashboard", w3/m678).
+	if want := "https://dashboard.example/blueprint/" + bpID + "/sync/" + res.Sync.ID; !strings.HasPrefix(bpID, "exs-") || !strings.HasPrefix(res.Sync.ID, "exe-") || res.Sync.DashboardURL != want {
 		t.Fatalf("blueprint id %q / dashboardUrl %q, want %q", bpID, res.Sync.DashboardURL, want)
 	}
 
@@ -251,8 +252,9 @@ func TestBlueprintOnboardingCreatePlanApprove(t *testing.T) {
 	if approved.ID != res.Sync.ID || approved.State != store.BlueprintSyncStateSuccess || approved.Commit.ID != res.Sync.Commit.ID {
 		t.Fatalf("approved = %+v, want the planned sync %s applied", approved, res.Sync.ID)
 	}
-	if want := "https://dashboard.example/blueprint/" + bpID; approved.DashboardURL != want {
-		t.Fatalf("approved dashboardUrl = %q, want %q (w3/m677)", approved.DashboardURL, want)
+	// Render: "Link to the sync in the Render Dashboard" (w3/m678).
+	if want := "https://dashboard.example/blueprint/" + bpID + "/sync/" + approved.ID; approved.DashboardURL != want {
+		t.Fatalf("approved dashboardUrl = %q, want %q (w3/m678)", approved.DashboardURL, want)
 	}
 	if err := svc.Client.List(ctx, &apps); err != nil || len(apps.Items) != 1 {
 		t.Fatalf("approve created %d Apps (err %v), want 1", len(apps.Items), err)

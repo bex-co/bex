@@ -31,11 +31,39 @@ export interface BlueprintView {
 export interface BlueprintSyncView {
   id: string;
   commitId: string;
+  /** The commit's message, which Render's sync card shows (w3/m678); "" when
+   *  the Git host could not say. */
+  commitMessage: string;
   state: string;
   startedAt: string | null;
   completedAt: string | null;
   errorMessage: string | null;
   note: string | null;
+}
+
+/** A sync:false value approving a planned sync needs (w2/m256 t012). */
+export interface BlueprintManualEnvVar {
+  serviceType: string;
+  serviceName: string;
+  key: string;
+}
+
+/** One action a sync planned, with its state: created, running, success, or
+ *  "" when bex cannot say (a failed sync's actions, w3/m678). */
+export interface BlueprintSyncAction {
+  action: BlueprintPlanAction;
+  state: string;
+}
+
+/** One sync as its own page draws it, Render's iacExecution (w3/m678). */
+export interface BlueprintSyncDetailView extends BlueprintSyncView {
+  /** False for a sync recorded before every sync kept its actions. */
+  actionsRecorded: boolean;
+  actions: BlueprintSyncAction[];
+  /** Its errors, where the Blueprint file has them. */
+  errors: BlueprintValidationError[];
+  /** Set only while the sync waits for approval. */
+  requiredManualEnvVars: BlueprintManualEnvVar[];
 }
 
 /** One validation error with its source location (w8/019). line/column are 0
@@ -174,11 +202,4 @@ export interface BlueprintPreviewResult {
   /** Declared resources whose names already exist in the workspace. */
   matchedResources: BlueprintMatchedResource[];
   validation: BlueprintPreviewValidation | null;
-}
-
-export interface SyncBlueprintResult {
-  detachedResources: BlueprintResource[];
-  blueprint: BlueprintView | null;
-  services: Array<{ id: string; name: string } | null> | null;
-  databases: string[] | null;
 }
