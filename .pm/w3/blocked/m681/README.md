@@ -1,6 +1,6 @@
 # w3 · m681 — Generate Blueprint starts from selected resources and opens Render's Create Blueprint page
 
-**Worker:** worker3 **Goal:** Generate Blueprint is offered where Render offers it (the selection bar, each resource row's menu, a project environment's menu) and opens Render's three-step Create Blueprint page at `/blueprint/generate`; the Blueprints list's own Generate Blueprint button and dialog, which Render's list does not have, are gone. **Status:** todo (t001–t004 and t006–t008 done; t005 walked locally, its production walk waits for a pin carrying the milestone's commit)
+**Worker:** worker3 **Goal:** Generate Blueprint is offered where Render offers it (the selection bar, each resource row's menu, a project environment's menu) and opens Render's three-step Create Blueprint page at `/blueprint/generate`; the Blueprints list's own Generate Blueprint button and dialog, which Render's list does not have, are gone. **Status:** blocked (t001–t004 and t006–t008 done; t005 walked locally, its production walk waits for a pin carrying `2902ee1877`)
 
 ## Tasks (in order)
 
@@ -35,7 +35,7 @@ Total: **9 tasks, about 4h45m**.
 Verified 2026-11-25 on main `c196617a8b`.
 
 - Generate Blueprint is a dialog on `/blueprints` (`features/blueprints/components/generate-blueprint-dialog.tsx`, w8/m22): resources are picked inside the dialog, then a YAML preview, copy and download. It is built on GraphQL `generateBlueprint` (REST `POST /v1/blueprints/generate`, MCP `generate_blueprint`, a labeled bex extension).
-- `BulkResourceToolbar` (`features/projects/components/bulk-resource-toolbar.tsx`) offers Move, Resume and Suspend; the row menus (`features/services/components/service-row-actions.tsx`, `features/databases/components/database-row-actions*.tsx`, `features/keyvalue/components/key-value-row-actions*.tsx`) and the environment card's menu (`features/environments/components/environment-card.tsx`) have no Generate Blueprint. [service-list-bulk-actions.md](../../../docs/render-artifacts/service-list-bulk-actions.md) records Render's action-bar entry; w4/m550 left it out.
+- `BulkResourceToolbar` (`features/projects/components/bulk-resource-toolbar.tsx`) offers Move, Resume and Suspend; the row menus (`features/services/components/service-row-actions.tsx`, `features/databases/components/database-row-actions*.tsx`, `features/keyvalue/components/key-value-row-actions*.tsx`) and the environment card's menu (`features/environments/components/environment-card.tsx`) have no Generate Blueprint. [service-list-bulk-actions.md](../../../../docs/render-artifacts/service-list-bulk-actions.md) records Render's action-bar entry; w4/m550 left it out.
 - `/blueprint/generate` is not a page; after w3/m677 it goes to `/`, as Render's does with nothing selected.
 
 ## Local walk (2026-11-27)
@@ -67,7 +67,7 @@ Walked in headless Chrome (a private Playwright install; the shared browser stay
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm one aspect of render parity to w3` (2026-11-25), item 5, verified the same day against Render's bundle and its `ExportBlueprint` and `IACSourcesForUser` chunks. The verification corrected the brainstorm: Render's list has no Generate button, so bex's list dialog is itself a difference.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)). Render documents generating a Blueprint from existing services ([render.com/docs/infrastructure-as-code](https://render.com/docs/infrastructure-as-code), "Generating a Blueprint from existing services").
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). Render documents generating a Blueprint from existing services ([render.com/docs/infrastructure-as-code](https://render.com/docs/infrastructure-as-code), "Generating a Blueprint from existing services").
 - **Expected outcome:** someone who selects services the way Render teaches finds Generate Blueprint there, and lands on the page Render shows; the list page matches Render's.
 - **Why now:** the selection bar (w4/m550) and the API (w8/m22) both exist, so this is entry points and a page; w3/m680 puts the same bar on a Blueprint's Resources page.
 - **Render parity task:** included (t006): the dashboard changes; REST, GraphQL and MCP `generateBlueprint` are reused, not changed.
