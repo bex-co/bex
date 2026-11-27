@@ -50,6 +50,7 @@ import (
 	"golang.org/x/sync/singleflight"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/bex-co/bex/lego/operator/internal/edgecache"
 	"github.com/bex-co/bex/lego/operator/internal/notserving"
 	"github.com/bex-co/bex/lego/types/netutil"
 	"github.com/bex-co/bex/lego/types/routepattern"
@@ -114,6 +115,9 @@ type Object struct {
 	// object is fetched (w4/341); a cached object is hashed once for all its
 	// revalidations.
 	etag string
+	// cached marks an object get read from the cache rather than fetched
+	// for this request (cachestatus.go). The cache never stores it set.
+	cached bool
 	// negative marks a cached confirmed miss. A revision prefix is immutable,
 	// so "this key does not exist" is as permanent as any object within the
 	// revision — caching it keeps the lookup-before-rules order (w4/m94) from
@@ -263,6 +267,8 @@ func New(resolver Resolver, origin Origin, cacheBytes int64) *Handler {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// A published file replaces it in serveObject (cachestatus.go).
+	w.Header().Set(edgecache.StatusHeader, defaultCacheStatus(r.Method))
 	site, ok := h.resolver.Resolve(hostOnly(r.Host))
 	if !ok {
 		http.Error(w, "no static site for host", http.StatusNotFound)
@@ -575,6 +581,7 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 	hdr := w.Header()
 	servedType := contentType(servedPath, obj.ContentType)
 	setFileHeaders(hdr, site, requestPath, servedType, obj.etag)
+	hdr.Set(edgecache.StatusHeader, fileCacheStatus(obj.cached, hdr))
 
 	// Automatic Brotli and gzip (w8/m79, w8/m132, w8/359). The representation
 	// and its tag (w8/361) are chosen before ServeContent, so its
@@ -760,11 +767,14 @@ func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, e
 	key, ck := site.keyFor(reqPath), site.cacheKey(reqPath)
 	client := clientFrom(ctx)
 	if obj, ok := h.cache.get(ck); ok {
+		obj.cached = true
 		return obj, negativeErr(obj)
 	}
+	// A request that waits on another's fetch reads it as fetched.
 	obj, err := h.fetches.do(ctx, ck, func(fetchCtx context.Context) (Object, error) {
 		// A prior leader for this key may have just populated the cache.
 		if obj, ok := h.cache.get(ck); ok {
+			obj.cached = true
 			return obj, nil
 		}
 		release, ok := h.admit(fetchCtx, site.AppID, client)
@@ -1195,7 +1205,7 @@ func matchHeaderPattern(pattern, reqPath string) bool {
 // (w4/204).
 func applyHeaders(h http.Header, headers []appv1alpha1.StaticHeader, reqPath string) {
 	for _, rule := range headers {
-		if appv1alpha1.ReservedStaticHeader(rule.Name) {
+		if appv1alpha1.ReservedStaticHeader(rule.Name) || edgeOwnedHeader(rule.Name) {
 			continue
 		}
 		if matchHeaderPattern(rule.Path, reqPath) {
@@ -1218,7 +1228,7 @@ var errorBodyHeaderNames = map[string]struct{}{
 // Retry-After must set it after this helper (see serveSiteBusy).
 func applyErrorHeaders(h http.Header, headers []appv1alpha1.StaticHeader, reqPath string) {
 	for _, rule := range headers {
-		if _, blocked := errorBodyHeaderNames[http.CanonicalHeaderKey(rule.Name)]; blocked {
+		if _, blocked := errorBodyHeaderNames[http.CanonicalHeaderKey(rule.Name)]; blocked || edgeOwnedHeader(rule.Name) {
 			continue
 		}
 		if matchHeaderPattern(rule.Path, reqPath) {

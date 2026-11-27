@@ -4822,7 +4822,11 @@ func (r *AppReconciler) reconcileIngress(ctx context.Context, app *appv1alpha1.A
 	}
 	httpsRedirect := len(hosts) > 0 && r.HTTPSRedirect
 	if httpsRedirect {
-		if err := upsertOwned(ctx, r.Client, r.Scheme, app, traefikHTTPMiddlewareGVK, httpsRedirectName(app), httpsRedirectSpec); err != nil {
+		spec := httpsRedirectSpec
+		if app.Spec.Type == appv1alpha1.TypeStaticSite {
+			spec = staticSiteRedirectSpec
+		}
+		if err := upsertOwned(ctx, r.Client, r.Scheme, app, traefikHTTPMiddlewareGVK, httpsRedirectName(app), spec); err != nil {
 			return err
 		}
 		middlewareNames = append([]string{httpsRedirectName(app)}, middlewareNames...)
@@ -4916,8 +4920,20 @@ func wildcardIngressName(appName string) string {
 // entrypoint deliberately has no global redirect, so cert-manager's HTTP-01
 // solver — its own Ingress, without the App's middlewares — still answers on
 // :80.
+//
+// Its redirects carry Render's cf-cache-status, DYNAMIC, and no rndr-id
+// (w4/m703).
 var httpsRedirectSpec = map[string]any{traefikPluginKey: map[string]any{
 	"bexClientIPHeaders": map[string]any{"httpsRedirect": true},
+}}
+
+// staticSiteRedirectSpec is a static site's redirect, suspended or not
+// (w4/m703): its 301 reads the cf-cache-status Render's CDN reports for a
+// stored redirect, MISS, then HIT with an Age, and varies by encoding. A
+// plugin from before the staticSite redirect reads it as httpsRedirectSpec,
+// so the plugin and the operator roll out in either order.
+var staticSiteRedirectSpec = map[string]any{traefikPluginKey: map[string]any{
+	"bexClientIPHeaders": map[string]any{"httpsRedirect": true, "staticSite": true},
 }}
 
 func httpsRedirectName(app *appv1alpha1.App) string { return app.Name + "-https" }

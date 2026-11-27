@@ -209,6 +209,19 @@ Underscore spellings (`True_Client_IP`, `CF_Connecting_IP`) are stripped too, be
 
 `TestCloudflareHeadersOnTheDeployedTraefik` (`lego/operator/internal/controller`, opt-in with `BEX_TRAEFIK_INTEGRATION=1`) runs the deployed Traefik release with both Middlewares and covers the request headers, the answer's `Server` and `cf-ray`, and a loop's refusal over HTTPS and plain HTTP. The plugin's `TestCloudflareHeadersFromAnOrdinaryPeer`, `TestCDNLoop`, `TestForgedConnectingIPIsReplaced`, `TestRefusalIsRendersAnswer`, `TestCountryLookup` and `TestCountryTableRefresh` run under Yaegi in CI, and `scripts/gitops-validate.sh` pins the entrypoint order, the colo and the `bex-edge-headers` Middleware.
 
+**Amended (w4/m703, 2026-11-27): every answer reads a `cf-cache-status`, and no redirect or unknown-host answer carries a `rndr-id`.** Render's edge reports a status on every answer and answers its redirects and its no-such-service `404` before Render's proxy, so they carry no `rndr-id` ([edge-headers.md](render-artifacts/edge-headers.md#every-answers-cf-cache-status-w4m703)). The table below is what bex's edge now answers; [ADR018](ADR018/services-lifecycle.md)'s "Edge headers a web service receives" row records each choice and the differences that stay.
+
+| Answer | `cf-cache-status` | `rndr-id` | Set by |
+| --- | --- | --- | --- |
+| A web service's own answer | `DYNAMIC`, or its edge cache's status | yes | the plugin's `originServer` instance |
+| The HTTP-to-HTTPS `301` of a web service, the unknown host or a `pub-` bucket host; every `307` | `DYNAMIC` | no | the plugin's `httpsRedirect` instance |
+| A static site's `301` | `MISS`, then `HIT` with an `Age` for 120 minutes, then `EXPIRED`; `BYPASS` with a query; `vary: accept-encoding` | no | `httpsRedirect` with `staticSite`, a bounded per-pod memo |
+| The unknown host's `404` over HTTPS | `DYNAMIC` | no | `httpsRedirect` with `platformFallback` |
+| A static site's file | `MISS` from the object store, `HIT` from the pod's cache, `BYPASS` when its headers opt out of a CDN's cache | yes | the static server ([ADR029](ADR029-static-sites.md)) |
+| A static site's missing file, route redirect, error or suspended `503` | `BYPASS` (`DYNAMIC` to methods other than `GET` and `HEAD`) | yes | the static server |
+
+The redirect keeps its codes, `Location` and body. The access log keeps a redirect's `Rndr-Id` from the request, which bex-api's request line reads first. A plugin from before these fields reads `httpsRedirect` with `staticSite` as a plain redirect and ignores `platformFallback`, so the plugin (Argo CD) and the operator (the deploy pin) roll out in either order. `TestHTTPSRedirectOnTheDeployedTraefik` runs each of the three redirect specs on the deployed Traefik release and checks every method's status, `cf-ray`, `server` and `rndr-id`, and `TestStaticSiteOnTheDeployedTraefik` checks a file's `MISS` then `HIT` and a missing file's `BYPASS` through it. The plugin's `TestHTTPSRedirectAnswersRendersEdgeHeaders`, `TestStaticSiteRedirectReadsTheStoredCopy`, `TestRedirectMemoExpiresAsCloudflareDoes`, `TestRedirectMemoIsBounded` and `TestFallbackMarksItsPassedThroughAnswer` run under Yaegi in CI.
+
 ## Tenant container hardening (w7/m2)
 
 **Two contracts (amended w6/m149, 2026-10-20).** Render parity is the top product principle ([ADR008 § Render parity first](ADR008-vision.md#render-parity-first)), so drop-ALL is no longer a posture kept over parity. The policy is versioned and persisted per service ([ADR089](ADR089-render-container-compatibility.md) D2):

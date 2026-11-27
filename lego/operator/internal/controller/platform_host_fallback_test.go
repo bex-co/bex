@@ -65,8 +65,8 @@ func TestPlatformHostFallbackRouteIsTheLowestPriorityCatchAll(t *testing.T) {
 	if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; got != wantRef {
 		t.Fatalf("fallback middlewares = %q, want %q", got, wantRef)
 	}
-	if !reflect.DeepEqual(mw.Spec, httpsRedirectSpec) || mw.Metadata.Annotations["argocd.argoproj.io/sync-wave"] != "-1" {
-		t.Fatalf("fallback redirect = %+v, want httpsRedirectSpec synced ahead of the Ingress", mw)
+	if !reflect.DeepEqual(mw.Spec, platformFallbackRedirectSpec) || mw.Metadata.Annotations["argocd.argoproj.io/sync-wave"] != "-1" {
+		t.Fatalf("fallback redirect = %+v, want platformFallbackRedirectSpec synced ahead of the Ingress", mw)
 	}
 
 	app := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: "web"}}
@@ -75,6 +75,14 @@ func TestPlatformHostFallbackRouteIsTheLowestPriorityCatchAll(t *testing.T) {
 		t.Fatal("an App route pins a priority; it must keep Traefik's default above the fallback")
 	}
 }
+
+// platformFallbackRedirectSpec is the unknown-host fallback's redirect
+// (platform-host-fallback-https.yaml): httpsRedirectSpec's, whose
+// passed-through 404 also reads cf-cache-status DYNAMIC with no rndr-id, as
+// Render's no-such-service answer does (w4/m703).
+var platformFallbackRedirectSpec = map[string]any{traefikPluginKey: map[string]any{
+	"bexClientIPHeaders": map[string]any{"httpsRedirect": true, "platformFallback": true},
+}}
 
 func readYAML(t *testing.T, path string, into any) {
 	t.Helper()

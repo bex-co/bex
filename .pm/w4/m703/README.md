@@ -1,15 +1,15 @@
 # w4 · m703 — Every answer the edge sends carries `cf-cache-status`, as Render's does: the HTTP-to-HTTPS redirect, the unknown host's 404, and a static site's answers
 
-**Worker:** worker4 **Goal:** a site moved from Render reads the same `cf-cache-status` on bex as on Render for every answer its host sends, and a redirect or unknown-host answer carries no `rndr-id`, as Render's do not. Since w4/m687 only a web service's own answers read `cf-cache-status: DYNAMIC`; every other answer has none. **Status:** todo
+**Worker:** worker4 **Goal:** a site moved from Render reads the same `cf-cache-status` on bex as on Render for every answer its host sends, and a redirect or unknown-host answer carries no `rndr-id`, as Render's do not. Since w4/m687 only a web service's own answers read `cf-cache-status: DYNAMIC`; every other answer has none. **Status:** in progress (t001–t004 done; shipped, awaiting the production walk of t005)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | The HTTP-to-HTTPS redirect answers `cf-cache-status` and no `rndr-id` | 1h15m | — |
-| [t002](t002.md) | The unknown host's `404` reads `cf-cache-status: DYNAMIC` and no `rndr-id` | 45m | t001 |
-| [t003](t003.md) | Capture Render's static-site statuses for the answers not yet captured | 30m | — |
-| [t004](t004.md) | The static server answers a `CF-Cache-Status` on every answer | 1h30m | t003 |
+| [t001](done/t001.md) | The HTTP-to-HTTPS redirect answers `cf-cache-status` and no `rndr-id` — **DONE** | 1h15m | — |
+| [t002](done/t002.md) | The unknown host's `404` reads `cf-cache-status: DYNAMIC` and no `rndr-id` — **DONE** | 45m | t001 |
+| [t003](done/t003.md) | Capture Render's static-site statuses for the answers not yet captured — **DONE** | 30m | — |
+| [t004](done/t004.md) | The static server answers a `CF-Cache-Status` on every answer — **DONE** | 1h30m | t003 |
 | [t005](t005.md) | Amend ADR018, ADR022 and ADR029, then verify on production | 45m | t001, t002, t004 |
 | [t006](t006.md) | Render parity | 20m | t005 |
 | [t007](t007.md) | Simplify | 15m | t006 |

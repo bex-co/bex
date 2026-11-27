@@ -156,3 +156,41 @@ func TestAnEarlierRedirectSchemeBecomesThePluginRedirect(t *testing.T) {
 		}
 	}
 }
+
+// w4/m703: a static site's redirect, on its static-server route or, while
+// suspended, its activator route, is the plugin's static-site redirect, and
+// the plain one an earlier operator wrote for it becomes that one. A web
+// service's stays plain.
+func TestAStaticSiteGetsTheStaticSiteRedirect(t *testing.T) {
+	for _, tc := range []struct {
+		typ, svc string
+		want     map[string]any
+	}{
+		{appv1alpha1.TypeStaticSite, "bex-static-site", staticSiteRedirectSpec},
+		{appv1alpha1.TypeStaticSite, "activator", staticSiteRedirectSpec},
+		{appv1alpha1.TypeWebService, "site", httpsRedirectSpec},
+	} {
+		scheme := newIPAllowListScheme()
+		app := appWithAllowList("site", nil, tc.typ)
+		earlier := &unstructured.Unstructured{Object: map[string]any{"spec": map[string]any{
+			"plugin": map[string]any{"bexClientIPHeaders": map[string]any{"httpsRedirect": true}},
+		}}}
+		earlier.SetGroupVersionKind(traefikHTTPMiddlewareGVK)
+		earlier.SetName("site-https")
+		earlier.SetNamespace("default")
+		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, earlier).Build()
+		r := &AppReconciler{Client: cl, Scheme: scheme, Mode: ModeKubernetes, BaseDomain: "onbex.co", ClusterIssuer: "letsencrypt-prod", HTTPSRedirect: true}
+		ctx := context.Background()
+		if err := r.reconcileIngress(ctx, app, []string{"site.onbex.co"}, tc.svc, 8080, nil); err != nil {
+			t.Fatal(err)
+		}
+		got := &unstructured.Unstructured{}
+		got.SetGroupVersionKind(traefikHTTPMiddlewareGVK)
+		if err := cl.Get(ctx, types.NamespacedName{Name: "site-https", Namespace: "default"}, got); err != nil {
+			t.Fatal(err)
+		}
+		if spec, _, _ := unstructured.NestedMap(got.Object, "spec"); !reflect.DeepEqual(spec, tc.want) {
+			t.Errorf("%s behind %s: spec = %v, want %v", tc.typ, tc.svc, spec, tc.want)
+		}
+	}
+}

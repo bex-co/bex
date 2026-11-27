@@ -4,7 +4,10 @@
 # w8/m118), with the same codes: 301 for GET and HEAD, 307 for every other
 # method (w8/357). Traefik's redirectScheme cannot send those, so the edge
 # plugin's redirect instance does (deploy/gitops/charts/traefik-plugins). A
-# request already on https passes through. A static manifest, so the
+# request already on https passes through, and its answer, the activator's
+# 404, reads cf-cache-status DYNAMIC with no rndr-id, as Render's
+# no-such-service answer does (platformFallback, w4/m703); a plugin from
+# before that field ignores it and still redirects. A static manifest, so the
 # operator's BEX_HTTPS_REDIRECT switch does not govern it. Synced a wave ahead
 # of the Ingress that names it, because Traefik disables a router whose
 # middleware is missing.
@@ -19,3 +22,4 @@ spec:
   plugin:
     bexClientIPHeaders:
       httpsRedirect: true
+      platformFallback: true

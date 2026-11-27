@@ -30,6 +30,44 @@ The same request's answer carried `server: cloudflare`, `cf-ray: a60dc4825e08e9e
 - A static site answers `server: cloudflare`, `cf-ray` and its CDN's own status: `cf-cache-status: EXPIRED` on a first `GET /`, `HIT` on the next, `BYPASS` on a missing file's 404.
 - `http://httpbin.onrender.com/headers` answers `301` with `cf-cache-status: DYNAMIC`, `Server: cloudflare` and `CF-RAY`, and no `rndr-id`. A `POST` over `http://` answers `307` with the same three. A static site's `http://` redirect carries `cf-cache-status: EXPIRED`.
 
+## Every answer's `cf-cache-status` (w4/m703)
+
+**Captured:** 2026-11-27, 11:44–12:00 UTC, with `curl` from the same client, read-only requests only, each repeated at least twice. Sites: `httpbin.onrender.com` (web service), the static sites `vue`, `create-react-app`, `sveltekit-static`, `gatsby`, `hugo`, `jekyll` and `gridsome` (`.onrender.com`; the last four publish a `404.html`), two suspended static sites and one suspended web service (their names are left out), and hosts no service owns. Requests to Cloudflare's edge in one data center (`SJC`) land on different machines, so a second request sometimes reads `MISS` again.
+
+**The HTTP-to-HTTPS redirect.** No redirect carries `rndr-id`; every one carries `server: cloudflare` and `cf-ray`.
+
+| Answer | `cf-cache-status` | Other headers |
+| --- | --- | --- |
+| A web service's `301` (`GET`, `HEAD`), with or without a query | `DYNAMIC` | no `age`, no `vary` |
+| Any `307` (`POST` and other methods), web service or static site | `DYNAMIC` | no `vary` |
+| A host no service owns, `301` | `DYNAMIC` |  |
+| A static site's `301` to a path never requested before | `MISS` | `vary: accept-encoding` (lower case) on every static-site `301` |
+| The same path again | `HIT` | `age: 0`, `1`, `2` …, counting seconds since the first. A path first stored at 11:44 read `age: 911` at 11:59, and a site's root `age: 4963`: Cloudflare keeps a `301` sent without `Cache-Control` 120 minutes ([Cloudflare](https://developers.cloudflare.com/cache/how-to/configure-cache-status-code/)) |
+| A path stored longer ago than that | `EXPIRED` | no `age` (`vue` and a suspended static site's root) |
+| `HEAD` to a new path, then again | `MISS`, then `HIT` |  |
+| A path with a query, the path not stored | `BYPASS` | the `Location` keeps the query |
+| A path with a query, the path stored on that machine | `HIT` | the stored copy: its `Location` **drops the visitor's query** (`http://vue.onrender.com/?x=1` → `https://vue.onrender.com/`) |
+
+**A static site's answers over `https://`.** Each carries `server: cloudflare`, `cf-ray` and `rndr-id`, except where noted.
+
+| Answer | `cf-cache-status` | Notes |
+| --- | --- | --- |
+| A file never requested at that data center (`/manifest.json`) | `MISS` | then `HIT` with `age: 0` |
+| A file stored longer ago than its `s-maxage=300` (`/`, `/favicon.ico`, `/js/app.*.js`) | `EXPIRED` | then `HIT`, `age: 0`, with the stored answer's `rndr-id` |
+| `HEAD` of a stored file | `HIT` | with `age` |
+| A matching `If-None-Match`: `304` | `HIT` | with `age` |
+| A `Range` on an icon: `206`; on a script: `200` (the range ignored, w8/362) | `HIT` |  |
+| A path with a query, the path stored | `HIT` | the path's stored answer |
+| A missing file: bare `404` `Not Found` | `BYPASS` | a fresh `rndr-id` each time |
+| A missing file on a site with `404.html`: the page, `cache-control: public, max-age=0, s-maxage=300` | `BYPASS` | not stored despite its `s-maxage` |
+| A route redirect (`vue`'s `/* → /index.html`, `301`) | `BYPASS` | a fresh `rndr-id` each time |
+| `POST`, `PUT`, `DELETE` or `OPTIONS` (bare `200`, w8/319), on a file, a missing file or a route-redirect path | `DYNAMIC` |  |
+| A suspended static site (`503`, `x-render-routing: suspend-by-user`) | `BYPASS` to `GET`, `DYNAMIC` to `POST` | no `rndr-id`; its `http://` redirect read `EXPIRED` |
+| A suspended web service (`503`) | `BYPASS` with `rndr-id` (`suspend-by-user`), or `DYNAMIC` without (`suspend`) |  |
+| A host no service owns over `https://`: `404` `Not Found`, `x-render-routing: no-server` | `DYNAMIC` | no `rndr-id` |
+
+**Not captured:** a route rewrite to a file (no public site found with one), an external rewrite, a hashed asset under a long `Cache-Control` header rule, and a header rule that names `CF-Cache-Status` itself (it needs a Render account's own site).
+
 ## A caller's values
 
 | Sent by the caller | What happened |

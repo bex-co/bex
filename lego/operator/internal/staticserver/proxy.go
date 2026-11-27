@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bex-co/bex/lego/operator/internal/edgecache"
 	"github.com/bex-co/bex/lego/types/netutil"
 )
 
@@ -163,6 +164,9 @@ func (h *Handler) serveExternalRewrite(w http.ResponseWriter, r *http.Request, s
 	stripHopByHop(hdr)
 	hdr.Del("Content-Length") // re-framed by the response writer below
 	applyHeaders(hdr, site.Headers, requestPath)
+	// Not one of the site's files: Render's edge reports such an answer as
+	// it reports a web service's, whatever the destination sent (w4/m703).
+	hdr.Set(edgecache.StatusHeader, "DYNAMIC")
 	w.WriteHeader(resp.StatusCode)
 	if r.Method == http.MethodHead {
 		return

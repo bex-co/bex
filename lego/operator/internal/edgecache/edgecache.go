@@ -747,7 +747,7 @@ func (h *Handler) decide(resp *http.Response) error {
 	if st == nil {
 		return nil
 	}
-	ttl, status := responseTTL(resp)
+	ttl, status := ResponseTTL(resp.StatusCode, resp.Header)
 	if ttl > 0 && resp.ContentLength <= h.cfg.MaxObjectBytes {
 		st.keep, st.ttl, st.status, st.header = true, ttl, resp.StatusCode, resp.Header.Clone()
 		status = st.fetched
@@ -854,28 +854,29 @@ func upstreamAge(header http.Header) time.Duration {
 	return time.Duration(seconds) * time.Second
 }
 
-// responseTTL is the response half of Render's rules: how long to keep it,
-// and the status to report when it is not kept.
-func responseTTL(resp *http.Response) (time.Duration, string) {
-	if defaultTTL(resp.StatusCode) == 0 {
+// ResponseTTL is the response half of Render's rules for an answer with code
+// and header: how long to keep it, and the status to report when it is not
+// kept. The static server reads it too, for a static site's files (w4/m703).
+func ResponseTTL(code int, header http.Header) (time.Duration, string) {
+	if defaultTTL(code) == 0 {
 		return 0, statusDynamic
 	}
-	if len(resp.Header.Values("Set-Cookie")) > 0 {
+	if len(header.Values("Set-Cookie")) > 0 {
 		return 0, statusBypass
 	}
-	for _, v := range resp.Header.Values("Vary") {
+	for _, v := range header.Values("Vary") {
 		for field := range strings.SplitSeq(v, ",") {
 			if f := strings.TrimSpace(field); f != "" && !strings.EqualFold(f, "Accept-Encoding") {
 				return 0, statusBypass
 			}
 		}
 	}
-	if ct, _, _ := mime.ParseMediaType(resp.Header.Get("Content-Type")); ct == "text/event-stream" {
+	if ct, _, _ := mime.ParseMediaType(header.Get("Content-Type")); ct == "text/event-stream" {
 		return 0, statusDynamic
 	}
-	directives := resp.Header.Values("CDN-Cache-Control")
+	directives := header.Values("CDN-Cache-Control")
 	if len(directives) == 0 {
-		directives = resp.Header.Values("Cache-Control")
+		directives = header.Values("Cache-Control")
 	}
 	maxAge, sMaxAge, haveMax, haveS := 0, 0, false, false
 	for d := range strings.SplitSeq(strings.Join(directives, ","), ",") {
@@ -897,7 +898,7 @@ func responseTTL(resp *http.Response) (time.Duration, string) {
 	case haveMax:
 		return time.Duration(maxAge) * time.Second, statusBypass
 	}
-	return defaultTTL(resp.StatusCode), ""
+	return defaultTTL(code), ""
 }
 
 // teeWriter passes a leader's response through and gives its fill a copy of

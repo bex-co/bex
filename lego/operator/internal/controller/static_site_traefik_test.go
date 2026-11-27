@@ -49,7 +49,10 @@ func (p probeSite) Get(_ context.Context, key string) (staticserver.Object, erro
 // client gets an icon identity under its strong tag with Content-Length and
 // Accept-Ranges, as on Render. br and gzip clients get the weak tag, and a
 // script still reaches a header-less client through the forwarder's decode,
-// under the weak tag Render sends it. Opt-in: needs Docker.
+// under the weak tag Render sends it. Every answer reaches the client with the
+// static server's CF-Cache-Status and the edge's rndr-id (w4/m703): a file
+// MISS on its first read and HIT after, a missing file BYPASS. Opt-in: needs
+// Docker.
 func TestStaticSiteOnTheDeployedTraefik(t *testing.T) {
 	if os.Getenv("BEX_TRAEFIK_INTEGRATION") == "" {
 		t.Skip("set BEX_TRAEFIK_INTEGRATION=1 to run the static site chain on the deployed Traefik release")
@@ -59,6 +62,7 @@ func TestStaticSiteOnTheDeployedTraefik(t *testing.T) {
 	site := probeSite{
 		"favicon.ico": {Body: ico, ContentType: "image/vnd.microsoft.icon"},
 		"app.js":      {Body: js, ContentType: "text/javascript"},
+		"stored.txt":  {Body: []byte("stored"), ContentType: "text/plain"},
 	}
 	port := startEdgeOrigin(t, staticserver.New(site, site, 1<<20))
 	dockerArgs, traefikArgs := edgePluginArgs(t, clientIPHeadersPlugin)
@@ -105,5 +109,15 @@ func TestStaticSiteOnTheDeployedTraefik(t *testing.T) {
 	resp, body = get("/app.js", "")
 	if !strings.HasPrefix(resp.Header.Get("ETag"), "W/") || resp.Header.Get("Content-Encoding") != "" || string(body) != string(js) {
 		t.Errorf("script with no Accept-Encoding: %v (%d bytes), want the decoded identity bytes under the weak tag", resp.Header, len(body))
+	}
+
+	for i, tc := range []struct{ path, status string }{
+		{"/stored.txt", "MISS"}, {"/stored.txt", "HIT"}, {"/missing.png", "BYPASS"},
+	} {
+		resp, _ := get(tc.path, "gzip")
+		if resp.Header.Get("Cf-Cache-Status") != tc.status || resp.Header.Get("Rndr-Id") == "" || !cfRayShape.MatchString(resp.Header.Get("Cf-Ray")) {
+			t.Errorf("#%d %s: CF-Cache-Status %q rndr-id %q cf-ray %q, want %s with the edge's rndr-id and ray",
+				i, tc.path, resp.Header.Get("Cf-Cache-Status"), resp.Header.Get("Rndr-Id"), resp.Header.Get("Cf-Ray"), tc.status)
+		}
 	}
 }

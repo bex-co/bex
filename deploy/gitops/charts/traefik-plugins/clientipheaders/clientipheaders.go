@@ -57,6 +57,9 @@
 // A third, configured with httpsRedirect, leads every tenant host's route
 // and the unknown-host fallback (w8/357): it redirects plain HTTP to HTTPS
 // with Render's status codes, which Traefik's own redirectScheme cannot send.
+// Its redirects carry Render's cf-cache-status and no Rndr-Id (w4/m703); with
+// staticSite it fronts a static site, whose redirects Render's CDN stores, and
+// with platformFallback it fronts the unknown host's 404, which it marks too.
 //
 // A fourth, configured with staticSite, sits in each static site's route
 // (w8/363): it tells the static server which requests came with no
@@ -134,8 +137,15 @@ type Config struct {
 	// (w8/357) instead.
 	HTTPSRedirect bool `json:"httpsRedirect,omitempty"`
 	// StaticSite makes this instance a static site's no-Accept-Encoding
-	// marker (w8/363) instead.
+	// marker (w8/363) instead. With HTTPSRedirect it makes the redirect a
+	// static site's (w4/m703): a plugin from before that field reads such a
+	// spec as a plain redirect, so either rollout order still redirects.
 	StaticSite bool `json:"staticSite,omitempty"`
+	// PlatformFallback, with HTTPSRedirect, makes the redirect the
+	// unknown-host fallback's (w4/m703): the answer it passes through reads
+	// cf-cache-status DYNAMIC and carries no Rndr-Id. Traefik ignores a field
+	// an older plugin does not know.
+	PlatformFallback bool `json:"platformFallback,omitempty"`
 }
 
 // defaultColo is Frankfurt, Cloudflare's nearest data center to bex's
@@ -152,7 +162,7 @@ type sanitizer struct {
 
 func New(_ context.Context, next http.Handler, config *Config, _ string) (http.Handler, error) {
 	if config != nil && config.HTTPSRedirect {
-		return &httpsRedirect{next: next}, nil
+		return &httpsRedirect{next: next, staticSite: config.StaticSite, fallback: config.PlatformFallback}, nil
 	}
 	if config != nil && config.OriginServer {
 		return &originServer{next: next}, nil
@@ -410,7 +420,20 @@ func peerIP(remoteAddr string) net.IP {
 // by X-Forwarded-Proto, which the entrypoint's sanitizer sets from the TLS
 // state in place of a caller's (setForwarded). The Location drops any port,
 // so HTTPS whose Host names a port other than 443 redirects too.
-type httpsRedirect struct{ next http.Handler }
+//
+// Render's edge answers its redirects before Render's proxy, so they carry
+// the request's cf-ray and no rndr-id (captured 2026-11-27, w4/m703); the
+// access log keeps the request's Rndr-Id. A web service's redirect and the
+// unknown host's read cf-cache-status DYNAMIC, as does every 307. A static
+// site's 301 is stored by Render's CDN, which staticRedirects stands for.
+type httpsRedirect struct {
+	next http.Handler
+	// staticSite marks a static site's redirect.
+	staticSite bool
+	// fallback marks the unknown-host fallback's, whose passed-through 404
+	// reads DYNAMIC with no rndr-id, as Render's no-such-service answer does.
+	fallback bool
+}
 
 func (h *httpsRedirect) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	host, port := r.Host, ""
@@ -418,6 +441,13 @@ func (h *httpsRedirect) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		host, port = host[:i], host[i+1:]
 	}
 	if !plainHTTP(r) && (port == "" || port == "443") {
+		if h.fallback {
+			// Traefik's proxy adds the activator's headers to these; it
+			// sends neither.
+			hdr := w.Header()
+			delete(hdr, "Rndr-Id")
+			hdr["Cf-Cache-Status"] = []string{"DYNAMIC"}
+		}
 		h.next.ServeHTTP(w, r)
 		return
 	}
@@ -433,11 +463,94 @@ func (h *httpsRedirect) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet || r.Method == http.MethodHead {
 		code = http.StatusMovedPermanently
 	}
+	hdr := w.Header()
 	// Traefik's entrypoint pre-sets a nil Content-Type to stop net/http's
 	// sniffing, which http.Redirect would take for one already chosen and
 	// leave out its own, with its body.
-	delete(w.Header(), "Content-Type")
+	delete(hdr, "Content-Type")
+	delete(hdr, "Rndr-Id")
+	status := "DYNAMIC"
+	if h.staticSite && code == http.StatusMovedPermanently {
+		var age int64
+		status, age = staticRedirects.status(strings.ToLower(host)+r.URL.EscapedPath(), r.URL.RawQuery != "", time.Now())
+		if age >= 0 {
+			hdr["Age"] = []string{strconv.FormatInt(age, 10)}
+		}
+		// Render's static-site 301 varies by encoding, in lower case; its
+		// web services' and 307s do not.
+		hdr["Vary"] = []string{"accept-encoding"}
+	}
+	hdr["Cf-Cache-Status"] = []string{status}
 	http.Redirect(w, r, target, code)
+}
+
+// staticRedirectTTL is how long Cloudflare keeps a 301 whose origin sent no
+// Cache-Control, as Render's static-site redirects send none: 120 minutes
+// (developers.cloudflare.com/cache/how-to/configure-cache-status-code). A
+// Render site's root redirect read HIT at an Age of 4963 s (2026-11-27).
+const staticRedirectTTL = 2 * time.Hour
+
+// maxStaticRedirects bounds staticRedirects. Past it the expired entries
+// go, then arbitrary ones down to three quarters, as a CDN evicts: a
+// forgotten URL reads MISS again.
+const maxStaticRedirects = 8192
+
+// redirectMemo is the copy of each static-site redirect Render's CDN would
+// hold, per Traefik pod (Render's CDN holds one per machine), keyed by host
+// and path: when this edge last answered it without a query.
+type redirectMemo struct {
+	mu   sync.Mutex
+	seen map[string]time.Time
+}
+
+// staticRedirects is shared by every static site's redirect instance:
+// Traefik interprets the plugin once and builds each instance from it, again
+// on every configuration change, which would empty a per-instance memo.
+var staticRedirects = &redirectMemo{seen: map[string]time.Time{}}
+
+// status is the cf-cache-status of a static site's 301 for key at now, and
+// the Age to send with it, -1 for none, as Render's CDN reported it
+// (captured 2026-11-27, w4/m703): MISS the first time a path is redirected,
+// HIT with the seconds since then within staticRedirectTTL, and EXPIRED past
+// it, when the copy is stored afresh. A URL with a query reads BYPASS and
+// stores nothing: Render's CDN answers it from the path's copy, whose Location
+// drops the visitor's query, or else BYPASS, and this redirect always keeps
+// the query.
+func (m *redirectMemo) status(key string, query bool, now time.Time) (string, int64) {
+	if query {
+		return "BYPASS", -1
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	at, ok := m.seen[key]
+	switch {
+	case ok && now.Sub(at) < staticRedirectTTL:
+		return "HIT", int64(now.Sub(at) / time.Second)
+	case ok:
+		m.seen[key] = now
+		return "EXPIRED", -1
+	}
+	if len(m.seen) >= maxStaticRedirects {
+		m.evict(now)
+	}
+	m.seen[key] = now
+	return "MISS", -1
+}
+
+// evict makes room under mu: every expired entry, then arbitrary ones (Go's
+// map order) down to three quarters of the bound.
+func (m *redirectMemo) evict(now time.Time) {
+	for key, at := range m.seen {
+		if now.Sub(at) >= staticRedirectTTL {
+			delete(m.seen, key)
+		}
+	}
+	for key := range m.seen {
+		if len(m.seen) <= maxStaticRedirects*3/4 {
+			break
+		}
+		delete(m.seen, key)
+	}
 }
 
 func plainHTTP(r *http.Request) bool {

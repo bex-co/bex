@@ -173,7 +173,7 @@ func TestTTLFollowsDirectivesAndStatusDefaults(t *testing.T) {
 	if s := get(h, "GET", "http://app.test/gone", nil).Header().Get(StatusHeader); s != "EXPIRED" {
 		t.Fatalf("a 404 past Render's 3-minute default = %s, want EXPIRED", s)
 	}
-	if ttl, _ := responseTTL(&http.Response{StatusCode: 500, Header: http.Header{"Cache-Control": {"max-age=600"}}}); ttl != 0 {
+	if ttl, _ := ResponseTTL(500, http.Header{"Cache-Control": {"max-age=600"}}); ttl != 0 {
 		t.Fatalf("a 500 is never cached, whatever its directives say; got %s", ttl)
 	}
 }
