@@ -4804,8 +4804,17 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 		}
 		fromPlan := existing.Spec.Plan
 		if specChanged {
+			prev := existing.DeepCopy()
 			if _, err := ApplyBlueprintDatabaseSpec(existing, db.spec, db.fields, now); err != nil {
 				return StackDatabaseView{}, fmt.Errorf("%w: database %q %v", core.ErrBadRequest, db.name, err)
+			}
+			// A declared postgresMajorVersion move the gate above accepted
+			// is an upgrade: record its run as the API's upgrade verbs do,
+			// so the dashboard's lastUpgradeRun and acknowledge cover a
+			// Blueprint-driven upgrade too. An unchanged version keeps the
+			// record it has, and a create stamps none.
+			if existing.Spec.Version != prev.Spec.Version && prev.Spec.Version != "" {
+				postgres.StampUpgradeRun(prev, existing, now)
 			}
 			postgres.SyncFreeClock(fromPlan, existing, s.Now())
 		}

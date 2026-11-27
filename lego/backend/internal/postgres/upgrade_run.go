@@ -93,11 +93,12 @@ type UpgradeRunView struct {
 // Finished reports whether the run reached a result (succeeded or failed).
 func (r UpgradeRunView) Finished() bool { return r.State != UpgradeRunInProgress }
 
-// stampUpgradeRun records a new run on d when the write in hand moves
+// StampUpgradeRun records a new run on d when the write in hand moves
 // spec.version: before is the Database as it was read, so its observed major
 // is the run's source. It leaves an unchanged version alone, so any other
-// update keeps the record it has.
-func stampUpgradeRun(before, d *appv1alpha1.Database, now time.Time) {
+// update keeps the record it has. Exported for the Blueprint sync, which
+// accepts upgrades outside patchDatabaseObj and must record them alike.
+func StampUpgradeRun(before, d *appv1alpha1.Database, now time.Time) {
 	if d.Spec.Version == before.Spec.Version || d.Spec.Version == "" {
 		return
 	}

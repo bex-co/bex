@@ -340,7 +340,7 @@ func TestAcknowledgeUpgrade(t *testing.T) {
 		db.Annotations[annotationUpgradeRunAcknowledged] = "pgu-run"
 		before := db.DeepCopy()
 		db.Spec.Version = "18"
-		stampUpgradeRun(before, db, time.Now())
+		StampUpgradeRun(before, db, time.Now())
 		if run := upgradeRunOf(db); run == nil || run.RunID == "pgu-run" || run.Acknowledged || run.State != UpgradeRunInProgress {
 			t.Errorf("run = %+v, want a new unacknowledged run in progress", run)
 		}

@@ -2082,18 +2082,25 @@ func (s *Service) validateVersionUpgrade(ctx context.Context, d *appv1alpha1.Dat
 	return s.upgradeLogicalSlotsNotice(ctx, d, currentMajor, target)
 }
 
-func (s *Service) checkVersionUpgrade(ctx context.Context, d *appv1alpha1.Database, target string, patchedPlan *string) error {
+// CheckVersionUpgradeTarget is the I/O-free prefix of the version-upgrade
+// gate (checkVersionUpgrade): unknown majors, a retarget while an upgrade is
+// already running, an unobserved current version, a target no newer than the
+// current major, and a target below the in-place floor. The Blueprint sync
+// judges a declared postgresMajorVersion move by this same helper, so a file
+// refuses exactly what the API's upgrade verbs refuse (the backup and
+// extension gates stay I/O-bound in checkVersionUpgrade).
+func CheckVersionUpgradeTarget(db *appv1alpha1.Database, target string) error {
 	if !postgresVersionKnown(target) {
 		return unknownPostgresVersionError(target)
 	}
-	if d.Status.Phase == appv1alpha1.DBPhaseUpgrading {
+	if db.Status.Phase == appv1alpha1.DBPhaseUpgrading {
 		return core.NewConflictError(
 			"POSTGRES_UPGRADE_IN_PROGRESS",
 			"a PostgreSQL major-version upgrade is already in progress",
-			map[string]any{"targetVersion": d.Spec.Version},
+			map[string]any{"targetVersion": db.Spec.Version},
 		)
 	}
-	current := d.Status.CurrentVersion
+	current := db.Status.CurrentVersion
 	currentMajor, currentErr := strconv.Atoi(current)
 	targetMajor, targetErr := strconv.Atoi(target)
 	if currentErr != nil || current == "" {
@@ -2117,6 +2124,13 @@ func (s *Service) checkVersionUpgrade(ctx context.Context, d *appv1alpha1.Databa
 			map[string]any{"currentVersion": current, "targetVersion": target, "minimumTargetVersion": strconv.Itoa(minPostgresUpgradeTarget)},
 		)
 	}
+	return nil
+}
+
+func (s *Service) checkVersionUpgrade(ctx context.Context, d *appv1alpha1.Database, target string, patchedPlan *string) error {
+	if err := CheckVersionUpgradeTarget(d, target); err != nil {
+		return err
+	}
 	requiresBackup := planRequiresUpgradeBackup(d.Spec.Plan)
 	if patchedPlan != nil {
 		requiresBackup = requiresBackup || planRequiresUpgradeBackup(*patchedPlan)
@@ -2125,7 +2139,7 @@ func (s *Service) checkVersionUpgrade(ctx context.Context, d *appv1alpha1.Databa
 		return core.NewConflictError(
 			"POSTGRES_UPGRADE_BACKUP_REQUIRED",
 			"a completed physical backup is required before upgrading this durable Postgres instance",
-			map[string]any{"currentVersion": current, "targetVersion": target, "plan": d.Spec.Plan},
+			map[string]any{"currentVersion": d.Status.CurrentVersion, "targetVersion": target, "plan": d.Spec.Plan},
 		)
 	}
 	return nil
@@ -2170,7 +2184,7 @@ func (s *Service) patchDatabaseObj(ctx context.Context, d *appv1alpha1.Database,
 	mutate(d)
 	// A write that moves spec.version starts a major-version upgrade: record
 	// its attempt (w3/m676), whichever surface accepted it.
-	stampUpgradeRun(before, d, s.Now())
+	StampUpgradeRun(before, d, s.Now())
 	SyncFreeClock(before.Spec.Plan, d, s.Now())
 	// The mark names the generation this write lands at (before+1). This is
 	// a plain merge patch, not KV's optimistic-locked one: a write that

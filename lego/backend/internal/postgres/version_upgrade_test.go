@@ -146,6 +146,38 @@ func TestSetVersionValidationAndBackupGuard(t *testing.T) {
 	}
 }
 
+// CheckVersionUpgradeTarget is the I/O-free prefix of the gate SetVersion
+// runs: the Blueprint sync judges a declared postgresMajorVersion move by
+// this same helper, so the file refuses exactly what the API refuses. Each
+// cell pins the code SetVersion answers for the same live state.
+func TestCheckVersionUpgradeTargetMatrix(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		current  string
+		spec     string
+		phase    appv1alpha1.DatabasePhase
+		target   string
+		wantCode string
+	}{
+		{name: "upward", current: "16", spec: "16", target: "17"},
+		{name: "unknown", current: "16", spec: "16", target: "19", wantCode: "POSTGRES_VERSION_UNKNOWN"},
+		{name: "running upgrade blocks a retarget", current: "16", spec: "17", phase: appv1alpha1.DBPhaseUpgrading, target: "18", wantCode: "POSTGRES_UPGRADE_IN_PROGRESS"},
+		{name: "unobserved", current: "", spec: "16", target: "17", wantCode: "POSTGRES_VERSION_NOT_OBSERVED"},
+		{name: "same", current: "16", spec: "16", target: "16", wantCode: "POSTGRES_VERSION_NOT_NEWER"},
+		{name: "downgrade", current: "16", spec: "16", target: "15", wantCode: "POSTGRES_VERSION_NOT_NEWER"},
+		{name: "below floor", current: "14", spec: "14", target: "15", wantCode: "POSTGRES_UPGRADE_TARGET_UNSUPPORTED"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			db := versionDatabase("upgrade-db", "free", tt.spec, false)
+			db.Status.CurrentVersion = tt.current
+			db.Status.Phase = tt.phase
+			if got := codedErrorCode(CheckVersionUpgradeTarget(db, tt.target)); got != tt.wantCode {
+				t.Fatalf("code = %q, want %q", got, tt.wantCode)
+			}
+		})
+	}
+}
+
 func TestRESTVersionUpgradeNamedErrorsAndPatch(t *testing.T) {
 	svc, cl := newService(versionDatabase("rest-upgrade", "free", "16", false))
 

@@ -598,6 +598,18 @@ func ApplyBlueprintDatabaseSpec(db *appv1alpha1.Database, want appv1alpha1.Datab
 		dst.Plan = want.Plan
 	}
 	if present("postgresMajorVersion") {
+		// A move away from a version already in effect is a major-version
+		// upgrade, judged by the API's upgrade rule (postgres.
+		// CheckVersionUpgradeTarget) so the file refuses exactly what the
+		// API's upgrade verbs refuse: downgrades, retargets below the
+		// in-place floor, moves while an upgrade runs, and moves off an
+		// unobserved version. A create only names its birth version, which
+		// the gate does not judge.
+		if want.Version != db.Spec.Version && db.Spec.Version != "" {
+			if err := postgres.CheckVersionUpgradeTarget(db, want.Version); err != nil {
+				return false, &BlueprintFieldConflictError{Path: "postgresMajorVersion", Message: err.Error()}
+			}
+		}
 		dst.Version = want.Version
 	}
 	if present("diskSizeGB") {
