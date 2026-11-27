@@ -1,6 +1,6 @@
 # w3 · m674 — Changing a Postgres's or a Key Value's plan or storage first reviews Render's line items and total
 
-**Worker:** worker3 **Goal:** changing a Postgres database's compute plan or storage, or a Key Value instance's plan, opens Render's review before anything applies. The review lists each billed line (compute plan, high availability, read replicas, storage) with its price, then the monthly total, Render's downtime warning and Render's button ("Update compute", "Update storage", "Upgrade compute"). **Status:** blocked (t001–t004 and t006–t008 done; t005's local walk holds on dev-3; its production walk waits for a pin carrying the milestone, then t009)
+**Worker:** worker3 **Goal:** changing a Postgres database's compute plan or storage, or a Key Value instance's plan, opens Render's review before anything applies. The review lists each billed line (compute plan, high availability, read replicas, storage) with its price, then the monthly total, Render's downtime warning and Render's button ("Update compute", "Update storage", "Upgrade compute"). **Status:** done (2026-11-27: every task done; t005 walked locally on dev-3 with an HA database and a replica, and on production pin `6ba91ca5b72f` the reviews opened and cancelled for a disposable Postgres and Key Value in `bex-canary` at 1440 and 390)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | One review dialog: lead, priced lines with Edit, total, warning, confirm, error — **DONE** | 1h | t001 |
 | [t003](done/t003.md) | A Postgres's compute change and storage change open the review — **DONE** | 1h15m | t002 |
 | [t004](done/t004.md) | A Key Value's compute change opens the review — **DONE** | 30m | t002 |
-| [t005](t005.md) | Verify locally with an HA database and a replica, and on production | 45m | t003, t004 |
+| [t005](done/t005.md) | Verify locally with an HA database and a replica, and on production — **DONE** | 45m | t003, t004 |
 | [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 40m | t006 |
-| [t009](t009.md) | Closeout | 10m | t007, t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t007, t008 |
 
 Total: **9 tasks, about 5h25m**. **Starts after w3/m649 closes:** t004 changes the Key Value plan card that m649 moves onto the new Info page (`#compute`).
 
@@ -75,3 +75,21 @@ bex-api and the dashboard ran from this tree on dev-3 (`scripts/dev-env.sh 3 up`
 - **Prices print as `$52.50/month`,** as bex's plan cards do; Render prints `$55 / month`, with cents only when the amount has them.
 - **t006:** REST, GraphQL and MCP plan and storage updates are unchanged, and their suites pass unmodified; the follow-up for services' and cron jobs' compute changes is [w3/132](../../132.md); ADR018's Postgres and Key Value rows say what bex does.
 
+## Production walk (2026-11-27, t005 step 2)
+
+Pin `6ba91ca5b72f` (`9c76d4ae72`, carries `2a8e5537f3`): the `dashboard` pod ran `bex-dashboard@sha256:08490e27a47a…` and every `bex-system` Deployment but the `tenant-headroom` placeholder `bex-operator@sha256:0ba1d0dcbf94…`, the pin's digests, read through the admin kubeconfig just before the walk. Walked 04:03–04:08Z as the QA user (`scripts/qa-login.sh`) in `bex-canary` (`tea-daif693dqjvc73e7as3g`), on two stores created over REST for it: the Postgres `qa-20261127-m674-pg` (disposable, `dpg-dc4g23a3u9qc73car760`, Basic 256MB, 1 GB, PostgreSQL 17, `oregon`, no HA, no replica) and the Free Key Value `qa-20261127-m674-kv` (disposable, `red-dc4g23a3u9qc73car770`, `oregon`). Google Chrome headless through `playwright-core`, `en-US`, at 1440×900 and 390×900. Prices against GraphQL's catalogue on the same pin: Basic 256MB `4.20`, Basic 1GB `13.30` with a 5 GB floor, `storageMonthlyUsdPerGB` `0.21`, Key Value Starter `7.00`.
+
+| Point | Seen at 1440 and at 390 | Verdict |
+| --- | --- | --- |
+| Compute review (DoD 5) | Basic 256MB → Basic 1GB, Save: "Apply changes?", "Review your compute and storage selections.", Compute plan "0.5 CPU 1 GB RAM" $13.30/month, Storage "5 GB" $1.05/month (the new plan's floor), Total $14.35/month, "Your database will be unavailable for a few minutes while updating.", Update compute. No High availability or Read replicas line, as Render draws them only when HA is on or replicas exist. Cancel closed it with Basic 1GB still picked; the picker's own Cancel put Basic 256MB back | holds |
+| Storage review (DoD 5) | Edit storage offered 5, Save: "Review your storage selection.", Compute plan "0.1 CPU 256 MB RAM" $4.20/month, Storage "5 GB" $1.05/month, Total $5.25/month, no warning, Update storage. Cancel returned to the size field holding 5 | holds |
+| Key Value review (DoD 5) | Free → Starter, Save: "Review your compute selection.", Compute plan "0.1 CPU 256 MB RAM 250 connections" $7.00/month, Total $7.00/month, "Your Key Value instance will be unavailable while updating.", Upgrade compute (persistence at its default, so no data-loss sentence). Cancel closed it with Starter still picked | holds |
+| Layout | each review inside the viewport (576 px wide at 1440, 358 px at 390, buttons stacked at 390), no sideways scroll, no page or console error | holds |
+| Nothing applied | REST after the walk: the Postgres `basic_256mb` with `diskSizeGB` 1, the Key Value `free` | holds |
+
+Both stores were deleted after the walk (REST `DELETE` 204, then 404) and the QA session revoked (`qa-login.sh --logout`, then REST 401). DoD 1–3 were walked with real changes locally (§ Local walk); production stops at Cancel, as DoD 5 says.
+
+## Unblock record
+
+- **2026-11-27, `/loopx w3` (verified evidence, no user decision):** the gate, pin must carry `2a8e5537f3`, holds. The newest pin on `origin/main` is `9c76d4ae72` `chore(deploy): pin platform images to 6ba91ca5b72f`, `git merge-base --is-ancestor 2a8e5537f3 6ba91ca5b72f` exits 0, and production's `dashboard` and `bex-system` Deployments run that pin's digests. Affects t005 (step 2) and t009. No gate remains.
+- **2026-11-27, `/loopx w3`, closed:** t005 step 2 held definition of done item 5 on production pin `6ba91ca5b72f` (§ Production walk), with both stores deleted and the QA session revoked. Every point of the definition of done holds; t009 moved the milestone to `done/`.
