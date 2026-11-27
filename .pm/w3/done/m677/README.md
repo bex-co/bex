@@ -1,6 +1,6 @@
 # w3 · m677 — A Blueprint's pages are Render's: Resources, Syncs and Settings in a resource sidebar, each at its own URL
 
-**Worker:** worker3 **Goal:** a Blueprint's pages swap the workspace nav for a resource sidebar reading Resources / Syncs / Settings, as Render's do; each entry is its own URL under `/blueprints/<id>`, so Render's `/blueprint/<id>/…` links open the page they name; the single stacked page is gone. **Status:** blocked (t001–t006 and t008–t010 done; t007 walked locally, its production walk waits for a pin carrying `720e0296cb`)
+**Worker:** worker3 **Goal:** a Blueprint's pages swap the workspace nav for a resource sidebar reading Resources / Syncs / Settings, as Render's do; each entry is its own URL under `/blueprints/<id>`, so Render's `/blueprint/<id>/…` links open the page they name; the single stacked page is gone. **Status:** done (2026-11-27: every task done; t007 walked locally against `local-bex` and on production pin `486e3f4afbf6` as the QA user in `bex-canary` with a Blueprint created for the walk (disposable), at 1440 and 390)
 
 ## Tasks (in order)
 
@@ -12,11 +12,11 @@
 | [t004](done/t004.md) | The header carries Render's one action, Manual sync, and Disconnect moves to Settings — **DONE** | 30m | t003 |
 | [t005](done/t005.md) | Render's `/blueprint/<id>/…` URLs, old bookmarks, in-app links and bex-api's Blueprint links open the page they name — **DONE** | 45m | t003 |
 | [t006](done/t006.md) | Each page's pending frame equals its ready page at 1440 and 390 — **DONE** | 30m | t002, t003 |
-| [t007](t007.md) | Verify in a real browser at 1440 and 390, locally and on production | 45m | t004, t005, t006 |
+| [t007](done/t007.md) | Verify in a real browser at 1440 and 390, locally and on production — **DONE** | 45m | t004, t005, t006 |
 | [t008](done/t008.md) | Render parity — **DONE** | 25m | t007 |
 | [t009](done/t009.md) | Simplify — **DONE** | 15m | t008 |
 | [t010](done/t010.md) | Test coverage — **DONE** | 40m | t008 |
-| [t011](t011.md) | Closeout | 10m | t009, t010 |
+| [t011](done/t011.md) | Closeout — **DONE** | 10m | t009, t010 |
 
 Total: **11 tasks, about 6h25m**.
 
@@ -71,3 +71,24 @@ Walked in headless Chromium against `yarn local-bex` (port 8399) behind a throwa
 ## Parked (2026-11-26)
 
 Shipped in `720e0296cb`. Everything but the production walk is done: once the newest `chore(deploy): pin platform images to <sha>` carries `720e0296cb`, t007 step 2 walks production as the QA user in `bex-canary` with a Blueprint created for the walk from a public repository (disposable), at 1440 and 390, then deletes it, and t011 closes the milestone if every point of the definition of done holds. Nothing is needed from the user.
+
+## Production walk (2026-11-27, t007 step 2)
+
+Pin `486e3f4afbf6` (`a6f9307d74`, carries `720e0296cb`; w3/m678's `30d75225ff` is not on it): the `dashboard` pod ran `bex-dashboard@sha256:39e863e7062e…` and the `bex-api` pods `bex-operator@sha256:b5aeb16a1e25…`, the pin's digests, read through the admin kubeconfig just before the walk. Walked 12:42–12:58Z as the QA user (`scripts/qa-login.sh`) in `bex-canary` (`tea-daif693dqjvc73e7as3g`) with a run-minted API key, on the Blueprint `qa-20261127-m677` (disposable, `exs-dc4nl7fs6bbs739rm7r0`), created over MCP `create_blueprint` from `https://github.com/bex-co/bex`, branch `main`, `examples/retained-env/render.yaml`, auto-sync off, `create_new` (its service carries the suffix `-244x`). Google Chrome headless through `playwright-core`, `en-US`, at 1440×900 and 390×900, first while the plan waited for approval, then synced. w3/m678 is not on the pin, so `/sync/<id>` landing on Syncs and Manual sync's dialog are m677's behaviour as built.
+
+| Point | Seen at 1440 and at 390 | Verdict |
+| --- | --- | --- |
+| Sidebar (DoD 1) | the Blueprints back link, `qa-20261127-m677`, then Resources, Syncs and Settings with the open page highlighted (Resources on the bare URL), at 1440 and in the 390 drawer, where tapping Syncs opened Syncs and highlighted it. `/blueprint/new`, and `/blueprints/new`, which lands there, kept the workspace sidebar, in the drawer too | holds |
+| Pages and URLs (DoD 2) | `/blueprints/<id>` and `/resources` opened Resources, `/syncs` and `/settings` theirs, each under its heading and titled `<page> ・ qa-20261127-m677 ・ Blueprint ・ bex Dashboard`. Render's `/blueprint/<id>?from=cli#top`, `/resources`, `/syncs` and `/settings?tab=x#danger` landed on the same pages with the query and hash kept; `/blueprint/<id>/sync/<exe-id>?from=email`, `/blueprint/<id>/sync` and `/blueprints/<id>/sync` on Syncs; `/blueprints/<id>/no-such-page` on Resources; `/blueprint/generate` on `/` | holds |
+| Cards (DoD 3) | Resources: Managed Resources, first "No resources yet — approve the planned sync …" with Go to Syncs, then `retained-env-244x`, Web Service. Syncs: the waiting plan's panel (Create `retained-env-244x`, Approve, Plan again) above Sync History; Approve applied it ("Planned sync approved", a Success row). Settings: the metadata card (name, Repository, Branch, Manifest path, Auto-sync, Created, Last synced), the manifest, Validate, then Disconnect | holds |
+| Header (DoD 4) | the name, `-244x` and Awaiting approval with Manual sync disabled, then Paused with it enabled. Manual sync opened "Sync blueprint?" with the file's preview (no changes, reviewed commit `68cbaa7b`), and Sync ran a sync MCP `list_blueprint_syncs` reads as `success`. Disconnect is on Settings only | holds |
+| Links (DoD 5) | the list's row links `/blueprints/<exs-id>` and opened Resources; the search palette's "qa-20261127-m677 Blueprint" opened Resources; `/blueprints/blp-…` and `/blueprints/blp-…/settings` opened with the bookmark's spelling kept. The planned sync's `dashboardUrl` from `create_blueprint` and from `plan_blueprint` is `https://dashboard.bex.co/blueprint/exs-dc4nl7fs6bbs739rm7r0`, and it opened Resources | holds |
+| Pending frame (DoD 6) | with the `Blueprint` read held on a client navigation from `/blueprints`, on each page the header (65 px at 1440, 105 at 390), the heading and the sidebar's entries equalled the ready page at both widths, and so did Settings' first card (182 px), Validate (82) and Disconnect (32) at 1440. What differed follows the data: the frame reserves two resource rows (196 px; one resource is 159), three syncs (239 px; one is 161) and a 274 px manifest (this file is 625), and the waiting plan's panel has no frame. At 390 the metadata card is 56 px taller than its frame because this Blueprint's long path wraps over four lines in mono (w3/m679 redraws that card). The sidebar's title reads the `exs-` id until the read lands, beside a header of skeleton bars: filed as [w3/139](../../139.md) | holds |
+| Layout | no sideways scroll on any page at either width, no page or console error | holds |
+
+The Blueprint was disconnected (REST `DELETE` 204, then 404) and its service `retained-env-244x` (disposable, `srv-dc4npueo8i4s738lheng`) deleted (204, then 404); the run key was revoked and the QA session logged out (`qa-login.sh --logout`). The deleted Blueprint's `/blueprint/<id>/syncs` then went to `/`, as every bex resource page does with a dead id since w9/m55; m677 does not change that.
+
+## Unblock record
+
+- **2026-11-27, `/loopx w3` (verified evidence, no user decision):** the gate, pin must carry `720e0296cb`, holds. The newest pin on `origin/main` is `a6f9307d74` `chore(deploy): pin platform images to 486e3f4afbf6`, `git merge-base --is-ancestor 720e0296cb 486e3f4afbf6` exits 0, and production's `dashboard` and `bex-api` run that pin's digests. w3/m678's `30d75225ff` is not on the pin, so the walk judged m677 as built. Affects t007 (step 2) and t011. No gate remains.
+- **2026-11-27, `/loopx w3`, closed:** t007 step 2 held every point of the definition of done on production pin `486e3f4afbf6` (§ Production walk), with the Blueprint and its service deleted and the QA session logged out. t011 moved the milestone to `done/`.
