@@ -17,7 +17,7 @@
 
 ## Definition of done
 
-1. The daily job passes against Render's live pages with an empty exceptions list (after [m636](../../blocked/m636/README.md)).
+1. The daily job passes against Render's live pages with an empty exceptions list (after [m636](../m636/README.md)).
 2. Fixture mutations each fail it with a message naming the page and the bex table: a moved current default, a new row, a back-dated row, a removed page, changed markup and an eighth page.
 3. The job is scheduled daily, listed in `scripts/ci-schedule-drift.sh`, and its self-tests run in `scripts.yml`.
 
@@ -32,7 +32,7 @@
 
 ## Implementation — 2026-11-26 (t001–t007)
 
-Render's seven pages, read 2026-11-26, carry the rows this milestone was filed with (Bun 1.4.5 from 2026-11-20, Ruby 3.4.13 from 2026-11-19, uv 0.12.24 from 2026-10-12), and since [m636](../../blocked/m636/README.md)'s `41ff57632f` every bex table matches them with no exception.
+Render's seven pages, read 2026-11-26, carry the rows this milestone was filed with (Bun 1.4.5 from 2026-11-20, Ruby 3.4.13 from 2026-11-19, uv 0.12.24 from 2026-10-12), and since [m636](../m636/README.md)'s `41ff57632f` every bex table matches them with no exception.
 
 - **Parser (t001):** `scripts/lib/render_version_pages.py`, run by `scripts/render-version-drift.sh` (`parse` prints the JSON). It takes the page list from `render.com/docs/llms.txt` (every `/docs/*-version(s).md` link), reads each page's `.md` copy and emits, keyed by page, the header's current default(s), the day the header dates them from, and the history rows. It fails naming the page on an eighth version page, a page llms.txt stops listing or that cannot be fetched, and markup it does not read: no `Service Creation Date` table, a row that is not `<date> | `<version>``, an `and later` or `Before` row out of place, rows out of date order, a version it does not recognise, or a header default or date the newest row does not repeat. uv's `Before 2025-06-12` row under a 2026-02-11 row is read as written; no comparison reaches it.
 - **Comparison (t002):** `TestRenderVersionDrift` in `lego/operator/internal/build/render_version_drift_test.go` reads the JSON from `BEX_RENDER_VERSION_PAGES` (skips when unset) and compares, from the row in force on 2026-06-05, Node, Python, Ruby, Bun, uv and Elixir row by row with `exactDefaults`, `toolchains.PythonDefaults`, `bunDefaults` and `uvDefaults`; Erlang/OTP's header release and date with `erlangDefaults`' newest step (the page has no Erlang table; `28.0.2` and `28.0.2.0` compare as one release); Poetry's current default with `defaultPoetryVersion`. Each difference names the page, the row and the table: a moved current default, a new row, a back-dated row, a removed row, a page with no table, a table with no page. `renderVersionDriftExceptions` is empty; an entry must name its ADR018 row, and one that covers no difference fails.

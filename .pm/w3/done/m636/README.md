@@ -1,6 +1,6 @@
 # w3 · m636 — Services created before bex's default cutoffs build on Render's dated defaults
 
-**Worker:** worker3 **Goal:** a native service with no version signal builds on the default Render's table gives its creation date, for every date since bex's first service, and no line-pin refresh moves it. **Status:** blocked (t001–t006, t008 and t009 done; production carries `41ff57632f` since pin `410850e80281`, and t007's production check and t010 wait for a pin carrying w3/m672's `01af8d284d`, so the check never runs a first-party service on an unrepaired Node)
+**Worker:** worker3 **Goal:** a native service with no version signal builds on the default Render's table gives its creation date, for every date since bex's first service, and no line-pin refresh moves it. **Status:** done (2026-11-27: on production pin `6ba91ca5b72f` a rebuild of the bex workspace's Node web service created 2026-08-02 logged `==> Using Node.js version 24.14.1 (default)` and serves 200)
 
 ## Tasks (in order)
 
@@ -12,10 +12,10 @@
 | t004 | [Python: Render's 2026-02-11 band](done/t004.md) — **DONE** | 45m | t001 |
 | t005 | [uv and Erlang/OTP: Render's dated tables](done/t005.md) — **DONE** | 40m | t001 |
 | t006 | [Correct ADR018 and ADR060](done/t006.md) — **DONE** | 30m | t002, t003, t004, t005 |
-| t007 | [Verify on dev-3 and production](t007.md) | 45m | t006 |
+| t007 | [Verify on dev-3 and production](done/t007.md) — **DONE** | 45m | t006 |
 | t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
 | t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t007 |
-| t010 | [Closeout](t010.md) | 10m | t009 |
+| t010 | [Closeout](done/t010.md) — **DONE** | 10m | t009 |
 
 ## Definition of done
 
@@ -80,10 +80,35 @@ The BuildKit build of those Dockerfiles did not run here: Docker Desktop on this
 
 - **Affected:** t007 step 2 and t010; w3/m672 t005 shares the same deploy.
 - **Finding (verified evidence):** the newest production pin on origin/main, `918667a83f` ("pin platform images to `410850e80281`", 20:20Z), carries `41ff57632f` (`git merge-base --is-ancestor 41ff57632f 410850e80281` exits 0), so the gate written on 2026-11-26 holds. It does not carry `01af8d284d`, w3/m672's adoption of the Brotli-fixed donors for Node 24.14.1 and 24.21.0. Read through the admin kubeconfig at 00:35Z on 2026-11-27: the fixture, the bex workspace's Node web service created 2026-08-02, last built 2026-11-23 and has not built since the pin; the bex workspace's Go service created 2026-10-19 last built 2026-10-24. Nothing of bex's own has built on an unrepaired dated default yet.
-- **Decision (worker, under w3/m672's security note):** t007 step 2 does not run on this pin. On `410850e80281` a manual deploy of the fixture moves it from Node 24.22.3, whose decoder is fixed, onto the official 24.14.1, whose bundled Brotli decoder fails Node's CVE-2026-111497 regression ([m672](../m672/README.md)'s evidence). It stays there until the next pin. This run would create that exposure on a first-party production service itself.
+- **Decision (worker, under w3/m672's security note):** t007 step 2 does not run on this pin. On `410850e80281` a manual deploy of the fixture moves it from Node 24.22.3, whose decoder is fixed, onto the official 24.14.1, whose bundled Brotli decoder fails Node's CVE-2026-111497 regression ([m672](../../blocked/m672/README.md)'s evidence). It stays there until the next pin. This run would create that exposure on a first-party production service itself.
 - **Why waiting costs nothing:**
   - Parity is unchanged. The version and the log line are Render's on both pins (`TestNodeDefaultFollowsRendersDatedRows`; m672 DoD 1).
   - The wait is short. Production pins landed at 00:25Z, 07:02Z, 13:52Z and 20:20Z on 2026-11-26, and `01af8d284d`'s deploy run 45910176679 succeeded.
   - `01af8d284d` descends from `41ff57632f`. One deploy after a pin carrying it is this check and m672 t005's at once, where deploying now would need a second deploy for m672.
 - **Remaining gate:** ``pin must carry `01af8d284d` ``. It clears by itself and needs nobody.
 - **Next:** deploy the fixture manually. Its build log reads `==> Using Node.js version 24.14.1 (default)` and the service answers 200 (t007, DoD 4). Run m672 t005's probe on the same deploy, then t010 closes this milestone.
+
+## Unblock — 2026-11-27 (`/loopx w3`, gate cleared)
+
+- **Affected:** t007 step 2 and t010. **Source:** verified evidence.
+- **Finding:** the newest production pin on origin/main, `9c76d4ae72` ("pin platform images to `6ba91ca5b72f`", 03:12Z), carries `01af8d284d` and `41ff57632f` (`git merge-base --is-ancestor` exits 0 for both). Every `bex-system` Deployment on production runs `bex-operator@sha256:0ba1d0dc…`, the digest that pin writes, read through the admin kubeconfig at 03:20Z.
+- **Next:** the production check below, on this pin.
+
+## Verification — 2026-11-27 (t007 step 2, production, DoD 4)
+
+The bex workspace's Node web service created 2026-08-02 (`srv-d9ndt8hmcglc739fkp50`, no version signal) got a manual deploy at the commit it was already running, `c7e28aa685`: `dep-dc4fg5a3u9qc73car67g`, triggered 03:25:09Z through `POST /v1/services/{id}/deploys` as the QA user (a member of the bex workspace), live 03:36:38Z.
+
+| check | before (newest build, 2026-11-23) | after (`dep-dc4fg5a3u9qc73car67g`) |
+| --- | --- | --- |
+| build log (`GET /v1/logs`, `type=build`) | `==> Using Node.js version 24.22.3 (default)` | `==> Using Node.js version 24.14.1 (default)` |
+| `node -v` in the live instance | not read | `v24.14.1` at `/usr/local/bin/node` |
+| `/healthz` on its `.onbex.co` host, `/` there and on its custom domain | 200, 200, 200 (03:24Z) | 200, 200, 200 |
+
+- The build took w3/m672's repaired donor. The live instance carries `/usr/share/bex-node-brotli/sources.txt` (`Node 24.14.1; source sha256:78225077…; Brotli 1.2.0; patch nodejs/node@49dff6f57aa7 sha256:1e9ee182…`), and `node /usr/share/bex-security/node-check.js` exits 0 there (the script is silent on a pass and asserts on a failure). The user-facing build log does not echo the Dockerfile's own `node-check.js` step, so this run read the build-phase probe only as a build that succeeded with that step in its recipe (`nativecommon.go`). m672 t005 records its own acceptance.
+- The companion Node's 24.21.0 row was not rebuilt on production. The bex workspace's Go service created 2026-10-19 is the only first-party service in that band. Its builds log the companion Node, but it answers 404 at `/` and at `/healthz`, so it could not show the 200 this task asks for. The row's resolution and log line are covered by `TestNodeDefaultFollowsRendersDatedRows` and the resolve-phase run above.
+- DoD 1 to 3 re-checked on main `bb842fd3b6`: `TestNodeDefaultFollowsRendersDatedRows`, `TestDatedDefaultsSurviveALinePinBump`, `TestErlangAndUVDatedDefaultsAreWellFormed`, `TestRubyDefaultIsRendersExactPatch`, `TestDatedNodeDefaultsHaveAFixedDecoder` and `TestResolvePython` pass, and ADR060's D7 table bolds 3.14.
+- The QA session was logged out afterwards (then 401), and its jar was deleted.
+
+## Closed — 2026-11-27 (`/loopx w3`)
+
+Every task is done and the definition of done holds: DoD 1 to 3 by the tests and docs above, DoD 4 by the production rebuild. Production pin `6ba91ca5b72f`.
