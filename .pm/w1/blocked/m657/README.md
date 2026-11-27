@@ -1,6 +1,6 @@
 # w1 · m657 — An Org Owner mints audit-log API keys, and the org Members page shows each member's login methods and 2FA, as on Render
 
-**Worker:** worker1 **Goal:** an Org Owner creates, lists and revokes organization API keys that read the audit logs of the org and of every workspace in it, and nothing else; and the org Members page's **View details** shows a member's workspaces, the login methods they have signed in with and whether 2FA is on, as Render's does. **Status:** blocked (t001–t006 and t008–t010 done, shipped in `3926ec646c`; t007 walked on dev-1 and on production, where two loading frames and a refusal code were fixed in `68b0560927`; t007's check of those frames waits for a production pin carrying `68b0560927`, then t011)
+**Worker:** worker1 **Goal:** an Org Owner creates, lists and revokes organization API keys that read the audit logs of the org and of every workspace in it, and nothing else; and the org Members page's **View details** shows a member's workspaces, the login methods they have signed in with and whether 2FA is on, as Render's does. **Status:** blocked (t001–t006 and t008–t010 done, shipped in `3926ec646c`; t007 walked on dev-1 and twice on production: the first walk's fixes `68b0560927` hold on pin `6ba91ca5b72f`, where View details' loading frame matches and the keys section's frame matches but its screen-reader status stretched the document, fixed in `83a2ff4630`; t007's last check waits for a production pin carrying `83a2ff4630`, then t011)
 
 ## Tasks (in order)
 
@@ -79,3 +79,18 @@ Walked as the QA user on a Scale fixture org (disposable) with a second identity
 - **DoD 1–4 hold**: minting, listing, using and revoking keys over GraphQL and in the browser, the quota and rate refusals with Render's text, the Member's disabled section, the key's reads and refusals on REST, GraphQL and MCP, the org's end revoking its keys, and View details against each identity's credentials, TOTP included.
 - **Fixed here**: the Audit Log API Keys section and View details each showed a one-line loading text while their own read was in flight, so the card and the dialog grew when the answer landed (DoD 5); both now draw the ready state's frame. A Member was told the org was not found on the key operations; they now get 403 `FORBIDDEN`, as ADR115 D11 says.
 - **Filed**: [w1/169](../../169.md), the "needs: none" wording of an org key's refusal on a route that needs no permission.
+
+## Unblock (2026-11-26, second)
+
+- **Affects:** t007 (the two loading frames left from the production walk), then t011.
+- **Source:** verified evidence. Production's newest pin, `chore(deploy): pin platform images to 6ba91ca5b72f` (`9c76d4ae72`), carries `68b0560927` (`git merge-base --is-ancestor 68b0560927 6ba91ca5b72f` exits 0), so the gate `pin must carry 68b0560927` holds.
+- **Next:** a worker checks, at 1440 and 390 px as the QA user on an org it owns (`bex-canary`'s org needs no fixture), the Audit Log API Keys section's loading frame with only `organizationAPITokens` held and View details' loading frame with only `orgUserAuthStatus` held, each against its ready state, then closes with t011. No user action.
+
+## Production check (t007, 2026-11-26, pin `6ba91ca5b72f`)
+
+Checked as the QA user on `bex-canary`'s org with one operation held at a time; the record is in [t007](t007.md).
+
+- **View details** (`orgUserAuthStatus` held): the loading dialog and the ready one have the same box, sections and rows at 1440 and 390, with no sideways scroll.
+- **Audit Log API Keys** (`organizationAPITokens` held): the section, its card and its rows have the same boxes loading and ready at both widths, but the loading status, an `sr-only` span with no positioned ancestor in the page scroller, stretched the document, so the window scrolled 44 px at 1440 and 522 px at 390 into a blank band. The same leak let Workspace Settings scroll the window 6,651 px at 390 and Billing 3,261 px.
+- **Fixed in `83a2ff4630`**: the shared page scroller is `relative`, as the service page's has been since `478637f25d`.
+- **Next:** on a pin carrying `83a2ff4630`, the keys section's loading state leaves the window unscrollable at 1440 and 390, then t011.
