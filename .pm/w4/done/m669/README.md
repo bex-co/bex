@@ -1,6 +1,6 @@
 # w4 · m669 — An image pull failure says which of Render's four causes stopped it, in the event, its email and the deploy
 
-**Worker:** worker4 **Goal:** a failed image pull's `image_pull_failed` event (REST, GraphQL, MCP and webhooks), its Image Pull Failed email and the deploy's failure reason name one of Render's four causes (image not found, authentication error, registry unavailable, rate limited) with Render's remedy, so a person or an agent can tell a wrong tag from an expired credential or a throttled registry. **Status:** blocked (t001–t003, t005–t007 done; t004 dev-4 half done; production half waits for the deploy)
+**Worker:** worker4 **Goal:** a failed image pull's `image_pull_failed` event (REST, GraphQL, MCP and webhooks), its Image Pull Failed email and the deploy's failure reason name one of Render's four causes (image not found, authentication error, registry unavailable, rate limited) with Render's remedy, so a person or an agent can tell a wrong tag from an expired credential or a throttled registry. **Status:** done
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | [t001](done/t001.md) | A pull the node's kubelet fails is worded as one of the four causes, as the pre-pull refusal already is — **DONE** | 1h | — |
 | [t002](done/t002.md) | A registry that answered only 429 for the rollout budget fails as rate limited, with Render's three remedies — **DONE** | 40m | — |
 | [t003](done/t003.md) | `image_pull_failed` and its email carry the deploy's cause instead of "The image could not be pulled" — **DONE** | 1h | t001, t002 |
-| [t004](t004.md) | dev-4 and production: a missing tag and a refused credential each read their cause on every surface | 40m | t003 |
+| [t004](done/t004.md) | dev-4 and production: a missing tag and a refused credential each read their cause on every surface — **DONE** | 40m | t003 |
 | [t005](done/t005.md) | Render parity — **DONE** | 25m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005, t006 |
-| [t008](t008.md) | Closeout | 10m | t007 |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t007 |
 
 Total: **8 tasks, about 4h40m**.
 
@@ -66,3 +66,16 @@ Total: **8 tasks, about 4h40m**.
 **Test coverage (t007).** Reverting each guarded line failed its test: the controller's use of `UserPullFailure` and its credential flag, the 429 family, the empty-image guard, pre-deploy's cause and its Job credential, the 403 permanence, the rate-limited expiry (unit and envtest), the fact's message at both sites and its outcome restatement, REST's message and fallback, the events view mapping, GraphQL's `messageTemplate`, the email's sentence and its fact filter, and the dashboard row's template and its generic-line suppression.
 
 **Parked 2026-11-26: production half of t004.** The live check needs production to run `3bb4796980`. Once the pin carries it: in the bex-canary fixture workspace (`tea-daif693dqjvc73e7as3g`, the QA user's; `bash scripts/qa-login.sh`), create a web service and a background worker (both disposable) from `docker.io/library/nginx:does-not-exist-<random>`. The web service's metadata read and the worker's kubelet pull should each fail with "the image … was not found in its registry: …", on the deploy and on its `image_pull_failed` event's `details.message` (REST, GraphQL with `messageTemplate.code` `image_not_found`, MCP, `GET /v1/events/{id}`). Delete both, record the outputs here, then close out (t008).
+
+**Unblocked 2026-11-26 (verified finding).** Production's pin `410850e80281` (`918667a83f`, the newest `chore(deploy): pin platform images to` on `origin/main`) carries `3bb4796980` (`git merge-base --is-ancestor 3bb4796980 410850e80281` holds), so the gate cleared by itself. Next: t004 step 2 as the paragraph above says (a disposable web service and a disposable background worker from a nonexistent tag in bex-canary, every surface read, both deleted), then t008.
+
+**Production (t004 step 2), 2026-11-26, pin `410850e80281`.** As the QA user in bex-canary (`tea-daif693dqjvc73e7as3g`), with a run-minted API key:
+
+- **Metadata read: web service `qa-m669-web-202db4` (disposable)** from `docker.io/library/nginx:does-not-exist-202db4`. Its deploy failed `update_failed` 1 s after creation with "the image docker.io/library/nginx:does-not-exist-202db4 was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists". Its `image_pull_failed` event answered that sentence as `details.message` beside `imageURL` on REST `GET /v1/services/{id}/events`, `GET /v1/events/{id}`, MCP `list_events` and `get_service_event`, and GraphQL `serviceEvents` and `serviceEvent` (`message`, `messageTemplate.code` `image_not_found` with the `image` param).
+- **Kubelet path: background worker `qa-m669-worker-202db4` (disposable)** from the same tag. Its `deploy_started` stall reason and its `image_pull_failed` event (3 s after creation) read the same not-found sentence. The deploy failed 92 s after creation with that sentence as its `failureReason`. That timing is `PermanentPullFailure`'s 90 s `imagePullGrace`, so this was the kubelet's pull error worded by `UserPullFailure`, not a metadata read. The event read the same on REST list, by id, MCP and GraphQL (`image_not_found`).
+- **A refused credential, which dev-4 could not walk:** a GitHub registry credential `qa-m669-refused-202db4` (disposable) with a deliberately invalid token, on web service `qa-m669-cred-202db4` (disposable) from `ghcr.io/bex-co/m669-private:v1`. The deploy failed in 2 s with "ghcr.io refused this service's registry credential for the image ghcr.io/bex-co/m669-private:v1 (HTTP 403). Check the credential's username and token, or remove the credential from this service to pull a public image anonymously". Its `image_pull_failed` event said the same on REST list, by id, MCP and GraphQL (`image_credential_refused`).
+- Removed afterwards: the three services and the credential (`DELETE` 204 each, then `GET` 404), the run's two API keys revoked, and both sessions logged out. The production kubeconfig was not needed: this checkout has no `.env`, so `fetch-app-kubeconfig.sh` had no `HCLOUD_TOKEN`, and the deploy timings already separate the two paths.
+- The Image Pull Failed email was not read on production because the QA mailbox is not readable from here. dev-4's Mailpit walk above covers the email.
+
+**Closed 2026-11-26.** Every line of the definition of done holds. A missing tag (on both the metadata-read path and the kubelet path) and a refused credential read their cause on the deploy and on every event surface on production. A private image with no credential reads its cause on dev-4, and dev-4 covers the email. The 429 case is covered by the envtest and the unit test named above. The reasons are worded in all 8 dashboard languages (`dashboard/src/features/deploys/locales/*.ts`). ADR018's Service events row and `docs/render-artifacts/service-events.md` record what shipped.
+
