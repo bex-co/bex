@@ -1,6 +1,6 @@
 # w1 · m660 — A static site's Confirm Rollback page compares the build's environment, as Render's does
 
-**Worker:** worker1 **Goal:** a static site's Confirm Rollback page lists the env var, secret file and environment group changes since the target build, in Render's static wording, instead of always saying "Unable to load configuration for the current live deploy…". **Status:** todo (t001–t003 and t005–t007 done, and t004's dev-1 walk passed; next: t004's production walk as the QA user, then t008)
+**Worker:** worker1 **Goal:** a static site's Confirm Rollback page lists the env var, secret file and environment group changes since the target build, in Render's static wording, instead of always saying "Unable to load configuration for the current live deploy…". **Status:** blocked (pin must carry `78029e9282`, then the rest of t004: the Confirm Rollback page's frames on production at 1440 and 390 px, and t008; t001–t003 and t005–t007 done; t004 walked DoD 1–2 on production pin `410850e80281`, where the frame reserved no notice and the page grew by its comparison after mounting, fixed in `78029e9282`)
 
 ## Tasks (in order)
 
@@ -24,8 +24,8 @@
 
 ## Source + Goal linkage
 
-- **Source:** promoted from [w1/156](../done/156.md) on 2026-11-26 by `/pm`, after `/pm-brainstorm one aspect of render parity to w1` verified it: `lego/backend/internal/deploys/rollback_comparison.go:155` returns before any snapshot for a static site (its releases write only `StaticPublicationRecordName`), and `dashboard/src/features/deploys/components/rollback-comparison.tsx` has no static wording. Render: [rollback-comparison.md](../../../docs/render-artifacts/rollback-comparison.md) and the `DeployContainer` chunk of its dashboard bundle (read 2026-11-26, entry `index-D5V4ZgbE.js`).
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)); completes w1/m646's Confirm Rollback page for the one service type it left on the fallback.
+- **Source:** promoted from [w1/156](../../done/156.md) on 2026-11-26 by `/pm`, after `/pm-brainstorm one aspect of render parity to w1` verified it: `lego/backend/internal/deploys/rollback_comparison.go:155` returns before any snapshot for a static site (its releases write only `StaticPublicationRecordName`), and `dashboard/src/features/deploys/components/rollback-comparison.tsx` has no static wording. Render: [rollback-comparison.md](../../../../docs/render-artifacts/rollback-comparison.md) and the `DeployContainer` chunk of its dashboard bundle (read 2026-11-26, entry `index-D5V4ZgbE.js`).
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)); completes w1/m646's Confirm Rollback page for the one service type it left on the fallback.
 - **Expected outcome:** a user rolling a static site back sees which environment changes the rollback undoes, as on a web service and as on Render.
 - **Why now:** since w1/m646 every static site's rollback page shows the "Unable to load configuration…" fallback, and records only begin with the first static build after t001 ships, so each day of delay adds releases that can never be compared.
 - **Not duplicated (checked 2026-11-26):** w1/m646 (blocked on a pin for its DoD 4 skeleton re-check) built the page and left this as w1/156; no other workstream has static rollback comparison open.
@@ -58,4 +58,8 @@ t004 walked production pin `410850e80281` as the QA user in `bex-canary` on the 
   - The frame still reserves the empty comparison's height (148 px). That is the representative count the rule allows for a data-dependent region. It matches a rollback with nothing to revert, the common case for a code rollback. A rollback with changes adds its rows on the one swap from the frame.
 - **Not chosen.** Reserving a representative count of comparison rows, which would shift every rollback with no changes upward instead. Keeping the page's `network-only` read, which mounts the spinner and then grows.
 - **dev-1.** With the dashboard from this tree, on the static site `m660-frames` (disposable) with auto-deploy on and the comparison held, the section matches its ready state at both widths when nothing changed. The card is 231 px at 1440 and 251 px at 390 in both states, the notices are 49 and 71 px at 1440 and 72 and 94 px at 390 in both, and the buttons sit 391 and 456 px below the card's top in both. With changes the page mounted with its rows drawn and did not move again. The swap added the rows: 74 px at 1440, 170 px at 390.
-- **Filed:** [w1/172](../172.md), the deploy header's one-line title frame. At 390 the walk's 150-character commit title wrapped onto four lines, so the card sat 78 px lower once the page landed. It is shared with the deploy page.
+- **Filed:** [w1/172](../../172.md), the deploy header's one-line title frame. At 390 the walk's 150-character commit title wrapped onto four lines, so the card sat 78 px lower once the page landed. It is shared with the deploy page.
+
+## Parked (2026-11-26)
+
+**Gate:** pin must carry `78029e9282`. Nothing is needed from the user. Then a worker runs [t004 § Next](t004.md#next-once-the-pin-carries-the-fix) and t008.
