@@ -932,6 +932,12 @@ func (s *Service) buildSourceLink(ctx context.Context, tenantID, id, svcType, se
 		return nil, "", nil, err
 	}
 	_, carrier, err := s.buildSourceApp(ctx, core.RelCanView, id)
+	// A narrowed token's scope shortfall (and a login-gate refusal) is the
+	// caller's, not the id's: it passes through, never the 400 below, as
+	// the org-key and audit-log mappings do (core.IsInsufficientScope).
+	if core.IsLoginRefusal(err) || core.IsInsufficientScope(err) {
+		return nil, "", nil, err
+	}
 	if errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden) {
 		return nil, "", nil, fmt.Errorf("%w: buildSourceId %s names no build source in this workspace", core.ErrBadRequest, id)
 	}
