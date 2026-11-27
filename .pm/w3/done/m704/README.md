@@ -1,6 +1,6 @@
 # w3 · m704 — Every URL Render's dashboard builds has a row in `dashboard-routes.md`, and a weekly job finds new ones
 
-**Worker:** worker3 **Goal:** `docs/render-artifacts/dashboard-routes.md` lists every path Render's dashboard bundle builds or routes, each with what bex does about it, and the weekly `render-dashboard-ops` job fails when Render adds a URL with no row or drops one a row names; the two rows known to be wrong today are corrected. **Status:** todo (t001–t006 done)
+**Worker:** worker3 **Goal:** `docs/render-artifacts/dashboard-routes.md` lists every path Render's dashboard bundle builds or routes, each with what bex does about it, and the weekly `render-dashboard-ops` job fails when Render adds a URL with no row or drops one a row names; the two rows known to be wrong today are corrected. **Status:** done
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | `dashboard-operations.md`'s `resourceTypeBy*` rows name Render's `/resource/<id>` redirector, not Get service — **DONE** | 20m | t002 |
 | [t005](done/t005.md) | Simplify — **DONE** | 15m | t003, t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 30m | t003, t004 |
-| [t007](t007.md) | Closeout | 10m | t005, t006 |
+| [t007](done/t007.md) | Closeout — **DONE** | 10m | t005, t006 |
 
 Total: **7 tasks, about 4h45m**.
 
@@ -41,7 +41,7 @@ Verified 2026-11-26 on main `76dfb1e0e2`.
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm one aspect of render parity to w3` (2026-11-26), item 1, verified against Render's bundle the same day.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)). Render-shaped dashboard links are a contract: Render's CLI builds them, Render's API returns them as `dashboardUrl`, and people paste them. ADR018 records the surface in `docs/ADR018/deployment-sources-iac.md` (the w5/m39 and w1/m45 paragraph).
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). Render-shaped dashboard links are a contract: Render's CLI builds them, Render's API returns them as `dashboardUrl`, and people paste them. ADR018 records the surface in `docs/ADR018/deployment-sources-iac.md` (the w5/m39 and w1/m45 paragraph).
 - **Expected outcome:** each URL Render's dashboard can produce has a written answer in bex, and a URL Render adds is found within a week instead of by a user's 404.
 - **Why now:** it is the inventory w3/m705 (resource and create URLs) and w3/m707 (service sub-pages) work from, and it corrects two records that currently claim parity that does not exist. The crawler already holds every chunk, so the cost is the parser and the rows.
 - **Render parity task:** omitted. The milestone changes a document and a CI check; no REST, GraphQL, MCP or dashboard surface changes.
