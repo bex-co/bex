@@ -1,6 +1,6 @@
 # w1 · m660 — A static site's Confirm Rollback page compares the build's environment, as Render's does
 
-**Worker:** worker1 **Goal:** a static site's Confirm Rollback page lists the env var, secret file and environment group changes since the target build, in Render's static wording, instead of always saying "Unable to load configuration for the current live deploy…". **Status:** blocked (pin must carry `78029e9282`, then the rest of t004: the Confirm Rollback page's frames on production at 1440 and 390 px, and t008; t001–t003 and t005–t007 done; t004 walked DoD 1–2 on production pin `410850e80281`, where the frame reserved no notice and the page grew by its comparison after mounting, fixed in `78029e9282`)
+**Worker:** worker1 **Goal:** a static site's Confirm Rollback page lists the env var, secret file and environment group changes since the target build, in Render's static wording, instead of always saying "Unable to load configuration for the current live deploy…". **Status:** done (2026-11-27: every task done; DoD 1–2 walked on production pin `410850e80281`, and the Confirm Rollback page's frames held on pin `6ba91ca5b72f` in all eight locales at 1440 and 390 px; DoD 3 rests on its unit tests and ADR018's Rollback row, DoD 4 on t003's tests of the eight locales)
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | [t001](done/t001.md) | The operator records the environment sources each static build used — **DONE** | 1h30m | — |
 | [t002](done/t002.md) | `RollbackComparison` compares a static site's two records — **DONE** | 1h | t001 |
 | [t003](done/t003.md) | The Confirm Rollback page's static wording, in all eight locales — **DONE** | 1h | t002 |
-| [t004](t004.md) | Walk a static rollback on dev-1 and on production | 45m | t003 |
+| [t004](done/t004.md) | Walk a static rollback on dev-1 and on production — **DONE** | 45m | t003 |
 | [t005](done/t005.md) | Render parity — **DONE** | 20m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
-| [t008](t008.md) | Closeout | 15m | t006, t007 |
+| [t008](done/t008.md) | Closeout — **DONE** | 15m | t006, t007 |
 
 ## Definition of done
 
@@ -39,7 +39,7 @@ Shipped in `303185a725`:
 - A static Rollback or Restart is compared as the build whose publication it copied.
 - The dashboard's Environment Group row uses Render's static sentences in all eight locales.
 
-The dev-1 walk passed ([t004](t004.md)). The production walk waits for a pin carrying `303185a725`.
+The dev-1 walk passed ([t004](done/t004.md)). The production walk waits for a pin carrying `303185a725`.
 
 ## Unblock (2026-11-26)
 
@@ -49,7 +49,7 @@ The dev-1 walk passed ([t004](t004.md)). The production walk waits for a pin car
 
 ## Production walk and the rollback page's frames (2026-11-26)
 
-t004 walked production pin `410850e80281` as the QA user in `bex-canary` on the disposable static site `qa-20261126-m660-st` (disposable), deleted afterwards ([t004](t004.md#production-walk-2026-11-26-pin-410850e80281)). DoD 1 and 2 hold, and DoD 4 rests on t003's tests of the eight locales. DoD 3 could not be walked, because the QA user's three workspaces hold no static site and so no static deploy from before 2026-10-19. The frames did not hold:
+t004 walked production pin `410850e80281` as the QA user in `bex-canary` on the disposable static site `qa-20261126-m660-st` (disposable), deleted afterwards ([t004](done/t004.md#production-walk-2026-11-26-pin-410850e80281)). DoD 1 and 2 hold, and DoD 4 rests on t003's tests of the eight locales. DoD 3 could not be walked, because the QA user's three workspaces hold no static site and so no static deploy from before 2026-10-19. The frames did not hold:
 
 - **What failed.** The route's frame reserved none of the notices, and a static site's ready section always shows its redirects notice. The buttons dropped 65 px at 1440 and 88 px at 390 when the page mounted. The page then mounted over the comparison's spinner frame. When the comparison listed changes, the page grew again when the read landed, by 211 px at 1440 and 475 px at 390. This is the failure w1/m657, m658 and m659 met on production: a frame shorter than what replaces it.
 - **Decision (worker, 2026-11-26; basis: the root `AGENTS.md` rule and `dashboard/AGENTS.md` § Navigation pending states, as w1/m659 decided for the deploy page's Notices).**
@@ -62,4 +62,22 @@ t004 walked production pin `410850e80281` as the QA user in `bex-canary` on the 
 
 ## Parked (2026-11-26)
 
-**Gate:** pin must carry `78029e9282`. Nothing is needed from the user. Then a worker runs [t004 § Next](t004.md#next-once-the-pin-carries-the-fix) and t008.
+**Gate:** pin must carry `78029e9282`. Nothing is needed from the user. Then a worker runs [t004 § Next](done/t004.md#next-once-the-pin-carries-the-fix) and t008.
+
+## Unblock (2026-11-27)
+
+- **Affects:** t004 (the frames re-check, [t004 § Next](done/t004.md#next-once-the-pin-carries-the-fix)), then t008.
+- **Source:** verified evidence. The newest `chore(deploy): pin platform images to 6ba91ca5b72f` on `origin/main` (`9c76d4ae72`) pins a commit that carries `78029e9282` (`git merge-base --is-ancestor 78029e9282 6ba91ca5b72f` exits 0), so production runs the frame fix. The page-scroller fix `83a2ff4630` (w1/m657) is not on that pin, so a window scroll while a frame is held is that fix's to clear, not this milestone's.
+- **Remaining gates:** none. No user action is needed.
+- **Next:** as the QA user in `bex-canary` on a disposable static site, at 1440 and 390 px and in all eight locales, open Rollback on a deploy whose environment changed since and on one with nothing changed, once after hovering and once with the `RollbackComparison` read held, with Auto-Deploy on and once off. Then delete the fixtures, log the session out and run t008.
+
+## Closed (2026-11-27)
+
+On production pin `6ba91ca5b72f`, as the QA user in `bex-canary` on the disposable static site `qa-20261127-m660-st` (disposable), a deploy whose environment changed since and one with nothing changed since were each opened from their deploy page's Rollback, in all eight locales at 1440 and 390 px ([t004](done/t004.md#production-frames-2026-11-27-pin-6ba91ca5b72f)):
+
+- After a hover, the deploy page gave way straight to the ready Confirm Rollback page with its comparison drawn, in all 32 runs. No frame and no spinner showed.
+- With the `RollbackComparison` read held for 3 s, the route frame held with the redirects notice and the Auto-Deploy warning as tall as the ready ones in every locale, and with one notice when Auto-Deploy was off. For the unchanged deploy the card and the buttons' offset matched the ready page. For the changed one the swap added only the rows, and nothing moved after the page mounted.
+- The window never scrolled while a frame was held, and nothing scrolled sideways.
+- The card's top still moves on the swap by the deploy header above it: 27 px up at 1440, the reserve w1/m646 recorded, and 86 to 126 px down at 390 with a long commit title, which is w1/172.
+
+The fixtures were deleted and the session logged out. Every DoD item holds.
