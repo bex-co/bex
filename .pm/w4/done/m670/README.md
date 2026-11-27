@@ -1,6 +1,6 @@
 # w4 · m670 — The Add credential dialog is Render's, and opens in place from the service form's Credential dropdown
 
-**Worker:** worker4 **Goal:** a person deploying a private image adds its registry credential from the Credential dropdown without leaving the half-filled form, through Render's dialog (Name, Registry, Username, Personal Access Token), and the new credential is selected for them. **Status:** blocked (t001–t003, t005–t007 done; t004 dev-4 half done; production half waits for the deploy)
+**Worker:** worker4 **Goal:** a person deploying a private image adds its registry credential from the Credential dropdown without leaving the half-filled form, through Render's dialog (Name, Registry, Username, Personal Access Token), and the new credential is selected for them. **Status:** done
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | [t001](done/t001.md) | Record Render's Add credential dialog and its dropdown entry from Render's public dashboard bundle — **DONE** | 30m | — |
 | [t002](done/t002.md) | The dialog asks for Render's fields, and GraphQL `createRegistryCredential` takes `registry` as REST does — **DONE** | 1h30m | t001 |
 | [t003](done/t003.md) | Every Credential dropdown offers Add credential, opens the dialog in place and selects the new credential — **DONE** | 1h | t002 |
-| [t004](t004.md) | dev-4 and production: add a credential from the create page's dropdown, deploy with it, then delete it | 30m | t003 |
+| [t004](done/t004.md) | dev-4 and production: add a credential from the create page's dropdown, deploy with it, then delete it — **DONE** | 30m | t003 |
 | [t005](done/t005.md) | Render parity — **DONE** | 25m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005, t006 |
-| [t008](t008.md) | Closeout | 10m | t007 |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t007 |
 
 Total: **8 tasks, about 4h50m**.
 
@@ -49,3 +49,15 @@ Total: **8 tasks, about 4h50m**.
 - **t005.** REST, GraphQL and MCP create the same credential from the same `registry`/`host` and refuse the same pairs; the dashboard sends GraphQL's. ADR018's Registry credentials row records the dialog, the dropdown and the two kept differences (the explicit "No credential" item, the Edit dialog's keep-the-token field); the registry filter is w4/735.
 - **t006.** `/simplify` over the change found nothing to restructure (the list and detail reads already share one `toCredentialView` from t002). The review caught a reformat of three untouched dashboard files by a broad prettier run, which was reverted.
 - **t007.** Reverting each guarded line failed its test: the GraphQL and MCP `createHost` calls and GraphQL's null `registry`; the select's sentinel guard, focus hold, permission gate and selection of the new id; the dialog's required name, host requirement, host sent for Google Artifact and ECR, Docker label, `onCreated`, and the GitHub link's prefilled name; the Edit dialog's registry display; the mismatch check and the `-docker.pkg.dev` match; the view's registry mapping; the hook's `registry` variable and its no-id failure.
+
+## Unblock — 2026-11-26
+
+- **Affected:** t004 (production half), t008.
+- **Source:** verified evidence. The newest `chore(deploy): pin platform images to 410850e80281` on `origin/main` (`918667a83f`) carries `c0c22a06ab` (`git merge-base --is-ancestor c0c22a06ab 410850e80281` holds), so production runs the dialog, the dropdown entry and GraphQL's `registry`.
+- **Remaining gates:** none. No private image with a read-only token is available to the run (the checkout has no registry token, and a person's own broad GitHub token is not one to store in production), so the walk uses a public image and a dummy token, as the parked gate allows, and reads the registry's refusal of that credential as proof it was the one pulled with.
+- **Next:** t004 steps 1–3 on production as the QA user in `bex-canary`, then t008.
+
+## Record — production walk and closeout, 2026-11-26
+
+- **t004, production half.** Production pin `410850e80281`, as the QA user in `bex-canary` (selected by the run's own headless browser), at 1440 px. On `/web/new`, Existing Image `docker.io/library/nginx:alpine`, name `qa-20261126-m670-web` (disposable), Port `80` and the Starter plan were filled first. The Credential dropdown listed Add credential above "No credential — public image"; it opened Add Credential over the page with focus in Name, and the dialog showed Render's fields (Name, Registry with GitHub, GitLab, Docker, Google Artifact and AWS ECR, Username, Personal Access Token; "or Password" and Docker Hub's help for Docker). A Docker credential `qa-20261126-m670-docker` (disposable) with username `qa-m670-walk` and a dummy token was added: the toast read "Added a credential for docker.io", the dropdown read `qa-20261126-m670-docker (docker.io)`, and the image, name, port and plan were unchanged. REST listed it with `registry: DOCKER`, so the dialog's GraphQL `registry` resolved to Docker Hub's host. Deploy web service created `srv-dc4embir91cc73cuvleg` (disposable); REST `GET /v1/services/{id}` read `registryCredentialId` and `registryCredential {id, name}` as the new credential, and the first deploy ended `update_failed` with `image_pull_failed` "docker.io refused this service's registry credential for the image docker.io/library/nginx:alpine (HTTP 401) …", on REST events and on the dashboard's Events page: the selected credential was the one pulled with. No private image with a read-only token was available to the run, so a public image and a dummy token stood in, as the parked gate allowed. A second pass at 390 px reached the same selection with the form intact (`qa-20261126-m670-docker-390`, disposable) without deploying. The service was deleted (204, then 404), then both credentials (204, then 404); `bex-canary` was left with no registry credential and no `m670` service, and the run's Kratos session was revoked.
+- **t008.** Every task is done and the definition of done holds: the dialog and the dropdown on production above; the other pickers, GraphQL and MCP `registry`, other hosts and the 8 languages in t002, t003, t005 and t007.
