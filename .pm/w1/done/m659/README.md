@@ -1,6 +1,6 @@
 # w1 · m659 — A deploy's page lists Render's Notices: build cache cleared, rolled back to, synced from, another deploy in progress, and the reserved-port warning
 
-**Worker:** worker1 **Goal:** bex's deploy page carries Render's **Notices** section, the list under the deploy header that says why this deploy looks the way it does, in Render's order and words, with its links, plus Render's free-plan reserved-port warning. **Status:** blocked (pin must carry `6a406f32f3`, then the rest of t006: the deploy page's frames on production at 1440 and 390 px, and t010; t001–t005 and t007–t009 done; t006 walked DoD 1–5 on production pin `410850e80281`, where the page grew by its Notices after mounting, fixed in `6a406f32f3`)
+**Worker:** worker1 **Goal:** bex's deploy page carries Render's **Notices** section, the list under the deploy header that says why this deploy looks the way it does, in Render's order and words, with its links, plus Render's free-plan reserved-port warning. **Status:** done (2026-11-27: every task done; DoD 1–4 walked on production pin `410850e80281`, and DoD 5's frames held on pin `6ba91ca5b72f` in all eight locales at 1440 and 390 px after the loader fix `6a406f32f3`)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | The operator keeps a listener on a reserved port that its scan sees, so the deploy page can warn about it — **DONE** | 1h15m | t001 |
 | [t004](done/t004.md) | The deploy page's Notices section and reserved-port warning, in all eight locales — **DONE** | 2h | t002, t003 |
 | [t005](done/t005.md) | The deploy page's pending frame still matches its ready state at 1440 and 390 px — **DONE** | 30m | t004 |
-| [t006](t006.md) | Walk the Notices on dev-1 and on production | 1h | t005 |
+| [t006](done/t006.md) | Walk the Notices on dev-1 and on production — **DONE** | 1h | t005 |
 | [t007](done/t007.md) | Render parity — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007 |
-| [t010](t010.md) | Closeout | 15m | t008, t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 15m | t008, t009 |
 
 ## Definition of done
 
@@ -47,7 +47,7 @@
 
 ## Production walk and the Notices frame (2026-11-26)
 
-t006 walked DoD 1–4 on production pin `410850e80281` as the QA user in `bex-canary` on disposable services, and each held ([t006](t006.md#production-walk-2026-11-26-pin-410850e80281)). DoD 5 did not:
+t006 walked DoD 1–4 on production pin `410850e80281` as the QA user in `bex-canary` on disposable services, and each held ([t006](done/t006.md#production-walk-2026-11-26-pin-410850e80281)). DoD 5 did not:
 
 - **What failed.** Opening a deploy from its Deploys list mounted the page before its deploy read, and the frame reserved no Notices. Every deploy with Notices then pushed the log down when the read landed, by 11 to 227 px at 1440 px and 27 to 427 px at 390 px. This is the shift t005 recorded as a decision, and it is the failure w1/m657 and w1/m658 met on production: a frame shorter than what replaces it.
 - **Decision (worker, 2026-11-26; basis: the root `AGENTS.md` rule and `dashboard/AGENTS.md` § Navigation pending states).**
@@ -56,4 +56,21 @@ t006 walked DoD 1–4 on production pin `410850e80281` as the QA user in `bex-ca
   - The route's own frame shows only while those reads outlast the router's 150 ms hold. Nothing says by then whether the deploy has any Notices, so the frame reserves none. That is the representative count the rule allows for a data-dependent region: it matches a plain live deploy, as Render shows no Notices heading over an empty list.
   - The ready page never moves again after it mounts.
 - **Not chosen.** Reserving a Notices row in the frame, which would shift every deploy without Notices upward instead. Seeding the page from the Deploys list's cached row, which helps only that one entry point.
-- **Next.** Once a pin carries `6a406f32f3`, t006's frame check ([t006 § Next](t006.md#next-once-the-pin-carries-the-fix)), then t010. Nothing is needed from the user.
+- **Next.** Once a pin carries `6a406f32f3`, t006's frame check ([t006 § Next](done/t006.md#next-once-the-pin-carries-the-fix)), then t010. Nothing is needed from the user.
+
+## Unblock record (2026-11-26, second)
+
+- **Affected:** w1/m659 t006 (the deploy page's frames on production, [t006 § Next](done/t006.md#next-once-the-pin-carries-the-fix)) and t010.
+- **Source:** verified evidence. The newest `chore(deploy): pin platform images to 6ba91ca5b72f` on `origin/main` (`9c76d4ae72`) pins a commit that carries `6a406f32f3` (`git merge-base --is-ancestor 6a406f32f3 6ba91ca5b72f` exits 0), so production runs the loader fix. The page-scroller fix `83a2ff4630` (w1/m657) is not on that pin, so a window scroll while a frame is held is that fix's to clear, not this milestone's.
+- **Remaining gates:** none. No user action is needed.
+- **Next:** as the QA user in `bex-canary` on disposable services, at 1440 and 390 px and in all eight locales, open a deploy with Notices and a live one from the Deploys list, once after hovering and once with the `Deploy` read held; the page mounts with its Notices drawn and does not move afterwards. Then delete the fixtures (`NOT_FOUND`), log the session out and run t010.
+
+## Closed (2026-11-27)
+
+On production pin `6ba91ca5b72f`, as the QA user in `bex-canary` on two disposable Free services, a deploy with the reserved-port banner, a cleared-cache deploy queued behind it and a live deploy were each opened from the Deploys list in all eight locales at 1440 and 390 px ([t006](done/t006.md#production-frames-2026-11-27-pin-6ba91ca5b72f)):
+
+- After a hover, the page mounted ready with its Notices drawn, with no frame in 47 of 48 runs. In the one other run, the hover's read was slow, the route frame showed for 1.1 s, and the page still mounted ready.
+- With the `Deploy` read held for 3 s, the route frame held, the page mounted with its Notices drawn, and the in-page header skeleton never showed.
+- The log never moved after the page mounted, the window never scrolled while the frame was held, and nothing scrolled sideways.
+
+The fixtures were deleted and the session logged out. Every DoD item holds on production.
