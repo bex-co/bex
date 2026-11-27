@@ -266,14 +266,6 @@ const koKeyValue: Record<string, TranslationEntry> = {
     message: "컴퓨팅 플랜",
     description: "Create-Key-Value form field label (plan / tier)",
   },
-  "keyvalue.fieldVersion": {
-    message: "Valkey 버전",
-    description: "Create-Key-Value form field label (major version)",
-  },
-  "keyvalue.fieldVersionDefault": {
-    message: "기본값 (최신)",
-    description: "Create-Key-Value version select default option",
-  },
   "keyvalue.fieldMaxmemoryPolicy": {
     message: "Maxmemory 정책",
     description: "Create-Key-Value form field label (eviction policy)",
@@ -856,10 +848,6 @@ const koKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.fieldNameDescription": {
     message: "Key Value 인스턴스의 고유한 이름입니다.",
     description: "Create-Key-Value Name row description",
-  },
-  "keyvalue.fieldVersionDescription": {
-    message: "인스턴스가 실행할 Valkey 메이저 버전입니다.",
-    description: "Create-Key-Value Version row description",
   },
   "keyvalue.fieldPlanDescription": {
     message: "인스턴스의 사용 가능한 RAM과 연결 수 한도를 정합니다.",

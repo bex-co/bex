@@ -265,14 +265,6 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "计算套餐",
     description: "Create-Key-Value form field label (plan / tier)",
   },
-  "keyvalue.fieldVersion": {
-    message: "Valkey 版本",
-    description: "Create-Key-Value form field label (major version)",
-  },
-  "keyvalue.fieldVersionDefault": {
-    message: "默认（最新）",
-    description: "Create-Key-Value version select default option",
-  },
   "keyvalue.fieldMaxmemoryPolicy": {
     message: "内存淘汰策略",
     description: "Create-Key-Value form field label (eviction policy)",
@@ -858,10 +850,6 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.fieldNameDescription": {
     message: "Key Value 实例的唯一名称。",
     description: "Create-Key-Value Name row description",
-  },
-  "keyvalue.fieldVersionDescription": {
-    message: "实例运行的 Valkey 主版本。",
-    description: "Create-Key-Value Version row description",
   },
   "keyvalue.fieldPlanDescription": {
     message: "决定实例可用的内存和连接数上限。",

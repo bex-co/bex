@@ -187,8 +187,10 @@ type CreateKeyValueRequest struct {
 	OwnerID       string `json:"ownerId,omitempty"`
 	EnvironmentID string `json:"environmentId,omitempty"`
 	Name          string `json:"name"`
-	Plan          string `json:"plan,omitempty"`
-	Version       string `json:"version,omitempty"`
+	// No version field: a new instance always runs Valkey 8
+	// (appv1alpha1.DefaultKeyValueVersion), as on Render, whose create input has
+	// none (w4/743), so a REST body naming one is refused as an unknown field.
+	Plan string `json:"plan,omitempty"`
 	// Region is accepted from Render clients. bex runs one configured region
 	// per control plane, so the store is placed in BEX_REGION; a Render region
 	// is recorded (resourcemeta.StampRegion) and read back, as on Render, and
@@ -710,7 +712,6 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 		Spec: appv1alpha1.KeyValueSpec{
 			Name:            req.Name,
 			Plan:            req.Plan,
-			Version:         req.Version,
 			StorageGB:       req.StorageGB,
 			Public:          req.Public,
 			IPAllowList:     core.AllowListToSpec(req.IPAllowList),

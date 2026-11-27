@@ -147,7 +147,7 @@ This is a real change from what informed bex's own Databases page (w5/m8), which
 | Name | `KeyValue.name` / `id` | name-as-id |
 | Instance Type / plan badge | `KeyValue.plan` | `free`/`starter`/`standard` only |
 | Status badge | `KeyValue.status` | `available`/`creating`/`unavailable` |
-| Runtime ("Valkey 8.1.4") | `KeyValue.version` | bex's is optional, may be coarser |
+| Runtime ("Valkey 8.1.4") | `KeyValue.version` | the major only: `8` for every new store, which no create surface lets a caller choose (w4/743) |
 | Created | `KeyValue.createdAt` |  |
 | Internal Key Value URL | `KeyValueConnectionInfo.internalConnectionString` | always has embedded password in bex (superset) |
 | External Key Value URL | `KeyValueConnectionInfo.externalConnectionString` | answered for every store; shown only when `KeyValue.public` (w9/134) |

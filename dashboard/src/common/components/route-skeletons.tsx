@@ -2214,9 +2214,6 @@ export function KeyValueCreatePageSkeleton() {
             <ProjectSelectsSkeleton />
           </CreateFieldSkeleton>
         </Region>
-        <Region name="version">
-          <CreateFieldSkeleton />
-        </Region>
         <Region name="memory-policy">
           <CreateFieldSkeleton />
         </Region>

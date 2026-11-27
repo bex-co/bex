@@ -271,14 +271,6 @@ const jaKeyValue: Record<string, TranslationEntry> = {
     message: "コンピュートプラン",
     description: "Create-Key-Value form field label (plan / tier)",
   },
-  "keyvalue.fieldVersion": {
-    message: "Valkey バージョン",
-    description: "Create-Key-Value form field label (major version)",
-  },
-  "keyvalue.fieldVersionDefault": {
-    message: "デフォルト（最新）",
-    description: "Create-Key-Value version select default option",
-  },
   "keyvalue.fieldMaxmemoryPolicy": {
     message: "Maxmemory ポリシー",
     description: "Create-Key-Value form field label (eviction policy)",
@@ -869,10 +861,6 @@ const jaKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.fieldNameDescription": {
     message: "Key Value インスタンスの一意な名前。",
     description: "Create-Key-Value Name row description",
-  },
-  "keyvalue.fieldVersionDescription": {
-    message: "インスタンスで実行する Valkey のメジャーバージョン。",
-    description: "Create-Key-Value Version row description",
   },
   "keyvalue.fieldPlanDescription": {
     message: "インスタンスで使えるメモリと接続数の上限を決めます。",

@@ -273,14 +273,6 @@ const ptKeyValue: Record<string, TranslationEntry> = {
     message: "Plano de computação",
     description: "Create-Key-Value form field label (plan / tier)",
   },
-  "keyvalue.fieldVersion": {
-    message: "Versão do Valkey",
-    description: "Create-Key-Value form field label (major version)",
-  },
-  "keyvalue.fieldVersionDefault": {
-    message: "Padrão (mais recente)",
-    description: "Create-Key-Value version select default option",
-  },
   "keyvalue.fieldMaxmemoryPolicy": {
     message: "Política de maxmemory",
     description: "Create-Key-Value form field label (eviction policy)",
@@ -870,10 +862,6 @@ const ptKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.fieldNameDescription": {
     message: "Um nome único para sua instância Key Value.",
     description: "Create-Key-Value Name row description",
-  },
-  "keyvalue.fieldVersionDescription": {
-    message: "A versão principal do Valkey que a instância executa.",
-    description: "Create-Key-Value Version row description",
   },
   "keyvalue.fieldPlanDescription": {
     message: "Define a RAM disponível e o limite de conexões da instância.",

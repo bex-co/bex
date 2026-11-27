@@ -275,14 +275,6 @@ const esKeyValue: Record<string, TranslationEntry> = {
     message: "Plan de cómputo",
     description: "Create-Key-Value form field label (plan / tier)",
   },
-  "keyvalue.fieldVersion": {
-    message: "Versión de Valkey",
-    description: "Create-Key-Value form field label (major version)",
-  },
-  "keyvalue.fieldVersionDefault": {
-    message: "Predeterminada (la más reciente)",
-    description: "Create-Key-Value version select default option",
-  },
   "keyvalue.fieldMaxmemoryPolicy": {
     message: "Política de maxmemory",
     description: "Create-Key-Value form field label (eviction policy)",
@@ -874,10 +866,6 @@ const esKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.fieldNameDescription": {
     message: "Un nombre único para tu instancia de Key Value.",
     description: "Create-Key-Value Name row description",
-  },
-  "keyvalue.fieldVersionDescription": {
-    message: "La versión principal de Valkey que ejecuta la instancia.",
-    description: "Create-Key-Value Version row description",
   },
   "keyvalue.fieldPlanDescription": {
     message:

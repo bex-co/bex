@@ -3112,7 +3112,6 @@ export type MutationCreateKeyValueArgs = {
   public?: InputMaybe<Scalars['Boolean']['input']>;
   region?: InputMaybe<Scalars['String']['input']>;
   storageGB?: InputMaybe<Scalars['Int']['input']>;
-  version?: InputMaybe<Scalars['String']['input']>;
 };
 
 

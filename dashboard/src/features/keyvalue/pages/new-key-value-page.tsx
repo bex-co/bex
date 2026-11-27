@@ -36,14 +36,6 @@ import {
 } from "@/common/components/compute-plan-list";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 
-// Valkey major versions bex offers, matching the KeyValue CRD's authoritative
-// enum (lego/types/v1alpha1/keyvalue_types.go, spec.version
-// `+kubebuilder:validation:Enum="7";"8"`). "default" is a sentinel (Radix
-// Select forbids an empty-string value), mapped back to "" so the operator
-// picks its own default rather than pinning a version that may not be pulled.
-const VERSION_DEFAULT = "default";
-const VERSIONS = ["8", "7"] as const;
-
 // The persistence modes and maxmemory (eviction) policies live in the
 // feature's shared lib so the create page and the detail-page editors agree.
 // Every bex plan — the Free tier included (tiers.yaml gives it a 1 GB disk) —
@@ -53,10 +45,12 @@ const VERSIONS = ["8", "7"] as const;
 /**
  * Render's "New Key Value" form (`/new/redis`, docs/render-artifacts/key-value.md):
  * a full page, not a dialog — bex's subset covers name, plan (tier cards from
- * the shared tiers catalog), version, the public (external endpoint) toggle, and
- * the Maxmemory Policy / Persistence Mode settings (w5/011, now backed by the
+ * the shared tiers catalog), the public (external endpoint) toggle, and the
+ * Maxmemory Policy / Persistence Mode settings (w5/011, now backed by the
  * KeyValue CR). Project/Environment assignment uses the shared create selector;
  * region remains omitted because it is not caller-selectable in bex's contract.
+ * There is no version field, as Render's form has none: a new instance always
+ * runs Valkey 8 (w4/743).
  */
 export function NewKeyValuePage() {
   const { t } = useTranslations();
@@ -71,7 +65,6 @@ export function NewKeyValuePage() {
 
   const [name, setName] = useState("");
   const [planOverride, setPlanOverride] = useState<string | null>(null);
-  const [version, setVersion] = useState<string>(VERSION_DEFAULT);
   const [isPublic, setIsPublic] = useState(false);
   const [maxmemoryPolicy, setMaxmemoryPolicy] = useState<string>(
     MAXMEMORY_POLICIES[0],
@@ -95,7 +88,6 @@ export function NewKeyValuePage() {
     const id = await create({
       name: name.trim(),
       plan,
-      version: version === VERSION_DEFAULT ? "" : version,
       public: isPublic,
       maxmemoryPolicy,
       persistenceMode,
@@ -157,23 +149,6 @@ export function NewKeyValuePage() {
             onProjectChange={setProjectId}
             onEnvironmentChange={setEnvironmentId}
           />
-
-          <CreateSelectField
-            id="kv-version"
-            label={t("keyvalue.fieldVersion")}
-            description={t("keyvalue.fieldVersionDescription")}
-            value={version}
-            onValueChange={setVersion}
-          >
-            <SelectItem value={VERSION_DEFAULT}>
-              {t("keyvalue.fieldVersionDefault")}
-            </SelectItem>
-            {VERSIONS.map((v) => (
-              <SelectItem key={v} value={v}>
-                Valkey {v}
-              </SelectItem>
-            ))}
-          </CreateSelectField>
 
           <CreateSelectField
             id="kv-maxmemory"

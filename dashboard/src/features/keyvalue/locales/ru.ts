@@ -271,14 +271,6 @@ const ruKeyValue: Record<string, TranslationEntry> = {
     message: "Тариф вычислений",
     description: "Create-Key-Value form field label (plan / tier)",
   },
-  "keyvalue.fieldVersion": {
-    message: "Версия Valkey",
-    description: "Create-Key-Value form field label (major version)",
-  },
-  "keyvalue.fieldVersionDefault": {
-    message: "По умолчанию (последняя)",
-    description: "Create-Key-Value version select default option",
-  },
   "keyvalue.fieldMaxmemoryPolicy": {
     message: "Политика maxmemory",
     description: "Create-Key-Value form field label (eviction policy)",
@@ -867,10 +859,6 @@ const ruKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.fieldNameDescription": {
     message: "Уникальное название инстанса Key Value.",
     description: "Create-Key-Value Name row description",
-  },
-  "keyvalue.fieldVersionDescription": {
-    message: "Основная версия Valkey, на которой работает инстанс.",
-    description: "Create-Key-Value Version row description",
   },
   "keyvalue.fieldPlanDescription": {
     message: "Определяет доступную память и лимит подключений инстанса.",

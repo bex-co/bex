@@ -2162,7 +2162,7 @@ type Mutation {
   createEnvGroup(envVars: [EnvGroupVarInput!], environmentId: String, name: String!, ownerId: String, secretFiles: [EnvGroupSecretFileInput!], serviceIds: [String!]): EnvGroup
   createEnvironment(ipAllowList: [IPAllowListEntryInput!], name: String!, networkIsolationEnabled: Boolean, projectId: String!, protectedStatus: String): Environment
   createJob(planId: String, serviceId: String!, startCommand: String!): Job
-  createKeyValue(dryRun: Boolean, environmentId: String, ipAllowList: [String], ipAllowListEntries: [IPAllowListEntryInput!], maxmemoryPolicy: String, name: String!, ownerId: String, persistenceMode: String, plan: String, public: Boolean, region: String, storageGB: Int, version: String): KeyValue
+  createKeyValue(dryRun: Boolean, environmentId: String, ipAllowList: [String], ipAllowListEntries: [IPAllowListEntryInput!], maxmemoryPolicy: String, name: String!, ownerId: String, persistenceMode: String, plan: String, public: Boolean, region: String, storageGB: Int): KeyValue
   createObjectAccessKey(expiresInSeconds: Int, name: String!, ownerId: String, permission: String!): CreatedObjectAccessKey
   createOrganizationWorkspace(name: String!, organizationId: String!, privacy: String): Workspace
   createPlannedBlueprint(autoSync: Boolean, branch: String, existingResources: String, name: String!, ownerId: String, path: String, repo: String!): BlueprintPlanResult

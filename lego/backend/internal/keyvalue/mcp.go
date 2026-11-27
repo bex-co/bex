@@ -66,7 +66,6 @@ type createKeyValueArgs struct {
 	Name          string   `json:"name" jsonschema:"the key-value store name"`
 	Plan          string   `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, starter, standard, 3g, pro, pro_plus, pro_max (Render's size ids 256mb, 1g, 5g, 10g, 20g also work; pro_ultra/40g and 50g are temporarily unavailable: INSTANCE_TYPE_UNAVAILABLE)"`
 	Region        string   `json:"region,omitempty" jsonschema:"Render region (frankfurt, ohio, oregon, singapore, virginia); accepted for Render compatibility and normalized: bex runs one region, so the resource is placed in the platform region (BEX_REGION); readback reports the region it was created with (the platform's public alias when omitted). Any other value is refused"`
-	Version       string   `json:"version,omitempty" jsonschema:"the major Valkey version, e.g. 8 (omit for the default)"`
 	StorageGB     int32    `json:"storageGB,omitempty" jsonschema:"disk size in GB (omit for the plan default)"`
 	Public        bool     `json:"public,omitempty" jsonschema:"expose an external TLS endpoint; defaults to false on this create tool, independently of the allowlist"`
 	IPAllowList   []string `json:"ipAllowList,omitempty" jsonschema:"CIDR restriction for the external endpoint when public:true; empty or omitted adds no resource-level IP restriction, and the create default remains private"`
@@ -139,7 +138,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_key_value",
-		Description: "Create a managed key-value (Valkey/Redis) store. name is required; plan, region, version, storageGB, public, ipAllowList, maxmemoryPolicy and persistenceMode are optional. Pass dryRun:true to preview the resolved spec without any writes.",
+		Description: "Create a managed key-value (Valkey/Redis) store; a new store runs Valkey 8. name is required; plan, region, storageGB, public, ipAllowList, maxmemoryPolicy and persistenceMode are optional. Pass dryRun:true to preview the resolved spec without any writes.",
 		InputSchema: mcputil.InputSchema[createKeyValueArgs](
 			mcputil.PropEnum("maxmemoryPolicy", validMaxmemoryPolicies...),
 			mcputil.PropEnum("persistenceMode", validPersistenceModes...),
@@ -154,7 +153,6 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			Name:            in.Name,
 			Plan:            in.Plan,
 			Region:          in.Region,
-			Version:         in.Version,
 			StorageGB:       in.StorageGB,
 			Public:          in.Public,
 			IPAllowList:     allowList,

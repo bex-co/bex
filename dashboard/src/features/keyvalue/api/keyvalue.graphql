@@ -138,7 +138,6 @@ mutation CreateKeyValue(
   $ownerId: String
   $environmentId: String
   $plan: String
-  $version: String
   $storageGB: Int
   $public: Boolean
   $maxmemoryPolicy: String
@@ -149,7 +148,6 @@ mutation CreateKeyValue(
     ownerId: $ownerId
     environmentId: $environmentId
     plan: $plan
-    version: $version
     storageGB: $storageGB
     public: $public
     maxmemoryPolicy: $maxmemoryPolicy

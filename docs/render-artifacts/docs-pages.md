@@ -237,7 +237,7 @@ A page makes many claims. For a page read in full, the disposition is the weakes
 | [`troubleshooting-python-deploys`](https://render.com/docs/troubleshooting-python-deploys) | matched | ADR018 § Services & lifecycle: Runtime, build strategy + Root Directory; `PYTHON_VERSION` and `.python-version` as the version page says (`w3/m637`) | `6c54fbd0b291` |
 | [`tutorial-rag-chatbot`](https://render.com/docs/tutorial-rag-chatbot) | n/a | a MongoDB partner tutorial; the Render behaviors it uses, a web service and an env var, match (ADR018 § Services & lifecycle: Create service (web / private)) | `24b469759301` |
 | [`uv-version`](https://render.com/docs/uv-version) | matched | the daily `render-version-drift` job compares the page with bex's dated defaults (`w3/m637`, `lego/operator/internal/build/nativeversion.go`) | `3c649a1e1d1a` |
-| [`valkey-faq`](https://render.com/docs/valkey-faq) | partial | every Key Value runs Valkey, 8 by default, and `keyvalue` and `redis` are the same Blueprint type (ADR018 § Other datastores & storage: Key Value (Valkey / Redis); [ADR021](../ADR021-keyvalue-management.md)); the create form's Valkey 7 choice, which Render's lacks, is `w4/743` | `d4abcaa6957a` |
+| [`valkey-faq`](https://render.com/docs/valkey-faq) | matched | every Key Value runs Valkey, and every new one Valkey 8 with no version choice on any create surface (`w4/743`); `keyvalue` and `redis` are the same Blueprint type (ADR018 § Other datastores & storage: Key Value (Valkey / Redis); [ADR021](../ADR021-keyvalue-management.md)) | `d4abcaa6957a` |
 
 ### Quickstarts
 

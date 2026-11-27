@@ -90,7 +90,7 @@ Render leaves its object schemas open, so the existing Go request structs remain
 | Postgres create | `public`, `pooler`, body `dryRun`; bex hyphenated plan IDs |
 | Postgres update | `version`, body `dryRun`; bex hyphenated plan IDs |
 | Postgres recovery | `environmentId` honored identically to `create-postgres` (w5/m582); `datadogApiKey`/`datadogSite` refused by name |
-| Key Value create | `version`, `storageGB`, `public`, body `dryRun` |
+| Key Value create | `storageGB`, `public`, body `dryRun` (no `version`: a new instance always runs Valkey 8, as on Render, w4/743) |
 | Key Value update | body `dryRun` |
 | Sandbox group create | `environmentId` (nullable, w22/m412) |
 | Sandbox run connect | optional JSON body `{command, ownerId}` (`renderRequestBodyExtensions`, w3/065) |

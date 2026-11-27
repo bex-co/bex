@@ -29,7 +29,6 @@ import { useCreateKeyValue } from "@/features/keyvalue/hooks/use-create-key-valu
 const input = {
   name: "cache",
   plan: "starter",
-  version: "8",
   public: false,
   maxmemoryPolicy: "",
   persistenceMode: "",
@@ -62,7 +61,6 @@ describe("useCreateKeyValue", () => {
           name: "cache",
           ownerId: "tea-1",
           plan: "starter",
-          version: "8",
           public: false,
           environmentId: undefined,
         },

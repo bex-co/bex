@@ -274,14 +274,6 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Compute Plan",
     description: "Create-Key-Value form field label (plan / tier)",
   },
-  "keyvalue.fieldVersion": {
-    message: "Valkey Version",
-    description: "Create-Key-Value form field label (major version)",
-  },
-  "keyvalue.fieldVersionDefault": {
-    message: "Default (latest)",
-    description: "Create-Key-Value version select default option",
-  },
   "keyvalue.fieldMaxmemoryPolicy": {
     message: "Maxmemory Policy",
     description: "Create-Key-Value form field label (eviction policy)",
@@ -875,10 +867,6 @@ const enKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.fieldNameDescription": {
     message: "A unique name for your Key Value instance.",
     description: "Create-Key-Value Name row description",
-  },
-  "keyvalue.fieldVersionDescription": {
-    message: "The Valkey major version the instance runs.",
-    description: "Create-Key-Value Version row description",
   },
   "keyvalue.fieldPlanDescription": {
     message: "Determines the instance's available RAM and connection limit.",

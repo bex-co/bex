@@ -585,7 +585,6 @@ export const ROUTE_SKELETON_MANIFEST = {
       "page-header",
       "name",
       "project-environment",
-      "version",
       "memory-policy",
       "persistence",
       "plan-picker",

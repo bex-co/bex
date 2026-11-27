@@ -149,11 +149,15 @@ describe("NewKeyValuePage", () => {
     ).toHaveAttribute("aria-checked", "true");
   });
 
-  it('submits with the selected plan and omits an unset version (default -> "")', async () => {
+  // Render's form has no version field, and a new instance always runs Valkey
+  // 8 (w4/743): the page offers no choice and sends none.
+  it("submits with the selected plan and no version, which the page does not offer", async () => {
     const user = userEvent.setup();
     renderPage();
 
     await user.type(await screen.findByLabelText("Name"), "cache-1");
+    expect(screen.queryByText(/Valkey Version/i)).toBeNull();
+    expect(screen.queryByText(/Valkey 7/)).toBeNull();
     await user.click(screen.getByRole("radio", { name: /Starter/ }));
     await user.click(
       screen.getByRole("button", { name: "Create Key Value Instance" }),
@@ -162,7 +166,6 @@ describe("NewKeyValuePage", () => {
     expect(create).toHaveBeenCalledWith({
       name: "cache-1",
       plan: "starter",
-      version: "",
       public: false,
       maxmemoryPolicy: "allkeys-lru",
       persistenceMode: "journal-snapshot",

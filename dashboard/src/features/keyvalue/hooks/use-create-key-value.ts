@@ -16,8 +16,6 @@ import { placementErrorMessage } from "@/features/environments/lib/placement";
 export interface CreateKeyValueInput {
   name: string;
   plan: string;
-  /** Valkey version, or "" to let the operator pick its default. */
-  version: string;
   public: boolean;
   /** Eviction policy at the memory budget (Render's Maxmemory Policy). */
   maxmemoryPolicy: string;
@@ -74,7 +72,6 @@ export function useCreateKeyValue(): UseCreateKeyValueResult {
               ownerId: currentWorkspaceId,
               environmentId: input.environmentId,
               plan: input.plan || undefined,
-              version: input.version || undefined,
               public: input.public,
               maxmemoryPolicy: input.maxmemoryPolicy || undefined,
               persistenceMode: input.persistenceMode || undefined,
