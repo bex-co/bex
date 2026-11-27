@@ -980,17 +980,16 @@ func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 		return s.CreateShellSession(r.Context(), r.PathValue("id"), r.URL.Query().Get("instance"))
 	})
 	// scale handles POST /v1/services/{id}/scale — sets the running instance
-	// count (numInstances); out-of-range is core.ErrBadRequest => 400.
-	scale := core.HandleJSON(http.StatusAccepted, func(r *http.Request) (any, error) {
+	// count (numInstances); out-of-range is core.ErrBadRequest => 400. Render's
+	// pinned spec answers "202 Service scaled successfully" with no content, so
+	// success carries no body (w4/738); errors keep their JSON shapes.
+	scale := core.HandleNoBody(http.StatusAccepted, func(r *http.Request) error {
 		req, err := core.DecodeBody[scaleRequest](r)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		app, err := s.Scale(r.Context(), r.PathValue("id"), req.NumInstances)
-		if err != nil {
-			return nil, err
-		}
-		return s.restService(r.Context(), app), nil
+		_, err = s.Scale(r.Context(), r.PathValue("id"), req.NumInstances)
+		return err
 	})
 
 	// deleteSvc handles DELETE /v1/services/{id} — remove the service and let the

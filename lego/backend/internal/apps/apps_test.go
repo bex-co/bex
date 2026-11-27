@@ -1975,31 +1975,42 @@ func TestRESTScaleService(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
-	// scale => 202 with numInstances honored (Render's scale status code).
+	// Render's pinned spec answers the scale "202 Service scaled successfully"
+	// with no content (w4/738); revisit this test if it ever declares a body.
+	if accepted := rendertest.Load(t).Operation("scale-service").Operation.Responses.Status(http.StatusAccepted); accepted == nil || len(accepted.Value.Content) != 0 {
+		t.Fatal("the pinned spec no longer answers scale-service with a bodiless 202; revisit w4/738")
+	}
+
+	// scale => 202 with an empty body, and numInstances honored.
 	rec := httptest.NewRecorder()
 	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/scale", strings.NewReader(`{"numInstances":3}`)))
-	if rec.Code != http.StatusAccepted {
-		t.Fatalf("scale => 202, got %d: %s", rec.Code, rec.Body)
-	}
-	var out renderService
-	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if out.Replicas != 3 {
-		t.Errorf("replicas = %d, want 3", out.Replicas)
+	if rec.Code != http.StatusAccepted || rec.Body.Len() != 0 || rec.Header().Get("Content-Type") != "" {
+		t.Fatalf("scale => %d %q (Content-Type %q), want 202 with an empty body", rec.Code, rec.Body, rec.Header().Get("Content-Type"))
 	}
 	if got := getApp(t, cl, "web").Spec.Replicas; got != 3 {
 		t.Errorf("spec.replicas = %d, want 3", got)
 	}
 
-	// Out-of-range numInstances => 400, and it must not change anything.
+	// Out-of-range numInstances => 400 with its JSON error body (only success
+	// lost its body), and it must not change anything.
 	rec = httptest.NewRecorder()
 	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/scale", strings.NewReader(`{"numInstances":0}`)))
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("numInstances 0 => 400, got %d", rec.Code)
 	}
+	var refusal struct{ ID, Message string }
+	if err := json.Unmarshal(rec.Body.Bytes(), &refusal); err != nil || refusal.ID == "" || !strings.Contains(refusal.Message, "numInstances") {
+		t.Errorf("a refused scale answered %q (%v), want Render's {id, message} naming numInstances", rec.Body, err)
+	}
 	if got := getApp(t, cl, "web").Spec.Replicas; got != 3 {
 		t.Errorf("a rejected scale must leave spec.replicas at 3, got %d", got)
+	}
+
+	// An unknown service keeps its 404 error body.
+	rec = httptest.NewRecorder()
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/nope/scale", strings.NewReader(`{"numInstances":2}`)))
+	if rec.Code != http.StatusNotFound || !json.Valid(rec.Body.Bytes()) {
+		t.Errorf("scale of an unknown service => %d %q, want 404 with its JSON error body", rec.Code, rec.Body)
 	}
 }
 

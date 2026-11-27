@@ -48,12 +48,10 @@ func TestScaleUnderAutoscalingStoresTheCountWithoutAnEvent(t *testing.T) {
 				svc.RegisterREST(mux)
 				rec := httptest.NewRecorder()
 				validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services/web/scale", strings.NewReader(`{"numInstances":3}`)))
-				if rec.Code != http.StatusAccepted {
-					t.Fatalf("scale => %d, want 202: %s", rec.Code, rec.Body)
-				}
-				var out renderService
-				if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil || out.Replicas != 3 {
-					t.Fatalf("the scale answered replicas %d (%v), want the stored 3", out.Replicas, err)
+				// Render's bodiless 202 (w4/738): the stored count is read
+				// from the CR below, as on every surface.
+				if rec.Code != http.StatusAccepted || rec.Body.Len() != 0 {
+					t.Fatalf("scale => %d %q, want 202 with an empty body", rec.Code, rec.Body)
 				}
 			case "GraphQL":
 				res := graphql.Do(graphql.Params{Schema: blueprintSchema(t, svc), Context: t.Context(),
