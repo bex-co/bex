@@ -1,6 +1,6 @@
 # w1 · m673 — The image URL is checked against its registry before the service is created, as Render's create form does
 
-**Worker:** worker1 **Goal:** while a user types an image URL, in the create form and in Settings' image source, bex reads the image from its registry with the chosen credential, as Render's `isDeployableImage` does. Each of Render's outcomes is shown under the field before the service exists: not found or private, invalid URL, credential refused, wrong platform, too large, or reachable. **Status:** todo (t001–t004, t006–t008 done; t005's dev-1 walk passed, its production walk waits for a pin carrying the milestone)
+**Worker:** worker1 **Goal:** while a user types an image URL, in the create form and in Settings' image source, bex reads the image from its registry with the chosen credential, as Render's `isDeployableImage` does. Each of Render's outcomes is shown under the field before the service exists: not found or private, invalid URL, credential refused, wrong platform, too large, or reachable. **Status:** blocked (pin must carry `0a715b42cc`: t005's production walk as the QA user, then t009; t001–t004 and t006–t008 done, and t005's dev-1 walk passed)
 
 ## Tasks (in order)
 
@@ -48,18 +48,18 @@ Verified 2026-11-26 on main `ff791487b5`.
 
 - **Dashboard.** The create page (`dashboard/src/features/services/pages/new-service-page.tsx`) and Settings' source card (`dashboard/src/features/services/components/service-source-card.tsx`) share `ServiceSourcePicker`'s image tab (`service-source-picker.tsx`) with `RegistryCredentialSelect`. The tab checks only syntax, length and private hosts (`dockerImageProblem` in `dashboard/src/common/lib/utils/docker-image.ts`). The server's refusal on submit is the only other message (`serverError`, w4/406).
 - **Backend.** OCI reference syntax is validated on create, source update, Blueprint validation and deploy overrides (w8/m49; ADR018 § Services & lifecycle). Nothing reads a registry before create. The registry readers that exist are the sandbox image import in `lego/backend/internal/sandbox/images.go`, the operator's metadata read in `lego/operator/internal/registry/image_config.go`, and GitHub's public-commit resolve. The sandbox import uses go-containerregistry over `netutil.SafeDialContext`, with a credential, `linux/amd64`, capped manifests and a 10 GB cap. The operator's read runs at deploy, honors `BEX_IMAGE_PLATFORM`, and maps registry refusals to the deploy reasons `image_not_found`, `image_credential_refused` and `image_access_refused`. The backend cannot import the operator (`operator → types ← backend`).
-- **Ledger.** The `isDeployableImage` row in [dashboard-operations.md](../../../docs/render-artifacts/dashboard-operations.md#services) is `gap` and names this milestone.
+- **Ledger.** The `isDeployableImage` row in [dashboard-operations.md](../../../../docs/render-artifacts/dashboard-operations.md#services) is `gap` and names this milestone.
 
 ## Source + Goal linkage
 
-- **Source:** [w1/153](../done/153.md), found by the w1/m645 dashboard ledger, 2026-11-26.
-- **Goal linkage:** Render parity, the top product principle ([ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first)). Deploying a prebuilt image is a core hosting path ([ADR004](../../../docs/ADR004-app-deployment.md)).
+- **Source:** [w1/153](../../done/153.md), found by the w1/m645 dashboard ledger, 2026-11-26.
+- **Goal linkage:** Render parity, the top product principle ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first)). Deploying a prebuilt image is a core hosting path ([ADR004](../../../../docs/ADR004-app-deployment.md)).
 - **Expected outcome:** a mistyped tag, a private image without its credential, a wrong token or an arm64-only image is caught in the form in about a second. Today it is a service that exists and fails its first deploy.
 - **Why now:** the w1/m645 ledger left this as one of its last `gap` rows in Services, and w4/734 (refuse an image over 10 GB at deploy) shares the size rule. The pre-create check is where Render shows that rule first.
 - **Render parity task included:** the milestone adds a GraphQL read and changes the create form and Settings. Render has no REST or MCP form of the check: it is not in its pinned OpenAPI spec or in its MCP tools. So t006 checks GraphQL and the dashboard, and records REST and MCP as `—`, as on Render.
 
 ## Progress (2026-11-26)
 
-- t001–t004 and t006–t008 shipped: Render's `isDeployableImage` on bex-api's GraphQL (`lego/backend/internal/registryread`, `registrycreds/imagecheck.go`), and the image tab's live check in the create form and in Settings' Update Source, in eight locales. Details are in each task under [done/](done/).
+- t001–t004 and t006–t008 shipped in `0a715b42cc` (with `8428d9dc67`, the cross-workspace matrix's caller-scoped entry): Render's `isDeployableImage` on bex-api's GraphQL (`lego/backend/internal/registryread`, `registrycreds/imagecheck.go`), and the image tab's live check in the create form and in Settings' Update Source, in eight locales. Details are in each task under [done/](done/).
 - t005: the dev-1 walk passed on GraphQL, with API keys, and in the browser at 1440 and 390 px. Every pending frame held the ready state's height ([t005](t005.md) § dev-1 walk). The production walk waits for a pin carrying the milestone.
-- Follow-up: [w1/173](../173.md) (the field's label, Render's unparseable-path sentence and the Git-repository hint). The credential list filtered by registry is [w4/735](../../w4/735.md).
+- Follow-up: [w1/173](../../173.md) (the field's label, Render's unparseable-path sentence and the Git-repository hint). The credential list filtered by registry is [w4/735](../../../w4/735.md).
