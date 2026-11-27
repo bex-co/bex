@@ -1,6 +1,6 @@
 # w3 · m702 — Every in-place Postgres major upgrade succeeds on bex's operands: a relocatable `pg_duckdb`, and the source major's settings while `pg_upgrade` runs
 
-**Worker:** worker3 **Goal:** a database on any bex operand major 13–17 upgrades in place to 18 through the verb (REST, GraphQL, MCP and the dashboard's guided page) and ends `SUCCEEDED` with its data, as Render's does from any supported version. Today every such upgrade ends `FAILED` after its downtime, because `pg_upgrade` cannot start the old server. **Status:** todo (t001–t004 done)
+**Worker:** worker3 **Goal:** a database on any bex operand major 13–17 upgrades in place to 18 through the verb (REST, GraphQL, MCP and the dashboard's guided page) and ends `SUCCEEDED` with its data, as Render's does from any supported version. Today every such upgrade ends `FAILED` after its downtime, because `pg_upgrade` cannot start the old server. **Status:** blocked (t001–t004 and t006–t008 done; t005 waits for a production pin carrying `ebc8e54b14`, `10689e954f` and `59931b324c`, then t009)
 
 ## Tasks (in order)
 
@@ -11,9 +11,9 @@
 | t003 | [While a major upgrade is pending, the Cluster carries the source major's extension settings](done/t003.md) — **DONE** | 1h15m | — |
 | t004 | [Walk real upgrades on dev-3: 13, 15 and 16 to 18, and 16 with `pg_duckdb` installed](done/t004.md) — **DONE** | 1h30m | t002, t003 |
 | t005 | [Repeat it on production before w3/m676's walk](t005.md) | 45m | t004 |
-| t006 | [Render parity](t006.md) | 20m | t004 |
-| t007 | [Simplify](t007.md) | 15m | t006 |
-| t008 | [Test coverage](t008.md) | 30m | t006 |
+| t006 | [Render parity](done/t006.md) — **DONE** | 20m | t004 |
+| t007 | [Simplify](done/t007.md) — **DONE** | 15m | t006 |
+| t008 | [Test coverage](done/t008.md) — **DONE** | 30m | t006 |
 | t009 | [Closeout](t009.md) | 10m | t005, t007, t008 |
 
 Total: **9 tasks, about 6h30m**.
@@ -32,7 +32,7 @@ Total: **9 tasks, about 6h30m**.
 
 ## Source + Goal linkage
 
-- **Source:** promoted from [w3/134](../done/134.md) on 2026-11-27 by `/loopx w3`. w3/m676 t007's local walk found the bug on 2026-11-26: on dev-3, 16 → 18 three times and 15 → 18 twice, every run `FAILED` within 30 s with CloudNativePG's `MajorUpgradeRollback`, and the rows survived.
+- **Source:** promoted from [w3/134](../../done/134.md) on 2026-11-27 by `/loopx w3`. w3/m676 t007's local walk found the bug on 2026-11-26: on dev-3, 16 → 18 three times and 15 → 18 twice, every run `FAILED` within 30 s with CloudNativePG's `MajorUpgradeRollback`, and the rows survived.
 - **How CloudNativePG 1.30.1 runs the upgrade** (read 2026-11-27 at tag `v1.30.1`):
   - The Job's `prepare` init container runs on the source image (`status.pgDataImageInfo.image`). It copies `pg_config --bindir`, `--pkglibdir` and `--sharedir` with `cp -a` to the same paths under `/controller/old` (`internal/cmd/manager/instance/upgrade/prepare/cmd.go`). The `major-upgrade` container runs on the target image (`pkg/reconciler/majorupgrade/job.go`, `BackoffLimit` 0).
   - `execute` (`internal/cmd/manager/instance/upgrade/execute/cmd.go`) runs initdb into `pgdata-new`. It writes the new directory's configuration from the Cluster (`prepareConfigurationFiles`, `OperationType_TYPE_UPGRADE`), then runs `pg_upgrade --link --old-bindir /controller/old/usr/lib/postgresql/<old>/bin --old-datadir --new-datadir`. It passes no `--old-options`, so the old server reads its own data directory's `custom.conf`.
@@ -47,7 +47,7 @@ Total: **9 tasks, about 6h30m**.
   - **The source major's settings while pending (t003)** is what the operator already does for the logical-replication settings, which read `runningMajor` (`database_subscription.go`, `syncsLogicalSlots` in `database_publication.go`). For a 16 or 17 source those settings equal 18's, so nothing changes there. For 13–15 sources they are what the old cluster already runs, so the instance manager's rewrite is a no-op and there is no race.
   - **`LD_LIBRARY_PATH` through the Cluster's `spec.env`** would reach the Job. But it restarts every cluster of every major when adopted, it depends on CloudNativePG's private `/controller/old` path, and it would hand the new server the old `libduckdb.so` first.
   - **A target image that carries the old majors' `libduckdb.so` at their absolute paths** couples the images, and every future target would have to carry every older major's library.
-- **Goal linkage:** [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first). Render upgrades in place to its latest major from any supported version ([render.com/docs/postgresql-upgrading](https://render.com/docs/postgresql-upgrading)). [ADR092](../../../docs/ADR092-postgres-extension-supply.md) owns the operand images and how they roll (D4).
+- **Goal linkage:** [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first). Render upgrades in place to its latest major from any supported version ([render.com/docs/postgresql-upgrading](https://render.com/docs/postgresql-upgrading)). [ADR092](../../../../docs/ADR092-postgres-extension-supply.md) owns the operand images and how they roll (D4).
 - **Expected outcome:** every in-place major upgrade that a database's extensions allow succeeds. w3/m676's guided page can then show a succeeded run, and its production walk can proceed.
 - **Why now:** since the operands were adopted on 2026-11-23 (w21/m584), every upgrade a customer starts ends `FAILED` after its downtime, on every surface. w3/m676 is parked on this milestone, and its own pin gate (`4c334eddf0`) is already met on production pin `486e3f4afbf6`.
 - **Render parity included:** the result reaches REST, GraphQL, MCP and the dashboard's guided page (t006).
