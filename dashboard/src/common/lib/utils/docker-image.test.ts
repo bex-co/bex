@@ -50,6 +50,8 @@ describe("dockerImageProblem", () => {
     "docker.io/library/nginx:1.27",
     "myregistry.example.com:5000/team/app:v2",
     `nginx@sha256:${"a".repeat(64)}`,
+    `nginx:1.27@sha256:${"a".repeat(64)}`,
+    `myregistry.example.com:5000/team/app:v2@sha256:${"a".repeat(64)}`,
     "8.8.8.8/x:1",
   ])("accepts %s", (ref) => {
     expect(dockerImageProblem(ref)).toBeNull();
