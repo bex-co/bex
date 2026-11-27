@@ -1,6 +1,6 @@
 # w4 · m696 — Saving the Autoscaling section behaves as Render's: enabling confirms the billing, and both toggles off turns autoscaling off
 
-**Worker:** worker4 **Goal:** on a service's Scaling page, turning autoscaling on asks for confirmation with Render's billing note, and saving with both the CPU and memory toggles off turns autoscaling off, as Render documents, instead of refusing the save. **Status:** todo (t001, t002 and t004–t006 done; t003's strings and tests done, its production walk next, then t007)
+**Worker:** worker4 **Goal:** on a service's Scaling page, turning autoscaling on asks for confirmation with Render's billing note, and saving with both the CPU and memory toggles off turns autoscaling off, as Render documents, instead of refusing the save. **Status:** blocked (pin must carry `68dd65d9e3`: t003's production walk, then t007; t001, t002 and t004–t006 done, t003's strings and tests done)
 
 ## Tasks (in order)
 
@@ -44,3 +44,5 @@ Total: **7 tasks, about 3h35m**.
 - **Parity (t004):** ADR018 § Services & lifecycle, Autoscaling config row, amended. One drift found and filed: Render's page on a disk-backed service shows only "Scaling is not supported for servers with disks.", while bex shows both scaling cards and its API refuses the save (w4/753).
 - **Simplify (t005):** `/simplify` ran over the diff; the save mapping is shared by `formValues`, and the old `switchedOn` and `validate()` collapsed. It added one comment and found nothing else.
 - **Next (t003 step 2):** once production carries the change, sign in as the QA user, enable autoscaling on a fixture service through the dialog (Cancel first, then Enable), turn off the last target and confirm Disable, restore the service's original scaling, and record the walk here.
+
+**2026-11-26, parked.** The change shipped as `68dd65d9e3` (and the drift filing as `d9e817067d`). The DoD's last line needs both paths walked on production, which waits for a deploy carrying `68dd65d9e3`.
