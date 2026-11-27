@@ -151,6 +151,12 @@ var callerScopedGQLFields = map[string]bool{
 	"Query.keyValueInstanceTypes": true,
 	// Name-availability probe — checks the CALLER's own workspace (apps.NameAvailable).
 	"Query.serviceNameAvailable": true,
+	// The image check before create (w1/m673) takes one input object, which the
+	// sweep leaves unset: with no credential it runs in the caller's own
+	// workspace. Another workspace's credential is refused as
+	// registryCredential(id) refuses it (TestIsDeployableImageE2E,
+	// registrycreds' TestIsDeployableImageAnswersAnUnreadableCredentialAsRegistryCredentialDoes).
+	"Query.isDeployableImage": true,
 	// Static vocabularies / stubs — return a fixed list, read no resource.
 	"Query.webhookEventTypes":                            true, // the webhook event-type vocabulary
 	"Query.pushNotificationsAvailable":                   true, // caller-scoped transport capability, no resource argument
