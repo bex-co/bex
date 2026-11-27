@@ -1219,6 +1219,14 @@ func isVerbMethod(recv reflect.Type, m reflect.Method) bool {
 	if recv == reflect.TypeFor[*envgroups.Service]() && (m.Name == "WithInitialEnvGroups" || m.Name == "WithInitialEnvGroupIDs" || m.Name == "CheckInitialEnvGroupIDs") {
 		return false
 	}
+	// StoredServiceEnvironment is the Blueprint plan's read of the
+	// control-plane store (the same read the move/link guards judge by),
+	// exposed so the plan refuses exactly what the apply refuses. It takes
+	// the App the plan already fetched, never a transport request, so the
+	// zero-argument public-verb sweeps cannot construct its owned resource.
+	if recv == reflect.TypeFor[*envgroups.Service]() && m.Name == "StoredServiceEnvironment" {
+		return false
+	}
 	// The operator-run container-policy migration (w6/m149 t008), one service
 	// or every native one (w32/m462) or every one (w32/040), is reached only through
 	// `/api migrate-container-policy` inside the bex-api pod, never a tenant

@@ -1527,6 +1527,9 @@ func validateGroupServiceEnvironment(groupEnvironment, serviceID, serviceEnviron
 // serviceEnvironment is the environment a's service belongs to: the store's
 // row when wired, else the App label.
 func (s *Service) serviceEnvironment(ctx context.Context, a *appv1alpha1.App) (string, error) {
+	if a == nil {
+		return "", nil
+	}
 	if s.ServiceEnvironment != nil {
 		env, err := s.ServiceEnvironment(ctx, a.Labels[core.LabelAppID])
 		if !errors.Is(err, core.ErrNotFound) {
