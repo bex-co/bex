@@ -1,6 +1,6 @@
 # w1 · m658 — A sandbox group's page lists its sandboxes, snapshots and custom images, with each sandbox's details and events, as on Render
 
-**Worker:** worker1 **Goal:** bex's sandbox group page becomes Render's: a Sandboxes list (the group's index) with live status, search, a time range, the group's run summary and terminate; a sandbox details drawer with its events, snapshots and details; a Snapshots page with snapshot details and delete; and a Custom images page with each image's versions. **Status:** blocked (pin must carry `a07bbe305e`, then the rest of t009 step 3, DoD 6's loading frames on production at 1440 and 390 px, and t013; t001–t008 and t010–t012 done; t009 walked DoD 1–5 on production pin `410850e80281`, where the frames failed and were fixed in `a07bbe305e`)
+**Worker:** worker1 **Goal:** bex's sandbox group page becomes Render's: a Sandboxes list (the group's index) with live status, search, a time range, the group's run summary and terminate; a sandbox details drawer with its events, snapshots and details; a Snapshots page with snapshot details and delete; and a Custom images page with each image's versions. **Status:** blocked (pin must carry `72a9d9d839`, then DoD 6's two locale fixes checked on production in all eight locales at 1440 and 390 px, and t013; t001–t008 and t010–t012 done; t009 walked DoD 1–5 on production pin `410850e80281` and fixed the frames in `a07bbe305e`, then checked them on pin `6ba91ca5b72f`, where English held and Russian, Spanish and Portuguese failed at 390, fixed in `72a9d9d839`)
 
 ## Tasks (in order)
 
@@ -109,3 +109,7 @@ t009's frames ran again on pin `6ba91ca5b72f` as the QA user in `bex-canary`, in
 - **Terminate sandbox** showed its Terminated event in the drawer without a reload.
 - **Two locales failed at 390.** In Russian the Sandboxes page scrolled sideways by 49 px, because the live-updates button outgrew the column. In Spanish and Portuguese the drawer's snapshot row wrapped its date and size and outgrew its frame by 24 px.
 - **The fix:** the button's label ends in an ellipsis. The row puts its badge on the name's line, with the date and size on one line under it, and the row's frame does the same. On dev-1, in all eight locales at 1440 and 390, nothing scrolls sideways and the row is 66 px loading and ready.
+
+## Parked (2026-11-26, second)
+
+**Gate:** pin must carry `72a9d9d839`. Nothing is needed from the user. Then a worker signs in as the QA user, makes a disposable group in `bex-canary` with a sandbox that has a snapshot, and checks two surfaces in all eight locales (`?lang=`) at 1440 and 390 px. The Sandboxes page must not scroll sideways, loading or ready, where Russian scrolled 49 px. The sandbox drawer's Snapshots tab row must match its loading frame, with GraphQL `SandboxSnapshotsForGroup` held, where Spanish and Portuguese grew 24 px. The worker then deletes the group, signs out and runs t013. Every other frame t009 lists already matched on pin `6ba91ca5b72f`. The fix changed nothing else, so re-checking those frames in English is enough.
