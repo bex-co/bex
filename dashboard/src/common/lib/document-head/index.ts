@@ -2,7 +2,7 @@ import type { TOptions } from "i18next";
 import { getActiveI18n } from "@/i18n/request-scope";
 import { LANGUAGE_TAGS, type SupportedLanguage } from "@/i18n/config";
 import { isUnauthenticatedError } from "@/common/apollo/auth-error-link";
-import { isNotFoundError } from "@/common/lib/graphql-error";
+import { isForbiddenError, isNotFoundError } from "@/common/lib/graphql-error";
 
 export { DashboardDocumentTitle } from "./document-title";
 export { getDashboardOrigin } from "./origin";
@@ -27,6 +27,7 @@ export interface DashboardHeadMatch {
 export type RouteResource<T> =
   | { state: "ready"; resource: T }
   | { state: "not-found" }
+  | { state: "forbidden" }
   | { state: "unauthenticated" }
   | { state: "error" };
 
@@ -89,6 +90,9 @@ export function stateTitle(
   if (!resource) return translatedTitle("common.loading");
   if (resource.state === "not-found") {
     return translatedTitle("common.notFoundTitle");
+  }
+  if (resource.state === "forbidden") {
+    return translatedTitle("common.accessDeniedTitle");
   }
   if (resource.state === "unauthenticated") {
     return translatedTitle("common.sessionExpiredTitle");
@@ -156,18 +160,29 @@ export async function loadRouteResource<TData, TResource>(
     const result = await query();
     const resource = select(result.data);
     if (resource) return { state: "ready", resource };
-    // An expired session (bex-api 401) is not a missing row and not an outage —
-    // it gets its own state so the title + body read "session expired", not
-    // "not found" or "couldn't load" (w3/m80 t002).
-    if (result.error && isUnauthenticatedError(result.error))
-      return { state: "unauthenticated" };
-    if (!result.error || isNotFound(result.error))
-      return { state: "not-found" };
-    return { state: "error" };
+    return routeResourceFailure(result.error, isNotFound);
   } catch (error) {
-    if (isUnauthenticatedError(error)) return { state: "unauthenticated" };
-    return isNotFound(error) ? { state: "not-found" } : { state: "error" };
+    return routeResourceFailure(error, isNotFound);
   }
+}
+
+/**
+ * Why a route resource's read came back without it. An expired session
+ * (bex-api 401) is not a missing row and not an outage — it gets its own
+ * state so the title + body read "session expired", not "not found" or
+ * "couldn't load" (w3/m80 t002). A refused read is its own too: Render draws
+ * Access denied for it (w3/m706), and the page cannot tell it from not found
+ * by itself, because Apollo caches the refused read's null without its error.
+ */
+export function routeResourceFailure(
+  error: unknown,
+  isNotFound: (error: unknown) => boolean = isNotFoundError,
+): Exclude<RouteResource<never>, { state: "ready" }> {
+  if (error && isUnauthenticatedError(error))
+    return { state: "unauthenticated" };
+  if (!error || isNotFound(error)) return { state: "not-found" };
+  if (isForbiddenError(error)) return { state: "forbidden" };
+  return { state: "error" };
 }
 
 /**

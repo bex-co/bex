@@ -1624,20 +1624,27 @@ describe("BlueprintDetailPage", () => {
     expect(heading.parentElement).toContainElement(suffix);
   });
 
-  it("redirects a dead blueprint id home (w9/m55)", async () => {
+  // w3/m706: Render's Blueprint draws Page not found in place.
+  it("draws Page not found in place for a dead blueprint id", async () => {
     blueprintDetailState.blueprint = null;
     const router = renderDetailPage("blp-missing");
 
-    expect(await screen.findByText("services home")).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe("/");
+    expect(
+      await screen.findByRole("heading", { name: "Page not found" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("blp-missing")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/blueprints/blp-missing");
+    expect(screen.queryByText("services home")).not.toBeInTheDocument();
   });
 
-  it("stays put on the inline error state when the query fails (w9/m55)", async () => {
+  it("draws An error occurred, never Page not found, when the query fails", async () => {
     blueprintDetailState.blueprint = null;
     blueprintDetailState.error = new Error("bex-api unreachable");
     const router = renderDetailPage("blp-missing");
 
-    expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "An error occurred" }),
+    ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/blueprints/blp-missing");
   });
 });

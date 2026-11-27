@@ -8,13 +8,12 @@ import {
 } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
-import { ResourceLoadError } from "@/common/components/resource-load-error";
-import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
 import {
-  resourceLoadErrorVariant,
-  resourceNotFound,
-  useNotFoundRedirect,
-} from "@/common/hooks/use-not-found-redirect";
+  ResourceStatePage,
+  ResourceStateView,
+} from "@/common/components/resource-not-found";
+import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
+import { resourceReadState } from "@/common/lib/resource-read-state";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   Alert,
@@ -46,6 +45,7 @@ import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt
 import { BlueprintDocument } from "@/graphql/definitions";
 import {
   loadRouteResource,
+  type RouteResource,
   routeResourceTitle,
   titleHead,
   titleLoaderFetchPolicy,
@@ -99,8 +99,9 @@ function PendingRouteComponent() {
 
 function RouteComponent() {
   // A roll-window loader failure re-runs once (w1/m52) so the title recovers.
-  useLoaderErrorRetry(Route.useLoaderData(), Route.useParams().blueprintId);
-  return <BlueprintDetailLayout />;
+  const loaderData = Route.useLoaderData();
+  useLoaderErrorRetry(loaderData, Route.useParams().blueprintId);
+  return <BlueprintDetailLayout routeState={loaderData?.state} />;
 }
 
 /**
@@ -115,24 +116,23 @@ function RouteComponent() {
  */
 function BlueprintDetailLayout({
   routePending = false,
+  routeState,
 }: {
   /**
    * Rendered as the route's pendingComponent while its title loader runs:
    * the same chrome with the page's skeleton, never the live `<Outlet/>`.
    */
   routePending?: boolean;
+  /** The route loader's verdict, which alone can tell a refused read from a
+   *  missing one (`resourceReadState`). */
+  routeState?: RouteResource<unknown>["state"];
 }) {
   const { blueprintId: linkId } = Route.useParams();
   // A bookmarked /blueprints/blp-… still opens: the pages address the
   // Blueprint by the exs- id the API returns (w2/m269).
   const blueprintId = canonicalBlueprintLinkId(linkId);
   const { t } = useTranslations();
-  const {
-    blueprint: loaded,
-    loading,
-    error,
-    refetch,
-  } = useBlueprint(blueprintId);
+  const { blueprint: loaded, loading, error } = useBlueprint(blueprintId);
   // Judge the pages' controls in the Blueprint's own workspace (w4/641, as
   // w6/091 for services): until it is the selection, the skeleton stays up so
   // no Manual sync or Disconnect paints for the wrong workspace first.
@@ -142,14 +142,12 @@ function BlueprintDetailLayout({
   );
   const blueprint = adopting || routePending ? null : loaded;
 
-  // A dead id redirects home (w9/m55); a failed query stays put on the inline
-  // error state so an outage never masquerades as a deleted Blueprint.
-  useNotFoundRedirect(
-    !routePending && resourceNotFound(loaded, loading, error),
-  );
-  const loadErrorVariant = routePending
+  // A dead id keeps its URL and draws Render's Page not found; a refused read
+  // draws Access denied and any other failure "An error occurred", so an
+  // outage never masquerades as a deleted Blueprint (w3/m706).
+  const readState = routePending
     ? null
-    : resourceLoadErrorVariant(loaded, loading, error);
+    : resourceReadState(loaded, loading, error, routeState);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const pageLabelKey = blueprintPageLabelKey(pathname, linkId);
   const syncPage = isBlueprintSyncPage(pathname, linkId);
@@ -163,6 +161,14 @@ function BlueprintDetailLayout({
     blueprintId: string;
     reason: string;
   } | null>(null);
+
+  if (readState) {
+    return (
+      <ResourceStatePage>
+        <ResourceStateView state={readState} id={linkId} />
+      </ResourceStatePage>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -228,9 +234,7 @@ function BlueprintDetailLayout({
                 {t(pageLabelKey)}
               </h2>
             ) : null}
-            {loadErrorVariant ? (
-              <ResourceLoadError onRetry={refetch} variant={loadErrorVariant} />
-            ) : blueprint ? (
+            {blueprint ? (
               <BlueprintDetailProvider value={{ blueprint, linkId }}>
                 <Outlet />
               </BlueprintDetailProvider>

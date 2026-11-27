@@ -13,8 +13,9 @@ import { useRouter } from "@tanstack/react-router";
  *
  * One retry per resource `key` (the route param): a retry that still errors
  * stays an error — no loop — while navigating to a different resource arms
- * the retry again. Mounted by the resource shells beside `useNotFoundRedirect`
- * with the shell's own dehydrated `RouteResource`; an absent resource (a shell
+ * the retry again. Mounted by the resource shells beside their read state
+ * (`resourceReadState`) with the shell's own dehydrated `RouteResource`; an
+ * absent resource (a shell
  * rendered outside its route, as in tests) is a no-op.
  *
  * Both re-runs are same-location `replace` navigations, NOT

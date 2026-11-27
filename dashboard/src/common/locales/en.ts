@@ -520,10 +520,122 @@ const enCommon: Record<string, TranslationEntry> = {
     description:
       "Body of a panel whose read failed with no server reason to show (a network failure or throttling)",
   },
-  "common.resourceNotFoundToast": {
-    message: "That resource doesn't exist or was deleted.",
+  "common.serviceNotFoundTitle": {
+    message: "Service not found",
     description:
-      "Toast shown after a dead resource URL redirects to the home page (w9/m55)",
+      "Title of a service page whose id leads nowhere (Render's ResourceNotFound, w3/m706)",
+  },
+  "common.serviceDeletedTitle": {
+    message: "Service deleted",
+    description:
+      "Title of a service page whose service the dashboard had read and is now gone (w3/m706)",
+  },
+  "common.cronJobNotFoundTitle": {
+    message: "Cron job not found",
+    description: "Title of a cron job page whose id leads nowhere (w3/m706)",
+  },
+  "common.cronJobDeletedTitle": {
+    message: "Cron job deleted",
+    description:
+      "Title of a cron job page whose cron job the dashboard had read and is now gone (w3/m706)",
+  },
+  "common.sandboxGroupNotFoundTitle": {
+    message: "Sandbox group not found",
+    description:
+      "Title of a sandbox group page whose id leads nowhere (w3/m706)",
+  },
+  "common.sandboxGroupDeletedTitle": {
+    message: "Sandbox group deleted",
+    description:
+      "Title of a sandbox group page whose group the dashboard had read and is now gone (w3/m706)",
+  },
+  "common.deployNotFoundTitle": {
+    message: "Deploy not found",
+    description:
+      "Title of a deploy page whose deploy id leads nowhere under a live service (w3/m706)",
+  },
+  "common.buildNotFoundTitle": {
+    message: "Build not found",
+    description:
+      "Title of a build page whose build id leads nowhere under a live build source (w3/m706)",
+  },
+  "common.resourceNotFoundBody": {
+    message:
+      "We couldn’t find {id}. It may have been deleted, or the link may be incorrect.",
+    description:
+      "Body of a resource page whose id leads nowhere; {id} is the id, drawn as a code chip (w3/m706)",
+  },
+  "common.resourceDeletedBody": {
+    message: "{name} ({id}) was deleted.",
+    description:
+      "Body of a resource page whose resource the dashboard had read and is now gone; {name} is its name, {id} its id (w3/m706)",
+  },
+  "common.resourceNotFoundForBody": {
+    message: "We couldn’t find {id} for {parent}. The link may be incorrect.",
+    description:
+      "Body of a deploy or build page whose id leads nowhere; {id} is the id, {parent} the service or build source it was opened under (w3/m706)",
+  },
+  "common.goToProject": {
+    message: "Go to project",
+    description:
+      "Button on a missing resource's page that opens the project it was in (w3/m706)",
+  },
+  "common.returnHome": {
+    message: "Return home",
+    description:
+      "Button on a missing, denied or failed resource's page that opens the home page (w3/m706)",
+  },
+  "common.viewDeploys": {
+    message: "View deploys",
+    description:
+      "Button on a missing deploy's page that opens its service's deploys (w3/m706)",
+  },
+  "common.viewBuilds": {
+    message: "View builds",
+    description:
+      "Button on a missing build's page that opens its build source's builds (w3/m706)",
+  },
+  "common.goToWebhooks": {
+    message: "Go to Webhooks",
+    description:
+      "Button on a missing or denied webhook's page that opens the webhooks list (w3/m706)",
+  },
+  "common.resourceDoesNotExist": {
+    message: "{id} doesn’t exist.",
+    description:
+      "Body of the Page not found state a resource page draws for a dead id; {id} is the id (w3/m706)",
+  },
+  "common.accessDeniedTitle": {
+    message: "Access denied",
+    description: "Title of a resource page whose read was refused (w3/m706)",
+  },
+  "common.accessDeniedBody": {
+    message: "You don’t have access to {id}.",
+    description:
+      "Body of a resource page whose read was refused; {id} is the id (w3/m706)",
+  },
+  "common.accessDeniedBodyNoId": {
+    message: "You don’t have access to this resource.",
+    description: "Body of a refused page that names no id (w3/m706)",
+  },
+  "common.resourceLoadFailedTitle": {
+    message: "An error occurred",
+    description: "Title of a resource page whose read failed (w3/m706)",
+  },
+  "common.resourceLoadFailedBody": {
+    message: "{id} could not be loaded.",
+    description:
+      "Body of a resource page whose read failed; {id} is the id (w3/m706)",
+  },
+  "common.copyId": {
+    message: "Copy ID",
+    description:
+      "Accessible name of the copy button beside an id in a resource state (w3/m706)",
+  },
+  "common.copyIdError": {
+    message: "Couldn't copy the ID",
+    description:
+      "Toast when copying an id from a resource state fails (w3/m706)",
   },
   "common.resourceErrorBody": {
     message: "The resource couldn't be loaded. Check the API and try again.",

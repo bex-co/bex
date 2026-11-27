@@ -1,17 +1,17 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, Box, FolderKanban, GitBranch, Play } from "lucide-react";
 import { CopyButton } from "@/common/components/copy-button";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { PageFrame, PageHeader } from "@/common/components/page-frame";
-import { ResourceLoadError } from "@/common/components/resource-load-error";
+import {
+  AccessDenied,
+  ResourceStatePage,
+  ResourceStateView,
+} from "@/common/components/resource-not-found";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
-import {
-  resourceLoadErrorVariant,
-  resourceNotFound,
-  useNotFoundRedirect,
-} from "@/common/hooks/use-not-found-redirect";
+import { resourceReadState } from "@/common/lib/resource-read-state";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { regionLabel } from "@/common/lib/region-label";
 import { cn } from "@/common/lib/utils/utils";
@@ -41,7 +41,6 @@ export function BuildSourceLayout({ buildSourceId }: BuildSourceLayoutProps) {
     buildSource: loaded,
     loading,
     error,
-    notFound,
     refetch,
   } = useBuildSource(buildSourceId);
   const adopting = useAdoptResourceWorkspace(buildSourceId, loaded?.ownerId);
@@ -55,44 +54,21 @@ export function BuildSourceLayout({ buildSourceId }: BuildSourceLayoutProps) {
     select: (state) => (state.resolvedLocation ?? state.location).pathname,
   });
 
-  const notFoundTarget = useMemo(
-    () => ({ to: "/build-sources" as const, replace: true }),
-    [],
-  );
-  useNotFoundRedirect(
-    !adopting && (notFound || resourceNotFound(loaded, loading, error)),
-    notFoundTarget,
-  );
-
-  const loadErrorVariant = notFound
+  // A dead id keeps its URL and draws Render's Page not found; a refused read
+  // draws Access denied, which on Render's build source names no id; any
+  // other failure draws "An error occurred" (w3/m706).
+  const readState = adopting
     ? null
-    : resourceLoadErrorVariant(loaded, loading, error);
-  if (loadErrorVariant) {
+    : resourceReadState(loaded, loading, error);
+  if (readState) {
     return (
-      <DashboardLayout>
-        <PageFrame
-          header={
-            <PageHeader
-              leading={
-                <Button asChild size="icon-sm" variant="ghost">
-                  <Link
-                    to="/build-sources"
-                    aria-label={t("buildSources.backToList")}
-                  >
-                    <ArrowLeft className="size-4" aria-hidden="true" />
-                  </Link>
-                </Button>
-              }
-              title={t("buildSources.resourceType")}
-            />
-          }
-        >
-          <ResourceLoadError
-            variant={loadErrorVariant}
-            onRetry={() => void refetch()}
-          />
-        </PageFrame>
-      </DashboardLayout>
+      <ResourceStatePage>
+        {readState === "forbidden" ? (
+          <AccessDenied />
+        ) : (
+          <ResourceStateView state={readState} id={buildSourceId} />
+        )}
+      </ResourceStatePage>
     );
   }
 

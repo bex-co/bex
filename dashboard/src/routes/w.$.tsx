@@ -6,7 +6,10 @@ import {
   splatParts,
 } from "@/common/lib/render-alias";
 import { WorkspaceAliasSkeleton } from "@/common/components/route-skeletons";
-import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
+import {
+  AccessDenied,
+  ResourceStatePage,
+} from "@/common/components/resource-not-found";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 /**
@@ -19,8 +22,8 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
  * whenever the switcher points elsewhere, the confused-deputy shape the
  * backend's resolver refuses. The selection is membership-checked against the
  * switcher's own list (which only ever contains memberships): a foreign or
- * unknown id redirects home with a not-found toast (w9/m55), never a silent
- * fallback to the caller's own workspace.
+ * unknown id keeps its URL and draws Access denied with the id (w3/m706),
+ * never a silent fallback to the caller's own workspace.
  */
 export const Route = createFileRoute("/w/$")({
   staticData: { chrome: true },
@@ -59,10 +62,6 @@ function WorkspaceAliasPage() {
   const [teaId, sub] = splatParts(_splat);
   const isMember = workspaces.some((w) => w.id === teaId);
 
-  // A foreign or unknown workspace id redirects home with a toast (w9/m55) —
-  // still never a silent fallback to the caller's own workspace.
-  useNotFoundRedirect(!loading && !isMember);
-
   useEffect(() => {
     if (loading || !isMember) return;
     if (teaId !== currentWorkspaceId) setCurrentWorkspaceId(teaId);
@@ -77,9 +76,19 @@ function WorkspaceAliasPage() {
     navigate,
   ]);
 
+  // A foreign or unknown workspace id draws Access denied in place, as
+  // Render's pages do for a workspace the caller is not in (w3/m706) — still
+  // never a silent fallback to the caller's own workspace.
+  if (!loading && !isMember) {
+    return (
+      <ResourceStatePage>
+        <AccessDenied id={teaId} />
+      </ResourceStatePage>
+    );
+  }
+
   // Preserve the exact destination geometry throughout: while membership
-  // resolves, while a member selection lands, and while an unknown-id
-  // redirect home is in flight.
+  // resolves and while a member selection lands.
   const destination =
     sub === "billing" ? "billing" : sub === undefined ? "overview" : "settings";
   return <WorkspaceAliasSkeleton destination={destination} />;

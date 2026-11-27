@@ -4,7 +4,7 @@ import {
   type DeployReasonTemplate,
 } from "@/features/deploys/lib/deploy-reason";
 import { useQuery } from "@apollo/client/react";
-import { resourceNotFound } from "@/common/hooks/use-not-found-redirect";
+import { resourceNotFound } from "@/common/lib/resource-read-state";
 import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,

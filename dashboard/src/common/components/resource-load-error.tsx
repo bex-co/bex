@@ -4,10 +4,10 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useSignInAgain } from "@/common/lib/auth/sign-in-again";
 
 /**
- * Settled-error state for a detail page whose resource query failed (w9/m55).
- * Distinct from not-found — a dead id redirects home via `useNotFoundRedirect`;
- * a failed query stays put here so a backend outage never masquerades as a
- * deleted resource.
+ * Settled-error state for a panel or list whose query failed (w9/m55). A
+ * resource page's own read draws Render's states instead
+ * (`resource-not-found.tsx`, w3/m706); its expired session still lands on the
+ * `"unauthenticated"` variant here.
  *
  * Two variants (w3/m80 t002), so an expired session never wears the network
  * error's clothes:

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
 import {
   RouterProvider,
@@ -35,6 +35,10 @@ vi.mock("@/features/services/hooks/use-server", () => ({
 }));
 // What the cache says of the service's source while its read is in flight.
 const cachedSource: { value: CachedServiceSource | null } = { value: null };
+// The not-found page reads the missing service's cached name over Apollo.
+vi.mock("@/common/hooks/use-missing-resource-context", () => ({
+  useMissingServiceContext: () => ({ name: null, projectId: null, type: null }),
+}));
 vi.mock("@/features/services/hooks/use-cached-service-type", () => ({
   useCachedServiceType: () => null,
   useCachedServiceSource: () => cachedSource.value,
@@ -514,15 +518,19 @@ describe("service-detail layout routing", () => {
     );
   });
 
-  it("redirects an unknown service id home from any tab (w9/m55)", async () => {
+  // w3/m706: Render's "Service not found" in place of every tab at once.
+  it("draws Service not found in place of any tab for an unknown service id", async () => {
     serverState.service = null;
     serverState.loading = false;
     const router = renderAt("/services/app/logs");
 
-    // the shell redirects above every tab — no service chrome, no outlet, and
-    // never a child tab borrowing another service's data en route
-    expect(await screen.findByText("services home")).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe("/");
+    // the shell draws the state above every tab — no service chrome, no
+    // outlet, and never a child tab borrowing another service's data
+    expect(
+      await screen.findByRole("heading", { name: "Service not found" }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/services/app/logs");
+    expect(screen.queryByText("services home")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: "Events" }),
     ).not.toBeInTheDocument();
@@ -729,24 +737,19 @@ describe("service-detail layout routing", () => {
     expect(screen.getByRole("heading", { name: "Metrics" })).toBeVisible();
   });
 
-  it("shows a retryable error instead of not-found when the service query fails", async () => {
+  it("draws An error occurred instead of not found when the service query fails", async () => {
     serverState.service = null;
     serverState.loading = false;
     serverState.error = new Error("Cannot query field ipAllowList");
     renderAt("/services/app/logs");
 
     expect(
-      await screen.findByText("Couldn't load service"),
+      await screen.findByRole("heading", { name: "An error occurred" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("The service may still exist.", { exact: false }),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/could not be loaded\./)).toBeInTheDocument();
     expect(screen.queryByText("Service not found")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: "Events" }),
     ).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(serverState.refetch).toHaveBeenCalledOnce();
   });
 });

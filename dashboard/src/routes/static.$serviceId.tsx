@@ -67,6 +67,13 @@ function PendingRouteComponent() {
 
 function RouteComponent() {
   const { serviceId } = Route.useParams();
-  useLoaderErrorRetry(Route.useLoaderData(), serviceId);
-  return <ServiceDetailLayout serviceId={serviceId} base="/static" />;
+  const loaderData = Route.useLoaderData();
+  useLoaderErrorRetry(loaderData, serviceId);
+  return (
+    <ServiceDetailLayout
+      serviceId={serviceId}
+      base="/static"
+      routeState={loaderData?.state}
+    />
+  );
 }

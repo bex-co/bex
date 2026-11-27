@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { ROUTE_SKELETON_MANIFEST } from "@/common/lib/route-skeleton-manifest";
 import { mockCapabilities } from "@/test/mocks/capabilities";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 import type { BuildSourceView } from "@/features/build-sources/types";
 import { BuildSourceLayout } from "../build-source-layout";
 import { BuildSourceDetailRouteSkeleton } from "../build-source-skeletons";
@@ -24,7 +25,6 @@ const sourceState = vi.hoisted(() => ({
 }));
 
 const capabilitiesState = vi.hoisted(() => ({ canCreate: true }));
-const notFoundSpy = vi.hoisted(() => vi.fn());
 
 vi.mock("@/features/build-sources/hooks/use-build-source", () => ({
   useBuildSource: () => sourceState,
@@ -42,16 +42,6 @@ vi.mock("@/features/projects/hooks/use-projects", () => ({
 vi.mock("@/features/workspaces/hooks/use-adopt-resource-workspace", () => ({
   useAdoptResourceWorkspace: () => false,
 }));
-vi.mock("@/common/hooks/use-not-found-redirect", async (importOriginal) => {
-  const actual =
-    await importOriginal<
-      typeof import("@/common/hooks/use-not-found-redirect")
-    >();
-  return {
-    ...actual,
-    useNotFoundRedirect: (...args: unknown[]) => notFoundSpy(...args),
-  };
-});
 vi.mock("@/common/components/dashboard-layout", () => ({
   DashboardLayout: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
@@ -149,7 +139,7 @@ function renderLayout(buildSourceId: string) {
     }),
     context: { client: {} as never, session: null },
   });
-  return render(<RouterProvider router={router} />);
+  return Object.assign(render(<RouterProvider router={router} />), { router });
 }
 
 beforeEach(() => {
@@ -231,29 +221,51 @@ describe("BuildSourceLayout (w2/m614/t001)", () => {
     ).toHaveAttribute("href", "/workspace/settings#build-pipeline");
   });
 
-  it("redirects unknown build source IDs back to /build-sources", async () => {
+  // w3/m706: Render's build source draws Page not found for a dead id, in
+  // place: the URL stays and nothing redirects.
+  it("draws Page not found in place for an unknown build source id", async () => {
     sourceState.buildSource = null;
     sourceState.notFound = true;
-    sourceState.error = new Error("not found");
-    renderLayout("bds-missing");
+    sourceState.error = codedGraphQLError("NOT_FOUND", {}, "not found");
+    const { router } = renderLayout("bds-missing");
 
-    await screen.findByText((_, el) => el?.getAttribute("data-route-skeleton") === "build-source-detail");
-    expect(notFoundSpy).toHaveBeenCalledWith(true, {
-      to: "/build-sources",
-      replace: true,
-    });
+    expect(
+      await screen.findByRole("heading", { name: "Page not found" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("bds-missing")).toBeInTheDocument();
+    expect(screen.getByText(/doesn’t exist\./)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Return home" })).toHaveAttribute(
+      "href",
+      "/",
+    );
+    expect(router.state.location.pathname).toBe("/build-sources/bds-missing");
   });
 
-  it("renders ResourceLoadError instead of redirecting on network error", async () => {
+  // Render's build source names no id when it denies access.
+  it("draws Access denied without the id for a refused read", async () => {
+    sourceState.buildSource = null;
+    sourceState.error = codedGraphQLError("FORBIDDEN", {}, "forbidden");
+    renderLayout("bds-foreign");
+
+    expect(
+      await screen.findByRole("heading", { name: "Access denied" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("You don’t have access to this resource."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("bds-foreign")).toBeNull();
+  });
+
+  it("draws An error occurred, never Page not found, on a network error", async () => {
     sourceState.buildSource = null;
     sourceState.error = new Error("network timeout");
     renderLayout("bds-err");
 
-    expect(await screen.findByRole("button", { name: /Try again/i })).toBeInTheDocument();
-    expect(notFoundSpy).toHaveBeenCalledWith(false, {
-      to: "/build-sources",
-      replace: true,
-    });
+    expect(
+      await screen.findByRole("heading", { name: "An error occurred" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/could not be loaded\./)).toBeInTheDocument();
+    expect(screen.queryByText("Page not found")).toBeNull();
   });
 
   it("pending skeleton declares all regions in ROUTE_SKELETON_MANIFEST", () => {

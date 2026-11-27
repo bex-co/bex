@@ -55,6 +55,7 @@ function service(undeployedChanges: boolean): ServerQuery["server"] {
     autoDeploy: null,
     autoDeployTrigger: null,
     environmentId: null,
+    projectId: null,
     linkedEnvGroupIds: null,
     pushDeliveryMethod: null,
     repoAccessLost: null,

@@ -486,14 +486,6 @@ const koServices: Record<string, TranslationEntry> = {
     message: "bex-api 요청이 실패했습니다. 연결을 확인한 후 다시 시도하세요.",
     description: "Services list error card body",
   },
-  "services.detailErrorTitle": {
-    message: "서비스를 불러오지 못했습니다",
-    description: "Service detail query error card title",
-  },
-  "services.detailErrorBody": {
-    message: "bex-api 요청이 실패했습니다. 서비스는 아직 존재할 수 있습니다.",
-    description: "Service detail query error card body",
-  },
   "services.emptyTitle": {
     message: "아직 서비스 없음",
     description: "Services list empty state title",

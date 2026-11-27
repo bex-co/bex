@@ -11,7 +11,12 @@ import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { EnvGroupDetailContentSkeleton } from "@/common/components/route-skeletons";
 import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
-import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
+import {
+  ResourceStatePage,
+  ResourceStateView,
+} from "@/common/components/resource-not-found";
+import { resourceReadState } from "@/common/lib/resource-read-state";
+import { isAdminOnlyRefusal } from "@/features/capabilities/lib/admin-only";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/common/components/ui/button";
 import { Skeleton } from "@/common/components/ui/skeleton";
@@ -26,7 +31,6 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import {
-  isEnvGroupNotFound,
   useEnvGroup,
   useEnvGroupMutations,
 } from "@/features/env-groups/hooks/use-env-groups";
@@ -117,15 +121,14 @@ export function EnvGroupDetailPage() {
   };
   const deleteGroup = async (id: string) => {
     // Deleting evicts this detail query before the action callback navigates
-    // back to the collection. Suppress the generic dead-id redirect during
-    // that intentional gap so it cannot race the collection navigation.
+    // back to the collection. Hold the frame during that intentional gap so
+    // the not-found page cannot flash before the collection navigation.
     setDeleteInFlight(true);
     const deleted = await mutations.deleteGroup(id);
     if (!deleted) setDeleteInFlight(false);
     return deleted;
   };
   const errorKind = classifySecretStoreError(error);
-  const notFound = isEnvGroupNotFound(error);
   const environmentId = group?.environmentId;
   const environmentName = environmentId
     ? environmentNameIn(scope, environmentId)
@@ -144,13 +147,30 @@ export function EnvGroupDetailPage() {
       t("envGroups.unknownEnvironment", { id: environmentId }));
 
   // A dead id — a not-found-shaped error, or a null row with no error at all —
-  // redirects home (w9/m55); any other failed query stays put on the inline
-  // error state so an outage never masquerades as a deleted group. A
-  // roll-window loader failure re-runs once (w1/m52) so the title recovers.
-  useNotFoundRedirect(
-    !deleteInFlight && !loading && !loaded && (notFound || !errorKind),
-  );
-  useLoaderErrorRetry(Route.useLoaderData(), groupId);
+  // keeps its URL and draws Render's Page not found; a refused read (a
+  // protected environment's admin-only refusal included) draws Access denied
+  // and any other failure "An error occurred", so an outage never masquerades
+  // as a deleted group (w3/m706). A deployment without a secret store keeps
+  // its own notice below. A roll-window loader failure re-runs once (w1/m52)
+  // so the title recovers.
+  const loaderData = Route.useLoaderData();
+  const readState =
+    deleteInFlight || adopting
+      ? null
+      : resourceReadState(loaded, loading, error, loaderData?.state);
+  const state =
+    readState === "error" && isAdminOnlyRefusal(error)
+      ? "forbidden"
+      : readState;
+  useLoaderErrorRetry(loaderData, groupId);
+
+  if (state && errorKind !== "unavailable") {
+    return (
+      <ResourceStatePage>
+        <ResourceStateView state={state} id={groupId} />
+      </ResourceStatePage>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -212,9 +232,7 @@ export function EnvGroupDetailPage() {
 
       <PageScroll>
         <div className="mx-auto w-full max-w-5xl space-y-6">
-          {(adopting || loading || notFound || !errorKind) && !group ? (
-            <EnvGroupDetailContentSkeleton />
-          ) : errorKind && !group ? (
+          {errorKind === "unavailable" && !group ? (
             <div className="flex flex-col items-center gap-2 py-12 text-center">
               <AlertTriangle className="size-8 text-destructive" />
               <p className="font-medium">{t(`envGroups.${errorKind}Title`)}</p>
@@ -222,7 +240,9 @@ export function EnvGroupDetailPage() {
                 {t(`envGroups.${errorKind}Body`)}
               </p>
             </div>
-          ) : !group ? null : (
+          ) : !group ? (
+            <EnvGroupDetailContentSkeleton />
+          ) : (
             <>
               <Card>
                 <CardHeader>

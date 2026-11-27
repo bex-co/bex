@@ -23,11 +23,12 @@ import { blankSelection } from "@/test/mocks/blank-selection";
 /**
  * w4/340: deleting a service from its own Settings evicts the Service, and the
  * still-mounted detail layout refetches `server(id)` and reads not-found while
- * the navigation home is still loading. Its dead-id redirect then toasted
- * "That resource doesn't exist or was deleted." beside "Deleted <name>". Real
- * Apollo cache, real layout, hook and card; only the network is faked, and the
- * home route's loader is held so the layout stays mounted through the
- * not-found read, as it does in production while the next route loads.
+ * the navigation home is still loading. Its dead-id handling then toasted
+ * "That resource doesn't exist or was deleted." beside "Deleted <name>" (and,
+ * since w3/m706, would draw "Service not found"). Real Apollo cache, real
+ * layout, hook and card; only the network is faked, and the home route's
+ * loader is held so the layout stays mounted through the not-found read, as it
+ * does in production while the next route loads.
  */
 
 vi.mock("sonner", () => ({
@@ -76,7 +77,6 @@ vi.mock("@/features/services/components/service-detail-header", () => ({
 }));
 
 const PHRASE = "sudo delete web service web";
-const NOT_FOUND = "That resource doesn't exist or was deleted.";
 
 let gone: boolean;
 let refuseDelete: boolean;
@@ -219,7 +219,10 @@ describe("service detail delete (w4/340)", () => {
     expect(toast.error).not.toHaveBeenCalled();
   });
 
-  it("keeps the dead-id redirect for a not-found that follows a refused delete", async () => {
+  // w3/m706: a service deleted elsewhere after a refused delete is a real
+  // dead id. The page stays and draws Render's deleted variant, named from the
+  // Service the real Apollo cache still holds; nothing toasts but the refusal.
+  it("draws Service deleted in place for a not-found that follows a refused delete", async () => {
     refuseDelete = true;
     const { client, router, releaseHome } = renderDetail();
     await confirmDelete();
@@ -233,13 +236,18 @@ describe("service detail delete (w4/340)", () => {
     await act(async () => {
       await client.refetchQueries({ include: [ServerDocument] });
     });
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith(NOT_FOUND, {
-        id: "resource-not-found",
-      }),
+    const heading = await screen.findByRole("heading", {
+      name: "Service deleted",
+    });
+    const state = within(
+      heading.closest<HTMLElement>("[data-resource-state]")!,
     );
+    expect(state.getByText("web")).toBeInTheDocument();
+    expect(state.getByText("srv-1")).toBeInTheDocument();
     await act(async () => releaseHome());
-    expect(await screen.findByText("home page")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/services/srv-1/settings");
+    expect(screen.queryByText("home page")).not.toBeInTheDocument();
+    expect(toast.error).toHaveBeenCalledTimes(1);
     expect(toast.success).not.toHaveBeenCalled();
   });
 });

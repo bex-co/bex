@@ -15,6 +15,12 @@ import { CopyButton } from "@/common/components/copy-button";
 import { LocalDateTime } from "@/common/components/local-time";
 import { ResourceLoadError } from "@/common/components/resource-load-error";
 import {
+  AccessDenied,
+  NotFoundForParentBody,
+  ResourceNotFound,
+} from "@/common/components/resource-not-found";
+import { useResourceNotFoundLinks } from "@/common/hooks/use-resource-state-links";
+import {
   Alert,
   AlertDescription,
   AlertTitle,
@@ -27,11 +33,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
-import {
-  resourceNotFound,
-  useNotFoundRedirect,
-} from "@/common/hooks/use-not-found-redirect";
+import { useHydrated } from "@/common/hooks/use-hydrated";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { isForbiddenError } from "@/common/lib/graphql-error";
+import { resourceNotFound } from "@/common/lib/resource-read-state";
 import { CommitSha } from "@/features/deploys/components/commit-sha";
 import type { EventSourceFactory } from "@/features/logs/hooks/use-live-logs";
 import { useServices } from "@/features/services/hooks/use-services";
@@ -80,18 +85,18 @@ export function BuildDetailPage({
     return map;
   }, [buildSource.serviceLinks, services]);
 
-  const buildsTab = useMemo(
-    () => ({
-      to: "/build-sources/$buildSourceId" as const,
+  // A dead build id under a live build source keeps its URL and draws
+  // Render's "Build not found" for its parent, with View builds (w3/m706).
+  // The server render cannot see the build read's answer; the state waits
+  // for hydration so the HTML matches, then draws on the next render.
+  const hydrated = useHydrated();
+  const notFoundLinks = useResourceNotFoundLinks(null, [
+    {
+      label: t("common.viewBuilds"),
+      to: "/build-sources/$buildSourceId",
       params: { buildSourceId },
-      replace: true,
-    }),
-    [buildSourceId],
-  );
-  useNotFoundRedirect(
-    notFound || resourceNotFound(build, loading, error),
-    buildsTab,
-  );
+    },
+  ]);
 
   const backLink = (
     <Link
@@ -106,6 +111,23 @@ export function BuildDetailPage({
 
   if (loading) {
     return <BuildDetailRouteSkeleton />;
+  }
+
+  if (hydrated && (notFound || resourceNotFound(build, loading, error))) {
+    return (
+      <ResourceNotFound
+        kind="build"
+        id={buildId}
+        links={notFoundLinks}
+        body={(id) => (
+          <NotFoundForParentBody id={id} parent={buildSource.name} />
+        )}
+      />
+    );
+  }
+
+  if (hydrated && error && !build && isForbiddenError(error)) {
+    return <AccessDenied id={buildId} />;
   }
 
   if (error && !build && !notFound) {

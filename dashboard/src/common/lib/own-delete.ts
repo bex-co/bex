@@ -3,12 +3,13 @@
  * commit and the navigation home, a resource page is still mounted and its
  * polls (its own and its sections': a datastore's allowlist, credentials,
  * persistence) read the id as not found. Apollo writes that null to the shared
- * root field, the page's detail query settles empty, and `useNotFoundRedirect`
- * would toast "doesn't exist or was deleted" beside the delete's own success.
+ * root field, the page's detail query settles empty, and the page would draw
+ * its not-found state (w3/m706) beside the delete's own success toast.
  *
  * While a delete is in flight, and for a short grace after it succeeds (the
- * delete flow owns the navigation), the redirect stands down. A failed delete
- * re-arms it at once; a direct visit to a dead id is unaffected.
+ * delete flow owns the navigation), `resourceReadState` stands down and the
+ * page keeps its frame. A failed delete re-arms it at once; a direct visit to
+ * a dead id is unaffected.
  */
 const SUCCESS_GRACE_MS = 10_000;
 

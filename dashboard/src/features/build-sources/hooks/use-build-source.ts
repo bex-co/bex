@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { BuildSourceDocument } from "@/graphql/definitions";
-import { isNotFoundError } from "@/common/lib/graphql-error";
 import {
   mapBuildSource,
   type BuildSourceView,
@@ -11,7 +10,6 @@ export interface UseBuildSourceResult {
   buildSource: BuildSourceView | null;
   loading: boolean;
   error: Error | undefined;
-  notFound: boolean;
   refetch: () => Promise<BuildSourceView | null>;
 }
 
@@ -40,7 +38,6 @@ export function useBuildSource(id: string | null): UseBuildSourceResult {
     buildSource,
     loading: Boolean(id) && loading && data === undefined,
     error,
-    notFound: isNotFoundError(error),
     refetch: refetchOne,
   };
 }

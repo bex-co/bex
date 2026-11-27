@@ -1,11 +1,14 @@
 import { PageScroll } from "@/common/components/page-frame";
 import { Link, Outlet, createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { WebhookDetailShellSkeleton } from "@/common/components/route-skeletons";
 import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
-import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
+import {
+  ResourceStatePage,
+  ResourceStateView,
+} from "@/common/components/resource-not-found";
+import { resourceReadState } from "@/common/lib/resource-read-state";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspaceSubjectLabel } from "@/common/hooks/use-workspace-subject-label";
 import { WebhookDetailContext } from "@/features/webhooks/components/webhook-detail-context";
@@ -77,7 +80,7 @@ function WebhookDetailShell() {
   const { webhookId } = Route.useParams();
   const { t } = useTranslations();
   const detail = useWebhook(webhookId);
-  const { loading, notFound } = detail;
+  const { loading } = detail;
   // Judge this page's controls in the endpoint's own workspace (w4/641, as
   // w6/091 for services): until it is the selection, the shell skeleton stays
   // up so no admin-only control or secret paints for the wrong workspace.
@@ -88,13 +91,34 @@ function WebhookDetailShell() {
   const endpoint = adopting ? null : detail.endpoint;
   const creatorIdentity = useWorkspaceSubjectLabel(endpoint?.createdBy ?? "");
 
-  // A dead id redirects home (w9/m55); a failed query stays put on the inline
-  // error state below. `useWebhook` owns that split — a not-found is REPORTED
-  // as an error by bex-api, so neither `endpoint === null` nor `!error` decides
-  // it alone. A roll-window loader failure re-runs once (w1/m52) so the title
-  // recovers.
-  useNotFoundRedirect(notFound);
-  useLoaderErrorRetry(Route.useLoaderData(), webhookId);
+  // A dead id keeps its URL and draws Render's Page not found, and a refused
+  // read Access denied, both with Go to Webhooks as Render's webhook page
+  // has; any other failure draws "An error occurred" (w3/m706). A not-found
+  // is REPORTED as an error by bex-api, so neither `endpoint === null` nor
+  // `!error` decides it alone. A roll-window loader failure re-runs once
+  // (w1/m52) so the title recovers.
+  const loaderData = Route.useLoaderData();
+  const readState = adopting
+    ? null
+    : resourceReadState(
+        detail.endpoint,
+        loading,
+        detail.error,
+        loaderData?.state,
+      );
+  useLoaderErrorRetry(loaderData, webhookId);
+
+  if (readState) {
+    return (
+      <ResourceStatePage>
+        <ResourceStateView
+          state={readState}
+          id={webhookId}
+          action={{ label: t("common.goToWebhooks"), to: "/webhooks" }}
+        />
+      </ResourceStatePage>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -120,19 +144,8 @@ function WebhookDetailShell() {
             </div>
           </PageScroll>
         </>
-      ) : adopting || loading || notFound ? (
-        <WebhookDetailShellSkeleton />
       ) : (
-        <div className="flex flex-col items-center gap-2 py-12 text-center">
-          <AlertTriangle className="text-destructive size-8" />
-          <p className="font-medium">{t("webhooks.errorTitle")}</p>
-          <p className="text-muted-foreground text-sm">
-            {t("webhooks.errorBody")}
-          </p>
-          <Link to="/webhooks" className="text-sm underline">
-            {t("webhooks.backToList")}
-          </Link>
-        </div>
+        <WebhookDetailShellSkeleton />
       )}
     </DashboardLayout>
   );

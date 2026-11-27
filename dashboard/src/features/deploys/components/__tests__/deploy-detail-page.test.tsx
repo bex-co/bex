@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ServerError } from "@apollo/client/errors";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 import { fireEvent, render, screen } from "@testing-library/react";
 import {
   RouterProvider,
@@ -69,6 +70,7 @@ const serverState: {
   service:
     | {
         id: string;
+        name?: string;
         type?: string;
         repo?: string | null;
         buildSourceId?: string | null;
@@ -433,9 +435,12 @@ describe("DeployDetailPage", () => {
     },
   );
 
-  it("redirects a dead deploy id to the service's Deploys tab (w9/m55)", async () => {
+  // w3/m706: Render's DeployDetailsHeader keeps the URL and draws "Deploy
+  // not found" for the service, with View deploys then Return home.
+  it("draws Deploy not found for the service in place of a dead deploy id", async () => {
     deployState.deploy = null as never;
     deployState.notFound = true;
+    serverState.service = { id: "web", name: "orders-api" };
 
     const rootRoute = createRootRoute();
     const deploysRoute = createRoute({
@@ -459,9 +464,33 @@ describe("DeployDetailPage", () => {
     });
     render(<RouterProvider router={router} />);
 
-    // to the nearest live parent — the service exists, only the deploy is dead
-    expect(await screen.findByText("deploys tab")).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe("/services/web/deploys");
+    expect(
+      await screen.findByRole("heading", { name: "Deploy not found" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("dep-missing")).toBeInTheDocument();
+    expect(screen.getByText("orders-api")).toBeInTheDocument();
+    expect(screen.getByText(/The link may be incorrect\./)).toBeInTheDocument();
+    const links = screen.getAllByRole("link");
+    expect(links.map((link) => link.textContent)).toEqual([
+      "View deploys",
+      "Return home",
+    ]);
+    expect(links[0]).toHaveAttribute("href", "/services/web/deploys");
+    expect(router.state.location.pathname).toBe(
+      "/services/web/deploys/dep-missing",
+    );
+    expect(screen.queryByText("deploys tab")).not.toBeInTheDocument();
+  });
+
+  it("draws Access denied for a refused deploy read", () => {
+    deployState.deploy = null as never;
+    deployState.error = codedGraphQLError("FORBIDDEN", {}, "forbidden");
+
+    render(<DeployDetailPage serviceId="web" deployId="dep-1" />);
+
+    expect(
+      screen.getByRole("heading", { name: "Access denied" }),
+    ).toBeInTheDocument();
   });
 
   it("offers Sign in, not Try again, when the session has expired", () => {

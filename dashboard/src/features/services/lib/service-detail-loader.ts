@@ -6,12 +6,11 @@ import {
   ServicesDocument,
 } from "@/graphql/definitions";
 import type { ServerQuery } from "@/graphql/definitions";
-import { isNotFoundError } from "@/common/lib/graphql-error";
 import {
+  routeResourceFailure,
   titleLoaderFetchPolicy,
   type RouteResource,
 } from "@/common/lib/document-head";
-import { isUnauthenticatedError } from "@/common/apollo/auth-error-link";
 import { redirectPreservingSuffix } from "@/common/lib/render-alias";
 import type { RouterContext } from "@/common/types/router-context";
 import { serviceBaseForType, type ServiceBase } from "./service-base";
@@ -104,11 +103,7 @@ export async function loadServiceDetail(
       ? server
       : null;
   if (resource) return { state: "ready", resource };
-  if (result.error && isUnauthenticatedError(result.error))
-    return { state: "unauthenticated" };
-  if (!result.error || isNotFoundError(result.error))
-    return { state: "not-found" };
-  return { state: "error" };
+  return routeResourceFailure(result.error);
 }
 
 /** Swap the leading base segment (`/services` ↔ `/static`) and redirect,

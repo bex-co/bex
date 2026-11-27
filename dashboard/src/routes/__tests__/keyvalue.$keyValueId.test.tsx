@@ -355,22 +355,28 @@ describe("a Key Value instance's Info page", () => {
     expect(kvStore.connectionMounts).toBe(initial + 1);
   });
 
-  it("redirects a dead store id home (w9/m55)", async () => {
+  // w3/m706: Render's Key Value draws Page not found in place.
+  it("draws Page not found in place for a dead store id", async () => {
     keyValueState.keyValue = null;
     keyValueState.loading = false;
     const router = renderPage();
 
-    expect(await screen.findByText("services home")).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe("/");
+    expect(
+      await screen.findByRole("heading", { name: "Page not found" }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/keyvalue/sessions-cache");
+    expect(screen.queryByText("services home")).not.toBeInTheDocument();
   });
 
-  it("stays put on the inline error state when the query fails (w9/m55)", async () => {
+  it("draws An error occurred, never Page not found, when the query fails", async () => {
     keyValueState.keyValue = null;
     keyValueState.loading = false;
     keyValueState.error = new Error("bex-api unreachable");
     const router = renderPage();
 
-    expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "An error occurred" }),
+    ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/keyvalue/sessions-cache");
   });
 

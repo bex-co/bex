@@ -1,17 +1,17 @@
-import { PageScroll } from "@/common/components/page-frame";
 import { useState, type ReactNode } from "react";
 import { Outlet, useRouterState } from "@tanstack/react-router";
-import { LogIn, TriangleAlert } from "lucide-react";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
-import { Button } from "@/common/components/ui/button";
-import { Card, CardContent } from "@/common/components/ui/card";
 import {
-  resourceLoadErrorVariant,
-  resourceNotFound,
-  useNotFoundRedirect,
-} from "@/common/hooks/use-not-found-redirect";
-import { useSignInAgain } from "@/common/lib/auth/sign-in-again";
+  ResourceNotFound,
+  ResourceStatePage,
+  ResourceStateView,
+} from "@/common/components/resource-not-found";
+import { useResourceNotFoundLinks } from "@/common/hooks/use-resource-state-links";
+import { useMissingServiceContext } from "@/common/hooks/use-missing-resource-context";
+import { resourceReadState } from "@/common/lib/resource-read-state";
+import type { RouteResource } from "@/common/lib/document-head";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { isCronType } from "@/features/services/lib/service-type";
 import { useServer } from "@/features/services/hooks/use-server";
 import {
   serviceHeaderHidden,
@@ -52,9 +52,13 @@ export function ServiceDetailLayout({
   serviceId,
   base = "/services",
   routePending = false,
+  routeState,
 }: {
   serviceId: string;
   base?: ServiceBase;
+  /** The route loader's verdict on the service, which alone can tell a
+   *  refused read from a missing one (`resourceReadState`). */
+  routeState?: RouteResource<unknown>["state"];
   /**
    * Rendered as the parent route's pendingComponent while its title loader
    * runs. The pending frame shows the same chrome with the tab skeleton and
@@ -75,7 +79,6 @@ export function ServiceDetailLayout({
     useLatestDeploy(serviceId, { skip: activityDenied });
   const { pending, run } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();
-  const signInAgain = useSignInAgain();
   const [deletingSelf, setDeletingSelf] = useState(false);
   // The open tab's own name, from the pathname alone, so the loading frame
   // and the loaded tab carry the same heading.
@@ -87,81 +90,38 @@ export function ServiceDetailLayout({
     select: (s) => serviceHeaderHidden(s.location.pathname, serviceId, base),
   });
 
-  // Unknown service id: redirect home with a toast (w9/m55) — covering every
-  // child tab at once. A genuine query error is excluded; it keeps the inline
-  // retry state below, and so is this service's own delete (w4/340).
-  useNotFoundRedirect(
-    !routePending && !deletingSelf && resourceNotFound(service, loading, error),
-  );
-
   // `base` (the route tree this layout renders under) rides context so the
   // sidebar + every tab's intra-detail link stays within /services or /static
   // (Render parity, w5/m57) without re-sniffing the router.
   let content: ReactNode;
-  // A failed `server(id)` query is not evidence that the service is absent.
-  // Keep it distinct from not-found so schema skew, auth failures, and backend
-  // outages never masquerade as a deleted service. And keep an EXPIRED session
-  // distinct from a backend outage (w3/m80 t002): a 401 gets the "your session
-  // has expired — sign in" card (the auth link is usually already redirecting),
-  // never the "The request to bex-api failed" retry card the screenshot showed.
-  const loadErrorVariant = resourceLoadErrorVariant(service, loading, error);
-  const expired = loadErrorVariant === "unauthenticated";
-  // The pending frame never decides error/not-found and never shows the live
-  // service: it is chrome + the active tab's skeleton until the real mount
-  // replaces it.
+  // A dead id keeps its URL and draws Render's "Service not found" (or
+  // "Service deleted", "Cron job …") in place of every tab at once; a refused
+  // read draws Access denied, an expired session Sign in, any other failure
+  // "An error occurred" (w3/m706). This service's own delete is not a dead id:
+  // its flow owns the toast and the landing (w4/340), so the frame stays up.
+  // The pending frame never decides a state and never shows the live service:
+  // it is chrome + the active tab's skeleton until the real mount replaces it.
+  const readState = routePending
+    ? null
+    : resourceReadState(service, loading, error, routeState);
+  const state = readState === "not-found" && deletingSelf ? null : readState;
   const shownService = routePending ? null : service;
-  if (!routePending && loadErrorVariant) {
+  if (state) {
     content = (
-      <DashboardLayout>
-        <PageScroll>
-          <div className="mx-auto w-full max-w-5xl">
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-                {expired ? (
-                  <LogIn className="text-muted-foreground h-8 w-8" />
-                ) : (
-                  <TriangleAlert className="text-destructive h-8 w-8" />
-                )}
-                <div>
-                  <p className="mb-1 font-medium">
-                    {t(
-                      expired
-                        ? "common.sessionExpiredTitle"
-                        : "services.detailErrorTitle",
-                    )}
-                  </p>
-                  <p className="text-muted-foreground text-sm">
-                    {t(
-                      expired
-                        ? "common.sessionExpiredBody"
-                        : "services.detailErrorBody",
-                    )}
-                  </p>
-                </div>
-                {expired ? (
-                  <Button size="sm" onClick={signInAgain}>
-                    {t("common.signIn")}
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void refetch()}
-                  >
-                    {t("common.tryAgain")}
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </PageScroll>
-      </DashboardLayout>
+      <ResourceStatePage>
+        <ResourceStateView
+          state={state}
+          id={serviceId}
+          notFound={<ServiceNotFound serviceId={serviceId} />}
+        />
+      </ResourceStatePage>
     );
   } else if (!routePending && !service && !loading) {
-    // Unknown service id: the redirect above is already in flight. Render only
-    // skeleton chrome for the WHOLE detail (every tab) — never let a child tab
-    // borrow another service's data (the 2026-07-09 phantom-service bug the
-    // fixed stub also guards against), so the `<Outlet/>` stays unmounted.
+    // This service's own delete reads its id as gone while its flow lands
+    // elsewhere. Render only skeleton chrome for the WHOLE detail (every tab)
+    // meanwhile — never let a child tab borrow another service's data (the
+    // 2026-07-09 phantom-service bug the fixed stub also guards against), so
+    // the `<Outlet/>` stays unmounted.
     content = (
       <DashboardLayout>
         <div
@@ -239,6 +199,24 @@ export function ServiceDetailLayout({
         {content}
       </ServiceDeletingProvider>
     </ServiceBaseProvider>
+  );
+}
+
+/**
+ * Render's missing service: "Service not found", or "Service deleted" with
+ * its name when the cache still holds it ("Cron job …" for a cron job), Go to
+ * project when it sat in one, and Return home.
+ */
+function ServiceNotFound({ serviceId }: { serviceId: string }) {
+  const { name, projectId, type } = useMissingServiceContext(serviceId);
+  const links = useResourceNotFoundLinks(projectId);
+  return (
+    <ResourceNotFound
+      kind={type && isCronType(type) ? "cronJob" : "service"}
+      id={serviceId}
+      name={name}
+      links={links}
+    />
   );
 }
 

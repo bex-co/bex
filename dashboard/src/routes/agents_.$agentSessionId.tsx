@@ -125,8 +125,10 @@ export const Route = createFileRoute("/agents_/$agentSessionId")({
     // session in Apollo's cache without its error, so a cache-served re-run
     // read "no error" and titled the tab "Page not found" while the body said
     // it couldn't load. Only an answer that said NOT_FOUND is not found here
-    // (w4/523).
-    return result.state === "not-found" && !failed
+    // (w4/523), and a refusal titles the tab as the body reads it: an error,
+    // not the resource pages' Access denied (w3/m706).
+    return result.state === "forbidden" ||
+      (result.state === "not-found" && !failed)
       ? { state: "error" as const }
       : result;
   },

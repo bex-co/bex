@@ -11,14 +11,13 @@ import {
   DatastoreMetricsSkeleton,
   KeyValueInfoSkeleton,
 } from "@/common/components/route-skeletons";
-import { ResourceLoadError } from "@/common/components/resource-load-error";
+import {
+  ResourceStatePage,
+  ResourceStateView,
+} from "@/common/components/resource-not-found";
 import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
 import { useScrollToHashedCard } from "@/common/hooks/use-scroll-to-hashed-card";
-import {
-  resourceLoadErrorVariant,
-  resourceNotFound,
-  useNotFoundRedirect,
-} from "@/common/hooks/use-not-found-redirect";
+import { resourceReadState } from "@/common/lib/resource-read-state";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useKeyValue } from "@/features/keyvalue/hooks/use-key-value";
@@ -35,6 +34,7 @@ import { KEY_VALUE_HASH_ALIASES } from "@/features/keyvalue/lib/key-value-pages"
 import { KeyValueDocument } from "@/graphql/definitions";
 import {
   loadRouteResource,
+  type RouteResource,
   routeResourceTitle,
   titleHead,
   titleLoaderFetchPolicy,
@@ -86,8 +86,9 @@ function PendingRouteComponent() {
 
 function RouteComponent() {
   // A roll-window loader failure re-runs once (w1/m52) so the title recovers.
-  useLoaderErrorRetry(Route.useLoaderData(), Route.useParams().keyValueId);
-  return <KeyValueDetailLayout />;
+  const loaderData = Route.useLoaderData();
+  useLoaderErrorRetry(loaderData, Route.useParams().keyValueId);
+  return <KeyValueDetailLayout routeState={loaderData?.state} />;
 }
 
 /**
@@ -100,12 +101,16 @@ function RouteComponent() {
  */
 function KeyValueDetailLayout({
   routePending = false,
+  routeState,
 }: {
   /**
    * Rendered as the route's pendingComponent while its title loader runs:
    * the same chrome with the page's skeleton, never the live `<Outlet/>`.
    */
   routePending?: boolean;
+  /** The route loader's verdict, which alone can tell a refused read from a
+   *  missing one (`resourceReadState`). */
+  routeState?: RouteResource<unknown>["state"];
 }) {
   const { keyValueId } = Route.useParams();
   const { t } = useTranslations();
@@ -119,17 +124,23 @@ function KeyValueDetailLayout({
   );
   const keyValue = adopting || routePending ? null : loaded;
 
-  // A dead id redirects home (w9/m55); a failed query stays put on the inline
-  // error state so an outage never masquerades as a deleted instance.
-  useNotFoundRedirect(
-    !routePending && resourceNotFound(loaded, loading, error),
-  );
-  const loadErrorVariant = routePending
+  // A dead id keeps its URL and draws Render's Page not found; a refused read
+  // draws Access denied and any other failure "An error occurred", so an
+  // outage never masquerades as a deleted instance (w3/m706).
+  const readState = routePending
     ? null
-    : resourceLoadErrorVariant(loaded, loading, error);
+    : resourceReadState(loaded, loading, error, routeState);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const pageLabelKey = keyValuePageLabelKey(pathname, keyValueId);
   useScrollToHashedCard(pathname, keyValue !== null, KEY_VALUE_HASH_ALIASES);
+
+  if (readState) {
+    return (
+      <ResourceStatePage>
+        <ResourceStateView state={readState} id={keyValueId} />
+      </ResourceStatePage>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -178,12 +189,7 @@ function KeyValueDetailLayout({
                 {t(pageLabelKey)}
               </h2>
             ) : null}
-            {loadErrorVariant ? (
-              <ResourceLoadError
-                onRetry={() => void refetch()}
-                variant={loadErrorVariant}
-              />
-            ) : keyValue ? (
+            {keyValue ? (
               <KeyValueDetailProvider value={{ keyValue, refetch }}>
                 <Outlet />
               </KeyValueDetailProvider>

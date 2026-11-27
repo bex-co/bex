@@ -89,12 +89,17 @@ describe("/w/{tea-id} alias (w1/m45)", () => {
     expect(setCurrentWorkspaceId).toHaveBeenCalledWith("tea-other");
   });
 
-  it("refuses a foreign workspace id — redirects home, never the caller's own settings (w9/m55)", async () => {
+  // w3/m706: a workspace the caller is not in draws Access denied in place,
+  // with its id; never a selection change, and never a silent landing on the
+  // caller's own settings.
+  it("refuses a foreign workspace id with Access denied in place, never the caller's own settings", async () => {
     const router = await renderAt("/w/tea-foreign/settings");
-    // Redirects home with a not-found toast; never a selection change, and
-    // never a silent landing on the caller's own settings.
-    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
-    expect(screen.getByText("landed:/")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Access denied" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("tea-foreign")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/w/tea-foreign/settings");
+    expect(screen.queryByText(/^landed:/)).not.toBeInTheDocument();
     expect(setCurrentWorkspaceId).not.toHaveBeenCalled();
   });
 
@@ -102,7 +107,7 @@ describe("/w/{tea-id} alias (w1/m45)", () => {
     workspaceState.loading = true;
     await renderAt("/w/tea-foreign/settings");
     await waitFor(() =>
-      expect(screen.queryByText(/not found/i)).not.toBeInTheDocument(),
+      expect(screen.queryByText("Access denied")).not.toBeInTheDocument(),
     );
     expect(setCurrentWorkspaceId).not.toHaveBeenCalled();
   });

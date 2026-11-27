@@ -489,14 +489,6 @@ const ptServices: Record<string, TranslationEntry> = {
       "A requisição ao bex-api falhou. Verifique sua conexão e tente novamente.",
     description: "Services list error card body",
   },
-  "services.detailErrorTitle": {
-    message: "Não foi possível carregar o serviço",
-    description: "Service detail query error card title",
-  },
-  "services.detailErrorBody": {
-    message: "A requisição ao bex-api falhou. O serviço ainda pode existir.",
-    description: "Service detail query error card body",
-  },
   "services.emptyTitle": {
     message: "Nenhum serviço ainda",
     description: "Services list empty state title",

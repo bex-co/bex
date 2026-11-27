@@ -489,14 +489,6 @@ const ruServices: Record<string, TranslationEntry> = {
       "Запрос к bex-api не удался. Проверьте подключение и повторите попытку.",
     description: "Services list error card body",
   },
-  "services.detailErrorTitle": {
-    message: "Не удалось загрузить сервис",
-    description: "Service detail query error card title",
-  },
-  "services.detailErrorBody": {
-    message: "Запрос к bex-api не удался. Возможно, сервис всё ещё существует.",
-    description: "Service detail query error card body",
-  },
   "services.emptyTitle": {
     message: "Сервисов пока нет",
     description: "Services list empty state title",

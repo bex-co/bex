@@ -377,18 +377,6 @@ describe("ProjectPage", () => {
     );
   });
 
-  it("renders nothing for an unknown project id — the layout's redirect home is in flight (w9/m55)", async () => {
-    renderProjectPage("/project/prj-missing");
-
-    await waitFor(() =>
-      expect(
-        screen.queryByTestId("environments-panel"),
-      ).not.toBeInTheDocument(),
-    );
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
-  });
-
   // Render's header: the name links to Project Settings with its Name card
   // editing, and there is no rename dialog on the page (w1/m682).
   it("links the name to Project Settings' Name editor", async () => {

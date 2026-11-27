@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
+import { uncodedGraphQLError } from "@/test/mocks/apollo";
 
 const mockUseQuery = vi.fn();
 const mockUseMutation = vi.fn();
@@ -42,7 +42,6 @@ vi.mock("@/features/workspaces/context/hooks", () => ({
 }));
 
 import {
-  isEnvGroupNotFound,
   useEnvGroup,
   useEnvGroupEnvironmentPatch,
   useEnvGroupMutations,
@@ -782,17 +781,5 @@ describe("useEnvGroupEnvironmentPatch deployed-service set (w4/224)", () => {
       rolledOut: true,
     });
     expect(out.affectedServiceIds).toEqual(["off"]);
-  });
-});
-
-describe("isEnvGroupNotFound", () => {
-  it("recognizes only a missing group", () => {
-    expect(isEnvGroupNotFound(codedGraphQLError("NOT_FOUND"))).toBe(true);
-    // The code decides, not "not found" in the wording (w5/m130).
-    expect(isEnvGroupNotFound(uncodedGraphQLError("env group not found"))).toBe(
-      false,
-    );
-    expect(isEnvGroupNotFound(new Error("boom"))).toBe(false);
-    expect(isEnvGroupNotFound(undefined)).toBe(false);
   });
 });

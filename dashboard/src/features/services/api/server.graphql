@@ -9,6 +9,10 @@
 query Server($id: String!) {
   server(id: $id) {
     id
+    # What the page still reads from the cache once the id leads nowhere: its
+    # name and project make Render's "Service deleted" with Go to project
+    # (w3/m706).
+    ...MissingServiceContext
     # The owning workspace: the detail page adopts it as the selection, so
     # permissions are judged in the service's own workspace (w6/091).
     ownerId

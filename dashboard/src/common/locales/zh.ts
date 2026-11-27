@@ -511,10 +511,121 @@ const zhCommon: Record<string, TranslationEntry> = {
     description:
       "Body of a panel whose read failed with no server reason to show (a network failure or throttling)",
   },
-  "common.resourceNotFoundToast": {
-    message: "该资源不存在或已被删除。",
+  "common.serviceNotFoundTitle": {
+    message: "未找到服务",
     description:
-      "Toast shown after a dead resource URL redirects to the home page (w9/m55)",
+      "Title of a service page whose id leads nowhere (Render's ResourceNotFound, w3/m706)",
+  },
+  "common.serviceDeletedTitle": {
+    message: "服务已删除",
+    description:
+      "Title of a service page whose service the dashboard had read and is now gone (w3/m706)",
+  },
+  "common.cronJobNotFoundTitle": {
+    message: "未找到定时任务",
+    description: "Title of a cron job page whose id leads nowhere (w3/m706)",
+  },
+  "common.cronJobDeletedTitle": {
+    message: "定时任务已删除",
+    description:
+      "Title of a cron job page whose cron job the dashboard had read and is now gone (w3/m706)",
+  },
+  "common.sandboxGroupNotFoundTitle": {
+    message: "未找到沙箱组",
+    description:
+      "Title of a sandbox group page whose id leads nowhere (w3/m706)",
+  },
+  "common.sandboxGroupDeletedTitle": {
+    message: "沙箱组已删除",
+    description:
+      "Title of a sandbox group page whose group the dashboard had read and is now gone (w3/m706)",
+  },
+  "common.deployNotFoundTitle": {
+    message: "未找到部署",
+    description:
+      "Title of a deploy page whose deploy id leads nowhere under a live service (w3/m706)",
+  },
+  "common.buildNotFoundTitle": {
+    message: "未找到构建",
+    description:
+      "Title of a build page whose build id leads nowhere under a live build source (w3/m706)",
+  },
+  "common.resourceNotFoundBody": {
+    message: "找不到 {id}。它可能已被删除，或链接不正确。",
+    description:
+      "Body of a resource page whose id leads nowhere; {id} is the id, drawn as a code chip (w3/m706)",
+  },
+  "common.resourceDeletedBody": {
+    message: "{name}（{id}）已被删除。",
+    description:
+      "Body of a resource page whose resource the dashboard had read and is now gone; {name} is its name, {id} its id (w3/m706)",
+  },
+  "common.resourceNotFoundForBody": {
+    message: "找不到 {parent} 的 {id}。链接可能不正确。",
+    description:
+      "Body of a deploy or build page whose id leads nowhere; {id} is the id, {parent} the service or build source it was opened under (w3/m706)",
+  },
+  "common.goToProject": {
+    message: "前往项目",
+    description:
+      "Button on a missing resource's page that opens the project it was in (w3/m706)",
+  },
+  "common.returnHome": {
+    message: "返回首页",
+    description:
+      "Button on a missing, denied or failed resource's page that opens the home page (w3/m706)",
+  },
+  "common.viewDeploys": {
+    message: "查看部署",
+    description:
+      "Button on a missing deploy's page that opens its service's deploys (w3/m706)",
+  },
+  "common.viewBuilds": {
+    message: "查看构建",
+    description:
+      "Button on a missing build's page that opens its build source's builds (w3/m706)",
+  },
+  "common.goToWebhooks": {
+    message: "前往 Webhooks",
+    description:
+      "Button on a missing or denied webhook's page that opens the webhooks list (w3/m706)",
+  },
+  "common.resourceDoesNotExist": {
+    message: "{id} 不存在。",
+    description:
+      "Body of the Page not found state a resource page draws for a dead id; {id} is the id (w3/m706)",
+  },
+  "common.accessDeniedTitle": {
+    message: "拒绝访问",
+    description: "Title of a resource page whose read was refused (w3/m706)",
+  },
+  "common.accessDeniedBody": {
+    message: "你无权访问 {id}。",
+    description:
+      "Body of a resource page whose read was refused; {id} is the id (w3/m706)",
+  },
+  "common.accessDeniedBodyNoId": {
+    message: "你无权访问此资源。",
+    description: "Body of a refused page that names no id (w3/m706)",
+  },
+  "common.resourceLoadFailedTitle": {
+    message: "发生错误",
+    description: "Title of a resource page whose read failed (w3/m706)",
+  },
+  "common.resourceLoadFailedBody": {
+    message: "无法加载 {id}。",
+    description:
+      "Body of a resource page whose read failed; {id} is the id (w3/m706)",
+  },
+  "common.copyId": {
+    message: "复制 ID",
+    description:
+      "Accessible name of the copy button beside an id in a resource state (w3/m706)",
+  },
+  "common.copyIdError": {
+    message: "无法复制 ID",
+    description:
+      "Toast when copying an id from a resource state fails (w3/m706)",
   },
   "common.resourceErrorBody": {
     message: "无法加载该资源。请检查 API 后重试。",

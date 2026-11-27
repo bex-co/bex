@@ -31,3 +31,7 @@ Visiting each of these with a garbage id while logged in lands on `/` (with a "n
 - **Goal linkage:** deploy-experience polish (w9's theme) — dead links from stale bookmarks, deleted resources, or mistyped CLI-derived URLs recover to a useful page instead of a dead end; also converges the eight per-route not-found blocks onto one shared behavior.
 - **Expected outcome:** observable per the DoD — garbage-id URLs land on `/` with a toast; error states unchanged.
 - **Why now:** every detail route already flows through the one `loadRouteResource` seam, so the change is cheap and mechanical today; each new detail route added before this ships would copy the inline-block pattern and widen the migration. Render parity task included: this is a user-facing UI surface (REST/GraphQL/MCP are untouched — the parity check is dashboard-vs-Render-dashboard behavior only).
+
+## Superseded (2026-11-27)
+
+w3/m706 replaced this milestone's redirect home and toast with Render's in-place states ("`<Label>` not found" or "deleted", "Page not found", Access denied, "An error occurred"; the URL stays and nothing toasts), under [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first): no signed-off ADR018 divergence existed for the redirect, and Render's bundle shows it draws the state in place ([resource-not-found.md](../../../../docs/render-artifacts/resource-not-found.md)). `use-not-found-redirect.ts` is gone; its predicates live on in `dashboard/src/common/lib/resource-read-state.ts`.

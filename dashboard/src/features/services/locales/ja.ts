@@ -488,15 +488,6 @@ const jaServices: Record<string, TranslationEntry> = {
       "bex-api へのリクエストが失敗しました。接続を確認して、もう一度お試しください。",
     description: "Services list error card body",
   },
-  "services.detailErrorTitle": {
-    message: "サービスを読み込めませんでした",
-    description: "Service detail query error card title",
-  },
-  "services.detailErrorBody": {
-    message:
-      "bex-api へのリクエストが失敗しました。サービスは存在している可能性があります。",
-    description: "Service detail query error card body",
-  },
   "services.emptyTitle": {
     message: "サービスはまだありません",
     description: "Services list empty state title",

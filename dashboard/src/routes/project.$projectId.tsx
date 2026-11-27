@@ -3,7 +3,11 @@ import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { ProjectRouteSkeleton } from "@/common/components/route-skeletons";
 import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
-import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
+import {
+  ResourceStatePage,
+  ResourceStateView,
+} from "@/common/components/resource-not-found";
+import { ownDeleteActive } from "@/common/lib/own-delete";
 import {
   loadRouteResource,
   routeResourceTitle,
@@ -55,13 +59,13 @@ export const Route = createFileRoute("/project/$projectId")({
  * own header content and content padding.
  */
 function RouteComponent() {
-  // A dead project id redirects home for every child page (w9/m55); a query
-  // error passes through so the children keep their inline error states —
-  // and re-runs the loader once (w1/m52), so a roll-window failure self-heals
-  // instead of stranding "Couldn't load resources" until a manual reload.
+  // A dead project id keeps its URL and draws Render's Page not found for
+  // every child page; a refused read draws Access denied, an expired session
+  // Sign in, and any other failure "An error occurred" (w3/m706). A failed
+  // loader re-runs once (w1/m52), so a roll-window failure self-heals instead
+  // of stranding the error until a manual reload.
   const { projectId } = Route.useParams();
   const projectResult = Route.useLoaderData();
-  useNotFoundRedirect(projectResult.state === "not-found");
   useLoaderErrorRetry(projectResult, projectId);
   // Judge every child page in the project's own workspace (w4/641, as w6/091
   // for services): until it is the selection, the children stay on their
@@ -70,6 +74,20 @@ function RouteComponent() {
     projectId,
     projectResult.state === "ready" ? projectResult.resource.ownerId : null,
   );
+  // The dashboard's own delete reads the project as gone while its flow
+  // lands home with its toast (w4/645): the frame stays up meanwhile.
+  const state =
+    projectResult.state === "ready" ||
+    (projectResult.state === "not-found" && ownDeleteActive())
+      ? null
+      : projectResult.state;
+  if (state) {
+    return (
+      <ResourceStatePage>
+        <ResourceStateView state={state} id={projectId} />
+      </ResourceStatePage>
+    );
+  }
   // Every project page is a touch region, as a service's pages are (w3/099):
   // below the desktop layout or on a coarse pointer its buttons, selects and
   // inputs take the 44px target (style.css). `contents` keeps the child's
@@ -77,7 +95,11 @@ function RouteComponent() {
   return (
     <DashboardLayout>
       <div data-touch-region="" className="contents">
-        {adopting ? <ProjectRouteSkeleton /> : <Outlet />}
+        {adopting || projectResult.state !== "ready" ? (
+          <ProjectRouteSkeleton />
+        ) : (
+          <Outlet />
+        )}
       </div>
     </DashboardLayout>
   );

@@ -3,9 +3,15 @@ import { Link } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import { EmptyState } from "@/common/components/empty-state";
 import { Button } from "@/common/components/ui/button";
-import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
+import {
+  AccessDenied,
+  NotFoundForParentBody,
+  ResourceNotFound,
+} from "@/common/components/resource-not-found";
+import { useResourceNotFoundLinks } from "@/common/hooks/use-resource-state-links";
+import { useHydrated } from "@/common/hooks/use-hydrated";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { relayableReason } from "@/common/lib/graphql-error";
+import { isForbiddenError, relayableReason } from "@/common/lib/graphql-error";
 import { isUnauthenticatedError } from "@/common/apollo/auth-error-link";
 import { ResourceLoadError } from "@/common/components/resource-load-error";
 import { useServiceBase } from "@/features/services/lib/service-base";
@@ -76,20 +82,28 @@ function DeployDetail({
   );
   const scaling = useDeployScaling(serviceId, service, deploy);
 
-  // A dead deploy id under a live service redirects to that service's Deploys
-  // tab — the nearest live parent — not all the way home (w9/m55). A dead
-  // SERVICE id never reaches here: the services.$serviceId layout redirects
-  // before mounting its Outlet. `useDeploy` already excludes query errors
-  // from `notFound`, so outages keep the inline error state below.
+  // A dead deploy id under a live service keeps its URL and draws Render's
+  // "Deploy not found" for the service, with View deploys (w3/m706). A dead
+  // SERVICE id never reaches here: the services.$serviceId layout draws its
+  // own state before mounting its Outlet. `useDeploy` already excludes query
+  // errors from `notFound`, so outages keep the inline error state below.
   const deploysTab = useMemo(
     () => ({
       to: `${base}/$serviceId/deploys` as const,
       params: { serviceId },
-      replace: true,
     }),
     [serviceId, base],
   );
-  useNotFoundRedirect(notFound, deploysTab);
+  // The server render cannot see the deploy read's answer; the state waits
+  // for hydration so the HTML matches, then draws on the next render.
+  const hydrated = useHydrated();
+  const notFoundLinks = useResourceNotFoundLinks(null, [
+    {
+      label: t("common.viewDeploys"),
+      to: deploysTab.to,
+      params: deploysTab.params,
+    },
+  ]);
 
   // The way back to the list this deploy was opened from — on a phone the
   // sidebar that names it is a drawer away.
@@ -103,6 +117,22 @@ function DeployDetail({
       {t("services.navDeploys")}
     </Link>
   );
+
+  if (hydrated && notFound) {
+    return (
+      <ResourceNotFound
+        kind="deploy"
+        id={deployId}
+        links={notFoundLinks}
+        body={(id) => (
+          <NotFoundForParentBody id={id} parent={service?.name ?? serviceId} />
+        )}
+      />
+    );
+  }
+  if (hydrated && error && !deploy && isForbiddenError(error)) {
+    return <AccessDenied id={deployId} />;
+  }
 
   // A Live deploy keeps refreshing (w4/262), so a failed refresh must not
   // unmount the detail it already shows: only a first-load failure is

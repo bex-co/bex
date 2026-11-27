@@ -6,7 +6,6 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { PageScroll } from "@/common/components/page-frame";
-import { ResourceLoadError } from "@/common/components/resource-load-error";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
@@ -104,52 +103,44 @@ export function ProjectPage() {
     void router.invalidate();
   }
 
-  const showNotFound = projectResult.state === "not-found";
-  const showError = projectResult.state === "error";
-  const showAuthError = projectResult.state === "unauthenticated";
-
   return (
     <PageScroll onScroll={focus.onScroll}>
       <div className="w-full space-y-10">
-        {showAuthError ? (
-          <ResourceLoadError variant="unauthenticated" />
-        ) : showError ? (
-          <p className="text-sm text-destructive">{t("projects.errorTitle")}</p>
-        ) : showNotFound ? null : ( // the layout's redirect home is in flight (w9/m55)
-          <>
-            <ProjectPageHeader
-              projectId={projectId}
-              name={project?.name ?? projectId}
-              addEnvironment={
-                <AddEnvironmentButton
-                  count={environments.length}
-                  limit={environmentsPerProjectLimit(currentWorkspace?.plan)}
-                  reason={addEnvironmentReason}
-                  onClick={() => setNewEnvironmentOpen(true)}
-                />
-              }
-            />
+        {/* The layout draws every state but ready in place of this page
+            (w3/m706), so it always has its project here. */}
+        <>
+          <ProjectPageHeader
+            projectId={projectId}
+            name={project?.name ?? projectId}
+            addEnvironment={
+              <AddEnvironmentButton
+                count={environments.length}
+                limit={environmentsPerProjectLimit(currentWorkspace?.plan)}
+                reason={addEnvironmentReason}
+                onClick={() => setNewEnvironmentOpen(true)}
+              />
+            }
+          />
 
-            <EnvironmentsPanel
-              projectId={projectId}
-              projectName={project?.name ?? ""}
-              services={services}
-              databases={databases}
-              keyValues={keyValues}
-              projectRows={group?.rows ?? []}
-              catalog={catalog}
-              servicePending={pending}
-              onRunServiceAction={run}
-              onDatabaseDeleted={refetchAll}
-              onKeyValueDeleted={refetchAll}
-              focusedId={focus.focusedId}
-              onAddEnvironment={() => setNewEnvironmentOpen(true)}
-              addEnvironmentReason={addEnvironmentReason}
-            />
+          <EnvironmentsPanel
+            projectId={projectId}
+            projectName={project?.name ?? ""}
+            services={services}
+            databases={databases}
+            keyValues={keyValues}
+            projectRows={group?.rows ?? []}
+            catalog={catalog}
+            servicePending={pending}
+            onRunServiceAction={run}
+            onDatabaseDeleted={refetchAll}
+            onKeyValueDeleted={refetchAll}
+            focusedId={focus.focusedId}
+            onAddEnvironment={() => setNewEnvironmentOpen(true)}
+            addEnvironmentReason={addEnvironmentReason}
+          />
 
-            <ProjectBuildSourcesSection projectId={projectId} />
-          </>
-        )}
+          <ProjectBuildSourcesSection projectId={projectId} />
+        </>
       </div>
       <NewEnvironmentDialog
         projectId={projectId}

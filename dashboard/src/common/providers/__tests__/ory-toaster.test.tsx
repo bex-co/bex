@@ -42,15 +42,11 @@ describe("OryToaster", () => {
   });
 
   it("shows a toast raised before the Toaster mounted", async () => {
-    toast.error("That resource doesn't exist or was deleted.", {
-      id: "resource-not-found",
-    });
+    toast.error("Couldn't delete web", { id: "early" });
 
     render(<OryToaster />);
 
-    expect(
-      await screen.findByText("That resource doesn't exist or was deleted."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Couldn't delete web")).toBeInTheDocument();
   });
 
   it("shows an early toast once, even if it is raised again after mount", async () => {

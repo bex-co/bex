@@ -30,7 +30,6 @@ import {
 import { PRIMED_FETCH_POLICY } from "@/common/lib/fetch-policy";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
-  isNotFoundError,
   mutationErrorMessage,
   relayableReason,
 } from "@/common/lib/graphql-error";
@@ -628,8 +627,4 @@ export function envVarKeys(group: EnvGroupView | null): EnvVarKey[] {
 
 export function secretFileNames(group: EnvGroupView | null): SecretFileName[] {
   return (group?.secretFileNames ?? []).map((name) => ({ id: name, name }));
-}
-
-export function isEnvGroupNotFound(error: Error | undefined): boolean {
-  return isNotFoundError(error);
 }

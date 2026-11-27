@@ -525,10 +525,123 @@ const esCommon: Record<string, TranslationEntry> = {
     description:
       "Body of a panel whose read failed with no server reason to show (a network failure or throttling)",
   },
-  "common.resourceNotFoundToast": {
-    message: "Ese recurso no existe o se eliminó.",
+  "common.serviceNotFoundTitle": {
+    message: "Servicio no encontrado",
     description:
-      "Toast shown after a dead resource URL redirects to the home page (w9/m55)",
+      "Title of a service page whose id leads nowhere (Render's ResourceNotFound, w3/m706)",
+  },
+  "common.serviceDeletedTitle": {
+    message: "Servicio eliminado",
+    description:
+      "Title of a service page whose service the dashboard had read and is now gone (w3/m706)",
+  },
+  "common.cronJobNotFoundTitle": {
+    message: "Cron job no encontrado",
+    description: "Title of a cron job page whose id leads nowhere (w3/m706)",
+  },
+  "common.cronJobDeletedTitle": {
+    message: "Cron job eliminado",
+    description:
+      "Title of a cron job page whose cron job the dashboard had read and is now gone (w3/m706)",
+  },
+  "common.sandboxGroupNotFoundTitle": {
+    message: "Grupo de sandbox no encontrado",
+    description:
+      "Title of a sandbox group page whose id leads nowhere (w3/m706)",
+  },
+  "common.sandboxGroupDeletedTitle": {
+    message: "Grupo de sandbox eliminado",
+    description:
+      "Title of a sandbox group page whose group the dashboard had read and is now gone (w3/m706)",
+  },
+  "common.deployNotFoundTitle": {
+    message: "Despliegue no encontrado",
+    description:
+      "Title of a deploy page whose deploy id leads nowhere under a live service (w3/m706)",
+  },
+  "common.buildNotFoundTitle": {
+    message: "Compilación no encontrada",
+    description:
+      "Title of a build page whose build id leads nowhere under a live build source (w3/m706)",
+  },
+  "common.resourceNotFoundBody": {
+    message:
+      "No pudimos encontrar {id}. Puede que se haya eliminado o que el enlace sea incorrecto.",
+    description:
+      "Body of a resource page whose id leads nowhere; {id} is the id, drawn as a code chip (w3/m706)",
+  },
+  "common.resourceDeletedBody": {
+    message: "{name} ({id}) se eliminó.",
+    description:
+      "Body of a resource page whose resource the dashboard had read and is now gone; {name} is its name, {id} its id (w3/m706)",
+  },
+  "common.resourceNotFoundForBody": {
+    message:
+      "No pudimos encontrar {id} para {parent}. Puede que el enlace sea incorrecto.",
+    description:
+      "Body of a deploy or build page whose id leads nowhere; {id} is the id, {parent} the service or build source it was opened under (w3/m706)",
+  },
+  "common.goToProject": {
+    message: "Ir al proyecto",
+    description:
+      "Button on a missing resource's page that opens the project it was in (w3/m706)",
+  },
+  "common.returnHome": {
+    message: "Volver al inicio",
+    description:
+      "Button on a missing, denied or failed resource's page that opens the home page (w3/m706)",
+  },
+  "common.viewDeploys": {
+    message: "Ver despliegues",
+    description:
+      "Button on a missing deploy's page that opens its service's deploys (w3/m706)",
+  },
+  "common.viewBuilds": {
+    message: "Ver compilaciones",
+    description:
+      "Button on a missing build's page that opens its build source's builds (w3/m706)",
+  },
+  "common.goToWebhooks": {
+    message: "Ir a Webhooks",
+    description:
+      "Button on a missing or denied webhook's page that opens the webhooks list (w3/m706)",
+  },
+  "common.resourceDoesNotExist": {
+    message: "{id} no existe.",
+    description:
+      "Body of the Page not found state a resource page draws for a dead id; {id} is the id (w3/m706)",
+  },
+  "common.accessDeniedTitle": {
+    message: "Acceso denegado",
+    description: "Title of a resource page whose read was refused (w3/m706)",
+  },
+  "common.accessDeniedBody": {
+    message: "No tienes acceso a {id}.",
+    description:
+      "Body of a resource page whose read was refused; {id} is the id (w3/m706)",
+  },
+  "common.accessDeniedBodyNoId": {
+    message: "No tienes acceso a este recurso.",
+    description: "Body of a refused page that names no id (w3/m706)",
+  },
+  "common.resourceLoadFailedTitle": {
+    message: "Se produjo un error",
+    description: "Title of a resource page whose read failed (w3/m706)",
+  },
+  "common.resourceLoadFailedBody": {
+    message: "No se pudo cargar {id}.",
+    description:
+      "Body of a resource page whose read failed; {id} is the id (w3/m706)",
+  },
+  "common.copyId": {
+    message: "Copiar ID",
+    description:
+      "Accessible name of the copy button beside an id in a resource state (w3/m706)",
+  },
+  "common.copyIdError": {
+    message: "No se pudo copiar el ID",
+    description:
+      "Toast when copying an id from a resource state fails (w3/m706)",
   },
   "common.resourceErrorBody": {
     message:

@@ -1,0 +1,11 @@
+# What a service page reads from Apollo's cache once its id leads nowhere
+# (w3/m706): a cached name makes it "Service deleted", a cached project (its
+# own, or its environment's) adds Go to project — Render's
+# missingServerContext fragment.
+fragment MissingServiceContext on Service {
+  id
+  name
+  type
+  projectId
+  environmentId
+}

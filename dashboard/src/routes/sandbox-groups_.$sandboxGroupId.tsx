@@ -6,19 +6,22 @@ import {
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { PageScroll } from "@/common/components/page-frame";
-import { ResourceLoadError } from "@/common/components/resource-load-error";
+import {
+  ResourceNotFound,
+  ResourceStatePage,
+  ResourceStateView,
+} from "@/common/components/resource-not-found";
+import { useResourceNotFoundLinks } from "@/common/hooks/use-resource-state-links";
 import { Badge } from "@/common/components/ui/badge";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { CopyButton } from "@/common/components/copy-button";
 import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
-import {
-  resourceLoadErrorVariant,
-  resourceNotFound,
-  useNotFoundRedirect,
-} from "@/common/hooks/use-not-found-redirect";
+import { useMissingSandboxGroupContext } from "@/common/hooks/use-missing-resource-context";
+import { resourceReadState } from "@/common/lib/resource-read-state";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   loadRouteResource,
+  type RouteResource,
   routeResourceTitle,
   titleHead,
   titleLoaderFetchPolicy,
@@ -79,8 +82,9 @@ function PendingRouteComponent() {
 }
 
 function RouteComponent() {
-  useLoaderErrorRetry(Route.useLoaderData(), Route.useParams().sandboxGroupId);
-  return <SandboxGroupLayout />;
+  const loaderData = Route.useLoaderData();
+  useLoaderErrorRetry(loaderData, Route.useParams().sandboxGroupId);
+  return <SandboxGroupLayout routeState={loaderData?.state} />;
 }
 
 /**
@@ -90,7 +94,15 @@ function RouteComponent() {
  * DashboardSidebar's SandboxGroupSidebar: Sandboxes (the group's index),
  * Snapshots, Custom images and Settings.
  */
-function SandboxGroupLayout({ routePending = false }: { routePending?: boolean }) {
+function SandboxGroupLayout({
+  routePending = false,
+  routeState,
+}: {
+  routePending?: boolean;
+  /** The route loader's verdict, which alone can tell a refused read from a
+   *  missing one (`resourceReadState`). */
+  routeState?: RouteResource<unknown>["state"];
+}) {
   const { sandboxGroupId } = Route.useParams();
   const { t } = useTranslations();
   const { group: loaded, loading, error, refetch } = useSandboxGroup(sandboxGroupId);
@@ -99,12 +111,26 @@ function SandboxGroupLayout({ routePending = false }: { routePending?: boolean }
     routePending ? null : loaded?.ownerId,
   );
   const group = adopting || routePending ? null : loaded;
-  useNotFoundRedirect(!routePending && resourceNotFound(loaded, loading, error));
-  const loadErrorVariant = routePending
+  // A dead id keeps its URL and draws Render's "Sandbox group not found" (or
+  // "deleted" with its cached name); a refused read draws Access denied and
+  // any other failure "An error occurred" (w3/m706).
+  const readState = routePending
     ? null
-    : resourceLoadErrorVariant(loaded, loading, error);
+    : resourceReadState(loaded, loading, error, routeState);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const pageLabelKey = sandboxGroupPageLabelKey(pathname, sandboxGroupId);
+
+  if (readState) {
+    return (
+      <ResourceStatePage>
+        <ResourceStateView
+          state={readState}
+          id={sandboxGroupId}
+          notFound={<SandboxGroupNotFound groupId={sandboxGroupId} />}
+        />
+      </ResourceStatePage>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -157,12 +183,7 @@ function SandboxGroupLayout({ routePending = false }: { routePending?: boolean }
                 {t(pageLabelKey)}
               </h2>
             ) : null}
-            {loadErrorVariant ? (
-              <ResourceLoadError
-                onRetry={() => void refetch()}
-                variant={loadErrorVariant}
-              />
-            ) : group ? (
+            {group ? (
               <SandboxGroupDetailProvider value={{ group, refetch: () => void refetch() }}>
                 <Outlet />
               </SandboxGroupDetailProvider>
@@ -173,6 +194,24 @@ function SandboxGroupLayout({ routePending = false }: { routePending?: boolean }
         </PageScroll>
       </div>
     </DashboardLayout>
+  );
+}
+
+/**
+ * Render's missing sandbox group: "Sandbox group not found", or "Sandbox
+ * group deleted" with its name when the cache still holds it, Go to project
+ * when its environment sat in one, and Return home.
+ */
+function SandboxGroupNotFound({ groupId }: { groupId: string }) {
+  const { name, projectId } = useMissingSandboxGroupContext(groupId);
+  const links = useResourceNotFoundLinks(projectId);
+  return (
+    <ResourceNotFound
+      kind="sandboxGroup"
+      id={groupId}
+      name={name}
+      links={links}
+    />
   );
 }
 

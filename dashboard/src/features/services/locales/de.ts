@@ -492,15 +492,6 @@ const deServices: Record<string, TranslationEntry> = {
       "Die Anfrage an bex-api ist fehlgeschlagen. Prüfe deine Verbindung und versuche es erneut.",
     description: "Services list error card body",
   },
-  "services.detailErrorTitle": {
-    message: "Service konnte nicht geladen werden",
-    description: "Service detail query error card title",
-  },
-  "services.detailErrorBody": {
-    message:
-      "Die Anfrage an bex-api ist fehlgeschlagen. Der Service existiert möglicherweise noch.",
-    description: "Service detail query error card body",
-  },
   "services.emptyTitle": {
     message: "Noch keine Services",
     description: "Services list empty state title",

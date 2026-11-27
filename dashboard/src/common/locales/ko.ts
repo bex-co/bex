@@ -514,10 +514,123 @@ const koCommon: Record<string, TranslationEntry> = {
     description:
       "Body of a panel whose read failed with no server reason to show (a network failure or throttling)",
   },
-  "common.resourceNotFoundToast": {
-    message: "해당 리소스가 존재하지 않거나 삭제되었습니다.",
+  "common.serviceNotFoundTitle": {
+    message: "서비스를 찾을 수 없습니다",
     description:
-      "Toast shown after a dead resource URL redirects to the home page (w9/m55)",
+      "Title of a service page whose id leads nowhere (Render's ResourceNotFound, w3/m706)",
+  },
+  "common.serviceDeletedTitle": {
+    message: "서비스가 삭제되었습니다",
+    description:
+      "Title of a service page whose service the dashboard had read and is now gone (w3/m706)",
+  },
+  "common.cronJobNotFoundTitle": {
+    message: "Cron Job을 찾을 수 없습니다",
+    description: "Title of a cron job page whose id leads nowhere (w3/m706)",
+  },
+  "common.cronJobDeletedTitle": {
+    message: "Cron Job이 삭제되었습니다",
+    description:
+      "Title of a cron job page whose cron job the dashboard had read and is now gone (w3/m706)",
+  },
+  "common.sandboxGroupNotFoundTitle": {
+    message: "샌드박스 그룹을 찾을 수 없습니다",
+    description:
+      "Title of a sandbox group page whose id leads nowhere (w3/m706)",
+  },
+  "common.sandboxGroupDeletedTitle": {
+    message: "샌드박스 그룹이 삭제되었습니다",
+    description:
+      "Title of a sandbox group page whose group the dashboard had read and is now gone (w3/m706)",
+  },
+  "common.deployNotFoundTitle": {
+    message: "배포를 찾을 수 없습니다",
+    description:
+      "Title of a deploy page whose deploy id leads nowhere under a live service (w3/m706)",
+  },
+  "common.buildNotFoundTitle": {
+    message: "빌드를 찾을 수 없습니다",
+    description:
+      "Title of a build page whose build id leads nowhere under a live build source (w3/m706)",
+  },
+  "common.resourceNotFoundBody": {
+    message:
+      "{id}을(를) 찾을 수 없습니다. 삭제되었거나 링크가 잘못되었을 수 있습니다.",
+    description:
+      "Body of a resource page whose id leads nowhere; {id} is the id, drawn as a code chip (w3/m706)",
+  },
+  "common.resourceDeletedBody": {
+    message: "{name}({id})이(가) 삭제되었습니다.",
+    description:
+      "Body of a resource page whose resource the dashboard had read and is now gone; {name} is its name, {id} its id (w3/m706)",
+  },
+  "common.resourceNotFoundForBody": {
+    message:
+      "{parent}의 {id}을(를) 찾을 수 없습니다. 링크가 잘못되었을 수 있습니다.",
+    description:
+      "Body of a deploy or build page whose id leads nowhere; {id} is the id, {parent} the service or build source it was opened under (w3/m706)",
+  },
+  "common.goToProject": {
+    message: "프로젝트로 이동",
+    description:
+      "Button on a missing resource's page that opens the project it was in (w3/m706)",
+  },
+  "common.returnHome": {
+    message: "홈으로 돌아가기",
+    description:
+      "Button on a missing, denied or failed resource's page that opens the home page (w3/m706)",
+  },
+  "common.viewDeploys": {
+    message: "배포 보기",
+    description:
+      "Button on a missing deploy's page that opens its service's deploys (w3/m706)",
+  },
+  "common.viewBuilds": {
+    message: "빌드 보기",
+    description:
+      "Button on a missing build's page that opens its build source's builds (w3/m706)",
+  },
+  "common.goToWebhooks": {
+    message: "웹훅으로 이동",
+    description:
+      "Button on a missing or denied webhook's page that opens the webhooks list (w3/m706)",
+  },
+  "common.resourceDoesNotExist": {
+    message: "{id}이(가) 존재하지 않습니다.",
+    description:
+      "Body of the Page not found state a resource page draws for a dead id; {id} is the id (w3/m706)",
+  },
+  "common.accessDeniedTitle": {
+    message: "접근이 거부되었습니다",
+    description: "Title of a resource page whose read was refused (w3/m706)",
+  },
+  "common.accessDeniedBody": {
+    message: "{id}에 대한 접근 권한이 없습니다.",
+    description:
+      "Body of a resource page whose read was refused; {id} is the id (w3/m706)",
+  },
+  "common.accessDeniedBodyNoId": {
+    message: "이 리소스에 대한 접근 권한이 없습니다.",
+    description: "Body of a refused page that names no id (w3/m706)",
+  },
+  "common.resourceLoadFailedTitle": {
+    message: "오류가 발생했습니다",
+    description: "Title of a resource page whose read failed (w3/m706)",
+  },
+  "common.resourceLoadFailedBody": {
+    message: "{id}을(를) 불러올 수 없습니다.",
+    description:
+      "Body of a resource page whose read failed; {id} is the id (w3/m706)",
+  },
+  "common.copyId": {
+    message: "ID 복사",
+    description:
+      "Accessible name of the copy button beside an id in a resource state (w3/m706)",
+  },
+  "common.copyIdError": {
+    message: "ID를 복사할 수 없습니다",
+    description:
+      "Toast when copying an id from a resource state fails (w3/m706)",
   },
   "common.resourceErrorBody": {
     message: "리소스를 불러오지 못했습니다. API를 확인한 후 다시 시도하세요.",

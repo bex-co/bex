@@ -8,7 +8,6 @@ import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
 } from "@/common/lib/polling";
-import { resourceNotFound } from "@/common/hooks/use-not-found-redirect";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
 
 function toView(
@@ -36,16 +35,15 @@ export interface UseWebhookResult {
   endpoint: WebhookEndpointView | null;
   loading: boolean;
   error: Error | undefined;
-  /** True once the query settled without finding the endpoint (bad/foreign id). */
-  notFound: boolean;
   refetch: () => Promise<unknown>;
 }
 
 /**
  * One endpoint by id for the `/webhook/$webhookId` detail page (w1/m49).
  * Resolved by id in its own workspace, with the signing secret bex-api
- * returns to workspace admins (w3/m282). An unknown or foreign id resolves to
- * `notFound`, which the page renders as its 404 state — never a crash.
+ * returns to workspace admins (w3/m282). An unknown or foreign id settles
+ * empty, and the page draws its state for the read (`resourceReadState`,
+ * w3/m706) — never a crash.
  */
 export function useWebhook(id: string): UseWebhookResult {
   const { data, loading, error, refetch } = useQuery(WebhookEndpointDocument, {
@@ -63,16 +61,6 @@ export function useWebhook(id: string): UseWebhookResult {
   });
 
   const endpoint = useMemo(() => toView(data?.webhookEndpoint), [data]);
-  const pending = loading;
 
-  return {
-    endpoint,
-    loading: pending,
-    error,
-    // Settled-and-absent, which includes the not-found bex-api REPORTS as an
-    // error — a bare `endpoint === null` would call an outage a dead id, and a
-    // bare `!error` would call a dead id an outage.
-    notFound: resourceNotFound(endpoint, pending, error),
-    refetch,
-  };
+  return { endpoint, loading, error, refetch };
 }

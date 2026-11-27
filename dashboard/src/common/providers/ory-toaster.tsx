@@ -53,9 +53,10 @@ export default function OryToaster() {
  * sonner delivers a toast only to the Toasters subscribed when it is raised
  * and never replays its store into one that subscribes later. Since the
  * Toaster became a lazy chunk (w9/m60 t004), a toast raised during hydration
- * (the "That resource doesn't exist" toast `useNotFoundRedirect` fires when a
- * directly opened dead-id URL resolves) landed before the chunk did and was
- * silently lost on six of eight route families (w4/158).
+ * (such as the toast w9/m55's dead-id redirect fired when a directly opened
+ * dead-id URL resolved, before w3/m706 drew those pages in place) landed
+ * before the chunk did and was silently lost on six of eight route families
+ * (w4/158).
  *
  * This renders after <Toaster/>, so its mount effect runs after the Toaster's
  * own subscribe effect. It re-publishes each still-active toast through

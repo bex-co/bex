@@ -712,7 +712,9 @@ describe("EnvGroupDetailPage", () => {
     expect(screen.getByText("web")).toBeInTheDocument();
   });
 
-  it("redirects a dead group id home instead of a generic crash (w9/m55)", async () => {
+  // w3/m706: Render's environment group draws Page not found for a dead id,
+  // in place: the URL stays and nothing redirects.
+  it("draws Page not found in place for a dead group id", async () => {
     detailState.error = codedGraphQLError(
       "NOT_FOUND",
       {},
@@ -720,26 +722,56 @@ describe("EnvGroupDetailPage", () => {
     );
     const router = renderDetail("missing");
 
-    expect(await screen.findByText("services home")).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe("/");
+    expect(
+      await screen.findByRole("heading", { name: "Page not found" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("missing")).toBeInTheDocument();
+    expect(screen.getByText(/doesn’t exist\./)).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/env-groups/missing");
+    expect(screen.queryByText("services home")).not.toBeInTheDocument();
   });
 
-  it("redirects home when the row is null without any error (w9/m55)", async () => {
+  it("draws the same when the row is null without any error", async () => {
     detailState.group = null;
     detailState.error = undefined;
     const router = renderDetail("missing");
 
-    expect(await screen.findByText("services home")).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe("/");
+    expect(
+      await screen.findByRole("heading", { name: "Page not found" }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/env-groups/missing");
   });
 
-  it("stays put on the inline error state when the query fails (w9/m55)", async () => {
+  it("draws Access denied for a refused read", async () => {
     detailState.group = null;
     detailState.error = codedGraphQLError("FORBIDDEN");
     const router = renderDetail("missing");
 
-    expect(await screen.findByText("Not authorized")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Access denied" }),
+    ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/env-groups/missing");
+  });
+
+  it("draws An error occurred for any other failure", async () => {
+    detailState.group = null;
+    detailState.error = new Error("Failed to fetch");
+    renderDetail("missing");
+
+    expect(
+      await screen.findByRole("heading", { name: "An error occurred" }),
+    ).toBeInTheDocument();
+  });
+
+  // A deployment without a secret store keeps bex's own notice.
+  it("keeps the secret store's unavailable notice", async () => {
+    detailState.group = null;
+    detailState.error = codedGraphQLError("SECRETS_UNAVAILABLE");
+    renderDetail("missing");
+
+    expect(
+      await screen.findByText("Environment groups unavailable"),
+    ).toBeInTheDocument();
   });
 });
 
