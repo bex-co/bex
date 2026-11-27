@@ -85,3 +85,54 @@ export function renderKeyValuePages(
     href,
   );
 }
+
+/**
+ * A datastore layout's pending frame (its route's `pendingComponent`) at
+ * `href`, with no page under it, as the router paints it while the title
+ * loader runs (w3/m675).
+ */
+export function renderDatastorePendingFrame(
+  kind: "database" | "keyValue",
+  href: string,
+) {
+  const [path, route] =
+    kind === "database"
+      ? ["/databases/$databaseId", DatabaseLayoutRoute]
+      : ["/keyvalue/$keyValueId", KeyValueLayoutRoute];
+  return renderDatastorePages(
+    path,
+    { options: { component: route.options.pendingComponent } },
+    {},
+    href,
+  );
+}
+
+/**
+ * What sets a datastore header's geometry, since jsdom has no layout: its
+ * row's classes, how many items its title group holds, and each action's
+ * container, label and box classes. A pending frame's reserved box counts as
+ * its ready control's box (w3/m675).
+ */
+export function datastoreHeaderGeometry(header: Element) {
+  const [title, actions] = [...header.children];
+  const box = (element: Element) =>
+    element.matches("[data-slot=button]")
+      ? element
+      : (element.querySelector("[data-slot=button], .invisible") ?? element);
+  const classes = (element: Element) =>
+    element.className
+      .split(" ")
+      .filter((name) => name && name !== "invisible")
+      .join(" ");
+  return {
+    row: classes(header),
+    titleItems: title.children.length,
+    actions: {
+      container: classes(actions),
+      boxes: [...actions.children].map((child) => ({
+        label: box(child).textContent,
+        classes: classes(box(child)),
+      })),
+    },
+  };
+}

@@ -1,11 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Route as IndexRoute } from "../keyvalue.$keyValueId.index";
 import { Route as InfoRoute } from "../keyvalue.$keyValueId.info";
 import { Route as LogsRoute } from "../keyvalue.$keyValueId.logs";
 import { Route as MetricsRoute } from "../keyvalue.$keyValueId.metrics";
-import { renderKeyValuePages } from "@/test/datastore-pages";
+import {
+  datastoreHeaderGeometry as headerGeometry,
+  renderDatastorePendingFrame,
+  renderKeyValuePages,
+} from "@/test/datastore-pages";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 
 // w3/m649: a Key Value instance's one Overview, its section rail and its
 // Overview/Metrics/Logs tab bar became Render's pages, each at its own URL
@@ -15,8 +22,11 @@ import { renderKeyValuePages } from "@/test/datastore-pages";
 // real layout and page routes run; the data hooks are stubbed and every card
 // stands in as a named marker.
 
-const { card } = vi.hoisted(() => ({
+const { card, kv, catalog } = vi.hoisted(() => ({
   card: (name: string) => () => <div data-card={name} />,
+  // Whether an IP rule admits external traffic (w3/m675).
+  kv: { public: false },
+  catalog: { current: [] as { id: string; name: string }[] },
 }));
 
 vi.mock("@/common/components/dashboard-layout", () => ({
@@ -38,7 +48,7 @@ vi.mock("@/features/keyvalue/hooks/use-key-value", () => ({
       version: "8",
       createdAt: null,
       externalHost: null,
-      public: false,
+      public: kv.public,
       suspended: false,
       region: null,
     },
@@ -48,10 +58,25 @@ vi.mock("@/features/keyvalue/hooks/use-key-value", () => ({
   }),
 }));
 vi.mock("@/features/keyvalue/hooks/use-key-value-instance-types", () => ({
-  useKeyValueInstanceTypes: () => ({ instanceTypes: [] }),
+  useKeyValueInstanceTypes: () => ({ instanceTypes: catalog.current }),
+}));
+// The header's Connect reads with the Info card's own fetch (w3/m675).
+// One client for the whole file, as the provider's is.
+const apolloClient = vi.hoisted(() => ({}));
+vi.mock("@apollo/client/react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@apollo/client/react")>()),
+  useApolloClient: () => apolloClient,
+}));
+vi.mock("@/features/keyvalue/hooks/use-connection-info", () => ({
+  fetchConnectionInfo: async () => ({
+    internalConnectionString: "redis://red-main:6379",
+    externalConnectionString: "rediss://red-main:pw@red-main.kv.bex.co:6379",
+    cliCommand: "valkey-cli --tls",
+  }),
 }));
 vi.mock("@/features/keyvalue/components/key-value-status-badge", () => ({
-  KeyValueStatusBadge: () => null,
+  // A stand-in badge, so the header keeps its ready items.
+  KeyValueStatusBadge: () => <span>Available</span>,
 }));
 vi.mock("@/features/keyvalue/components/key-value-metadata-card", () => ({
   KeyValueMetadataCard: card("details"),
@@ -109,6 +134,8 @@ const cards = () =>
 
 beforeEach(() => {
   document.body.innerHTML = "";
+  kv.public = false;
+  catalog.current = [];
 });
 
 describe("a Key Value instance's pages (w3/m649)", () => {
@@ -160,5 +187,110 @@ describe("a Key Value instance's pages (w3/m649)", () => {
     } finally {
       spy.mockRestore();
     }
+  });
+});
+
+// w3/m675: every page's header is Render's: the name, the status, the plan
+// badge opening Info's plan card (Render's `/info#compute`), View docs and
+// Connect (docs/render-artifacts/key-value.md § Header).
+describe("a Key Value instance's header (w3/m675)", () => {
+  it.each(["", "/info", "/logs", "/metrics"])(
+    "/keyvalue/red-main%s carries Render's header",
+    async (page) => {
+      catalog.current = [{ id: "starter", name: "Starter" }];
+      await renderKeyValuePages(ROUTES, `/keyvalue/red-main${page}`);
+
+      await screen.findByRole("heading", { level: 1, name: "sessions-cache" });
+      expect(screen.getByRole("link", { name: "Starter" })).toHaveAttribute(
+        "href",
+        "/keyvalue/red-main/info#compute",
+      );
+      const docs = screen.getByRole("link", { name: "View docs" });
+      expect(docs).toHaveAttribute(
+        "href",
+        "https://bex.co/docs/platform/key-value",
+      );
+      expect(docs).toHaveAttribute("target", "_blank");
+      expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
+    },
+  );
+
+  it("connects a private instance's services, and sends the external URL to Networking", async () => {
+    const user = userEvent.setup();
+    const router = await renderKeyValuePages(
+      ROUTES,
+      "/keyvalue/red-main/metrics",
+    );
+    await user.click(await screen.findByRole("button", { name: "Connect" }));
+
+    expect(await screen.findByText("redis://red-main:6379")).toBeVisible();
+    expect(screen.getByText("Internal Redis URL")).toBeVisible();
+    await user.click(screen.getByRole("tab", { name: "External" }));
+    const panel = screen.getByRole("tabpanel", { name: "External" });
+    expect(panel).toHaveTextContent(
+      "External Redis URLExternal traffic not allowed. Add IP addresses in the Networking section.",
+    );
+    expect(within(panel).queryByText("Redis CLI Command")).toBeNull();
+
+    await user.click(within(panel).getByRole("link", { name: "Networking" }));
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/keyvalue/red-main/info"),
+    );
+    expect(router.state.location.hash).toBe("networking");
+  });
+
+  it("offers a public instance's external URL and bex kv-cli", async () => {
+    kv.public = true;
+    const user = userEvent.setup();
+    await renderKeyValuePages(ROUTES, "/keyvalue/red-main");
+    await user.click(await screen.findByRole("button", { name: "Connect" }));
+    await user.click(screen.getByRole("tab", { name: "External" }));
+
+    expect(
+      await screen.findByText("rediss://red-main:pw@red-main.kv.bex.co:6379"),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("group", { name: "Redis CLI Command" }),
+    ).toHaveTextContent("bex kv-cli red-main");
+  });
+
+  it("disables Connect for a member who cannot reveal secrets", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({
+        role: "VIEWER",
+        canViewSensitive: false,
+        reasonKey: (action) =>
+          action === "can_view_sensitive"
+            ? "capabilities.reasonCanViewSensitive"
+            : undefined,
+      }),
+    );
+    await renderKeyValuePages(ROUTES, "/keyvalue/red-main");
+
+    expect(
+      await screen.findByRole("button", { name: "Connect" }),
+    ).toBeDisabled();
+  });
+
+  it("reserves the ready header's boxes while it is pending", async () => {
+    await renderKeyValuePages(ROUTES, "/keyvalue/red-main");
+    const ready = headerGeometry(
+      (await screen.findByRole("heading", { level: 1 })).closest(".border-b")!,
+    );
+    document.body.innerHTML = "";
+
+    await renderDatastorePendingFrame("keyValue", "/keyvalue/red-main");
+    const pending = headerGeometry(
+      await waitFor(() => {
+        const header = document.querySelector(
+          '[data-skeleton-region="resource-header"]',
+        );
+        expect(header).not.toBeNull();
+        return header!;
+      }),
+    );
+
+    expect(pending).toEqual(ready);
   });
 });

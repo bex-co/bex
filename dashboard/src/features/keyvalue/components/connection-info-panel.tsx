@@ -18,7 +18,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useConnectionInfo } from "@/features/keyvalue/hooks/use-connection-info";
 import { useEnableKeyValueInternalAuth } from "@/features/keyvalue/hooks/use-enable-key-value-internal-auth";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
-import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
+import { useConnectionRevealGate } from "@/features/capabilities/hooks/use-connection-reveal-gate";
 import { isAdminOnlyRefusal } from "@/features/capabilities/lib/admin-only";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { ConnectionField } from "@/common/components/connection-field";
@@ -51,17 +51,9 @@ export function ConnectionInfoPanel({
 }) {
   const { t } = useTranslations();
   const { info, loading, error, reveal, hide } = useConnectionInfo(id);
-  // Revealing the URIs is can_view_sensitive — the password lives inside the
-  // `redis://` string, so the whole reveal is gated exactly like the databases
-  // twin's connection strings + password (w9/m84), and in a protected
-  // environment it is an Admin's alone (w4/m594).
-  const capabilities = useCapabilities();
-  const { canViewSensitive } = capabilities;
-  const revealReasonKey = capabilities.reasonKey("can_view_sensitive");
-  const adminOnly = useAdminOnlyActions("keyValue", id);
-  const revealReason = revealReasonKey
-    ? t(revealReasonKey)
-    : adminOnly("view_connection_info");
+  // Revealing the strings, which carry the password, is the same rule as the
+  // header's Connect (w9/m84, w4/m594).
+  const gate = useConnectionRevealGate("keyValue", id);
 
   return (
     <Card>
@@ -91,10 +83,10 @@ export function ConnectionInfoPanel({
             </Button>
           </>
         ) : (
-          <PermissionTooltip reason={revealReason}>
+          <PermissionTooltip reason={gate.reason}>
             <Button
               onClick={() => void reveal()}
-              disabled={loading || !canViewSensitive || revealReason != null}
+              disabled={loading || gate.disabled}
             >
               {loading ? <Loader2 className="animate-spin" /> : <Eye />}
               {t("keyvalue.connReveal")}

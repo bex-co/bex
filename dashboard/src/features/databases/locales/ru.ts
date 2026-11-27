@@ -2232,6 +2232,21 @@ const ruDatabases: Record<string, TranslationEntry> = {
     message: "Ошибка",
     description: "Admin app deploy dialog error title",
   },
+  "databases.connectInternalTitle": {
+    message: "Внутренний URL базы данных",
+    description:
+      "Header Connect menu, Internal tab: the private-network URL's title (Render's copy, w3/m675)",
+  },
+  "databases.connectExternalTitle": {
+    message: "Внешний URL базы данных",
+    description:
+      "Header Connect menu, External tab: the public URL's title (Render's copy, w3/m675)",
+  },
+  "databases.connectCliTitle": {
+    message: "Команда PSQL",
+    description:
+      "Header Connect menu, External tab: the `bex psql <id>` command's title (Render's copy, w3/m675)",
+  },
 };
 
 export default ruDatabases;

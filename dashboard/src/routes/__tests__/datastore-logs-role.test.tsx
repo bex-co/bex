@@ -27,6 +27,27 @@ const { stub, historyReads } = vi.hoisted(() => ({
   historyReads: [] as string[],
 }));
 
+// The header's plan badge names the plan from the catalogue (w3/m675), an
+// Apollo read this tree has no provider for.
+vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
+  useDatabaseInstanceTypes: () => ({
+    instanceTypes: [],
+    loading: false,
+    error: undefined,
+    retry: vi.fn(),
+    retrying: false,
+  }),
+}));
+vi.mock("@/features/keyvalue/hooks/use-key-value-instance-types", () => ({
+  useKeyValueInstanceTypes: () => ({
+    instanceTypes: [],
+    loading: false,
+    error: undefined,
+    retry: vi.fn(),
+    retrying: false,
+  }),
+}));
+
 vi.mock("@/common/components/dashboard-layout", () => ({
   DashboardLayout: ({ children }: { children: ReactNode }) => (
     <main>{children}</main>

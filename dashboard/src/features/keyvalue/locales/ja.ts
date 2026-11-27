@@ -879,6 +879,21 @@ const jaKeyValue: Record<string, TranslationEntry> = {
     description:
       "Create-Key-Value plan row description (Render: the plan determines RAM and connection limit)",
   },
+  "keyvalue.connectInternalTitle": {
+    message: "内部 Redis URL",
+    description:
+      "Header Connect menu, Internal tab: the private-network URL's title (Render's copy, which names Key Value by its type name Redis, w3/m675)",
+  },
+  "keyvalue.connectExternalTitle": {
+    message: "外部 Redis URL",
+    description:
+      "Header Connect menu, External tab: the public URL's title (Render's copy, w3/m675)",
+  },
+  "keyvalue.connectCliTitle": {
+    message: "Redis CLI コマンド",
+    description:
+      "Header Connect menu, External tab: the `bex kv-cli <id>` command's title (Render's copy, w3/m675)",
+  },
 };
 
 export default jaKeyValue;

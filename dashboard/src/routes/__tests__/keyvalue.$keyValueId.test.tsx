@@ -78,6 +78,8 @@ const reveal = vi.fn();
 vi.mock("@/features/keyvalue/hooks/use-connection-info", async () => {
   const { useEffect } = await import("react");
   return {
+    // The header's Connect reads with it only once opened (w3/m675).
+    fetchConnectionInfo: vi.fn(),
     useConnectionInfo: () => {
       useEffect(() => {
         kvStore.connectionMounts += 1;

@@ -2085,6 +2085,21 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "错误",
     description: "Admin app deploy dialog error title",
   },
+  "databases.connectInternalTitle": {
+    message: "内部数据库 URL",
+    description:
+      "Header Connect menu, Internal tab: the private-network URL's title (Render's copy, w3/m675)",
+  },
+  "databases.connectExternalTitle": {
+    message: "外部数据库 URL",
+    description:
+      "Header Connect menu, External tab: the public URL's title (Render's copy, w3/m675)",
+  },
+  "databases.connectCliTitle": {
+    message: "PSQL 命令",
+    description:
+      "Header Connect menu, External tab: the `bex psql <id>` command's title (Render's copy, w3/m675)",
+  },
 };
 
 export default zhDatabases;

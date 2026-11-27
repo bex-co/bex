@@ -833,6 +833,66 @@ const ptCommon: Record<string, TranslationEntry> = {
     description:
       "Create page action bar: Submit waits only for the plan catalog to load (not the user's fault)",
   },
+  "common.datastoreViewDocs": {
+    message: "Ver documentação",
+    description:
+      "A Postgres's or Key Value's header link to bex's docs for it, opening in a new tab (Render's View docs, w3/m675)",
+  },
+  "common.datastoreConnect": {
+    message: "Conectar",
+    description:
+      "A Postgres's or Key Value's header button opening its connection strings (Render's Connect, w3/m675)",
+  },
+  "common.datastoreConnectInternal": {
+    message: "Interna",
+    description:
+      "Connect menu tab: the private-network URL (Render's Internal tab)",
+  },
+  "common.datastoreConnectExternal": {
+    message: "Externa",
+    description:
+      "Connect menu tab: the public URL and the CLI command (Render's External tab)",
+  },
+  "common.datastoreConnectInternalBody": {
+    message:
+      "Todos os seus serviços da bex na mesma região podem {link} pela rede privada.",
+    description:
+      "Connect menu's Internal line; {link} is common.datastoreConnectInternalLink, linking the docs",
+  },
+  "common.datastoreConnectInternalLink": {
+    message: "se comunicar internamente",
+    description: "Linked words inside common.datastoreConnectInternalBody",
+  },
+  "common.datastoreConnectExternalBody": {
+    message: "Conecte-se a partir de {link} da bex.",
+    description:
+      "Connect menu's External line once an IP rule admits traffic; {link} is common.datastoreConnectExternalLink, linking the docs",
+  },
+  "common.datastoreConnectExternalLink": {
+    message: "serviços fora",
+    description: "Linked words inside common.datastoreConnectExternalBody",
+  },
+  "common.datastoreConnectExternalClosed": {
+    message:
+      "Tráfego externo não permitido. Adicione endereços IP na seção {link}.",
+    description:
+      "Connect menu's External tab while no IP rule admits traffic (Render's note); {link} is the Info card holding the IP rules, named as that card is",
+  },
+  "common.datastoreConnectCliBody": {
+    message: "Conecte-se usando a {link}",
+    description:
+      "Connect menu's line above the CLI command; {link} is common.datastoreConnectCliLink, linking the CLI docs",
+  },
+  "common.datastoreConnectCliLink": {
+    message: "CLI da bex",
+    description:
+      "Linked words inside common.datastoreConnectCliBody: the bex command-line tool",
+  },
+  "common.datastoreConnectRetry": {
+    message: "Falha ao carregar. Tentar novamente?",
+    description:
+      "Accessible name and tooltip of the retry button on a Connect menu value that failed to load",
+  },
 };
 
 export default ptCommon;

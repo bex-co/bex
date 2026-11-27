@@ -24,6 +24,11 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { useKeyValue } from "@/features/keyvalue/hooks/use-key-value";
 import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import { KeyValueStatusBadge } from "@/features/keyvalue/components/key-value-status-badge";
+import {
+  KeyValueHeaderActions,
+  KeyValuePlanBadge,
+} from "@/features/keyvalue/components/key-value-header";
+import { DatastoreHeaderActionsSkeleton } from "@/common/components/datastore-connect-menu";
 import { keyValuePageLabelKey } from "@/features/keyvalue/components/key-value-nav";
 import { KeyValueDetailProvider } from "@/features/keyvalue/lib/key-value-detail";
 import { KEY_VALUE_HASH_ALIASES } from "@/features/keyvalue/lib/key-value-pages";
@@ -87,8 +92,9 @@ function RouteComponent() {
 
 /**
  * A Key Value instance's pages share this layout (w3/m649), as Render's do:
- * the header (name and status), the open page's heading, which is its sidebar
- * entry's label, and an `<Outlet/>` for the page. The sidebar is
+ * the header (name, status, plan badge, View docs and Connect, w3/m675), the
+ * open page's heading, which is its sidebar entry's label, and an `<Outlet/>`
+ * for the page. The sidebar is
  * DashboardSidebar's KeyValueSidebar. The layout reads the instance once and
  * hands it to its pages through KeyValueDetailProvider.
  */
@@ -133,7 +139,7 @@ function KeyValueDetailLayout({
       >
         <div
           data-skeleton-region={!keyValue ? "resource-header" : undefined}
-          className="flex flex-wrap items-center gap-3 border-b px-4 py-4 sm:px-6"
+          className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6"
         >
           {keyValue ? (
             <div className="flex min-w-0 max-w-full items-center gap-2">
@@ -141,16 +147,24 @@ function KeyValueDetailLayout({
                 {keyValue.name}
               </h1>
               <KeyValueStatusBadge keyValue={keyValue} />
+              <KeyValuePlanBadge keyValue={keyValue} />
             </div>
           ) : (
             <div
               data-skeleton-region="resource-title"
               className="flex min-w-0 max-w-full items-center gap-2"
             >
-              {/* The h1's text-xl line box is 28px (w4/m209). */}
+              {/* The h1's text-xl line box is 28px (w4/m209); a badge is
+                  22px. */}
               <Skeleton className="h-7 w-48" />
-              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="h-[22px] w-16 rounded-full" />
+              <Skeleton className="h-[22px] w-14 rounded-full" />
             </div>
+          )}
+          {keyValue ? (
+            <KeyValueHeaderActions keyValue={keyValue} />
+          ) : (
+            <DatastoreHeaderActionsSkeleton />
           )}
         </div>
 

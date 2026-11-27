@@ -26,6 +26,28 @@ const queries = vi.hoisted(
 const labels = vi.hoisted(() => ({ values: [] as string[] }));
 
 // The datastore lifecycle gate reads its projection through Apollo (w4/m578).
+
+// The header's plan badge names the plan from the catalogue (w3/m675), an
+// Apollo read this tree has no provider for.
+vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
+  useDatabaseInstanceTypes: () => ({
+    instanceTypes: [],
+    loading: false,
+    error: undefined,
+    retry: vi.fn(),
+    retrying: false,
+  }),
+}));
+vi.mock("@/features/keyvalue/hooks/use-key-value-instance-types", () => ({
+  useKeyValueInstanceTypes: () => ({
+    instanceTypes: [],
+    loading: false,
+    error: undefined,
+    retry: vi.fn(),
+    retrying: false,
+  }),
+}));
+
 vi.mock("@/features/capabilities/hooks/use-lifecycle-gate", async () => {
   const { mockAllowedLifecycleGate } =
     await import("@/test/mocks/lifecycle-gate");

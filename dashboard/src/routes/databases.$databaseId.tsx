@@ -2,7 +2,6 @@ import { PageScroll } from "@/common/components/page-frame";
 import {
   Outlet,
   createFileRoute,
-  useNavigate,
   useRouterState,
 } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
@@ -30,7 +29,11 @@ import type { DatabaseDetailView } from "@/features/databases/types";
 import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import { useDatabaseLifecycle } from "@/features/databases/hooks/use-database-lifecycle";
 import { DatabaseStatusBadge } from "@/features/databases/components/database-status-badge";
-import { DatabaseRowActions } from "@/features/databases/components/database-row-actions";
+import {
+  DatabaseHeaderActions,
+  DatabasePlanBadge,
+} from "@/features/databases/components/database-header";
+import { DatastoreHeaderActionsSkeleton } from "@/common/components/datastore-connect-menu";
 import { DatabaseStorageAlert } from "@/features/databases/components/database-storage-alert";
 import { databasePageLabelKey } from "@/features/databases/components/database-nav";
 import { DatabaseDetailProvider } from "@/features/databases/lib/database-detail";
@@ -95,8 +98,10 @@ function RouteComponent() {
 
 /**
  * A Postgres database's pages share this layout (w3/m641), as Render's do:
- * the header (name, status and actions), the open page's heading, which is
- * its sidebar entry's label, and an `<Outlet/>` for the page. The sidebar is
+ * the header (name, status, plan badge, View docs and Connect, w3/m675), the
+ * open page's heading, which is its sidebar entry's label, and an `<Outlet/>`
+ * for the page. As on Render, the header has no overflow menu: Suspend,
+ * Resume, Restart and Delete are in Info's danger zone. The sidebar is
  * DashboardSidebar's DatabaseSidebar. The layout reads the database once and
  * hands it to its pages through DatabaseDetailProvider.
  */
@@ -111,7 +116,6 @@ function DatabaseDetailLayout({
 }) {
   const { databaseId } = Route.useParams();
   const { t } = useTranslations();
-  const navigate = useNavigate();
   const { database: loaded, loading, error, refetch } = useDatabase(databaseId);
   const lifecycle = useDatabaseLifecycle({ refetch });
   // Judge the pages' controls in the database's own workspace (w4/641, as
@@ -151,29 +155,24 @@ function DatabaseDetailLayout({
                 {database.name}
               </h1>
               <DatabaseStatusBadge database={database} />
+              <DatabasePlanBadge database={database} />
             </div>
           ) : (
             <div
               data-skeleton-region="resource-title"
               className="flex min-w-0 max-w-full items-center gap-2"
             >
-              {/* The h1's text-xl line box is 28px (w4/m209). */}
+              {/* The h1's text-xl line box is 28px (w4/m209); a badge is
+                  22px. */}
               <Skeleton className="h-7 w-48" />
-              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="h-[22px] w-16 rounded-full" />
+              <Skeleton className="h-[22px] w-14 rounded-full" />
             </div>
           )}
           {database ? (
-            <DatabaseRowActions
-              database={database}
-              onDeleted={() => void navigate({ to: "/", replace: true })}
-              lifecycle={lifecycle}
-            />
+            <DatabaseHeaderActions database={database} />
           ) : (
-            <div data-skeleton-region="resource-actions">
-              {/* The ready actions trigger is an `icon-sm` button, 32px
-                  (w3/082). */}
-              <Skeleton className="size-8" />
-            </div>
+            <DatastoreHeaderActionsSkeleton />
           )}
         </div>
 

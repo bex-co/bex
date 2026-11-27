@@ -2193,6 +2193,21 @@ const deDatabases: Record<string, TranslationEntry> = {
     message: "Fehler",
     description: "Admin app deploy dialog error title",
   },
+  "databases.connectInternalTitle": {
+    message: "Interne Datenbank-URL",
+    description:
+      "Header Connect menu, Internal tab: the private-network URL's title (Render's copy, w3/m675)",
+  },
+  "databases.connectExternalTitle": {
+    message: "Externe Datenbank-URL",
+    description:
+      "Header Connect menu, External tab: the public URL's title (Render's copy, w3/m675)",
+  },
+  "databases.connectCliTitle": {
+    message: "PSQL-Befehl",
+    description:
+      "Header Connect menu, External tab: the `bex psql <id>` command's title (Render's copy, w3/m675)",
+  },
 };
 
 export default deDatabases;

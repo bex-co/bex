@@ -157,3 +157,21 @@ This is a real change from what informed bex's own Databases page (w5/m8), which
 ## Delete confirmation copy
 
 Render: `Type sudo delete key value <name> below to confirm.` Bex mirrors the exact phrase so the destructive flow and button labels match the reference page; the command-like text is only a confirmation token.
+
+## Header (w3/m675, 2026-11-26)
+
+Read from the same bundle and chunks as [postgres-dashboard.md § Header](postgres-dashboard.md#header-w3m675). The Key Value header is the Postgres one with these differences:
+
+- The eyebrow reads `KEY VALUE`. The plan badge links `/r/<id>/info#compute`, and View docs opens render.com/docs/key-value.
+- Connect's rows are **Internal Redis URL**, **External Redis URL** and **Redis CLI Command**, with `render kv-cli <id>` as the command: the copy takes the resource's type name, `Redis`. Info's Connections card names the same values Internal Key Value URL, External Key Value URL and Valkey CLI Command.
+- The values are read once per visit to the instance's pages. The gate is `viewRedisConnectionInfo`.
+
+### What bex does (w3/m675)
+
+- Every page of an instance (Info, Logs, Metrics) has the Postgres header ([postgres-dashboard.md § What bex does](postgres-dashboard.md#what-bex-does-w3m675)). The plan badge opens `/keyvalue/<id>/info#compute`, Info's plan card, and View docs opens https://bex.co/docs/platform/key-value.
+- Connect's rows are Render's Internal Redis URL, External Redis URL and Redis CLI Command, with `bex kv-cli <id>`. While the instance is private the External tab shows Render's note, linking Info's Networking card (`#networking`). The URLs come from the Info card's `keyValueConnectionInfo` query.
+
+### Still apart
+
+- The eyebrow, the Service ID row, "Upgrade your instance" and the status badge, as for Postgres ([w3/133](../../.pm/w3/133.md)).
+- An external endpoint whose certificate is still issuing: Info's Connections card says so under the external URL, and Connect, like Render's, does not.

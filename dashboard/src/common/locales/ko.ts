@@ -797,6 +797,66 @@ const koCommon: Record<string, TranslationEntry> = {
     description:
       "Create page action bar: Submit waits only for the plan catalog to load (not the user's fault)",
   },
+  "common.datastoreViewDocs": {
+    message: "문서 보기",
+    description:
+      "A Postgres's or Key Value's header link to bex's docs for it, opening in a new tab (Render's View docs, w3/m675)",
+  },
+  "common.datastoreConnect": {
+    message: "연결",
+    description:
+      "A Postgres's or Key Value's header button opening its connection strings (Render's Connect, w3/m675)",
+  },
+  "common.datastoreConnectInternal": {
+    message: "내부",
+    description:
+      "Connect menu tab: the private-network URL (Render's Internal tab)",
+  },
+  "common.datastoreConnectExternal": {
+    message: "외부",
+    description:
+      "Connect menu tab: the public URL and the CLI command (Render's External tab)",
+  },
+  "common.datastoreConnectInternalBody": {
+    message:
+      "같은 리전의 모든 bex 서비스는 사설 네트워크로 {link}할 수 있습니다.",
+    description:
+      "Connect menu's Internal line; {link} is common.datastoreConnectInternalLink, linking the docs",
+  },
+  "common.datastoreConnectInternalLink": {
+    message: "내부 통신",
+    description: "Linked words inside common.datastoreConnectInternalBody",
+  },
+  "common.datastoreConnectExternalBody": {
+    message: "bex {link}에서 연결합니다.",
+    description:
+      "Connect menu's External line once an IP rule admits traffic; {link} is common.datastoreConnectExternalLink, linking the docs",
+  },
+  "common.datastoreConnectExternalLink": {
+    message: "외부의 서비스",
+    description: "Linked words inside common.datastoreConnectExternalBody",
+  },
+  "common.datastoreConnectExternalClosed": {
+    message:
+      "외부 트래픽이 허용되지 않습니다. {link} 섹션에서 IP 주소를 추가하세요.",
+    description:
+      "Connect menu's External tab while no IP rule admits traffic (Render's note); {link} is the Info card holding the IP rules, named as that card is",
+  },
+  "common.datastoreConnectCliBody": {
+    message: "{link}로 연결합니다",
+    description:
+      "Connect menu's line above the CLI command; {link} is common.datastoreConnectCliLink, linking the CLI docs",
+  },
+  "common.datastoreConnectCliLink": {
+    message: "bex CLI 도구",
+    description:
+      "Linked words inside common.datastoreConnectCliBody: the bex command-line tool",
+  },
+  "common.datastoreConnectRetry": {
+    message: "불러오지 못했습니다. 다시 시도할까요?",
+    description:
+      "Accessible name and tooltip of the retry button on a Connect menu value that failed to load",
+  },
 };
 
 export default koCommon;

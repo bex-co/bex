@@ -2206,6 +2206,21 @@ const ptDatabases: Record<string, TranslationEntry> = {
     message: "Erro",
     description: "Admin app deploy dialog error title",
   },
+  "databases.connectInternalTitle": {
+    message: "URL interna do banco de dados",
+    description:
+      "Header Connect menu, Internal tab: the private-network URL's title (Render's copy, w3/m675)",
+  },
+  "databases.connectExternalTitle": {
+    message: "URL externa do banco de dados",
+    description:
+      "Header Connect menu, External tab: the public URL's title (Render's copy, w3/m675)",
+  },
+  "databases.connectCliTitle": {
+    message: "Comando PSQL",
+    description:
+      "Header Connect menu, External tab: the `bex psql <id>` command's title (Render's copy, w3/m675)",
+  },
 };
 
 export default ptDatabases;

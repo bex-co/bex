@@ -1,21 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { createElement } from "react";
-import { render, screen } from "@testing-library/react";
-import { DatabaseRowActionsWithCapabilities } from "@/features/databases/components/database-row-actions";
-import { mockCapabilities } from "@/test/mocks/capabilities";
-
-// The datastore lifecycle gate reads its projection through Apollo (w4/m578).
-vi.mock("@/features/capabilities/hooks/use-lifecycle-gate", async () => {
-  const { mockAllowedLifecycleGate } =
-    await import("@/test/mocks/lifecycle-gate");
-  return mockAllowedLifecycleGate();
-});
-
-vi.mock("@/features/databases/hooks/use-delete-database", () => ({
-  useDeleteDatabase: () => ({ remove: vi.fn(), deleting: null }),
-}));
 
 // w4/244: at 390px a valid 30-character Key Value or Postgres name pushed the
 // status badge past the viewport (document 390/416). The name/status row kept
@@ -62,44 +47,8 @@ describe("datastore detail header title rows", () => {
     expect(bar?.split(" ")).toContain("h-7");
   });
 
-  // w3/082: the Postgres header's pending actions square was `size-9` (36px)
-  // under a 32px `icon-sm` trigger, so the header stood 4px taller while the
-  // database loaded and the tabs and the Logs toolbar moved up when it landed.
-  // The skeleton is read against the trigger the ready header renders, so a
-  // resized trigger fails here until its skeleton follows.
-  it("draws the Postgres actions slot at the ready trigger's size", () => {
-    render(
-      createElement(DatabaseRowActionsWithCapabilities, {
-        database: {
-          id: "dpg-main",
-          name: "primary-db",
-          status: "available",
-          plan: "free",
-          version: "18",
-          diskSizeGB: 1,
-          createdAt: null,
-          public: false,
-          suspended: "not_suspended",
-        },
-        onDeleted: vi.fn(),
-        lifecycle: { pending: null, run: vi.fn() },
-        capabilities: mockCapabilities(),
-      }),
-    );
-    const trigger = screen.getByRole("button", {
-      name: "Actions for primary-db",
-    });
-    const source = readFileSync(
-      join(import.meta.dirname, "..", "databases.$databaseId.tsx"),
-      "utf8",
-    );
-    const slot = source.match(
-      /data-skeleton-region="resource-actions">[\s\S]*?<Skeleton className="([^"]*)"/,
-    )?.[1];
-    const sizeOf = (classes: string | undefined) =>
-      classes?.split(" ").filter((token) => /^(size|h|w)-\d+$/.test(token));
-
-    expect(sizeOf(trigger.className)).toEqual(["size-8"]);
-    expect(sizeOf(slot)).toEqual(sizeOf(trigger.className));
-  });
+  // w3/082's guard (the pending actions slot at the ready trigger's size)
+  // moved with the actions themselves: since w3/m675 the header draws View
+  // docs and Connect, and both datastores' pages tests compare each pending
+  // action box with its ready control ("reserves the ready header's boxes").
 });

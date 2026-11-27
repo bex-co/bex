@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Route as IndexRoute } from "../databases.$databaseId.index";
 import { Route as InfoRoute } from "../databases.$databaseId.info";
 import { Route as LogsRoute } from "../databases.$databaseId.logs";
@@ -8,7 +9,13 @@ import { Route as MetricsRoute } from "../databases.$databaseId.metrics";
 import { Route as PlanRoute } from "../databases.$databaseId.plan";
 import { Route as AppsRoute } from "../databases.$databaseId.apps";
 import { Route as RecoveryRoute } from "../databases.$databaseId.recovery";
-import { renderDatabasePages } from "@/test/datastore-pages";
+import {
+  datastoreHeaderGeometry as headerGeometry,
+  renderDatabasePages,
+  renderDatastorePendingFrame,
+} from "@/test/datastore-pages";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 
 // w3/m641: a Postgres database's one long Overview, its section rail and its
 // Overview/Logs tab bar became Render's pages, each at its own URL under one
@@ -17,8 +24,10 @@ import { renderDatabasePages } from "@/test/datastore-pages";
 // Page map), and no other page's. The real layout and page routes run; the
 // data hooks are stubbed and every card stands in as a named marker.
 
-const { card, storage, catalog } = vi.hoisted(() => ({
+const { card, storage, catalog, db } = vi.hoisted(() => ({
   card: (name: string) => () => <div data-card={name} />,
+  // Whether an IP rule admits external traffic (w3/m675).
+  db: { public: false },
   // The almost-full warning's usage read and the plan catalog (w3/m656).
   storage: {
     current: null as {
@@ -27,7 +36,13 @@ const { card, storage, catalog } = vi.hoisted(() => ({
     } | null,
   },
   catalog: {
-    current: [] as { id: string; storageGB: number; maxStorageGB: number }[],
+    error: undefined as Error | undefined,
+    current: [] as {
+      id: string;
+      name?: string;
+      storageGB: number;
+      maxStorageGB: number;
+    }[],
   },
 }));
 
@@ -53,7 +68,7 @@ vi.mock("@/features/databases/hooks/use-database", () => ({
       version: "16",
       diskSizeGB: 10,
       createdAt: null,
-      public: false,
+      public: db.public,
       suspended: "not_suspended",
       highAvailabilityEnabled: false,
       readReplicas: [],
@@ -69,16 +84,32 @@ vi.mock("@/features/databases/hooks/use-database-lifecycle", () => ({
   useDatabaseLifecycle: () => ({ pending: null, run: vi.fn() }),
 }));
 vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
-  useDatabaseInstanceTypes: () => ({ instanceTypes: catalog.current }),
+  useDatabaseInstanceTypes: () => ({
+    instanceTypes: catalog.current,
+    error: catalog.error,
+  }),
 }));
 vi.mock("@/features/databases/hooks/use-database-storage", () => ({
   useDatabaseStorage: () => storage.current,
 }));
 vi.mock("@/features/databases/components/database-status-badge", () => ({
-  DatabaseStatusBadge: () => null,
+  // A stand-in badge, so the header keeps its ready items.
+  DatabaseStatusBadge: () => <span>Available</span>,
 }));
-vi.mock("@/features/databases/components/database-row-actions", () => ({
-  DatabaseRowActions: () => null,
+// The header's Connect reads with the Info card's own fetch (w3/m675).
+// One client for the whole file, as the provider's is.
+const apolloClient = vi.hoisted(() => ({}));
+vi.mock("@apollo/client/react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@apollo/client/react")>()),
+  useApolloClient: () => apolloClient,
+}));
+vi.mock("@/features/databases/hooks/use-connection-info", () => ({
+  fetchConnectionInfo: async () => ({
+    internalConnectionString:
+      "postgresql://orders_user:pw@dpg-main-rw.ns.svc:5432/orders",
+    externalConnectionString:
+      "postgresql://orders_user:pw@dpg-main.db.bex.co:5432/orders",
+  }),
 }));
 vi.mock("@/features/databases/components/database-metadata-card", () => ({
   DatabaseMetadataCard: card("details"),
@@ -144,6 +175,8 @@ beforeEach(() => {
   document.body.innerHTML = "";
   storage.current = null;
   catalog.current = [];
+  catalog.error = undefined;
+  db.public = false;
 });
 
 describe("a Postgres database's pages (w3/m641)", () => {
@@ -311,5 +344,178 @@ describe("a Postgres database's almost-full warning (w3/m656)", () => {
       /or contact support to create a custom compute plan\.$/,
     );
     expect(screen.queryByRole("link", { name: /storage|plan/ })).toBeNull();
+  });
+});
+
+// w3/m675: every page's header is Render's: the name, the status, the plan
+// badge opening Plan, View docs and Connect, and no overflow menu
+// (docs/render-artifacts/postgres-dashboard.md § Header).
+describe("a Postgres database's header (w3/m675)", () => {
+  const PAGES = [
+    "",
+    "/info",
+    "/logs",
+    "/metrics",
+    "/plan",
+    "/apps",
+    "/recovery",
+  ];
+
+  it.each(PAGES)(
+    "/databases/dpg-main%s carries Render's header",
+    async (page) => {
+      catalog.current = [
+        {
+          id: "basic-1gb",
+          name: "Basic-1gb",
+          storageGB: 5,
+          maxStorageGB: 16384,
+        },
+      ];
+      await renderDatabasePages(ROUTES, `/databases/dpg-main${page}`);
+
+      await screen.findByRole("heading", { level: 1, name: "orders-db" });
+      expect(screen.getByRole("link", { name: "Basic-1gb" })).toHaveAttribute(
+        "href",
+        "/databases/dpg-main/plan",
+      );
+      const docs = screen.getByRole("link", { name: "View docs" });
+      expect(docs).toHaveAttribute(
+        "href",
+        "https://bex.co/docs/platform/postgres",
+      );
+      expect(docs).toHaveAttribute("target", "_blank");
+      expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
+      // Suspend, Resume, Restart and Delete are in Info's danger zone only.
+      expect(
+        screen.queryByRole("button", { name: "Actions for orders-db" }),
+      ).toBeNull();
+    },
+  );
+
+  // The server render and the first paint have no catalogue yet: the raw id
+  // would flash, and differ from what the client hydrates.
+  it("holds the badge's place, with no raw id, until the catalogue answers", async () => {
+    await renderDatabasePages(ROUTES, "/databases/dpg-main");
+
+    await screen.findByRole("heading", { level: 1, name: "orders-db" });
+    expect(screen.queryByRole("link", { name: "basic-1gb" })).toBeNull();
+    expect(screen.queryByText("basic-1gb")).toBeNull();
+  });
+
+  it.each([
+    ["the catalogue fails", [], new Error("catalogue down")],
+    [
+      "the catalogue lacks the plan",
+      [{ id: "pro-4gb", name: "Pro-4gb", storageGB: 5, maxStorageGB: 16384 }],
+      undefined,
+    ],
+  ])("names the plan by its id when %s", async (_case, types, error) => {
+    catalog.current = types;
+    catalog.error = error;
+    await renderDatabasePages(ROUTES, "/databases/dpg-main");
+
+    expect(
+      await screen.findByRole("link", { name: "basic-1gb" }),
+    ).toHaveAttribute("href", "/databases/dpg-main/plan");
+  });
+
+  it("connects a private database's services, and sends the external URL to its IP rules", async () => {
+    const user = userEvent.setup();
+    const router = await renderDatabasePages(
+      ROUTES,
+      "/databases/dpg-main/logs",
+    );
+    await user.click(await screen.findByRole("button", { name: "Connect" }));
+
+    expect(
+      await screen.findByText(
+        "postgresql://orders_user:pw@dpg-main-rw.ns.svc:5432/orders",
+      ),
+    ).toBeVisible();
+    expect(screen.getByText("Internal Database URL")).toBeVisible();
+    await user.click(screen.getByRole("tab", { name: "External" }));
+    const panel = screen.getByRole("tabpanel", { name: "External" });
+    expect(panel).toHaveTextContent(
+      "External traffic not allowed. Add IP addresses in the Access control section.",
+    );
+    expect(within(panel).queryByText("PSQL Command")).toBeNull();
+
+    await user.click(
+      within(panel).getByRole("link", { name: "Access control" }),
+    );
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/databases/dpg-main/info"),
+    );
+    expect(router.state.location.hash).toBe("access-control");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("offers a public database's external URL and bex psql", async () => {
+    db.public = true;
+    const user = userEvent.setup();
+    await renderDatabasePages(ROUTES, "/databases/dpg-main");
+    await user.click(await screen.findByRole("button", { name: "Connect" }));
+    await user.click(screen.getByRole("tab", { name: "External" }));
+
+    expect(
+      await screen.findByText(
+        "postgresql://orders_user:pw@dpg-main.db.bex.co:5432/orders",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("group", { name: "PSQL Command" }),
+    ).toHaveTextContent("bex psql dpg-main");
+  });
+
+  it("disables Connect, with the reason, for a member who cannot reveal secrets", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({
+        role: "VIEWER",
+        canViewSensitive: false,
+        reasonKey: (action) =>
+          action === "can_view_sensitive"
+            ? "capabilities.reasonCanViewSensitive"
+            : undefined,
+      }),
+    );
+    const user = userEvent.setup();
+    await renderDatabasePages(ROUTES, "/databases/dpg-main");
+
+    const connect = await screen.findByRole("button", { name: "Connect" });
+    expect(connect).toBeDisabled();
+    await user.hover(connect.parentElement!);
+    expect(
+      (await screen.findAllByText(/Your role can.t reveal secret values/))
+        .length,
+    ).toBeGreaterThan(0);
+  });
+
+  // The pending frame reserves each control's own box (AGENTS.md's skeleton
+  // rule): jsdom has no layout, so compare what sets the geometry.
+  it("reserves the ready header's boxes while it is pending", async () => {
+    await renderDatabasePages(ROUTES, "/databases/dpg-main");
+    const ready = headerGeometry(
+      (await screen.findByRole("heading", { level: 1 })).closest(".border-b")!,
+    );
+    document.body.innerHTML = "";
+
+    await renderDatastorePendingFrame("database", "/databases/dpg-main");
+    const pending = headerGeometry(
+      await waitFor(() => {
+        const header = document.querySelector(
+          '[data-skeleton-region="resource-header"]',
+        );
+        expect(header).not.toBeNull();
+        return header!;
+      }),
+    );
+
+    expect(pending).toEqual(ready);
+    expect(ready.actions.boxes.map((box) => box.label)).toEqual([
+      "View docs",
+      "Connect",
+    ]);
   });
 });

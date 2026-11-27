@@ -2130,6 +2130,21 @@ const koDatabases: Record<string, TranslationEntry> = {
     message: "오류",
     description: "Admin app deploy dialog error title",
   },
+  "databases.connectInternalTitle": {
+    message: "내부 데이터베이스 URL",
+    description:
+      "Header Connect menu, Internal tab: the private-network URL's title (Render's copy, w3/m675)",
+  },
+  "databases.connectExternalTitle": {
+    message: "외부 데이터베이스 URL",
+    description:
+      "Header Connect menu, External tab: the public URL's title (Render's copy, w3/m675)",
+  },
+  "databases.connectCliTitle": {
+    message: "PSQL 명령",
+    description:
+      "Header Connect menu, External tab: the `bex psql <id>` command's title (Render's copy, w3/m675)",
+  },
 };
 
 export default koDatabases;

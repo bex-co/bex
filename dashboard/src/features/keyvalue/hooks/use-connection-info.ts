@@ -9,7 +9,7 @@ import {
 export type UseConnectionInfoResult =
   ConnectionReveal<KeyValueConnectionInfoView>;
 
-async function fetchConnectionInfo(
+export async function fetchConnectionInfo(
   client: ApolloClient,
   id: string,
 ): Promise<KeyValueConnectionInfoView> {

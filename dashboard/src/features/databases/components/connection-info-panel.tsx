@@ -16,8 +16,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { downloadTextFile } from "@/common/lib/download-file";
 import { useConnectionInfo } from "@/features/databases/hooks/use-connection-info";
-import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
-import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
+import { useConnectionRevealGate } from "@/features/capabilities/hooks/use-connection-reveal-gate";
 import { isAdminOnlyRefusal } from "@/features/capabilities/lib/admin-only";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { CopyButton } from "@/common/components/copy-button";
@@ -36,15 +35,9 @@ import { LogicalReplicationNote } from "@/features/databases/components/logical-
 export function ConnectionInfoPanel({ id }: { id: string }) {
   const { t } = useTranslations();
   const { info, loading, error, reveal, hide } = useConnectionInfo(id);
-  // Revealing the connection strings + password is can_view_sensitive (w9/m84),
-  // and in a protected environment an Admin's alone (w4/m594).
-  const capabilities = useCapabilities();
-  const { canViewSensitive } = capabilities;
-  const revealReasonKey = capabilities.reasonKey("can_view_sensitive");
-  const adminOnly = useAdminOnlyActions("database", id);
-  const revealReason = revealReasonKey
-    ? t(revealReasonKey)
-    : adminOnly("view_connection_info");
+  // Revealing the strings, which carry the password, is the same rule as the
+  // header's Connect (w9/m84, w4/m594).
+  const gate = useConnectionRevealGate("database", id);
 
   return (
     <Card>
@@ -72,10 +65,10 @@ export function ConnectionInfoPanel({ id }: { id: string }) {
             </Button>
           </>
         ) : (
-          <PermissionTooltip reason={revealReason}>
+          <PermissionTooltip reason={gate.reason}>
             <Button
               onClick={() => void reveal()}
-              disabled={loading || !canViewSensitive || revealReason != null}
+              disabled={loading || gate.disabled}
             >
               {loading ? <Loader2 className="animate-spin" /> : <Eye />}
               {t("databases.connReveal")}

@@ -142,3 +142,36 @@ Read 2026-11-26 from Render's public dashboard bundle, without sign-in: `index-D
 - Render's prices print as `$55 / month`; bex's as `$55.00/month`, as its plan cards do.
 - Render shows the plan picker read-only until Edit; bex's picker is always open, with its own Cancel and Save.
 - Services' and cron jobs' compute changes still confirm without the review ([w3/132](../../.pm/w3/132.md)).
+
+## Header (w3/m675)
+
+Read 2026-11-26 from Render's public dashboard bundle, without sign-in: `index-D5V4ZgbE.js` (sha256 `8d15889ace2d…`) holds the Postgres and Key Value layouts' header props and the Connect menu, `page-templates-TTlbtDSy.js` (`9e445c27098e…`) the resource header every resource page shares, `CronJob-DioyV2Vf.js` (`24992a6b22d2…`) the tabbed dropdown and its sections, `CodeSnippet-OVIRl2YL.js` (`0b982ada9d15…`) the value row, and `freeTierPlans-PE7Ufc9i.js` (`bdeec4934132…`) the Free-plan test. Find the Connect menu by "External traffic not allowed" beside "PSQL Command", and the header by `badge-link-upgrade-instance-path`.
+
+- **Order.** The eyebrow, the Postgres icon and `POSTGRESQL` in small caps. Then one row: the name, the plan badge, an "Upgrade your instance" link on a Free plan, a "Blueprint managed" badge when a Blueprint manages the database, and at the row's end the actions, **View docs** then **Connect**, 24 px apart. Then the **Service ID** row with its copy button, then the banners.
+- **What it lacks.** No status badge: the status is a field of Info's General card. No overflow menu: Suspend, Restart and Delete are on Info's delete card.
+- **Plan badge.** The plan's name in a large highlight badge, linking `/d/<id>/plan`, or `info#postgres-instance` for a read replica whose viewer cannot update it. "Upgrade your instance" (a highlight link with a forward arrow) shows on a Free plan only and links the same place.
+- **View docs.** A highlight link with an external-link icon, opening render.com/docs/postgresql-creating-connecting in a new tab.
+- **Connect.** A secondary dropdown button, "Connect" with a chevron, opening a 22 rem panel (30 rem from Render's small breakpoint) aligned to the button's right edge, with two tabs:
+  - **Internal**: the title "Internal Database URL", the line "All of your Render services in the same region can communicate internally over their private network." (its link opens the docs' internal connections), and the URL.
+  - **External**: the title "External Database URL". With an IP allow list, the line "Connect from services outside of Render." and the URL, then **PSQL Command**, "Connect using the Render CLI", with `render psql <id>`. Without one, "External traffic not allowed. Add IP addresses in the Networking section.", its link going to Info's `#networking`, and neither the URL nor the command.
+  - Opening the panel reads the three values in one request. A value already read is not read again until the database's user changes.
+  - Each value is a dark 40 px single line with one button at its end: a spinner ("Loading...") while it is read, "Loading failed. Try again?" after an error (it reads again), and Copy ("Copied!", or "Failed to copy") once it is there.
+  - A member without `viewDatabaseConnectionInfo` gets the button disabled, with the permission's message in a tooltip.
+- **Suspended.** The header does not change: View docs and Connect stay, and the suspension notice is a banner under it.
+
+### What bex does (w3/m675)
+
+- Every page of a database (Info, Logs, Metrics, Plan, Apps, Recovery) has the header: the name, the status, the plan badge, and at the row's end View docs and Connect. At 390 the actions wrap under the name.
+- The plan badge shows the plan's catalogue name and opens `/databases/<id>/plan`. View docs opens https://bex.co/docs/platform/postgres in a new tab.
+- Connect (`dashboard/src/common/components/datastore-connect-menu.tsx`) has Render's two tabs, titles and lines, with bex's name where Render names itself. Its links go to bex's docs and CLI page. The command is `bex psql <id>`, the CLI's Render-compatible `psql` command.
+- The external endpoint admits traffic once the database is public, bex's counterpart of a non-empty allow list. Until then the External tab shows Render's note, linking Info's Access control card (`#access-control`), which holds the IP rules.
+- Opening the menu reads the URLs with the Info card's `databaseConnectionInfo` query, every time it opens. Closing it drops them. A failed read shows Render's retry on each value.
+- A member who cannot reveal secrets (`can_view_sensitive`, or an Admin-only verb in a protected environment) gets Connect disabled, with the reason the Info card's Reveal gives.
+- The header has no kebab. Suspend, Resume, Restart and Delete stay in Info's danger zone, and the list rows keep their menu.
+- The pending frame reserves the name, the two badges, and each action's own box with its own label.
+
+### Still apart
+
+- Render's header carries the `POSTGRESQL` eyebrow, the Service ID row and, on a Free plan, "Upgrade your instance", and shows no status badge. bex keeps the status beside the name and has none of the three ([w3/133](../../.pm/w3/133.md)).
+- Render reads the values once per page and keeps them. bex reads them each time Connect opens and drops them when it closes, as its Info card's Reveal does.
+- Render's network note says "Networking section"; bex names its own card, "Access control section".

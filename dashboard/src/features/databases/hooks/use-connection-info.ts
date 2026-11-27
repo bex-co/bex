@@ -12,7 +12,7 @@ export type UseConnectionInfoResult = ConnectionReveal<ConnectionInfoView>;
 // authz/not-provisioned error surfaces to the panel (docs/ADR006-bex-api.md:
 // connection-info requires the sensitive-read scope and 404s until CNPG has
 // generated the Secret).
-async function fetchConnectionInfo(
+export async function fetchConnectionInfo(
   client: ApolloClient,
   id: string,
 ): Promise<ConnectionInfoView> {
