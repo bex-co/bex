@@ -58,11 +58,27 @@ func TestScanFindsTheListeningPorts(t *testing.T) {
 	}
 }
 
-// A listener bound to loopback only is invisible from the pod's own address.
+// A closed port answers with ECONNREFUSED, proving the host is reachable while
+// reporting no open ports. Pick a verified-unused port outside Linux/macOS
+// ephemeral ranges (32768..65535) so parallel test listeners binding :0 cannot
+// land inside the scanned range.
 func TestScanExcludesNothingListeningOnTheScannedAddress(t *testing.T) {
+	var closedPort int
+	for port := 29100; port < 29200; port++ {
+		l, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+		if err != nil {
+			continue
+		}
+		_ = l.Close()
+		closedPort = port
+		break
+	}
+	if closedPort == 0 {
+		t.Skip("no free non-ephemeral loopback port in 29100..29199")
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	got, err := Dialer{Low: 40001, High: 40010}.Scan(ctx, "127.0.0.1")
+	got, err := Dialer{Low: closedPort, High: closedPort}.Scan(ctx, "127.0.0.1")
 	if err != nil {
 		t.Fatal(err)
 	}
