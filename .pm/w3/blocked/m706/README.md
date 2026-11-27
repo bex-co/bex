@@ -1,6 +1,6 @@
 # w3 · m706 — A dead resource link shows Render's "not found" or "deleted" page in place
 
-**Worker:** worker3 **Goal:** a dashboard URL naming a resource that does not exist, or no longer exists, keeps its URL and draws Render's page in place ("`<Label>` not found" or "`<Label>` deleted", the id, Go to project when known, Return home), with Render's separate no-access and load-error states, instead of a toast and a redirect home. **Status:** todo (t001–t006 and t008–t010 done; t007 walked locally, its production walk and t011 left)
+**Worker:** worker3 **Goal:** a dashboard URL naming a resource that does not exist, or no longer exists, keeps its URL and draws Render's page in place ("`<Label>` not found" or "`<Label>` deleted", the id, Go to project when known, Return home), with Render's separate no-access and load-error states, instead of a toast and a redirect home. **Status:** blocked (pin must carry `cb9e4c3ee0`; t001–t006 and t008–t010 done, t007 walked locally, its production walk and t011 left)
 
 ## Tasks (in order)
 
@@ -39,7 +39,7 @@ Verified 2026-11-26 on main `76dfb1e0e2`.
 
 ## What shipped
 
-Recorded 2026-11-27 (t001–t006, t008–t010). The capture is [resource-not-found.md](../../../docs/render-artifacts/resource-not-found.md); ADR018's row is in [deployment-sources-iac.md](../../../docs/ADR018/deployment-sources-iac.md).
+Recorded 2026-11-27 (t001–t006, t008–t010). The capture is [resource-not-found.md](../../../../docs/render-artifacts/resource-not-found.md); ADR018's row is in [deployment-sources-iac.md](../../../../docs/ADR018/deployment-sources-iac.md).
 
 - **Deviations from the brief, from the bundle:** Render draws `ResourceNotFound` only on a service, cron job, sandbox group, deploy, build and `/resource/<id>`. Postgres, Key Value, environment groups, Blueprints, webhooks, projects and build sources draw `Error404`, "Page not found", "`<id>` doesn’t exist.", with Go to Webhooks on a webhook, so bex draws that there. `ResourceNotFound` has at most two buttons (the first link, then Return home), so View deploys pushes Go to project out. Render's deleted variant reads its project from the cached environment; bex's Server query now spreads `MissingServiceContext` (name, type, project, environment) so the cache holds them.
 - **Components:** `common/components/resource-not-found.tsx` (`ResourceNotFound`, `PageNotFound`, `AccessDenied`, `ResourceLoadFailed`, `ResourceStateView`, `ResourceStatePage`), `common/lib/resource-read-state.ts` (`resourceReadState`; `use-not-found-redirect.ts` and its toast are gone), `common/hooks/use-missing-resource-context.ts`, `common/hooks/use-resource-state-links.ts`. Every locale carries the strings; the tab's title is the drawn title.
@@ -51,7 +51,7 @@ Recorded 2026-11-27 (t001–t006, t008–t010). The capture is [resource-not-fou
 
 **Locally, 2026-11-27** (t007 step 1): dev-3 (`bash scripts/dev-env.sh 3 status` all green), the dashboard from the tree on `:50030`, headless Chromium at 1440×900 and 390×844, signed in as a dev-3 user created for the walk, with a second dev-3 user's workspace as the foreign one (both disposable). Every row drew its state with the URL kept, no toast and no horizontal scroll: a mistyped service id ("Service not found", Return home); a dead deploy under a live service ("Deploy not found", "…for m706-orders", View deploys then Return home); mistyped Postgres, Key Value, environment group, Blueprint, project and build source ids (Page not found, Return home) and webhook (Go to Webhooks); the other user's Postgres and `/w/<their tea-id>/settings` (Access denied with the id); a service in a project, a service and a cron job deleted through the API while their pages were open ("Service deleted" with the name, Go to project then Return home; "Cron job deleted" with the name, Return home); a forced 502 on a service and a Postgres read ("An error occurred", "`<id>` could not be loaded."). A direct load renders the state on the server, so its first paint is the state itself; a client navigation shows the resource's skeleton while its loader runs, then the state. dev-3 serves no sandbox groups, so a mistyped sandbox group read drew "An error occurred" there; production's walk covers the sandbox group states. The disposable Postgres, project and services were deleted afterwards.
 
-**Production:** waits for a pin carrying this milestone's commit (t007 step 2).
+**Production:** waits for a pin carrying `cb9e4c3ee0` (t007 step 2). Parked 2026-11-27: then a worker signs in as the QA user in `bex-canary` (`bash scripts/qa-login.sh`), creates a service in a project, a sandbox group and a Postgres for the walk (disposable), opens a mistyped id of every call site's type, a dead deploy, a resource in a workspace the QA user is not in and `/w/<that tea-id>`, and deletes the service and the sandbox group from another tab with their pages open (Render's deleted variant with Go to project), at 1440 and 390, comparing each first paint with its ready state, records the pin and the results here, deletes what it created, and runs t011.
 
 ## Definition of done
 
@@ -65,7 +65,7 @@ Recorded 2026-11-27 (t001–t006, t008–t010). The capture is [resource-not-fou
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm one aspect of render parity to w3` (2026-11-26), item 3, verified against Render's bundle the same day. The brainstorm flagged that this reverses w9/m55's 2026-07-17 user decision; the user filed it with `/pm them all to w3` the same day, without choosing to sign the redirect off as a divergence.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)): an older decision that conflicts with Render is amended unless ADR018 records the user's sign-off, and w9/m55's has none.
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)): an older decision that conflicts with Render is amended unless ADR018 records the user's sign-off, and w9/m55's has none.
 - **Expected outcome:** a stale or mistyped link tells the user what was missing and where to go, as Render does, instead of dropping them on the home page with a toast they may miss.
 - **Why now:** w3/m705 adds `/resource/<id>` and many Render aliases whose unknown ids land in this handling, so the page they reach should be Render's. The 12 call sites are all on one hook, so the swap is contained.
 - **Render parity task:** included (t008): the milestone changes what every resource page shows for a dead id.
