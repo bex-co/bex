@@ -1,6 +1,6 @@
 # w4 · m687 — A web service gets the Cloudflare request headers a Render app gets, and a forged `CF-Connecting-IP` is refused 403 as on Render
 
-**Worker:** worker4 **Goal:** an app moved from Render reads the client's address, country and request ray from the same `CF-*` headers on bex, and a public request that forges `CF-Connecting-IP` gets Render's `403 error code: 1000`. **Status:** todo (t001–t005 and t007–t009 done; t006 steps 1–2 done, its production check pending)
+**Worker:** worker4 **Goal:** an app moved from Render reads the client's address, country and request ray from the same `CF-*` headers on bex, and a public request that forges `CF-Connecting-IP` gets Render's `403 error code: 1000`. **Status:** blocked (t001–t003 and t005–t009 done; t004's refusal shipped, took down two Caddy-proxied sites and was turned off, and waits for the user's decision; then t010)
 
 ## Tasks (in order)
 
@@ -9,9 +9,9 @@
 | [t001](done/t001.md) | Record Render's edge headers in `docs/render-artifacts/edge-headers.md` — **DONE** | 30m | — |
 | [t002](done/t002.md) | Set `CF-Connecting-IP`, `CF-Visitor`, `CF-Ray` and `CDN-Loop` on requests from a non-Cloudflare peer — **DONE** | 1h | t001 |
 | [t003](done/t003.md) | `CF-IPCountry` from a country table — **DONE** | 2h | t002 |
-| [t004](done/t004.md) | A forged `CF-Connecting-IP` from a non-Cloudflare peer answers 403 `error code: 1000` — **DONE** | 45m | t002 |
+| [t004](t004.md) | A forged `CF-Connecting-IP` from a non-Cloudflare peer answers 403 `error code: 1000` | 45m | t002 |
 | [t005](done/t005.md) | Responses carry `cf-ray`, and an uncached web-service response `cf-cache-status: DYNAMIC` — **DONE** | 45m | t002 |
-| [t006](t006.md) | Amend ADR022 and ADR018, then verify on production with a disposable echo service | 45m | t003, t004, t005 |
+| [t006](done/t006.md) | Amend ADR022 and ADR018, then verify on production with a disposable echo service — **DONE** | 45m | t003, t004, t005 |
 | [t007](done/t007.md) | Render parity — **DONE** | 25m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007, t008 |
@@ -31,9 +31,17 @@ Total: **10 tasks, about 7h05m**.
 
 - **Source:** `/pm-brainstorm one aspect of render parity for w6`, 2026-11-26 (the aspect: what Render publishes outside its API pins that bex's parity ledger never read — its docs pages, its pricing page, and the Cloudflare headers its docs tell apps to use), filed to w4 by `/pm them to w4 and ship`. Re-checked at `origin/main` `f32c8164fb` before filing: no open, blocked or done item on any workstream owns it. Item 1.
 - **Render:** every Render host sits behind Cloudflare, and Render's docs tell apps to use what it adds: [uptime-best-practices](https://render.com/docs/uptime-best-practices) ("Render includes this header in the request it sends along to your service", for `CF-Ray`) and the [PocketBase article](https://render.com/articles/host-pocketbase-on-render) (`trustedProxy.headers = ["CF-Connecting-IP"]`). Live captures from `httpbin.onrender.com` on 2026-11-27 are in t001.
-- **bex today:** `deploy/gitops/charts/traefik-plugins/clientipheaders/clientipheaders.go`:88-95 removes every `CF-*` header from a non-Cloudflare peer (w8/m123's "absent"), so a Render-configured app reads no client address, no country and no ray. Tenant hosts are DNS-only, not behind Cloudflare ([w21/126](../../w21/blocked/126.md)).
+- **bex today:** `deploy/gitops/charts/traefik-plugins/clientipheaders/clientipheaders.go`:88-95 removes every `CF-*` header from a non-Cloudflare peer (w8/m123's "absent"), so a Render-configured app reads no client address, no country and no ray. Tenant hosts are DNS-only, not behind Cloudflare ([w21/126](../../../w21/blocked/126.md)).
 - **Relation to w21/126:** that note waits for the user's decision on putting tenant hosts behind Cloudflare. This milestone does not wait for it: the plugin's trusted-Cloudflare-peer branch keeps Cloudflare's own values if that decision lands, and the parity rule says parity work is never parked on an optional decision.
-- **Goal linkage:** [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first): an app moved from Render keeps its rate limits, audit logs and geo logic.
+- **Goal linkage:** [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first): an app moved from Render keeps its rate limits, audit logs and geo logic.
 - **Expected outcome:** a PocketBase (or any) app configured as Render's docs say sees each user's real address on bex, and a support request can quote a `cf-ray` both sides log.
 - **Why now:** Render's own articles now point apps at `CF-Connecting-IP`; w8/m123 chose "absent" without a live Render capture, which this milestone now has.
 - **Render parity:** included: the edge contract is tenant-facing, though REST, GraphQL and MCP do not change.
+
+## Record — 2026-11-27
+
+- **Shipped:** `883f00c2ab` (the headers, the country table, the refusal, the answer headers, ADR022, the ADR018 row, w4/736 and w4/737 filed), then `e068a54afa` (the refusal of a forged `CF-Connecting-IP` turned off).
+- **On production** (Argo CD applies the edge's values and plugin from `main`; the new edge served from about 03:20 UTC, the fix from 03:34 UTC), a disposable echo service in `bex-canary` received `CF-Connecting-IP` (the client), `CF-IPCountry: US`, `CF-Ray` (`-FRA`, the `Rndr-Id`'s hex), `CF-Visitor: {"scheme":"https"}` and `CDN-Loop: forged, cloudflare; loops=1` for a request that forged all five, and answered `server: cloudflare`, the same `cf-ray` and `cf-cache-status: DYNAMIC` (t006). Both fixtures were deleted.
+- **Incident:** the refusal answered every request that a tenant's own Caddy on bex forwards, with Cloudflare's `CF-Connecting-IP`, to another bex service through the public edge. `beancount.io` (the `bex` workspace's `reverse-proxy-poc`) and `bex.co` answered `403 error code: 1000` from about 03:20 to 03:34 UTC, until `e068a54afa` rolled out. Every other part of the change stayed on.
+- **Gate:** whether bex refuses a forged `CF-Connecting-IP` as Render does is the user's call (t004): keep replacing it and sign off ADR018's difference (4), or have the affected proxies drop the header first and let a worker restore the refusal. The rest of the definition of done holds on production.
+
