@@ -75,7 +75,9 @@ GitOps holds the controller's Deployment, RBAC and configuration (the addresses 
 
 ### D5 — Which traffic uses the set
 
-- **Sources:** pods carrying `app.bex.co/workspace`, in any namespace: App serving pods, cron runs and pre-deploy Jobs, which the operator labels in every namespace (the same selector as ADR022's node and metadata deny). Excluded: managed Postgres and Key Value pods (`cnpg.io/cluster`, `app.bex.co/keyvalue`), whose egress is bex's own backup traffic; `/v1/sandboxes` and agent-session sandboxes (`bex.co/sandbox-id`, `bex.co/agent-session`), which have their own egress policies ([ADR042](ADR042-sandbox-cluster-substrate.md), [ADR047](ADR047-cloud-coding-agent-sessions.md)); build Jobs, which run in `bex-build` with their own path. Static sites make no outbound traffic, as on Render.
+- **Sources:** pods carrying `app.bex.co/workspace`, in any namespace: App serving pods, cron runs and pre-deploy Jobs, which the operator labels in every namespace (the same selector as ADR022's node and metadata deny). Excluded: managed Postgres and Key Value pods (`cnpg.io/cluster`, `app.bex.co/keyvalue`), whose egress is bex's own backup traffic; `/v1/sandboxes` and agent-session sandboxes (`bex.co/sandbox-id`, `bex.co/agent-session`), which have their own egress policies ([ADR042](ADR042-sandbox-cluster-substrate.md), [ADR047](ADR047-cloud-coding-agent-sessions.md)). Static sites make no outbound traffic, as on Render.
+- **Builds use the set too (amended 2026-11-27, w4/741).** Render's builds leave from the workspace's outbound addresses: "Services use dedicated IP sets for any outbound build traffic, such as package downloads. The exception is Docker image pulls, which use Render's shared outbound IP ranges", and "Workspaces without dedicated IPs use Render's default outbound IP ranges" ([dedicated-ips](https://render.com/docs/dedicated-ips), read 2026-11-27). bex has only the shared set, so on bex, as in a Render workspace without dedicated IPs, a build's requests leave from the published set, image pulls included. The build pods in `bex-build` already carry `app.bex.co/workspace`: BuildKit build Jobs (`build.AppBuildPodLabels`), kpack builds through their pod template ([ADR022](ADR022-tenant-isolation.md)) and static publish (`execution.PodLabels`). The same selector therefore covers them, with no second policy and no namespace exclusion. `bex-build`'s own NetworkPolicies (default deny, then DNS, Zot and public TCP 22, 80 and 443 only, plus the node and metadata denies) are still enforced at the source, before the redirect. BuildKit's base-image pulls run inside the build pod and leave from the set as well.
+- **Open gap: the kubelet's image pulls.** The kubelet pulls an image-backed service's image on the tenant node as node traffic, which no pod-selected policy redirects, so that pull leaves from the node's own address. On Render it leaves from the shared ranges that a workspace without dedicated IPs publishes. A private registry that allowlists `outboundIps` therefore admits a build's pulls but refuses the kubelet's. Routing all node traffic through the set is the NAT design D1 rejected; a narrower fix for the pulls alone is the follow-up `w4/757`.
 - **Destinations:** `0.0.0.0/0`, minus 10.0.0.0/8 (the private network, pods and services), 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10 and 169.254.0.0/16. Cilium also excludes every cluster address by itself. Traffic to another service's public URL leaves through the set, as on Render; traffic over the private network does not, as on Render.
 
 ### D6 — Connections through a lost gateway are reset, not left hanging
@@ -108,6 +110,7 @@ This is the riskiest part of the milestone: it changes how every node forwards S
 - A tenant pod on another node and one on the gateway node both left from the egress IP; a pod without `app.bex.co/workspace` kept its node's address, and with no policy a tenant pod left from its node.
 - **SMTP deny.** `deny-free-plan-smtp-egress`, a `CiliumClusterwideNetworkPolicy` `egressDeny` to the `world` entity, is enforced at the source endpoint before the redirect: a free-plan pod could not open 587, reached 18001 from the egress IP, and a paid pod reached 587 from the egress IP.
 - **Egress meter.** The meter (ADR030 §14) is a netfilter BPF program at `POST_ROUTING`, keyed by the local pods' IPs. Under legacy host routing the source node's hook still sees the redirected traffic with the pod's address, and BPF masquerading does its SNAT later, at the device. A 512-byte UDP payload counted exactly 544 bytes in total over every node's meter, on the source node and not again on the gateway, for a pod on another node and for one on the gateway node. The meter needs no change, and the gateway nodes need no meter of their own (it does not run on the platform pool today).
+- **Build pods (w4/741).** A pod labelled as the operator labels a build pod, in `bex-build` under production's own `build-boundary.yaml` namespace and policies, left from its node before the policy and from the egress IP after it on TCP 443, and still could not open a port `allow-required-egress` does not list (18001). It passed on 2026-11-27, with every earlier check unchanged.
 
 ### D11 — Known divergence: a new pod's first packets
 
@@ -116,7 +119,7 @@ Cilium applies the policy to a new pod after a short delay (the agent's reconcil
 ## Consequences
 
 - An allowlist built from `outboundIps` keeps admitting a service through autoscaling and node rolls. It changes only when the set itself changes, which needs a Terraform change.
-- One gateway node carries all tenant egress. Its NIC bandwidth bounds tenant egress, and losing it costs one failover, which resets the connections it carried (D6). Load sharing across both addresses is out of scope (D1).
+- One gateway node carries all tenant egress, build traffic included: package downloads, base-image pulls and BuildKit's layer-cache export to the `bex-build-cache` bucket. Its NIC bandwidth bounds tenant egress, and losing it costs one failover, which resets the connections it carried (D6). Load sharing across both addresses is out of scope (D1).
 - The cluster gains a controller with write access to Floating IP assignment, through an existing credential (D7).
 - The ledger row stays ◐ until t006 proves the set on production.
 
@@ -124,8 +127,8 @@ Cilium applies the policy to a new pod after a short delay (the agent's reconcil
 
 - Announcing a change to the set ahead of time, as Render did with 33 days' notice.
 - A dedicated gateway pool, if the platform pool rolls too often (D3).
-- Build Job egress through the set, if Render documents its builds using its ranges.
+- The kubelet's image pulls for image-backed services through the set (D5's open gap, `w4/757`): node traffic, which a pod-selected policy cannot redirect.
 
 ## Tasks
 
-`w21/m616`: t001 (this ADR and the ledger), t002 (Terraform and the Cilium flags, after the user's go-ahead), t003 (the policy, the kind matrix, the meter and the SMTP deny), t004 (the controller and the reset), t005 (`outboundIps` on every surface), t006 (production).
+`w21/m616`: t001 (this ADR and the ledger), t002 (Terraform and the Cilium flags, after the user's go-ahead), t003 (the policy, the kind matrix, the meter and the SMTP deny), t004 (the controller and the reset), t005 (`outboundIps` on every surface), t006 (production). `w4/741` adds build pods to D5 and to the kind matrix, then checks a build on production once `w21/m616` is live.

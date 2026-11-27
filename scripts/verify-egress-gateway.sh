@@ -24,7 +24,10 @@
 #   2. the free-plan SMTP deny still refuses 587 while the same pod reaches 18001;
 #   3. the egress meter counts a gateway-routed UDP datagram exactly once, summed
 #      over every node's meter (ADR125 D10);
-#   4. how soon a new pod's first connection leaves from the egress IP (D11).
+#   4. how soon a new pod's first connection leaves from the egress IP (D11);
+#   5. a build pod in bex-build, under production's own build-boundary
+#      policies, leaves from the egress IP on 443 and still cannot reach a port
+#      the boundary does not open (D5, w4/741).
 #
 # The control-plane node plays the internet: it holds 8.8.8.8/32 and runs the
 # peers, and the workers route 8.8.8.8 to it. The egress IP is a spare address
@@ -45,6 +48,8 @@ PUBLIC_IP=8.8.8.8
 BYTES_PORT=18000
 SOURCE_PORT=18001
 SMTP_PORT=587
+BUILD_PORT=443
+BUILD_NS=bex-build
 METRIC=bex_app_direct_egress_bytes_total
 PIDS=()
 CREATED_CLUSTER=0
@@ -76,15 +81,17 @@ fail() {
   exit 1
 }
 
-# source_of <pod> <port>: the address the peer saw for one connection.
+# source_of <pod> <port> [namespace]: the address the peer saw for one
+# connection.
 source_of() {
-  k -n default exec "$1" -- /egress-fixture source-client "${PUBLIC_IP}:$2" 2>/dev/null | awk '$2 == "ok" { print $3 }'
+  k -n "${3:-default}" exec "$1" -- /egress-fixture source-client "${PUBLIC_IP}:$2" 2>/dev/null | awk '$2 == "ok" { print $3 }'
 }
 
+# wait_source <pod> <want> [port] [namespace]
 wait_source() {
-  local pod=$1 want=$2 got=""
+  local pod=$1 want=$2 port=${3:-$SOURCE_PORT} namespace=${4:-default} got=""
   for _ in $(seq 1 60); do
-    got=$(source_of "$pod" "$SOURCE_PORT" || true)
+    got=$(source_of "$pod" "$port" "$namespace" || true)
     [[ "$got" == "$want" ]] && return 0
     sleep 1
   done
@@ -205,6 +212,7 @@ k -n system patch daemonset egress-meter --type=strategic -p \
   '{"spec":{"template":{"spec":{"containers":[{"name":"egress-meter","imagePullPolicy":"IfNotPresent"}]}}}}' >/dev/null
 
 k -n default delete pod -l egress-gw-matrix --ignore-not-found --wait=true >/dev/null
+k -n "$BUILD_NS" delete pod -l egress-gw-matrix --ignore-not-found --wait=true >/dev/null 2>&1 || true
 k delete ciliumegressgatewaypolicy tenant-egress --ignore-not-found >/dev/null
 
 peer() {
@@ -249,6 +257,7 @@ YAML
   peer bytes-peer public-server "$BYTES_PORT"
   peer source-peer source-echo "$SOURCE_PORT"
   peer smtp-peer source-echo "$SMTP_PORT"
+  peer build-peer source-echo "$BUILD_PORT"
   client tenant-client "$TENANT_NODE" srv-gw-tenant ", app.bex.co/workspace: tea-gw-matrix"
   client gateway-client "$GATEWAY_NODE" srv-gw-local ", app.bex.co/workspace: tea-gw-matrix"
   client free-client "$TENANT_NODE" srv-gw-free ", app.bex.co/workspace: tea-gw-matrix, app.bex.co/free-plan: \"true\""
@@ -256,15 +265,44 @@ YAML
   printf -- '---\n'
   manifest_doc "$ROOT/deploy/gitops/base/tenant-node-egress.yaml" deny-free-plan-smtp-egress
 } | k apply -f - >/dev/null
+
+# A build pod labelled as the operator labels one (build.AppBuildPodLabels),
+# in production's own bex-build namespace and policies: default deny, then
+# DNS, Zot and public 22/80/443 only, with the node and metadata denies.
+{
+  for doc in bex-build default-deny allow-required-egress deny-build-node-and-metadata-egress; do
+    printf -- '---\n'
+    manifest_doc "$ROOT/deploy/gitops/base/build-boundary.yaml" "$doc"
+    printf '\n'
+  done
+  cat <<YAML
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: build-client
+  namespace: ${BUILD_NS}
+  labels: {egress-gw-matrix: client, app.bex.co/app: build-client, app.bex.co/build: build-client, app.bex.co/app-uid: 7410e6f1-0000-4000-8000-000000000741, app.bex.co/component: build, app.bex.co/workspace: tea-gw-matrix}
+spec:
+  nodeName: ${TENANT_NODE}
+  containers:
+    - name: fixture
+      image: ${FIXTURE_IMAGE}
+      imagePullPolicy: IfNotPresent
+      args: ["idle"]
+YAML
+} | k apply -f - >/dev/null
 k -n default wait pod -l egress-gw-matrix --for=condition=Ready --timeout=3m >/dev/null
+k -n "$BUILD_NS" wait pod/build-client --for=condition=Ready --timeout=3m >/dev/null
 k -n system rollout status daemonset/egress-meter --timeout=3m >/dev/null
 
 # Control: with no policy, a tenant pod leaves from its own node.
 wait_source tenant-client "$TENANT_IP"
-printf 'ok: without the policy, tenant egress leaves from its node (%s)\n' "$TENANT_IP"
+wait_source build-client "$TENANT_IP" "$BUILD_PORT" "$BUILD_NS"
+printf 'ok: without the policy, tenant and build egress leave from their node (%s)\n' "$TENANT_IP"
 
-# The policy t003 ships (ADR125 D5): workspace pods, minus datastores and
-# sandboxes, to public destinations. The egress-gateway controller (t004) owns
+# The policy t003 ships (ADR125 D5): workspace pods, build pods in bex-build
+# included, minus datastores and sandboxes, to public destinations. The egress-gateway controller (t004) owns
 # the gateway selection and egressIP on production.
 k apply -f - >/dev/null <<YAML
 apiVersion: cilium.io/v2
@@ -295,6 +333,15 @@ printf 'ok: a tenant pod on the gateway node leaves from the egress IP\n'
 platform_source=$(source_of platform-client "$SOURCE_PORT")
 [[ "$platform_source" == "$TENANT_IP" ]] || fail "platform pod left from '${platform_source}', want its node ${TENANT_IP}"
 printf 'ok: a pod with no workspace label keeps its node address\n'
+
+# ADR125 D5 (w4/741): a build's own requests leave from the set, as Render's
+# builds leave from the workspace's outbound IPs, and bex-build's boundary is
+# still enforced at the source before the redirect.
+wait_source build-client "$EGRESS_IP" "$BUILD_PORT" "$BUILD_NS"
+if k -n "$BUILD_NS" exec build-client -- /egress-fixture source-client "${PUBLIC_IP}:${SOURCE_PORT}" >/dev/null 2>&1; then
+  fail "build pod reached ${SOURCE_PORT}, which bex-build's allow-required-egress does not open"
+fi
+printf 'ok: a build pod leaves from the egress IP on %s; bex-build still refuses %s\n' "$BUILD_PORT" "$SOURCE_PORT"
 
 free_source=$(source_of free-client "$SOURCE_PORT")
 [[ "$free_source" == "$EGRESS_IP" ]] || fail "free pod left from '${free_source}' on ${SOURCE_PORT}, want ${EGRESS_IP}"
