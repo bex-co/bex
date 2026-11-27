@@ -28,6 +28,7 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -245,15 +246,34 @@ func TestGenerateBlueprintDomainsCronAndWorkerScaling(t *testing.T) {
 	for _, want := range []string{
 		"www.example.com", "example.com", // primary + additional domains
 		"dockerCommand: bin/report", // an image cron's command from Spec.Command (w5/080)
-		"numInstances: 4",           // worker autoscaling → fixed upper bound
 	} {
 		if !strings.Contains(out.Manifest, want) {
 			t.Errorf("manifest missing %q:\n%s", want, out.Manifest)
 		}
 	}
-	if strings.Contains(out.Manifest, "scaling:") {
-		t.Errorf("worker must not emit a scaling block:\n%s", out.Manifest)
+	// w4/m695: Render's scaling block applies to background workers, so the
+	// worker exports its range and target, not its upper bound as a count.
+	var doc struct {
+		Services []struct {
+			Name         string         `json:"name"`
+			NumInstances *int32         `json:"numInstances"`
+			Scaling      map[string]any `json:"scaling"`
+		} `json:"services"`
 	}
+	if err := yaml.Unmarshal([]byte(out.Manifest), &doc); err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range doc.Services {
+		if s.Name != "crunch" {
+			continue
+		}
+		want := map[string]any{"minInstances": float64(1), "maxInstances": float64(4), "targetCPUPercent": float64(70)}
+		if !reflect.DeepEqual(s.Scaling, want) || s.NumInstances != nil {
+			t.Fatalf("worker scaling = %v, numInstances %v; want %v and no count:\n%s", s.Scaling, s.NumInstances, want, out.Manifest)
+		}
+		return
+	}
+	t.Fatalf("no crunch entry:\n%s", out.Manifest)
 }
 
 func TestGenerateBlueprintEmptySelectionRejected(t *testing.T) {

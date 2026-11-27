@@ -392,8 +392,11 @@ func TestParseBlueprintServiceMapsDockerAndStaticFields(t *testing.T) {
 	if _, _, err := parseService(blueprintParseOverrides{}, bexService{Name: "worker", Type: "worker", Runtime: "image", Image: &bexImage{URL: "nginx:1"}, IPAllowList: []bexIPEntry{{Source: "192.0.2.0/24"}}}); err == nil {
 		t.Fatal("worker ipAllowList was accepted even though it has no ingress")
 	}
-	if _, _, err := parseService(blueprintParseOverrides{}, bexService{Name: "worker", Type: "worker", Runtime: "image", Image: &bexImage{URL: "nginx:1"}, Scaling: &bexScaling{MinInstances: 1, MaxInstances: 2}}); err == nil {
-		t.Fatal("worker scaling was accepted even though the controller does not autoscale workers")
+	// w4/m695: Render's scaling fields apply to background workers too.
+	cpu := int32(60)
+	worker, _, err := parseService(blueprintParseOverrides{}, bexService{Name: "worker", Type: "worker", Runtime: "image", Image: &bexImage{URL: "nginx:1"}, Scaling: &bexScaling{MinInstances: 1, MaxInstances: 2, TargetCPUPercent: &cpu}})
+	if err != nil || worker.Autoscaling == nil || worker.Autoscaling.MaxInstances != 2 {
+		t.Fatalf("worker scaling = %#v, err %v; want the declared range", worker.Autoscaling, err)
 	}
 }
 

@@ -465,8 +465,7 @@ func (s *Service) generateServiceEntry(ctx context.Context, a, carrier *appv1alp
 		entry["renderSubdomainPolicy"] = appv1alpha1.SubdomainPolicyDisabled
 	}
 	switch {
-	case a.Spec.Autoscaling != nil && a.Spec.Autoscaling.Enabled &&
-		svcType != appv1alpha1.TypeBackgroundWorker:
+	case a.Spec.Autoscaling != nil && a.Spec.Autoscaling.Enabled:
 		scaling := map[string]any{
 			"minInstances": a.Spec.Autoscaling.MinReplicas,
 			"maxInstances": a.Spec.Autoscaling.MaxReplicas,
@@ -478,10 +477,6 @@ func (s *Service) generateServiceEntry(ctx context.Context, a, carrier *appv1alp
 			scaling["targetMemoryPercent"] = *a.Spec.Autoscaling.TargetMemoryPercent
 		}
 		entry["scaling"] = scaling
-	case a.Spec.Autoscaling != nil && a.Spec.Autoscaling.Enabled:
-		// render.yaml rejects scaling on background workers; the closest
-		// truthful export is the autoscaler's upper bound as a fixed count.
-		entry["numInstances"] = a.Spec.Autoscaling.MaxReplicas
 	case a.Spec.Replicas > 1:
 		entry["numInstances"] = a.Spec.Replicas
 	}

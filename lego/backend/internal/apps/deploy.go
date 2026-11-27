@@ -3441,11 +3441,12 @@ func validateManifestServiceFields(a bexService) error {
 	return nil
 }
 
-// validateManifestIngressFields rejects the fields tied to ingress (or to a
-// scalable type) on a services[] entry whose type cannot carry them. Only a
-// web service is exposed; private/worker/cron/static have no ingress, so a
-// manifest that lists domains for one is a mistake worth catching here with a
-// manifest-shaped message.
+// validateManifestIngressFields rejects the fields tied to ingress on a
+// services[] entry whose type cannot carry them. Only a web service is exposed;
+// private/worker/cron/static have no ingress, so a manifest that lists domains
+// for one is a mistake worth catching here with a manifest-shaped message.
+// Scaling is not among them: Render's scaling fields apply to background
+// workers too (render.com/docs/blueprint-spec, w4/m695).
 func validateManifestIngressFields(a bexService, svcType string) error {
 	hasIngress := appv1alpha1.TypePubliclyRoutable(svcType)
 	if !hasIngress && (len(a.Domains) > 0 || a.Domain != "") {
@@ -3456,9 +3457,6 @@ func validateManifestIngressFields(a bexService, svcType string) error {
 	}
 	if len(a.IPAllowList) > 0 && !hasIngress {
 		return fmt.Errorf("%w: service %q ipAllowList applies only to web services and static sites", core.ErrBadRequest, a.Name)
-	}
-	if a.Scaling != nil && svcType == appv1alpha1.TypeBackgroundWorker {
-		return fmt.Errorf("%w: service %q scaling is not available on background workers", core.ErrBadRequest, a.Name)
 	}
 	return nil
 }

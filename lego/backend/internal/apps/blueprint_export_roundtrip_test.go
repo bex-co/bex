@@ -24,6 +24,7 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/yaml"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -245,6 +246,9 @@ func roundTripCreates(t *testing.T) []CreateRequest {
 		CreateRequest{Name: "rt-private-image", Image: "ghcr.io/acme/private:1", RegistryCredentialID: strp("rc-probe")},
 		CreateRequest{Name: "rt-private-build", Repo: "https://github.com/acme/app", Runtime: "docker", RegistryCredentialID: strp("rc-probe")},
 		CreateRequest{Name: "rt-no-credential", Image: "ghcr.io/acme/public:1", RegistryCredentialID: strp("")},
+		// An autoscaled worker exports its scaling block (w4/m695).
+		CreateRequest{Name: "rt-autoscaled-worker", Type: appv1alpha1.TypeBackgroundWorker, Image: "nginx:1.27", Plan: "starter",
+			Autoscaling: &SetAutoscalingRequest{MinInstances: 1, MaxInstances: 4, TargetMemoryPercent: ptr.To(int32(80))}},
 	)
 	types := []string{appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker, appv1alpha1.TypeCronJob, appv1alpha1.TypeStaticSite}
 	sources := []struct {
