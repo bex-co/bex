@@ -1,6 +1,6 @@
 # w3 · m702 — Every in-place Postgres major upgrade succeeds on bex's operands: a relocatable `pg_duckdb`, and the source major's settings while `pg_upgrade` runs
 
-**Worker:** worker3 **Goal:** a database on any bex operand major 13–17 upgrades in place to 18 through the verb (REST, GraphQL, MCP and the dashboard's guided page) and ends `SUCCEEDED` with its data, as Render's does from any supported version. Today every such upgrade ends `FAILED` after its downtime, because `pg_upgrade` cannot start the old server. **Status:** blocked (t001–t004 and t006–t008 done; t005 waits for a production pin carrying `ebc8e54b14`, `10689e954f` and `59931b324c`, then t009)
+**Worker:** worker3 **Goal:** a database on any bex operand major 13–17 upgrades in place to 18 through the verb (REST, GraphQL, MCP and the dashboard's guided page) and ends `SUCCEEDED` with its data, as Render's does from any supported version. Today every such upgrade ends `FAILED` after its downtime, because `pg_upgrade` cannot start the old server. **Status:** done
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | [Publish the operands and adopt 16, 17 and 18 from one run](done/t002.md) — **DONE** | 1h | t001 |
 | t003 | [While a major upgrade is pending, the Cluster carries the source major's extension settings](done/t003.md) — **DONE** | 1h15m | — |
 | t004 | [Walk real upgrades on dev-3: 13, 15 and 16 to 18, and 16 with `pg_duckdb` installed](done/t004.md) — **DONE** | 1h30m | t002, t003 |
-| t005 | [Repeat it on production before w3/m676's walk](t005.md) | 45m | t004 |
+| t005 | [Repeat it on production before w3/m676's walk](done/t005.md) — **DONE** | 45m | t004 |
 | t006 | [Render parity](done/t006.md) — **DONE** | 20m | t004 |
 | t007 | [Simplify](done/t007.md) — **DONE** | 15m | t006 |
 | t008 | [Test coverage](done/t008.md) — **DONE** | 30m | t006 |
-| t009 | [Closeout](t009.md) | 10m | t005, t007, t008 |
+| t009 | [Closeout](done/t009.md) — **DONE** | 10m | t005, t007, t008 |
 
 Total: **9 tasks, about 6h30m**.
 
@@ -51,3 +51,8 @@ Total: **9 tasks, about 6h30m**.
 - **Expected outcome:** every in-place major upgrade that a database's extensions allow succeeds. w3/m676's guided page can then show a succeeded run, and its production walk can proceed.
 - **Why now:** since the operands were adopted on 2026-11-23 (w21/m584), every upgrade a customer starts ends `FAILED` after its downtime, on every surface. w3/m676 is parked on this milestone, and its own pin gate (`4c334eddf0`) is already met on production pin `486e3f4afbf6`.
 - **Render parity included:** the result reaches REST, GraphQL, MCP and the dashboard's guided page (t006).
+
+## Unblocked and closed (2026-11-27)
+
+- **Gate cleared (verified evidence):** production's newest pin, `546d61ac7343` (`d465649ee4`, 16:20Z), is the first to carry `ebc8e54b14`, `10689e954f` and `59931b324c`, and every `bex-system` Deployment runs its operator digest. `/loopx w3` resumed the milestone with no other board change.
+- **t005 on production:** all five operator-managed 16 and 18 clusters (none runs 17) restarted once onto t002's digests and are healthy, and a Free 15 and a Free 16 with `pg_duckdb` installed in `bex-canary` (disposable) upgraded to 18 through REST, each `SUCCEEDED` with its row kept ([t005 § Record](done/t005.md#record-2026-11-27)). t009 closed the milestone.
