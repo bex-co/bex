@@ -1,0 +1,29 @@
+# Render's Postgres prices: render.com/pricing.md § Compute > Postgres, read
+# 2026-11-26 (every row, every column as displayed; "96-768g" is Render's
+# spelling). Columns: compute, price, RAM, connections, plan ID.
+# The guard is price_table_test.go (w4/m690); scripts/render-pricing-drift.sh
+# re-reads the page every week and fails on any changed, added or removed row.
+Free	$0/month	256 MB RAM	100 connections	free
+Less than 1 CPU	$6/month	256 MB RAM	100 connections	0.1c-256mb
+Less than 1 CPU	$19/month	1 GB RAM	100 connections	0.5c-1g
+1 CPU	$40/month	2GB RAM	100 connections	1c-2g
+1 CPU	$55/month	4GB RAM	100 connections	1c-4g
+2 CPU	$75/month	4GB RAM	100 connections	2c-4g
+2 CPU	$100/month	8GB RAM	200 connections	2c-8g
+2 CPU	$160/month	16GB RAM	400 connections	2c-16g
+4 CPU	$200/month	16GB RAM	400 connections	4c-16g
+4 CPU	$350/month	32GB RAM	500 connections	4c-32g
+8 CPU	$400/month	32GB RAM	500 connections	8c-32g
+8 CPU	$750/month	64GB RAM	500 connections	8c-64g
+16 CPU	$800/month	64GB RAM	500 connections	16c-64g
+16 CPU	$1,500/month	128GB RAM	500 connections	16c-128g
+32 CPU	$1,700/month	128GB RAM	500 connections	32c-128g
+32 CPU	$2,500/month	256GB RAM	500 connections	32c-256g
+48 CPU	$2,500/month	192GB RAM	500 connections	48c-192g
+48 CPU	$4,500/month	384GB RAM	500 connections	48c-384g
+64 CPU	$3,000/month	256GB RAM	500 connections	64c-256g
+64 CPU	$6,000/month	512GB RAM	500 connections	64c-512g
+96 CPU	$4,600/month	384GB RAM	500 connections	96c-384g
+96 CPU	$9,000/month	768GB RAM	500 connections	96-768g
+128 CPU	$6,200/month	512GB RAM	500 connections	128c-512g
+128 CPU	$11,000/month	1024GB RAM	500 connections	128c-1024g

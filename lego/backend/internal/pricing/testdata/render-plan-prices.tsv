@@ -1,0 +1,9 @@
+# Render's workspace plan prices: render.com/pricing.md § Pricing Tiers, read
+# 2026-11-26 (every row, every column as displayed). Columns: tier, price,
+# description.
+# The guard is price_table_test.go (w4/m690); scripts/render-pricing-drift.sh
+# re-reads the page every week and fails on any changed, added or removed row.
+Hobby	$0/month + compute	For individuals building personal projects and prototypes.
+Pro	$25/month + compute	For teams deploying production-grade apps and agents.
+Scale	$499/month + compute	For teams that need advanced governance and compliance.
+Enterprise	Custom pricing	For teams that need dedicated support and uptime SLAs.

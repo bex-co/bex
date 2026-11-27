@@ -1,0 +1,16 @@
+# Render's cron job prices: render.com/pricing.md § Compute > Cron Jobs, read
+# 2026-11-26 (every row, every column as displayed). Columns: compute, price
+# per minute of run time, RAM, plan ID.
+# The guard is price_table_test.go (w4/m690); scripts/render-pricing-drift.sh
+# re-reads the page every week and fails on any changed, added or removed row.
+Less than 1 CPU	$0.00016/minute	512 MB RAM	0.5c-512mb
+1 CPU	$0.00058/minute	2 GB RAM	1c-2g
+2 CPU	$0.00197/minute	4 GB RAM	2c-4g
+2 CPU	$0.00313/minute	8 GB RAM	2c-8g
+2 CPU	$0.00463/minute	16 GB RAM	2c-16g
+4 CPU	$0.00405/minute	8 GB RAM	4c-8g
+4 CPU	$0.00521/minute	16 GB RAM	4c-16g
+4 CPU	$0.00810/minute	32 GB RAM	4c-32g
+8 CPU	$0.00694/minute	16 GB RAM	8c-16g
+8 CPU	$0.01042/minute	32 GB RAM	8c-32g
+8 CPU	$0.02315/minute	64 GB RAM	8c-64g

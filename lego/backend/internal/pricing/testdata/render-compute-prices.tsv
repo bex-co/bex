@@ -1,0 +1,20 @@
+# Render's compute prices for services and workers: render.com/pricing.md
+# § Compute > Services & Workers, read 2026-11-26 (every row, every column as
+# displayed). Columns: compute, price, RAM, plan ID.
+# The guard is price_table_test.go (w4/m690); scripts/render-pricing-drift.sh
+# re-reads the page every week and fails on any changed, added or removed row.
+Free	$0/month	512 MB RAM	free
+Less than 1 CPU	$7/month	512 MB RAM	0.5c-512mb
+1 CPU	$25/month	2 GB RAM	1c-2g
+2 CPU	$85/month	4 GB RAM	2c-4g
+2 CPU	$135/month	8 GB RAM	2c-8g
+2 CPU	$200/month	16 GB RAM	2c-16g
+4 CPU	$175/month	8 GB RAM	4c-8g
+4 CPU	$225/month	16 GB RAM	4c-16g
+4 CPU	$350/month	32 GB RAM	4c-32g
+8 CPU	$300/month	16 GB RAM	8c-16g
+8 CPU	$450/month	32 GB RAM	8c-32g
+8 CPU	$1,000/month	64 GB RAM	8c-64g
+12 CPU	$450/month	24 GB RAM	12c-24g
+12 CPU	$800/month	48 GB RAM	12c-48g
+12 CPU	$1,500/month	96 GB RAM	12c-96g

@@ -1,17 +1,17 @@
 # w4 · m690 — Render's price tables are watched: a Render price change fails a weekly job that names the `pricing.yaml` tier it moves
 
-**Worker:** worker4 **Goal:** every row of Render's compute, Postgres, Key Value and cron price tables has a disposition, each bex tier is tested against Render's price × 0.70, and a weekly job fails when render.com/pricing changes any captured row. **Status:** todo
+**Worker:** worker4 **Goal:** every row of Render's compute, Postgres, Key Value and cron price tables has a disposition, each bex tier is tested against Render's price × 0.70, and a weekly job fails when render.com/pricing changes any captured row. **Status:** todo (t001–t006 done; t007 closes once a dispatched `render-pricing` run on `main` passes)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Capture Render's compute, Postgres, Key Value and cron price tables and its pricing FAQ as fixtures | 45m | — |
-| [t002](t002.md) | A test gives every Render plan row a disposition and checks each bex tier against Render's price × 0.70 | 1h30m | t001 |
-| [t003](t003.md) | A weekly job re-reads render.com/pricing and fails on any changed fixture row | 1h | t002 |
-| [t004](t004.md) | ADR030 §9 and ADR018 point at the guard | 20m | t003 |
-| [t005](t005.md) | Simplify | 15m | t004 |
-| [t006](t006.md) | Test coverage | 30m | t004, t005 |
+| [t001](done/t001.md) | Capture Render's compute, Postgres, Key Value and cron price tables and its pricing FAQ as fixtures — **DONE** | 45m | — |
+| [t002](done/t002.md) | A test gives every Render plan row a disposition and checks each bex tier against Render's price × 0.70 — **DONE** | 1h30m | t001 |
+| [t003](done/t003.md) | A weekly job re-reads render.com/pricing and fails on any changed fixture row — **DONE** | 1h | t002 |
+| [t004](done/t004.md) | ADR030 §9 and ADR018 point at the guard — **DONE** | 20m | t003 |
+| [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 30m | t004, t005 |
 | [t007](t007.md) | Closeout | 10m | t006 |
 
 Total: **7 tasks, about 4h30m**.

@@ -1,9 +1,14 @@
 # Render's workspace plan comparison table: render.com/pricing, read 2026-11-16
 # from the page's embedded table data (every row, every column as displayed;
-# "yes" is a tick, "-" is blank, a value's footnote follows it).
-# Columns: section, row, Hobby, Pro, Scale, Enterprise. Captured in full in
-# docs/render-artifacts/pricing.md; the guard is plan_table_test.go (w7/m429).
-Render Services & Storage	Compute	Render services run on compute. [See compute pricing for details](https://render.com/pricing#compute).
+# "yes" is a tick, "-" is blank, a value's footnote follows it). Re-read
+# 2026-11-26 from its markdown copy, render.com/pricing.md, unchanged but for
+# the HTML table's first row ("Compute: Render services run on compute"), a
+# link to the compute prices that the markdown copy does not carry and
+# render-compute-prices.tsv now captures. Columns: section, row, Hobby, Pro,
+# Scale, Enterprise. Captured in full in docs/render-artifacts/pricing.md; the
+# guard is plan_table_test.go (w7/m429). scripts/render-pricing-drift.sh
+# re-reads the page every week and fails on any changed, added or removed row
+# (w4/m690).
 Render Services & Storage	Maximum services	25	Unlimited	Unlimited	Unlimited
 Render Services & Storage	Static Sites	yes	yes	yes	yes
 Render Services & Storage	Standard services	yes	yes	yes	yes

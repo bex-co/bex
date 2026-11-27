@@ -1,0 +1,11 @@
+# Render's Workflows prices: render.com/pricing.md § Compute > Workflows, read
+# 2026-11-26 (every row, every column as displayed). Columns: compute, price,
+# RAM, plan ID.
+# The guard is price_table_test.go (w4/m690); scripts/render-pricing-drift.sh
+# re-reads the page every week and fails on any changed, added or removed row.
+Up to 1 CPU	$0.20 / active CPU hour; $0.05 / active GB hour	Up to 4GB RAM	flex
+2 CPU	$0.40/hour	4 GB RAM	2c-4g
+2 CPU	$0.70/hour	8 GB RAM	2c-8g
+4 CPU	$1.00/hour	8 GB RAM	4c-8g
+4 CPU	$1.50/hour	16 GB RAM	4c-16g
+8 CPU	$2.50/hour	32 GB RAM	8c-32g

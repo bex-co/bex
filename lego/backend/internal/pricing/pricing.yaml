@@ -1,7 +1,12 @@
 # bex price sheet — 30% off Render on workspace-plan fees, compute/Postgres/
 # KeyValue/build-minute and Postgres storage, 90% off on bandwidth.
 # Source: docs/render-artifacts/pricing.md (captured 2026-07-13; workspace
-# plans from Render's April 2026 lineup, render.com/pricing).
+# plans from Render's April 2026 lineup, render.com/pricing). Render's price
+# tables are captured row by row in testdata/render-*-prices.tsv (read
+# 2026-11-26): price_table_test.go holds every workspace, compute, postgres,
+# keyvalue and sandboxUsage rate here to Render's × 0.70, and the weekly
+# scripts/render-pricing-drift.sh fails when render.com/pricing changes a row,
+# naming the entry to move (w4/m690).
 # Policy: docs/ADR030-pricing.md
 #
 # All rates are in USD per unit of the matching meter kind:
@@ -192,9 +197,8 @@ cronJob:
 
 # sandbox_snapshot_gb_seconds rate: $0.056/GB-month of a suspended sandbox's
 # retained image (Render's snapshot storage $0.08/GB-month × 0.70; Render's
-# comparison article render-sandboxes-vs-vercel-sandboxes, published 2026-11-06 —
-# render.com/pricing and /docs/sandboxes carry no sandbox prices, so re-read it
-# before changing this). Decimal GB, like storage_gb_seconds; one pricing month
+# comparison article render-sandboxes-vs-vercel-sandboxes, published 2026-11-06,
+# and render.com/pricing § Sandboxes since 2026-11-26). Decimal GB, like storage_gb_seconds; one pricing month
 # is 730 h = 2,628,000 seconds. A suspended sandbox pays this and no compute.
 # Policy: docs/ADR104-sandbox-render-parity.md D8, docs/ADR023-usage-metering.md.
 sandboxSnapshot:
@@ -211,10 +215,10 @@ sandboxSnapshot:
 #                              (Render's about $0.019 per GB-hour × 0.70).
 # Render's rates are from its comparison article
 # render.com/articles/render-sandboxes-vs-vercel-sandboxes (published
-# 2026-11-06, read 2026-11-17); render.com/pricing carries no sandbox prices,
-# so re-read the article before changing these. CPU and memory recorded before
-# billedFrom are shown and never billed, and nothing is re-priced. billedFrom
-# is a UTC hour boundary. An agent session's sandbox kept the weighted meter
+# 2026-11-06, read 2026-11-17), and render.com/pricing § Sandboxes lists the
+# same rates since 2026-11-26 (testdata/render-sandbox-prices.tsv). CPU and
+# memory recorded before billedFrom are shown and never billed, and nothing is
+# re-priced. billedFrom is a UTC hour boundary. An agent session's sandbox kept the weighted meter
 # (ADR047 D6) until agentBilledFrom, and from it is billed the same way in every
 # workspace (w6/m566, the user's approval of 2026-11-22): its CPU and memory
 # before it are shown and never billed. agentBilledFrom is a UTC hour boundary,

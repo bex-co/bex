@@ -371,15 +371,23 @@ jobs:
       # w3/m637: Render's real version pages match bex's dated defaults; a moved
       # current default, a new or back-dated row, a removed or eighth page and
       # markup the parser does not read all fail by name. The comparison is the
-      # operator's TestRenderVersionDrift, so this step needs the operator's Go.
+      # operator's TestRenderVersionDrift, so this step needs the operator's Go;
+      # the backend shares its Go version and w4/m690's step below uses it.
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/operator/go.mod
           cache-dependency-path: |
             lego/operator/go.sum
             lego/types/go.sum
+            lego/backend/go.sum
       - name: Render version page drift unit tests
         run: bash scripts/render-version-drift.test.sh
+      # w4/m690: the parser reproduces every pricing fixture from Render's pages;
+      # a changed, added or removed row fails naming the pricing.yaml tier, gate
+      # or limit, and a page the parser cannot read fails by name. The
+      # comparison is the backend's TestRenderPricingDrift.
+      - name: Render pricing page drift unit tests
+        run: bash scripts/render-pricing-drift.test.sh
       # w4/m630: an upstream commit to a skill bex ships fails; dropped skills,
       # the plugin manifest, hooks and CI pass; an unreadable or missing pin fails.
       - name: render-oss/skills drift unit tests
@@ -422,6 +430,7 @@ jobs:
           scripts/render-dashboard-ops.sh scripts/render-dashboard-ops.test.sh
           scripts/render-docs-drift.sh scripts/render-docs-drift.test.sh
           scripts/render-version-drift.sh scripts/render-version-drift.test.sh
+          scripts/render-pricing-drift.sh scripts/render-pricing-drift.test.sh
           scripts/render-skills-drift.sh scripts/render-skills-drift.test.sh
           scripts/render-examples-corpus.sh scripts/render-examples-corpus.test.sh
           scripts/render-examples-live.sh scripts/render-examples-live.test.sh

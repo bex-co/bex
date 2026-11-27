@@ -1,8 +1,10 @@
 # Render's platform features by plan: render.com/docs/platform-features-by-plan,
 # read 2026-11-16 (every feature row and every "Increased limits and retention"
-# line). Columns: category, feature, the lowest plan that includes it.
-# Captured in full in docs/render-artifacts/pricing.md; the guard is
-# plan_table_test.go (w7/m429).
+# line) and re-read unchanged from its markdown copy on 2026-11-26. Columns:
+# category, feature, the lowest plan that includes it. Captured in full in
+# docs/render-artifacts/pricing.md; the guard is plan_table_test.go (w7/m429).
+# scripts/render-pricing-drift.sh re-reads the page every week and fails on any
+# changed, added or removed row (w4/m690).
 Service ops	Autoscaling	pro
 Service ops	Preview environments	pro
 Service ops	Performance build pipeline	pro

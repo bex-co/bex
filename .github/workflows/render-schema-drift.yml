@@ -116,6 +116,33 @@ jobs:
           RENDER_DOCS_CACHE: ${{ runner.temp }}/render-docs
         run: scripts/render-docs-drift.sh
 
+  # Render's pricing pages (w4/m690). bex's prices are Render's less 30% and its
+  # plan limits follow Render's plan tables, both held to fixtures captured by
+  # hand in lego/backend/internal/pricing/testdata/. Fails on any changed, added
+  # or removed row of the plan comparison table, the features-by-plan page, the
+  # seven price tables or the FAQ, naming the pricing.yaml tier, gate or limit
+  # it moves. The comparison is the backend's TestRenderPricingDrift, on the
+  # backend's own go.mod (the script sets GOWORK=off).
+  render-pricing:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: lego/backend/go.mod
+          cache-dependency-path: |
+            lego/backend/go.sum
+      - name: Every row of Render's pricing pages matches its fixture
+        run: scripts/render-pricing-drift.sh
+
   # render-oss/skills (w4/m630). `bex skills install` ships a pack derived
   # from it at packgen.UpstreamCommit, and nothing watched it: the pin fell
   # behind Render's Blueprint plan-and-approve rewrite of the deploy skill.

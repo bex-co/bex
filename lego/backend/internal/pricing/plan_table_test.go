@@ -18,8 +18,10 @@ package pricing
 
 import (
 	"bufio"
+	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -32,7 +34,7 @@ import (
 
 // w7/m429 t005: every row of Render's two plan tables — the comparison table
 // on render.com/pricing and render.com/docs/platform-features-by-plan, both
-// captured in testdata/ on 2026-11-16 — maps to exactly one recorded
+// captured in testdata/ on 2026-11-16 and re-read on 2026-11-26 — maps to exactly one recorded
 // disposition in bex. A row Render adds, or one bex forgets, fails here; so
 // does a disposition whose row is gone. Where the disposition is a number
 // (members, services, environments, kept builds, included domains, minutes and
@@ -56,11 +58,17 @@ type reporter interface {
 	Errorf(format string, args ...any)
 }
 
-// failures is a reporter that records whether anything failed.
-type failures struct{ failed bool }
+// failures is a reporter that records what failed.
+type failures struct {
+	failed   bool
+	messages []string
+}
 
-func (*failures) Helper()                 {}
-func (f *failures) Errorf(string, ...any) { f.failed = true }
+func (*failures) Helper() {}
+func (f *failures) Errorf(format string, args ...any) {
+	f.failed = true
+	f.messages = append(f.messages, fmt.Sprintf(format, args...))
+}
 
 // planDisposition is how bex handles one row.
 type planDisposition struct {
@@ -243,7 +251,6 @@ const followUpHIPAALinks = "w7/071 (HIPAA-enabled workspaces and AWS private lin
 // planDispositions is bex's answer to every captured row.
 var planDispositions = map[string]planDisposition{
 	// render.com/pricing — Render Services & Storage
-	"pricing: Compute":                       same("priced per instance type, not per plan (pricing.yaml compute)"),
 	"pricing: Maximum services":              numbered("limit", "store.LimitsFor MaxServices", leadingNumber, func(p string) int64 { return unlimitedAtZero(store.LimitsFor(p).MaxServices) }),
 	"pricing: Static Sites":                  same("ADR029"),
 	"pricing: Standard services":             same("ADR018 Services"),
@@ -525,16 +532,16 @@ func checkOrganizationRoles(t reporter, row planRow) {
 	}
 }
 
-// readPlanTable reads a captured table: tab-separated, # comments, the first
-// two columns the section and the row title, the rest its values.
-func readPlanTable(t *testing.T, path, table string, width int) []planRow {
+// readTSV reads a captured table: tab-separated, # comments, width cells a
+// row.
+func readTSV(t *testing.T, path string, width int) [][]string {
 	t.Helper()
 	f, err := os.Open(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = f.Close() }()
-	var rows []planRow
+	var rows [][]string
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -542,13 +549,24 @@ func readPlanTable(t *testing.T, path, table string, width int) []planRow {
 			continue
 		}
 		cells := strings.Split(line, "\t")
-		if len(cells) != 2+width && !(width == 4 && len(cells) == 3) {
-			t.Fatalf("%s: %q has %d cells, want %d", path, line, len(cells), 2+width)
+		if len(cells) != width {
+			t.Fatalf("%s: %q has %d cells, want %d", path, line, len(cells), width)
 		}
-		rows = append(rows, planRow{key: table + ": " + cells[1], values: cells[2:]})
+		rows = append(rows, cells)
 	}
 	if err := scanner.Err(); err != nil {
 		t.Fatal(err)
+	}
+	return rows
+}
+
+// readPlanTable reads a captured plan table: the first two columns the
+// section and the row title, the rest its values.
+func readPlanTable(t *testing.T, path, table string, width int) []planRow {
+	t.Helper()
+	var rows []planRow
+	for _, cells := range readTSV(t, path, 2+width) {
+		rows = append(rows, planRow{key: table + ": " + cells[1], values: cells[2:]})
 	}
 	return rows
 }
@@ -575,16 +593,16 @@ func undispositioned(rows []planRow, dispositions map[string]planDisposition) (m
 	return missing, stale
 }
 
-func capturedPlanRows(t *testing.T) []planRow {
+func capturedPlanRows(t *testing.T, dir string) []planRow {
 	t.Helper()
-	return append(readPlanTable(t, "testdata/render-plan-table.tsv", "pricing", 4),
-		readPlanTable(t, "testdata/render-features-by-plan.tsv", "features", 1)...)
+	return append(readPlanTable(t, filepath.Join(dir, "render-plan-table.tsv"), "pricing", 4),
+		readPlanTable(t, filepath.Join(dir, "render-features-by-plan.tsv"), "features", 1)...)
 }
 
 func TestEveryRenderPlanRowHasADisposition(t *testing.T) {
-	rows := capturedPlanRows(t)
+	rows := capturedPlanRows(t, "testdata")
 	if len(rows) < 100 {
-		t.Fatalf("captured %d rows; the two tables hold 120", len(rows))
+		t.Fatalf("captured %d rows; the two tables hold 119", len(rows))
 	}
 	missing, stale := undispositioned(rows, planDispositions)
 	for _, key := range missing {
@@ -611,7 +629,7 @@ func TestEveryRenderPlanRowHasADisposition(t *testing.T) {
 // The guard itself: a row added to the captured table with no disposition is
 // reported, and so is a disposition for a row that is gone.
 func TestPlanTableGuardReportsUndispositionedRows(t *testing.T) {
-	rows := capturedPlanRows(t)
+	rows := capturedPlanRows(t, "testdata")
 	added := append(slices.Clone(rows), planRow{key: "pricing: Teleportation", values: []string{"-", "yes", "yes", "yes"}})
 	if missing, _ := undispositioned(added, planDispositions); !slices.Equal(missing, []string{"pricing: Teleportation"}) {
 		t.Fatalf("an undispositioned row must be reported, got %v", missing)

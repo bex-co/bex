@@ -1,0 +1,16 @@
+# Render's Key Value prices: render.com/pricing.md § Compute > Key Value, read
+# 2026-11-26 (every row, every column as displayed; Render heads the columns
+# "Column 1" to "Column 6"). Columns: CPU, price, RAM, storage, connections,
+# plan ID. Its connections for 256mb (200) and 1g (250) disagree with
+# render.com/docs/compute-plans (250 and 1,000), which bex follows (ADR030 §9).
+# The guard is price_table_test.go (w4/m690); scripts/render-pricing-drift.sh
+# re-reads the page every week and fails on any changed, added or removed row.
+Free	$0/month	25 MB RAM	--	50 connections	free
+Standard CPU	$10/month	256 MB RAM	256 MB storage	200 connections	256mb
+Standard CPU	$20/month	1 GB RAM	2.5 GB storage	250 connections	1g
+Standard CPU	$60/month	3 GB RAM	3 GB storage	3,000 connections	3g
+Standard CPU	$100/month	5 GB RAM	5 GB storage	5,000 connections	5g
+Standard CPU	$200/month	10 GB RAM	10 GB storage	10,000 connections	10g
+High CPU	$350/month	20 GB RAM	20 GB storage	20,000 connections	20g
+High CPU	$600/month	40 GB RAM	40 GB storage	40,000 connections	40g
+High CPU	$750/month	50 GB RAM	50 GB storage	50,000 connections	50g

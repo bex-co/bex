@@ -1,0 +1,9 @@
+# Render's sandbox prices: render.com/pricing.md § Compute > Sandboxes, read
+# 2026-11-26 (every row, every column as displayed; Render heads the memory
+# price "Connections"). Columns: compute, CPU price, RAM, memory price, plan ID.
+# The guard is price_table_test.go (w4/m690); scripts/render-pricing-drift.sh
+# re-reads the page every week and fails on any changed, added or removed row.
+1 CPU	$0.12 / active CPU hour	2 GB RAM	$0.038/hour for provisioned memory	1c-2g
+2 CPU	$0.12 / active CPU hour	4 GB RAM	$0.076/hour for provisioned memory	2c-4g
+4 CPU	$0.12 / active CPU hour	8 GB RAM	$0.152/hour for provisioned memory	4c-8g
+8 CPU	$0.12 / active CPU hour	16 GB RAM	$0.304/hour for provisioned memory	8c-16g
