@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -51,9 +52,16 @@ func TestOriginServerOnTheDeployedTraefik(t *testing.T) {
 			t.Fatal(err)
 		}
 		_ = resp.Body.Close()
-		if resp.Header.Get("X-Render-Origin-Server") != tc.want || resp.Header.Get("Server") != "" ||
-			resp.Header.Get("X-Powered-By") != "app" || resp.Header.Get("Rndr-Id") == "" {
-			t.Errorf("%s headers %v, want X-Render-Origin-Server %q, no Server, the app's and the edge's own headers kept", tc.path, resp.Header, tc.want)
+		if resp.Header.Get("X-Render-Origin-Server") != tc.want || resp.Header.Get("X-Powered-By") != "app" || resp.Header.Get("Rndr-Id") == "" {
+			t.Errorf("%s headers %v, want X-Render-Origin-Server %q, the app's and the edge's own headers kept", tc.path, resp.Header, tc.want)
+		}
+		// Render's edge answers as Cloudflare (w4/m687): its Server, the
+		// request's ray, and DYNAMIC for an answer no cache handled.
+		if got := resp.Header.Values("Server"); len(got) != 1 || got[0] != "cloudflare" {
+			t.Errorf("%s Server %q, want exactly cloudflare", tc.path, got)
+		}
+		if resp.Header.Get("Cf-Cache-Status") != "DYNAMIC" || !cfRayShape.MatchString(resp.Header.Get("Cf-Ray")) {
+			t.Errorf("%s cf-cache-status %q cf-ray %q, want DYNAMIC and a ray", tc.path, resp.Header.Get("Cf-Cache-Status"), resp.Header.Get("Cf-Ray"))
 		}
 	}
 	t.Run("an event stream is not buffered", func(t *testing.T) { assertEventStreamUnbuffered(t, base) })
@@ -139,7 +147,7 @@ func startOriginServerTraefik(t *testing.T, originPort int) string {
 	app := &appv1alpha1.App{}
 	app.Name = "probe"
 	names, specs := edgeCompressionMiddlewares(app)
-	middlewares := map[string]any{"client-ip": entrypointSanitizerSpec}
+	middlewares := tenantEdgeMiddlewares(nil)
 	for i, name := range names {
 		middlewares[name] = specs[i]
 	}
@@ -149,7 +157,7 @@ func startOriginServerTraefik(t *testing.T, originPort int) string {
 	base, _ := runEdgeTraefik(t, originPort, edgeTraefikConfig{
 		label: "origin-server", chain: append(names, "probe-ws-egress", "probe-origin-server"), middlewares: middlewares, readyPath: "/",
 		dockerArgs:  dockerArgs,
-		traefikArgs: append(traefikArgs, "--entrypoints.web.http.middlewares=client-ip@file"),
+		traefikArgs: append(traefikArgs, "--entrypoints.web.http.middlewares=edge-headers@file,client-ip@file"),
 	})
 	return base
 }
@@ -161,7 +169,17 @@ var clientIPHeadersPlugin = edgePlugin{"bexClientIPHeaders", "clientipheaders", 
 
 // entrypointSanitizerSpec is the client-identity instance production runs on
 // every tenant entrypoint (traefik.values.yaml's bex-client-ip-headers).
-var entrypointSanitizerSpec = map[string]any{traefikPluginKey: map[string]any{"bexClientIPHeaders": map[string]any{}}}
+var entrypointSanitizerSpec = map[string]any{traefikPluginKey: map[string]any{"bexClientIPHeaders": map[string]any{"colo": "FRA"}}}
+
+// edgeHeadersSpec is the Middleware production runs on every tenant
+// entrypoint ahead of the sanitizer (traefik.values.yaml's bex-edge-headers,
+// which scripts/gitops-validate.sh pins): every answer's Server reads
+// cloudflare, as from Render's edge (w4/m687).
+var edgeHeadersSpec = map[string]any{"headers": map[string]any{"customResponseHeaders": map[string]any{"Server": "cloudflare"}}}
+
+// cfRayShape is a CF-Ray the edge mints: 16 lowercase hex characters and the
+// configured data center.
+var cfRayShape = regexp.MustCompile(`^[0-9a-f]{16}-FRA$`)
 
 // edgePluginArgs mounts plugins into the Traefik container and loads them as
 // the deployed release does.

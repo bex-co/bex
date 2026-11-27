@@ -42,7 +42,7 @@ func TestHTTPSRedirectOnTheDeployedTraefik(t *testing.T) {
 	dockerArgs, traefikArgs := tenantEdgeArgs(t)
 	base, tlsBase := runEdgeTraefik(t, startEdgeOrigin(t, origin), edgeTraefikConfig{
 		label: "https-redirect", chain: []string{"probe-https"}, tls: true,
-		middlewares: map[string]any{"client-ip": entrypointSanitizerSpec, "probe-https": httpsRedirectSpec},
+		middlewares: tenantEdgeMiddlewares(map[string]any{"probe-https": httpsRedirectSpec}),
 		readyPath:   "/", readyStatus: http.StatusMovedPermanently,
 		dockerArgs: dockerArgs, traefikArgs: traefikArgs,
 	})

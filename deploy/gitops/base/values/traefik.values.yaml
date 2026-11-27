@@ -19,7 +19,7 @@ deployment:
     - name: bex-client-ip-headers-plugin
       configMap:
         # Content-hashed like the egress plugin above (w8/m123).
-        name: bex-client-ip-headers-plugin-ct4hd7dm7k
+        name: bex-client-ip-headers-plugin-cc4m45b4mc
     - name: bex-s3-metadata-case-plugin
       configMap:
         # Content-hashed like the two above (w21/113): the S3 gateway's route
@@ -72,8 +72,15 @@ securityContext:
 # Every request on the tenant HTTP entrypoints passes the client-identity
 # sanitizer first (w8/m123): an app never sees a caller-forged True-Client-IP,
 # CF-Connecting-IP, CF-IPCountry or X-Client-IP, and True-Client-IP always names
-# the real client, as on Render behind Cloudflare. The Middleware ships in this
-# release (extraObjects below), so it exists before any router references it.
+# the real client, as on Render behind Cloudflare. From a non-Cloudflare peer it
+# sets the Cloudflare headers a Render app receives, CF-Connecting-IP,
+# CF-IPCountry, CF-Ray, CF-Visitor and CDN-Loop, and answers a forged
+# CF-Connecting-IP with Cloudflare's 403 "error code: 1000" (w4/m687,
+# docs/render-artifacts/edge-headers.md). Ahead of it, bex-edge-headers names
+# the edge "cloudflare" in every answer's Server header, as Render's edge does;
+# a web service's own Server moves to X-Render-Origin-Server first (w8/321).
+# Both Middlewares ship in this release (extraObjects below), so they exist
+# before any router references them.
 #
 # Both entrypoints trust every caller's forwarded headers (w8/402), the only
 # Traefik switch that keeps a caller's X-Forwarded-For: the app gets that list
@@ -93,7 +100,7 @@ ports:
     forwardedHeaders:
       insecure: true
     http:
-      middlewares: [traefik-bex-client-ip-headers@kubernetescrd]
+      middlewares: [traefik-bex-edge-headers@kubernetescrd, traefik-bex-client-ip-headers@kubernetescrd]
   websecure:
     transport:
       respondingTimeouts:
@@ -102,7 +109,7 @@ ports:
     forwardedHeaders:
       insecure: true
     http:
-      middlewares: [traefik-bex-client-ip-headers@kubernetescrd]
+      middlewares: [traefik-bex-edge-headers@kubernetescrd, traefik-bex-client-ip-headers@kubernetescrd]
   ssh:
     # The hostNetwork/dev edge uses :2222 so it never collides with node-admin
     # sshd on :22. The prod LB overlay exposes this entrypoint publicly as :22.
@@ -233,4 +240,20 @@ extraObjects:
       namespace: traefik
     spec:
       plugin:
-        bexClientIPHeaders: {}
+        bexClientIPHeaders:
+          # The data center that ends every CF-Ray the edge mints: Frankfurt,
+          # Cloudflare's nearest to the fsn1 cluster (infra/terraform location).
+          colo: FRA
+  # Render's edge is Cloudflare, so every answer reads "server: cloudflare"
+  # (w4/m687). Traefik's own headers middleware sets it as the response
+  # leaves, after the web-service instance moved the app's Server header to
+  # X-Render-Origin-Server, and over any other backend's.
+  - apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      name: bex-edge-headers
+      namespace: traefik
+    spec:
+      headers:
+        customResponseHeaders:
+          Server: cloudflare

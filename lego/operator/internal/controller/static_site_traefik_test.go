@@ -64,9 +64,9 @@ func TestStaticSiteOnTheDeployedTraefik(t *testing.T) {
 	dockerArgs, traefikArgs := edgePluginArgs(t, clientIPHeadersPlugin)
 	base, _ := runEdgeTraefik(t, port, edgeTraefikConfig{
 		label: "static-site", chain: []string{"probe-static-site"}, readyPath: "/favicon.ico",
-		middlewares: map[string]any{"client-ip": entrypointSanitizerSpec, "probe-static-site": staticSiteSpec},
+		middlewares: tenantEdgeMiddlewares(map[string]any{"probe-static-site": staticSiteSpec}),
 		dockerArgs:  dockerArgs,
-		traefikArgs: append(traefikArgs, "--entrypoints.web.http.middlewares=client-ip@file"),
+		traefikArgs: append(traefikArgs, "--entrypoints.web.http.middlewares=edge-headers@file,client-ip@file"),
 	})
 	// The client's own transport must not ask for gzip either.
 	client := &http.Client{Transport: &http.Transport{DisableCompression: true}}

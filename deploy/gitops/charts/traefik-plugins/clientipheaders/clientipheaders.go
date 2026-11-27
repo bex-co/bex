@@ -20,7 +20,14 @@
 // caller sent. Every request leaves here with True-Client-IP naming the real
 // client: the TCP peer (after PROXY protocol), or Cloudflare's CF-Connecting-IP
 // when the peer is a Cloudflare edge — a tenant custom domain behind its own
-// Cloudflare proxy. CF-* headers survive only from a Cloudflare peer.
+// Cloudflare proxy.
+//
+// A request from any other peer gets the Cloudflare headers a Render app
+// receives (w4/m687, docs/render-artifacts/edge-headers.md): CF-Connecting-IP,
+// CF-IPCountry (country.go), CF-Ray, CF-Visitor and CDN-Loop, whatever the
+// caller sent, and its answer carries the same cf-ray. A caller that sends its
+// own CF-Connecting-IP from outside Cloudflare gets Cloudflare's 403 "error
+// code: 1000", as on Render, and never reaches the app.
 //
 // It also gives every request Render's Rndr-Id (w8/m125): a fresh id on the
 // request to the app and on the response, which the access log keeps, so a
@@ -41,7 +48,10 @@
 // own route (w8/321): Render's edge never hands a web service's Server header
 // to clients. It moves the value to X-Render-Origin-Server, and names "Render"
 // there when the app sent none. Static sites and platform hosts carry no
-// such instance, as Render's static sites carry no such header.
+// such instance, as Render's static sites carry no such header. It also
+// answers with the request's cf-ray whatever the app sent, and with
+// cf-cache-status DYNAMIC when the service's edge cache did not set one, as
+// Render's edge does (w4/m687).
 //
 // A third, configured with httpsRedirect, leads every tenant host's route
 // and the unknown-host fallback (w8/357): it redirects plain HTTP to HTTPS
@@ -59,6 +69,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"io"
 	"mime"
 	"net"
 	"net/http"
@@ -82,9 +93,11 @@ var cloudflareRanges = []string{
 }
 
 // cloudflareHeaders are the client-describing headers Cloudflare sets; only a
-// Cloudflare peer may pass them on. Keys are lowercase with "-" for "_":
-// CGI-style frameworks (Rack, PHP, WSGI) read True_Client_IP and
-// True-Client-IP as the same HTTP_TRUE_CLIENT_IP, so both spellings count.
+// Cloudflare peer may pass them on, and the edge sets its own for any other.
+// Keys are lowercase with "-" for "_": CGI-style frameworks (Rack, PHP, WSGI)
+// read True_Client_IP and True-Client-IP as the same HTTP_TRUE_CLIENT_IP, so
+// both spellings count. CDN-Loop is not here: Cloudflare keeps a caller's
+// list and adds itself (cdnLoop).
 var cloudflareHeaders = map[string]bool{
 	"cf-connecting-ip": true, "cf-connecting-ipv6": true, "cf-ipcountry": true,
 	"cf-ray": true, "cf-visitor": true, "cf-worker": true,
@@ -109,6 +122,10 @@ var forwardedHeaders = map[string]bool{
 }
 
 type Config struct {
+	// Colo is the three-letter data-center code that ends every CF-Ray the
+	// entrypoint's sanitizer mints, as Cloudflare names the data center that
+	// handled a request: the IATA code of Cloudflare's nearest to the cluster.
+	Colo string `json:"colo,omitempty"`
 	// OriginServer makes this instance the per-web-service Server rename
 	// (w8/321) instead of the entrypoint's request sanitizer.
 	OriginServer bool `json:"originServer,omitempty"`
@@ -120,11 +137,16 @@ type Config struct {
 	StaticSite bool `json:"staticSite,omitempty"`
 }
 
-func CreateConfig() *Config { return &Config{} }
+// defaultColo is Frankfurt, Cloudflare's nearest data center to bex's
+// Falkenstein and Nuremberg regions.
+const defaultColo = "FRA"
+
+func CreateConfig() *Config { return &Config{Colo: defaultColo} }
 
 type sanitizer struct {
 	next       http.Handler
 	cloudflare []*net.IPNet
+	colo       string
 }
 
 func New(_ context.Context, next http.Handler, config *Config, _ string) (http.Handler, error) {
@@ -137,7 +159,11 @@ func New(_ context.Context, next http.Handler, config *Config, _ string) (http.H
 	if config != nil && config.StaticSite {
 		return &staticSite{next: next}, nil
 	}
-	s := &sanitizer{next: next}
+	s := &sanitizer{next: next, colo: defaultColo}
+	if config != nil && config.Colo != "" {
+		s.colo = config.Colo
+	}
+	startCountries()
 	for _, cidr := range cloudflareRanges {
 		_, n, err := net.ParseCIDR(cidr)
 		if err != nil {
@@ -153,9 +179,14 @@ func (s *sanitizer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	peer := peerIP(r.RemoteAddr)
 	// Ordinary traffic carries no CF-Connecting-IP, so it skips the range scan.
 	var client net.IP
-	if v := h.Get("CF-Connecting-IP"); v != "" && peer != nil && s.fromCloudflare(peer) {
-		client = net.ParseIP(v)
+	claimed := h.Get("CF-Connecting-IP")
+	fromCloudflare := claimed != "" && peer != nil && s.fromCloudflare(peer)
+	if fromCloudflare {
+		client = net.ParseIP(claimed)
 	}
+	// Cloudflare refuses a request that claims to have come through it from
+	// anywhere else.
+	refused := claimed != "" && !fromCloudflare
 	for name := range h {
 		key := strings.ToLower(strings.ReplaceAll(name, "_", "-"))
 		// A trusted edge's CF-* stay only in Cloudflare's own hyphenated form.
@@ -167,23 +198,123 @@ func (s *sanitizer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	setForwarded(r)
+	id, ray := requestIDs(s.colo)
 	switch {
 	case client != nil:
+		// Cloudflare's own CF-* and CDN-Loop stay as it sent them.
 		h.Set("CF-Connecting-IP", client.String())
 		h.Set("True-Client-IP", client.String())
-	case peer != nil:
-		h.Set("True-Client-IP", peer.String())
+		ray = h.Get("CF-Ray")
+	default:
+		if peer != nil {
+			h.Set("True-Client-IP", peer.String())
+			h.Set("CF-Connecting-IP", peer.String())
+			h.Set("CF-IPCountry", country(peer))
+		}
+		h.Set("CF-Ray", ray)
+		// The scheme the client reached the edge with, never a caller's.
+		visitor := `{"scheme":"http"}`
+		if r.TLS != nil {
+			visitor = `{"scheme":"https"}`
+		}
+		h.Set("CF-Visitor", visitor)
+		loop, looped := cdnLoop(h.Values("CDN-Loop"))
+		h.Set("CDN-Loop", loop)
+		refused = refused || looped
 	}
 	// Set before the app answers: an app that sends its own Rndr-Id adds a
 	// second value after ours, and Header.Get still reads ours.
-	id := requestID()
 	h.Set("Rndr-Id", id)
-	w.Header().Set("Rndr-Id", id)
 	// Render's format: bare microseconds since the epoch, no "t=" prefix. Taken
 	// at the edge, before any activator wake, so queue time includes the
 	// spin-up, as on Render.
 	h.Set("X-Request-Start", strconv.FormatInt(time.Now().UnixMicro(), 10))
+	if ray != "" {
+		w.Header().Set("Cf-Ray", ray)
+	}
+	// Cloudflare refuses before Render's edge sees the request, so its answer
+	// has no Rndr-Id. The access log still records the request's, and the
+	// answer's cf-ray carries the same hex.
+	if refused {
+		refuse(w)
+		return
+	}
+	w.Header().Set("Rndr-Id", id)
 	s.next.ServeHTTP(w, r)
+}
+
+// refusalBody is Cloudflare's answer to a request it refuses as a loop,
+// error 1000, byte for byte as Render's edge sent it (captured 2026-11-27).
+const refusalBody = "error code: 1000\n"
+
+// refuse answers as Render's edge answered a forged CF-Connecting-IP: 403,
+// plain text, never cached. Traefik's entrypoint pre-sets a nil Content-Type
+// to stop net/http's sniffing, which Set replaces.
+func refuse(w http.ResponseWriter) {
+	h := w.Header()
+	h.Set("Content-Type", "text/plain; charset=UTF-8")
+	h.Set("Content-Length", strconv.Itoa(len(refusalBody)))
+	h.Set("Cache-Control", "private, max-age=0, no-store, no-cache, must-revalidate, post-check=0, pre-check=0")
+	h.Set("Expires", "Thu, 01 Jan 1970 00:00:01 GMT")
+	h.Set("Referrer-Policy", "same-origin")
+	h.Set("X-Frame-Options", "SAMEORIGIN")
+	w.WriteHeader(http.StatusForbidden)
+	_, _ = io.WriteString(w, refusalBody)
+}
+
+// maxCDNLoops is the most Cloudflare hops Render's edge let a request claim:
+// a caller's "cloudflare; loops=15" reached the app as loops=16, and loops=16
+// was refused with error 1000 (captured 2026-11-27).
+const maxCDNLoops = 16
+
+// cdnLoop is the CDN-Loop (RFC 8586) the app receives, as Cloudflare writes
+// it on Render: the caller's list with each member re-joined by "; ", every
+// "cloudflare" member's loops counted up by one (a missing or unreadable
+// count reads as none), or "cloudflare; loops=1" added when no member names
+// Cloudflare. looped reports a count past maxCDNLoops, which Cloudflare
+// refuses.
+func cdnLoop(values []string) (loop string, looped bool) {
+	if len(values) == 0 { // nearly every request: spare the interpreter the parse
+		return "cloudflare; loops=1", false
+	}
+	var members []string
+	found := false
+	for _, member := range strings.Split(strings.Join(values, ","), ",") {
+		params := strings.Split(member, ";")
+		for i := range params {
+			params[i] = strings.TrimSpace(params[i])
+		}
+		if params[0] == "" && len(params) == 1 {
+			continue
+		}
+		if strings.EqualFold(params[0], "cloudflare") {
+			found = true
+			loops, at := 0, len(params)
+			for i, p := range params[1:] {
+				if name, value, ok := strings.Cut(p, "="); ok && strings.EqualFold(strings.TrimSpace(name), "loops") {
+					loops, _ = strconv.Atoi(strings.TrimSpace(value))
+					at = i + 1
+					break
+				}
+			}
+			if loops < 0 {
+				loops = 0
+			}
+			loops++
+			looped = looped || loops > maxCDNLoops
+			count := "loops=" + strconv.Itoa(loops)
+			if at == len(params) {
+				params = append(params, count)
+			} else {
+				params[at] = count
+			}
+		}
+		members = append(members, strings.Join(params, "; "))
+	}
+	if !found {
+		members = append(members, "cloudflare; loops=1")
+	}
+	return strings.Join(members, ", "), looped
 }
 
 // setForwarded writes what Traefik's entrypoint wrote for an untrusted caller
@@ -230,13 +361,16 @@ func hasToken(list, token string) bool {
 	return false
 }
 
-// requestID is a random id in Render's Rndr-Id shape: 8-4-4 lowercase hex,
-// 18 characters, as in its "303516bf-4995-4cb9" (w4/583).
-func requestID() string {
+// requestIDs mints one random value in two shapes: Render's Rndr-Id, 8-4-4
+// lowercase hex, 18 characters, as in its "303516bf-4995-4cb9" (w4/583), and
+// Cloudflare's CF-Ray, the same 16 hex characters, "-" and the data center, as
+// in "a60d86a06ea867d9-CMH". So a cf-ray a client quotes names the Rndr-Id the
+// request log keeps.
+func requestIDs(colo string) (id, ray string) {
 	var b [8]byte
 	_, _ = rand.Read(b[:]) // never fails on supported platforms (Go 1.24+)
 	x := hex.EncodeToString(b[:])
-	return x[0:8] + "-" + x[8:12] + "-" + x[12:16]
+	return x[0:8] + "-" + x[8:12] + "-" + x[12:16], x + "-" + colo
 }
 
 func (s *sanitizer) fromCloudflare(ip net.IP) bool {
@@ -347,7 +481,7 @@ const proxyFlushInterval = 100 * time.Millisecond
 type originServer struct{ next http.Handler }
 
 func (o *originServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ow := &originServerWriter{ResponseWriter: w, rc: http.NewResponseController(w)}
+	ow := &originServerWriter{ResponseWriter: w, rc: http.NewResponseController(w), ray: r.Header.Get("Cf-Ray")}
 	o.next.ServeHTTP(ow, r)
 	ow.mu.Lock()
 	defer ow.mu.Unlock()
@@ -382,6 +516,8 @@ type originServerWriter struct {
 	stream bool
 	// server is the app's Server header taken off an informational answer.
 	server []string
+	// ray is the request's CF-Ray, which the entrypoint's sanitizer set.
+	ray string
 	// delayed is the pending flush of a body of known length; done stops
 	// it once the handler returns or the connection is hijacked.
 	delayed *time.Timer
@@ -403,6 +539,14 @@ func (w *originServerWriter) moveServer(code int) {
 		server = []string{"Render"}
 	}
 	h[originServerHeader] = server
+	if w.ray != "" {
+		h["Cf-Ray"] = []string{w.ray}
+	}
+	// Set by the service's edge cache when caching is on (lego/operator's
+	// edgecache); Render's edge reports every other answer as DYNAMIC.
+	if len(h["Cf-Cache-Status"]) == 0 {
+		h["Cf-Cache-Status"] = []string{"DYNAMIC"}
+	}
 	// No body follows a 204 or 304, which the proxy does not flush either.
 	if code == http.StatusNoContent || code == http.StatusNotModified {
 		w.done = true

@@ -1421,7 +1421,8 @@ done
 # The client-identity sanitizer must front every request on the tenant HTTP
 # entrypoints, its Middleware must ship in the Traefik release (whose CRDs it
 # needs), and its Cloudflare ranges must equal core's proxied-host detector's
-# (w8/m123).
+# (w8/m123). Ahead of it, bex-edge-headers names the edge "cloudflare" in every
+# answer's Server header, as Render's edge does (w4/m687).
 echo "==> Traefik entrypoints sanitize client-identity headers"
 for render in base prod; do
   # Captured first: grep -q closing the pipe early would fail yq under pipefail.
@@ -1433,8 +1434,8 @@ for render in base prod; do
       echo "FAIL: $render Traefik entrypoint $ep must allow 6000s to read request headers/body (w8/207)" >&2
       fail=1
     fi
-    if ! grep -qxF -- "--entryPoints.$ep.http.middlewares=traefik-bex-client-ip-headers@kubernetescrd" <<<"$traefik_args"; then
-      echo "FAIL: $render Traefik entrypoint $ep does not run traefik-bex-client-ip-headers@kubernetescrd first" >&2
+    if ! grep -qxF -- "--entryPoints.$ep.http.middlewares=traefik-bex-edge-headers@kubernetescrd,traefik-bex-client-ip-headers@kubernetescrd" <<<"$traefik_args"; then
+      echo "FAIL: $render Traefik entrypoint $ep does not run traefik-bex-edge-headers@kubernetescrd then traefik-bex-client-ip-headers@kubernetescrd first" >&2
       fail=1
     fi
     # w8/402: a caller's X-Forwarded-For reaches the app with the client
@@ -1447,6 +1448,16 @@ for render in base prod; do
   sanitizer="$(yq -N 'select(.kind == "Middleware" and .metadata.name == "bex-client-ip-headers" and .metadata.namespace == "traefik") | .spec.plugin | keys | .[]' "$tmp/traefik-$render.yaml")"
   if [ "$sanitizer" != bexClientIPHeaders ]; then
     echo "FAIL: $render Traefik release lacks the traefik/bex-client-ip-headers Middleware using plugin bexClientIPHeaders (got '$sanitizer')" >&2
+    fail=1
+  fi
+  colo="$(yq -N 'select(.kind == "Middleware" and .metadata.name == "bex-client-ip-headers" and .metadata.namespace == "traefik") | .spec.plugin.bexClientIPHeaders.colo' "$tmp/traefik-$render.yaml")"
+  if ! grep -qxE '[A-Z]{3}' <<<"$colo"; then
+    echo "FAIL: $render Traefik's bex-client-ip-headers Middleware must name the three-letter colo every CF-Ray ends with (got '$colo')" >&2
+    fail=1
+  fi
+  edge_headers="$(yq -N -o=json -I=0 'select(.kind == "Middleware" and .metadata.name == "bex-edge-headers" and .metadata.namespace == "traefik") | .spec' "$tmp/traefik-$render.yaml")"
+  if [ "$edge_headers" != '{"headers":{"customResponseHeaders":{"Server":"cloudflare"}}}' ]; then
+    echo "FAIL: $render Traefik release lacks the traefik/bex-edge-headers Middleware that sets Server: cloudflare and nothing else (got '$edge_headers')" >&2
     fail=1
   fi
 done

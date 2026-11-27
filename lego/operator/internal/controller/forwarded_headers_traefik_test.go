@@ -19,6 +19,7 @@ package controller
 import (
 	"crypto/tls"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"os"
 	"regexp"
@@ -27,15 +28,24 @@ import (
 )
 
 // tenantEdgeArgs configures both tenant entrypoints as traefik.values.yaml
-// does: the client-identity plugin first, and every caller's forwarded headers
-// trusted (w8/402).
+// does: the edge's Server header and the client-identity plugin first
+// (tenantEdgeMiddlewares), and every caller's forwarded headers trusted
+// (w8/402).
 func tenantEdgeArgs(t *testing.T) (dockerArgs, traefikArgs []string) {
 	dockerArgs, traefikArgs = edgePluginArgs(t, clientIPHeadersPlugin)
 	for _, ep := range []string{"web", "websecure"} {
-		traefikArgs = append(traefikArgs, "--entrypoints."+ep+".http.middlewares=client-ip@file",
+		traefikArgs = append(traefikArgs, "--entrypoints."+ep+".http.middlewares=edge-headers@file,client-ip@file",
 			"--entrypoints."+ep+".forwardedheaders.insecure=true")
 	}
 	return dockerArgs, traefikArgs
+}
+
+// tenantEdgeMiddlewares are the entrypoint Middlewares tenantEdgeArgs names,
+// plus any router middlewares.
+func tenantEdgeMiddlewares(router map[string]any) map[string]any {
+	m := map[string]any{"client-ip": entrypointSanitizerSpec, "edge-headers": edgeHeadersSpec}
+	maps.Copy(m, router)
+	return m
 }
 
 // TestForwardedHeadersOnTheDeployedTraefik is w8/402's actual-proxy gate. On
@@ -54,7 +64,7 @@ func TestForwardedHeadersOnTheDeployedTraefik(t *testing.T) {
 	dockerArgs, traefikArgs := tenantEdgeArgs(t)
 	base, tlsBase := runEdgeTraefik(t, startEdgeOrigin(t, origin), edgeTraefikConfig{
 		label: "forwarded", chain: []string{}, tls: true, readyPath: "/",
-		middlewares: map[string]any{"client-ip": entrypointSanitizerSpec},
+		middlewares: tenantEdgeMiddlewares(nil),
 		dockerArgs:  dockerArgs, traefikArgs: traefikArgs,
 	})
 	transport := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, DisableKeepAlives: true}
@@ -140,7 +150,7 @@ func TestForwardedHeadersOnTheDeployedTraefik(t *testing.T) {
 	// forged X-Forwarded-For or X-Real-Ip naming an allowed address is refused.
 	locked, _ := runEdgeTraefik(t, startEdgeOrigin(t, origin), edgeTraefikConfig{
 		label: "forwarded-locked", chain: []string{"probe-ip-allow"}, tls: true, readyPath: "/", readyStatus: http.StatusForbidden,
-		middlewares: map[string]any{"client-ip": entrypointSanitizerSpec, "probe-ip-allow": cidrMiddlewareSpec([]string{"203.0.113.0/24"})},
+		middlewares: tenantEdgeMiddlewares(map[string]any{"probe-ip-allow": cidrMiddlewareSpec([]string{"203.0.113.0/24"})}),
 		dockerArgs:  dockerArgs, traefikArgs: traefikArgs,
 	})
 	req, _ := http.NewRequest(http.MethodGet, locked+"/", nil)

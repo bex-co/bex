@@ -23,6 +23,7 @@ configMapGenerator:
       - .traefik.yml=clientipheaders/.traefik.yml
       - go.mod=clientipheaders/go.mod
       - clientipheaders.go=clientipheaders/clientipheaders.go
+      - country.go=clientipheaders/country.go
   - name: bex-s3-metadata-case-plugin
     files:
       - .traefik.yml=s3metadatacase/.traefik.yml

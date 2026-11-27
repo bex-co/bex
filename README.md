@@ -222,3 +222,5 @@ bex is a working public alpha with a live, production-shaped architecture and br
 If you want a PaaS that agents can operate and developers can own, [star the repository](https://github.com/bex-co/bex), try the local cluster, and tell us where the experience breaks. Issues and pull requests are welcome; agent-authored contributions are welcome when the author has reviewed the diff and the tests pass.
 
 Apache-2.0 licensed. See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+The `CF-IPCountry` header the edge gives every app uses [IP Geolocation by DB-IP](https://db-ip.com), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).

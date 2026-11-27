@@ -338,3 +338,55 @@ func TestTheEntrypointInstanceLeavesServerAlone(t *testing.T) {
 		t.Fatalf("headers %v, want Server kept and no %s", rec.Header(), originServerHeader)
 	}
 }
+
+// w4/m687: a web service's answer carries the request's cf-ray, whatever the
+// app sent, and cf-cache-status DYNAMIC unless the service's edge cache set
+// its own, as Render's edge answers.
+func TestOriginServerAnswersWithTheRayAndCacheStatus(t *testing.T) {
+	const ray = "0123456789abcdef-FRA"
+	for _, tc := range []struct {
+		name        string
+		app         http.HandlerFunc
+		ray, status string
+	}{
+		{"an uncached answer", func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = io.WriteString(w, "hi")
+		}, ray, "DYNAMIC"},
+		{"the edge cache's hit", func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("CF-Cache-Status", "HIT")
+			_, _ = io.WriteString(w, "hi")
+		}, ray, "HIT"},
+		{"the app's own ray", func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("CF-Ray", "forged-AAA")
+			w.WriteHeader(http.StatusNotFound)
+		}, ray, "DYNAMIC"},
+		{"no body", func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		}, ray, "DYNAMIC"},
+		{"no ray on the request", func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = io.WriteString(w, "hi")
+		}, "", "DYNAMIC"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			edge := originServerEdge(t, tc.app)
+			req, err := http.NewRequest(http.MethodGet, edge.URL, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.ray != "" {
+				req.Header.Set("CF-Ray", tc.ray)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = resp.Body.Close()
+			if got := resp.Header.Values("Cf-Ray"); tc.ray != "" && (len(got) != 1 || got[0] != tc.ray) {
+				t.Errorf("cf-ray %q, want exactly the request's %q", got, tc.ray)
+			}
+			if got := resp.Header.Values("Cf-Cache-Status"); len(got) != 1 || got[0] != tc.status {
+				t.Errorf("cf-cache-status %q, want exactly %q", got, tc.status)
+			}
+		})
+	}
+}

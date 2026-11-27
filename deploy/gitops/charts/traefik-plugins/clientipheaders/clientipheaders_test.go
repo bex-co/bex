@@ -25,19 +25,22 @@ import (
 	"time"
 )
 
+// forged is every client-identity header a caller can forge, but
+// CF-Connecting-IP, which Render's edge refuses outright (cloudflare_test.go).
 func forged() http.Header {
 	return http.Header{
-		"Cf-Connecting-Ip": {"203.0.113.66"},
-		"True-Client-Ip":   {"203.0.113.77"},
-		"X-Client-Ip":      {"203.0.113.88"},
-		"Cf-Ipcountry":     {"KP"},
-		"Cf-Ray":           {"forged-ray"},
-		"X-Real-Ip":        {"198.51.100.20"},
-		"X-Forwarded-For":  {"198.51.100.20"},
+		"True-Client-Ip":  {"203.0.113.77"},
+		"X-Client-Ip":     {"203.0.113.88"},
+		"Cf-Ipcountry":    {"KP"},
+		"Cf-Ray":          {"forged-ray"},
+		"X-Real-Ip":       {"198.51.100.20"},
+		"X-Forwarded-For": {"198.51.100.20"},
 	}
 }
 
-// TestSanitizer pins the header contract an app sees (w8/m123).
+// TestSanitizer pins the header contract an app sees (w8/m123), with the
+// Cloudflare headers an ordinary peer gets since w4/m687 (cloudflare_test.go
+// pins their shapes).
 func TestSanitizer(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
@@ -49,19 +52,19 @@ func TestSanitizer(t *testing.T) {
 		peer:   "198.51.100.20:51234",
 		header: forged(),
 		want: map[string]string{
-			"True-Client-IP": "198.51.100.20", "CF-Connecting-IP": "", "CF-IPCountry": "", "CF-Ray": "",
+			"True-Client-IP": "198.51.100.20", "CF-Connecting-IP": "198.51.100.20", "CF-IPCountry": "XX",
 			"X-Client-IP": "", "X-Real-IP": "198.51.100.20", "X-Forwarded-For": "198.51.100.20",
 		},
 	}, {
 		name:   "a plain request gains True-Client-IP",
 		peer:   "198.51.100.20:51234",
 		header: http.Header{},
-		want:   map[string]string{"True-Client-IP": "198.51.100.20", "CF-Connecting-IP": ""},
+		want:   map[string]string{"True-Client-IP": "198.51.100.20", "CF-Connecting-IP": "198.51.100.20"},
 	}, {
 		name:   "an IPv6 client",
 		peer:   "[2001:db8::20]:443",
 		header: forged(),
-		want:   map[string]string{"True-Client-IP": "2001:db8::20", "CF-Connecting-IP": ""},
+		want:   map[string]string{"True-Client-IP": "2001:db8::20", "CF-Connecting-IP": "2001:db8::20"},
 	}, {
 		name:   "a v4-mapped peer reads as IPv4",
 		peer:   "[::ffff:198.51.100.20]:443",
@@ -87,14 +90,17 @@ func TestSanitizer(t *testing.T) {
 		name:   "a Cloudflare edge with a garbage CF-Connecting-IP is untrusted",
 		peer:   "172.70.1.2:443",
 		header: http.Header{"Cf-Connecting-Ip": {"not-an-ip"}, "Cf-Ipcountry": {"KP"}},
-		want:   map[string]string{"True-Client-IP": "172.70.1.2", "CF-Connecting-IP": "", "CF-IPCountry": ""},
+		want:   map[string]string{"True-Client-IP": "172.70.1.2", "CF-Connecting-IP": "172.70.1.2", "CF-IPCountry": "XX"},
 	}, {
 		name: "underscore spellings are stripped too",
 		peer: "198.51.100.20:51234",
 		header: http.Header{
 			"True_client_ip": {"203.0.113.77"}, "Cf_connecting_ip": {"203.0.113.66"}, "X_client_ip": {"203.0.113.88"},
 		},
-		want: map[string]string{"True-Client-IP": "198.51.100.20", "True_client_ip": "", "Cf_connecting_ip": "", "X_client_ip": ""},
+		want: map[string]string{
+			"True-Client-IP": "198.51.100.20", "CF-Connecting-IP": "198.51.100.20",
+			"True_client_ip": "", "Cf_connecting_ip": "", "X_client_ip": "",
+		},
 	}, {
 		name:   "a Cloudflare edge's extra CF-Connecting-IP values collapse to the first",
 		peer:   "172.70.1.2:443",

@@ -1,20 +1,20 @@
 # w4 · m687 — A web service gets the Cloudflare request headers a Render app gets, and a forged `CF-Connecting-IP` is refused 403 as on Render
 
-**Worker:** worker4 **Goal:** an app moved from Render reads the client's address, country and request ray from the same `CF-*` headers on bex, and a public request that forges `CF-Connecting-IP` gets Render's `403 error code: 1000`. **Status:** todo
+**Worker:** worker4 **Goal:** an app moved from Render reads the client's address, country and request ray from the same `CF-*` headers on bex, and a public request that forges `CF-Connecting-IP` gets Render's `403 error code: 1000`. **Status:** todo (t001–t005 and t007–t009 done; t006 steps 1–2 done, its production check pending)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Record Render's edge headers in `docs/render-artifacts/edge-headers.md` | 30m | — |
-| [t002](t002.md) | Set `CF-Connecting-IP`, `CF-Visitor`, `CF-Ray` and `CDN-Loop` on requests from a non-Cloudflare peer | 1h | t001 |
-| [t003](t003.md) | `CF-IPCountry` from a country table | 2h | t002 |
-| [t004](t004.md) | A forged `CF-Connecting-IP` from a non-Cloudflare peer answers 403 `error code: 1000` | 45m | t002 |
-| [t005](t005.md) | Responses carry `cf-ray`, and an uncached web-service response `cf-cache-status: DYNAMIC` | 45m | t002 |
+| [t001](done/t001.md) | Record Render's edge headers in `docs/render-artifacts/edge-headers.md` — **DONE** | 30m | — |
+| [t002](done/t002.md) | Set `CF-Connecting-IP`, `CF-Visitor`, `CF-Ray` and `CDN-Loop` on requests from a non-Cloudflare peer — **DONE** | 1h | t001 |
+| [t003](done/t003.md) | `CF-IPCountry` from a country table — **DONE** | 2h | t002 |
+| [t004](done/t004.md) | A forged `CF-Connecting-IP` from a non-Cloudflare peer answers 403 `error code: 1000` — **DONE** | 45m | t002 |
+| [t005](done/t005.md) | Responses carry `cf-ray`, and an uncached web-service response `cf-cache-status: DYNAMIC` — **DONE** | 45m | t002 |
 | [t006](t006.md) | Amend ADR022 and ADR018, then verify on production with a disposable echo service | 45m | t003, t004, t005 |
-| [t007](t007.md) | Render parity | 25m | t006 |
-| [t008](t008.md) | Simplify | 15m | t007 |
-| [t009](t009.md) | Test coverage | 30m | t007, t008 |
+| [t007](done/t007.md) | Render parity — **DONE** | 25m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007, t008 |
 | [t010](t010.md) | Closeout | 10m | t009 |
 
 Total: **10 tasks, about 7h05m**.
