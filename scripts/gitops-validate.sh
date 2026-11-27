@@ -1989,8 +1989,10 @@ if [ -f "$LOGSHIP" ]; then
     || { echo "FAIL: log-shipper.yaml file positions must live on the node hostPath /var/lib/bex-log-shipper (w4/m174)" >&2; fail=1; }
 
   # Managed-Postgres attribution guard (w3/m28): only operator-marked tenant
-  # Database pods may enter the pipeline, only PostgreSQL's own container is
-  # public, and CNPG's immutable cluster id must become the `database` label.
+  # Database pods may enter the pipeline, only PostgreSQL's own container and
+  # the major-version upgrade Job's `major-upgrade` container (pg_upgrade's
+  # output, w3/m676) are public, and CNPG's immutable cluster id must become
+  # the `database` label.
   # Losing any one of these either ingests platform DBs or mixes/unscopes tenant
   # reads, so pin the four River source invariants alongside node scoping.
   echo "==> $LOGSHIP managed-Postgres attribution"
@@ -1999,7 +2001,7 @@ if [ -f "$LOGSHIP" ]; then
     'regex         = "database"' \
     '__meta_kubernetes_pod_label_cnpg_io_cluster' \
     'target_label  = "database"' \
-    'regex         = "postgres"' \
+    'regex         = "postgres|major-upgrade"' \
     'values = { type = "postgres" }'; do
     grep -qF "$required" <<<"$vals" \
       || { echo "FAIL: log-shipper.yaml managed-Postgres pipeline lost required attribution rule: $required" >&2; fail=1; }
