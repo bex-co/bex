@@ -125,6 +125,7 @@ describe("contentGroup", () => {
     expect(contentGroup("/new/database")).toBe("databases");
     expect(contentGroup("/new/redis")).toBe("keyvalue");
     expect(contentGroup("/blueprint/new")).toBe("blueprints");
+    expect(contentGroup("/blueprint/generate")).toBe("blueprints");
     expect(contentGroup("/new/workspace")).toBe("new");
     // A create type added to the New menu needs its section here too.
     for (const item of CREATE_TYPE_ITEMS) {

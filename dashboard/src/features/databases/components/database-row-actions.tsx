@@ -15,6 +15,7 @@ import {
   DatabaseLifecycleConfirmDialog,
 } from "@/features/databases/components/database-confirm-dialogs";
 import { MoveToProjectMenu } from "@/features/projects/components/move-to-project-menu";
+import { GenerateBlueprintMenuItem } from "@/features/blueprints/components/generate-blueprint-menu-item";
 import type {
   DatabaseLifecycleAction,
   UseDatabaseLifecycleResult,
@@ -204,6 +205,16 @@ export function DatabaseRowActionsWithCapabilities({
             resourceId={database.id}
             resourceName={database.name}
             disabled={busy}
+          />
+          <DropdownMenuSeparator />
+          <GenerateBlueprintMenuItem
+            disabled={busy}
+            handed={{
+              resources: [
+                { kind: "database", id: database.id, name: database.name },
+              ],
+              source: "table row menu",
+            }}
           />
         </DropdownMenuContent>
       </DropdownMenu>

@@ -12,6 +12,13 @@ import {
   adminOnlyAs,
 } from "@/test/mocks/admin-only";
 
+// Generate Blueprint opens the Create Blueprint page (w3/m681).
+const navigate = vi.hoisted(() => vi.fn());
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  useNavigate: () => navigate,
+}));
+
 const remove = vi.fn();
 vi.mock("@/features/keyvalue/hooks/use-delete-key-value", () => ({
   useDeleteKeyValue: () => ({ remove, deleting: null }),
@@ -65,7 +72,8 @@ describe("KeyValueRowActions", () => {
     expect(
       screen.getByRole("button", { name: "Actions for sessions-cache" }),
     ).toHaveFocus();
-    await user.keyboard("{Enter}{ArrowDown}");
+    // The menu opens on its first item, Delete; Generate Blueprint follows.
+    await user.keyboard("{Enter}");
     const removeItem = await screen.findByRole("menuitem", { name: "Delete" });
     expect(removeItem).toHaveAttribute("aria-disabled", "true");
     expect(removeItem).toHaveFocus();
@@ -164,5 +172,48 @@ describe("KeyValueRowActions", () => {
       "sudo delete key value sessions-cache",
     );
     expect(onDeleted).toHaveBeenCalledWith("sessions-cache");
+  });
+});
+
+describe("KeyValueRowActions Generate Blueprint (w3/m681)", () => {
+  beforeEach(() => navigate.mockReset());
+
+  it("opens the Create Blueprint page with this Key Value", async () => {
+    const user = userEvent.setup();
+    render(<KeyValueRowActions keyValue={KV} onDeleted={vi.fn()} />);
+    await user.click(
+      screen.getByRole("button", { name: "Actions for sessions-cache" }),
+    );
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Generate Blueprint" }),
+    );
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/blueprint/generate",
+      state: {
+        blueprintExport: {
+          resources: [
+            { kind: "keyvalue", id: "sessions-cache", name: "sessions-cache" },
+          ],
+          source: "table row menu",
+        },
+      },
+    });
+  });
+
+  it("is disabled with the role's reason for a Viewer", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "VIEWER", canCreate: false, canOperate: false }),
+    );
+    const user = userEvent.setup();
+    render(<KeyValueRowActions keyValue={KV} onDeleted={vi.fn()} />);
+    await user.click(
+      screen.getByRole("button", { name: "Actions for sessions-cache" }),
+    );
+    const item = await screen.findByRole("menuitem", {
+      name: "Generate Blueprint",
+    });
+    expect(item).toHaveAttribute("aria-disabled", "true");
+    await user.click(item);
+    expect(navigate).not.toHaveBeenCalled();
   });
 });

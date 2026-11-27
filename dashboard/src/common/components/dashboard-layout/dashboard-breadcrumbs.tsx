@@ -704,6 +704,18 @@ const PAGE_DEFINITIONS: PageDefinition[] = [
     },
   },
   {
+    // Render's topbar names the page Generate Blueprint opens "Create
+    // Blueprint" (w3/m681).
+    match: (path) => path === "/blueprint/generate",
+    labelKey: "blueprints.generateBreadcrumb",
+    icon: Plus,
+    parent: {
+      to: "/blueprints",
+      labelKey: "common.navBlueprints",
+      icon: Layers,
+    },
+  },
+  {
     match: (path) => path.startsWith("/blueprints"),
     labelKey: "common.navBlueprints",
     icon: Layers,

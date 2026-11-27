@@ -135,6 +135,7 @@ const CREATE_PAGE_GROUPS: Record<string, string> = {
   "/new/database": "databases",
   "/new/redis": "keyvalue",
   "/blueprint/new": "blueprints",
+  "/blueprint/generate": "blueprints",
 };
 
 /** The first path segment of a route template, GA4's `content_group`. */

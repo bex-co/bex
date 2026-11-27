@@ -32,6 +32,11 @@ async function land(href: string) {
     path: "/blueprint/new",
     component: stub("create"),
   });
+  const generate = createRoute({
+    getParentRoute: () => root,
+    path: "/blueprint/generate",
+    component: stub("generate"),
+  });
   const alias = createRoute({
     getParentRoute: () => root,
     path: "/blueprint/$",
@@ -76,6 +81,7 @@ async function land(href: string) {
     routeTree: root.addChildren([
       home,
       create,
+      generate,
       alias as never,
       layout.addChildren(children as never) as never,
     ]),
@@ -164,10 +170,16 @@ describe("Render's Blueprint URLs and a Blueprint's sub-paths (w3/m677)", () => 
     expect(await screen.findByText("page:create")).toBeVisible();
   });
 
-  // Render's Create Blueprint page with nothing selected goes home; bex's does
-  // the same until w3/m681 builds the page.
-  it("sends /blueprint/generate home", async () => {
+  // w3/m681: Render's Create Blueprint page is a route of its own, which the
+  // alias must not take for a Blueprint id; a path under it names nothing.
+  it("keeps /blueprint/generate the Create Blueprint page", async () => {
     const location = await land("/blueprint/generate");
+    expect(location.pathname).toBe("/blueprint/generate");
+    expect(await screen.findByText("page:generate")).toBeVisible();
+  });
+
+  it("sends a path under /blueprint/generate home", async () => {
+    const location = await land("/blueprint/generate/extra");
     expect(location.pathname).toBe("/");
     expect(await screen.findByText("page:home")).toBeVisible();
   });

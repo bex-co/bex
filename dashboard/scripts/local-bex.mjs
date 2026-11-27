@@ -1842,6 +1842,51 @@ const VIEWER_CAPABILITIES = [
 
 // Resolve one GraphQL operation to canned data. Only the reads the dashboard
 // actually fires need real shapes; everything else returns a safe empty.
+function generatedBlueprint({
+  serviceIds = [],
+  postgresIds = [],
+  keyValueIds = [],
+  envGroupIds = [],
+}) {
+  const named = (list, ids) =>
+    ids.map((id) => list.find((r) => r.id === id)?.name ?? id);
+  const services = [
+    ...serviceIds.map((id) => {
+      const svc = SERVICES.find((s) => s.id === id);
+      const type =
+        { background_worker: "worker", cron_job: "cron" }[svc?.type] ?? "web";
+      return `  - type: ${type}\n    name: ${svc?.name ?? id}\n    runtime: node\n    plan: starter`;
+    }),
+    ...named(KEY_VALUES, keyValueIds).map(
+      (n) => `  - type: keyvalue\n    name: ${n}\n    ipAllowList: []`,
+    ),
+  ];
+  const sections = [
+    ["services", services],
+    [
+      "databases",
+      named(DATABASES, postgresIds).map(
+        (n) => `  - name: ${n}\n    plan: basic-256mb`,
+      ),
+    ],
+    [
+      "envVarGroups",
+      named(ENV_GROUPS, envGroupIds).map(
+        (n) => `  - name: ${n}\n    envVars: []`,
+      ),
+    ],
+  ];
+  const manifest = sections
+    .filter(([, entries]) => entries.length > 0)
+    .map(([key, entries]) => [`${key}:`, ...entries].join("\n"))
+    .join("\n");
+  return {
+    __typename: "GeneratedBlueprint",
+    manifest: `${manifest}\n`,
+    filename: "render.yaml",
+  };
+}
+
 function resolveGraphQL({ operationName, variables = {} }) {
   switch (operationName) {
     case "ViewerCapabilities":
@@ -3438,6 +3483,11 @@ function resolveGraphQL({ operationName, variables = {} }) {
       return { blueprints: [] };
     case "Blueprint":
       return { blueprint: null };
+    // Generate Blueprint (w8/m22, the Create Blueprint page since w3/m681): a
+    // render.yaml naming the selected resources, so the page runs offline.
+    // bex-api's own file carries each resource's whole configuration.
+    case "GenerateBlueprint":
+      return { generateBlueprint: generatedBlueprint(variables) };
     case "ValidateBlueprint":
       return {
         validateBlueprint: {

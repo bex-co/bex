@@ -27,6 +27,7 @@ import { useProjectResourceCatalog } from "@/features/projects/hooks/use-project
  */
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: ReactNode }) => <a href="#">{children}</a>,
+  useNavigate: () => vi.fn(),
 }));
 vi.mock("@/features/workspaces/context/hooks", () =>
   mockWorkspaceContext("tea-1"),

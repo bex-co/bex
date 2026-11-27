@@ -17,7 +17,9 @@ export function isNavItemActive(pathname: string, to: string): boolean {
   return (
     pathname === to ||
     pathname.startsWith(`${to}/`) ||
-    // Render's singular create URL sits under Blueprints.
-    (to === "/blueprints" && pathname === "/blueprint/new")
+    // Render's singular create URLs sit under Blueprints: the create page
+    // and the Create Blueprint page Generate Blueprint opens (w3/m681).
+    (to === "/blueprints" &&
+      (pathname === "/blueprint/new" || pathname === "/blueprint/generate"))
   );
 }

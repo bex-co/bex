@@ -4,9 +4,11 @@ import { Button } from "@/common/components/ui/button.tsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu.tsx";
 import { MoveToProjectMenu } from "@/features/projects/components/move-to-project-menu";
+import { GenerateBlueprintMenuItem } from "@/features/blueprints/components/generate-blueprint-menu-item";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { en } from "@/i18n";
@@ -282,6 +284,16 @@ export function ServiceRowActions({
             resourceName={service.name}
             disabled={busy}
             onMoveRequested={handleMoveRequested}
+          />
+          <DropdownMenuSeparator />
+          <GenerateBlueprintMenuItem
+            disabled={busy}
+            handed={{
+              resources: [
+                { kind: "service", id: service.id, name: service.name },
+              ],
+              source: "table row menu",
+            }}
           />
         </DropdownMenuContent>
       </DropdownMenu>

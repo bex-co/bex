@@ -19,7 +19,7 @@ import type { ServiceView } from "@/features/services/types";
 import type { DatabaseView } from "@/features/databases/types";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import type { Capabilities } from "@/features/capabilities/hooks/use-capabilities";
-import { mockCapabilities } from "@/test/mocks/capabilities";
+import { CREATE_REASON, mockCapabilities } from "@/test/mocks/capabilities";
 import { codedGraphQLError } from "@/test/mocks/apollo";
 
 beforeAll(() => {
@@ -61,6 +61,13 @@ vi.mock("@/features/projects/hooks/use-bulk-move", () => ({
     confirmStranded: vi.fn(),
     dismissStranded: vi.fn(),
   }),
+}));
+
+// Generate Blueprint opens the Create Blueprint page (w3/m681).
+const navigate = vi.hoisted(() => vi.fn());
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  useNavigate: () => navigate,
 }));
 
 const ADMIN = mockCapabilities();
@@ -194,6 +201,7 @@ function selectedNames() {
 }
 
 beforeEach(() => {
+  navigate.mockReset();
   capabilities.current = ADMIN;
   client.query.mockReset();
   client.query.mockResolvedValue(grantsFor(ADMIN));
@@ -470,5 +478,60 @@ describe("BulkResourceToolbar Suspend and Resume (w4/m550)", () => {
     expect(
       within(dialog).getByRole("button", { name: "Suspend services" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("BulkResourceToolbar Generate Blueprint (w3/m681)", () => {
+  const sandboxGroup: ResourceRow = {
+    kind: "sandboxgroup",
+    id: "sbg-1",
+    name: "agents",
+    createdAt: null,
+    updatedAt: null,
+    runtime: null,
+    region: null,
+  };
+  const envGroup: ResourceRow = {
+    ...sandboxGroup,
+    kind: "envgroup",
+    id: "evg-1",
+    name: "shared",
+  };
+
+  it("opens the Create Blueprint page with the selection it can export", async () => {
+    const user = await selectAll([web, postgres, envGroup, sandboxGroup]);
+    await user.click(
+      screen.getByRole("button", { name: "Generate Blueprint" }),
+    );
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/blueprint/generate",
+      state: {
+        blueprintExport: {
+          resources: [
+            { kind: "service", id: "web", name: "web" },
+            { kind: "database", id: "pg", name: "pg" },
+            { kind: "envgroup", id: "evg-1", name: "shared" },
+          ],
+          source: "action bar",
+        },
+      },
+    });
+  });
+
+  it("is not offered for a selection of sandbox groups alone, as on Render", async () => {
+    await selectAll([sandboxGroup]);
+    expect(
+      screen.queryByRole("button", { name: "Generate Blueprint" }),
+    ).toBeNull();
+  });
+
+  it("is disabled with the role's reason for a role that cannot create a Blueprint", async () => {
+    capabilities.current = VIEWER;
+    const user = await selectAll([web]);
+    const button = screen.getByRole("button", { name: "Generate Blueprint" });
+    expect(button).toBeDisabled();
+    await user.hover(button.parentElement!);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(CREATE_REASON);
+    expect(navigate).not.toHaveBeenCalled();
   });
 });

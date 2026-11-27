@@ -490,36 +490,85 @@ const koBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.generateButton": {
     message: "Blueprint 생성",
-    description: "Blueprints list header — opens the export dialog (w8/m22)",
+    description:
+      "Generate Blueprint: the selection bar's, a resource row menu's and a project environment menu's entry that opens the Create Blueprint page (w3/m681)",
   },
-  "blueprints.generateTitle": {
-    message: "Blueprint 생성",
-    description: "Generate dialog title",
+  "blueprints.generatePageTitle": {
+    message: "서비스에서 새 Blueprint 만들기",
+    description:
+      "Create Blueprint page title and document title, opened from a selection bar or a resource row's menu (w3/m681)",
   },
-  "blueprints.generateDescription": {
+  "blueprints.generatePageTitleEnvironment": {
+    message: "{project} / {environment}에서 새 Blueprint 만들기",
+    description:
+      "Create Blueprint page title and document title, opened from a project environment's menu: the project and environment names",
+  },
+  "blueprints.generateBreadcrumb": {
+    message: "Blueprint 만들기",
+    description:
+      "Topbar breadcrumb of the Create Blueprint page (/blueprint/generate)",
+  },
+  "blueprints.generateStepDownload": {
+    message: "생성된 render.yaml 다운로드",
+    description: "Create Blueprint page: step 1 title",
+  },
+  "blueprints.generateIncludes_other": {
+    message: "서비스 {count}개 포함:",
+    description:
+      "Create Blueprint page: step 1 sentence before the list of exported resource names (services, databases and Key Value all count)",
+  },
+  "blueprints.generating": {
+    message: "render.yaml 생성 중...",
+    description: "Create Blueprint page: step 1 while render.yaml is generated",
+  },
+  "blueprints.generateCopiedLabel": {
+    message: "복사했습니다!",
+    description:
+      "Create Blueprint page: the Copy button's label for 2 seconds after copying render.yaml",
+  },
+  "blueprints.generateStepCommit": {
+    message: "Git에 render.yaml 추가",
+    description: "Create Blueprint page: step 2 title",
+  },
+  "blueprints.generateStepCommitBody": {
     message:
-      "기존 리소스를 선택하여 저장소에 커밋하고 Blueprint로 연결할 수 있는 render.yaml로 내보냅니다.",
-    description: "Generate dialog description",
+      "render.yaml을 저장소의 루트 디렉터리에 커밋하고 Git 공급자에 푸시하세요.",
+    description: "Create Blueprint page: step 2 text above the git commands",
   },
-  "blueprints.generateEmptyHint": {
-    message: "생성할 리소스를 하나 이상 선택하세요.",
-    description: "Generate dialog hint when nothing is selected",
+  "blueprints.generateStepConnect": {
+    message: "새 Blueprint 연결",
+    description: "Create Blueprint page: step 3 title",
   },
-  "blueprints.generateAction": {
-    message: "생성",
-    description: "Generate dialog primary action",
+  "blueprints.generateStepConnectBody": {
+    message: "새 Blueprint 인스턴스를 만들고 저장소를 연결하세요.",
+    description: "Create Blueprint page: step 3 text, followed by a docs link",
   },
-  "blueprints.generateBack": {
-    message: "뒤로",
-    description: "Generate dialog — return from preview to selection",
+  "blueprints.generateSeeDocs": {
+    message: "문서를 참고하세요.",
+    description: "Create Blueprint page: step 3 link to the Blueprint docs",
+  },
+  "blueprints.generateConnect": {
+    message: "새 Blueprint 연결하기",
+    description:
+      "Create Blueprint page: step 3 button, opens the New Blueprint Instance page in a new tab",
+  },
+  "blueprints.generateHelpfulResources": {
+    message: "유용한 자료",
+    description:
+      "Create Blueprint page: heading of the links card beside the steps",
+  },
+  "blueprints.generateLearnBlueprints": {
+    message: "Blueprint 알아보기",
+    description:
+      "Create Blueprint page: link to the Blueprint docs in the Helpful Resources card",
+  },
+  "blueprints.copied": {
+    message: "복사했습니다",
+    description: "Toast after copying a code snippet on a Blueprint page",
   },
   "blueprints.generateCopy": {
     message: "복사",
     description: "Generate dialog — copy the yaml to the clipboard",
-  },
-  "blueprints.generateCopied": {
-    message: "render.yaml을 복사했습니다",
-    description: "Toast after copying the generated manifest",
   },
   "blueprints.generateCopyFailed": {
     message:
@@ -530,11 +579,6 @@ const koBlueprints: Record<string, TranslationEntry> = {
   "blueprints.generateDownload": {
     message: "render.yaml 다운로드",
     description: "Generate dialog — download the manifest file",
-  },
-  "blueprints.generateSecretsNote": {
-    message:
-      "저장된 값은 내보내지 않습니다. sync: false로 표시된 서비스 변수는 Blueprint를 처음 만들 때 입력을 요청합니다. generateValue로 표시된 변수(내보낸 환경 그룹 키 포함)는 기존 값을 유지하며, 없으면 새 값이 생성됩니다.",
-    description: "Generate dialog note under the yaml preview",
   },
   "blueprints.generateError": {
     message: "Blueprint를 생성하지 못했습니다",

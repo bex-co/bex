@@ -385,6 +385,20 @@ export const ROUTE_SKELETON_MANIFEST = {
     owner: "routes/blueprints.new.tsx",
     destination: "/blueprint/new",
   },
+  // Render's Create Blueprint page (w3/m681).
+  "/blueprint/generate": {
+    kind: "render",
+    owner: "routes/blueprint.generate.tsx",
+    shape: "blueprint-generate",
+    regions: [
+      "page-header",
+      "steps",
+      "export",
+      "commit",
+      "connect",
+      "helpful-resources",
+    ],
+  },
   "/cron/$": {
     kind: "redirect",
     owner: "routes/cron.$.tsx",

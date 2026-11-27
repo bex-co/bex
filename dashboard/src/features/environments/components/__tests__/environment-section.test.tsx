@@ -10,8 +10,11 @@ import type { EnvironmentView } from "@/features/environments/hooks/use-environm
 import type { EnvGroupView } from "@/features/env-groups/types";
 import type { ServiceView } from "@/features/services/types";
 
-// The create links, as the router would write them.
+// The create links, as the router would write them, and Generate
+// Blueprint's navigation (w3/m681).
+const navigate = vi.hoisted(() => vi.fn());
 vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => navigate,
   Link: ({
     children,
     to,
@@ -787,6 +790,90 @@ describe("EnvironmentSection", () => {
     // The acknowledgment-lost case: both arrived, nothing is left to move.
     rerender(card(left([])));
     expect(screen.queryByText(/Selected: [12]/)).not.toBeInTheDocument();
+  });
+
+  // w3/m681: Render's environment menu exports the environment's services and
+  // datastores, titled for the project and environment; bex offers it in the
+  // ••• menu until w1/m684 brings the New menu.
+  it("opens the Create Blueprint page with the environment's services and datastores", async () => {
+    navigate.mockReset();
+    const user = userEvent.setup();
+    renderSection({
+      projectName: "shop",
+      services: [apiService],
+      databases: [
+        {
+          id: "dpg-main",
+          name: "Main DB",
+          status: "available",
+          plan: null,
+          version: "16",
+          diskSizeGB: 1,
+          createdAt: null,
+          public: false,
+          suspended: "not_suspended",
+        },
+      ],
+      envGroups: [sharedGroup],
+      environment: {
+        ...env,
+        serviceIds: ["srv-api"],
+        databaseIds: ["dpg-main"],
+        envGroupIds: ["evg-shared"],
+      },
+    });
+
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Generate Blueprint" }),
+    );
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/blueprint/generate",
+      state: {
+        blueprintExport: {
+          resources: [
+            { kind: "service", id: "srv-api", name: "Public API" },
+            { kind: "database", id: "dpg-main", name: "Main DB" },
+          ],
+          source: "project environment menu",
+          projectName: "shop",
+          environmentName: "staging",
+        },
+      },
+    });
+  });
+
+  it("offers no Generate Blueprint for an environment without services or datastores", async () => {
+    const user = userEvent.setup();
+    renderSection({
+      envGroups: [sharedGroup],
+      environment: { ...env, envGroupIds: ["evg-shared"] },
+    });
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await screen.findByRole("menuitem", { name: "All settings" });
+    expect(
+      screen.queryByRole("menuitem", { name: "Generate Blueprint" }),
+    ).toBeNull();
+  });
+
+  it("disables the environment's Generate Blueprint with the role's reason", async () => {
+    navigate.mockReset();
+    role.current = {
+      canManage: false,
+      createReason: "capabilities.reasonCanCreate",
+    };
+    const user = userEvent.setup();
+    renderSection({
+      services: [apiService],
+      environment: { ...env, serviceIds: ["srv-api"] },
+    });
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    const item = await screen.findByRole("menuitem", {
+      name: "Generate Blueprint",
+    });
+    expect(item).toHaveAttribute("aria-disabled", "true");
+    await user.click(item);
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   // Render's ••• menu (w1/m683): the isolation toggle and All settings.

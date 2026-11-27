@@ -483,35 +483,84 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.generateButton": {
     message: "生成蓝图",
-    description: "Blueprints list header — opens the export dialog (w8/m22)",
+    description:
+      "Generate Blueprint: the selection bar's, a resource row menu's and a project environment menu's entry that opens the Create Blueprint page (w3/m681)",
   },
-  "blueprints.generateTitle": {
-    message: "生成蓝图",
-    description: "Generate dialog title",
+  "blueprints.generatePageTitle": {
+    message: "从你的服务创建新蓝图",
+    description:
+      "Create Blueprint page title and document title, opened from a selection bar or a resource row's menu (w3/m681)",
   },
-  "blueprints.generateDescription": {
-    message: "选择现有资源导出为 render.yaml，可提交到仓库并连接为蓝图。",
-    description: "Generate dialog description",
+  "blueprints.generatePageTitleEnvironment": {
+    message: "从 {project} / {environment} 创建新蓝图",
+    description:
+      "Create Blueprint page title and document title, opened from a project environment's menu: the project and environment names",
   },
-  "blueprints.generateEmptyHint": {
-    message: "请至少选择一个资源。",
-    description: "Generate dialog hint when nothing is selected",
+  "blueprints.generateBreadcrumb": {
+    message: "创建蓝图",
+    description:
+      "Topbar breadcrumb of the Create Blueprint page (/blueprint/generate)",
   },
-  "blueprints.generateAction": {
-    message: "生成",
-    description: "Generate dialog primary action",
+  "blueprints.generateStepDownload": {
+    message: "下载生成的 render.yaml",
+    description: "Create Blueprint page: step 1 title",
   },
-  "blueprints.generateBack": {
-    message: "返回",
-    description: "Generate dialog — return from preview to selection",
+  "blueprints.generateIncludes_other": {
+    message: "包含 {count} 个服务：",
+    description:
+      "Create Blueprint page: step 1 sentence before the list of exported resource names (services, databases and Key Value all count)",
+  },
+  "blueprints.generating": {
+    message: "正在生成 render.yaml...",
+    description: "Create Blueprint page: step 1 while render.yaml is generated",
+  },
+  "blueprints.generateCopiedLabel": {
+    message: "已复制！",
+    description:
+      "Create Blueprint page: the Copy button's label for 2 seconds after copying render.yaml",
+  },
+  "blueprints.generateStepCommit": {
+    message: "将 render.yaml 添加到 Git",
+    description: "Create Blueprint page: step 2 title",
+  },
+  "blueprints.generateStepCommitBody": {
+    message: "将 render.yaml 提交到仓库的根目录，并推送到你的 Git 提供商。",
+    description: "Create Blueprint page: step 2 text above the git commands",
+  },
+  "blueprints.generateStepConnect": {
+    message: "连接你的新蓝图",
+    description: "Create Blueprint page: step 3 title",
+  },
+  "blueprints.generateStepConnectBody": {
+    message: "创建新的蓝图实例并连接你的仓库。",
+    description: "Create Blueprint page: step 3 text, followed by a docs link",
+  },
+  "blueprints.generateSeeDocs": {
+    message: "查看文档。",
+    description: "Create Blueprint page: step 3 link to the Blueprint docs",
+  },
+  "blueprints.generateConnect": {
+    message: "连接新蓝图",
+    description:
+      "Create Blueprint page: step 3 button, opens the New Blueprint Instance page in a new tab",
+  },
+  "blueprints.generateHelpfulResources": {
+    message: "实用资源",
+    description:
+      "Create Blueprint page: heading of the links card beside the steps",
+  },
+  "blueprints.generateLearnBlueprints": {
+    message: "了解蓝图",
+    description:
+      "Create Blueprint page: link to the Blueprint docs in the Helpful Resources card",
+  },
+  "blueprints.copied": {
+    message: "已复制",
+    description: "Toast after copying a code snippet on a Blueprint page",
   },
   "blueprints.generateCopy": {
     message: "复制",
     description: "Generate dialog — copy the yaml to the clipboard",
-  },
-  "blueprints.generateCopied": {
-    message: "render.yaml 已复制",
-    description: "Toast after copying the generated manifest",
   },
   "blueprints.generateCopyFailed": {
     message: "无法复制 render.yaml。请允许访问剪贴板后重试，或直接下载。",
@@ -521,11 +570,6 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   "blueprints.generateDownload": {
     message: "下载 render.yaml",
     description: "Generate dialog — download the manifest file",
-  },
-  "blueprints.generateSecretsNote": {
-    message:
-      "已存储的值绝不导出。标记为 sync: false 的服务变量会在首次创建蓝图时提示填写。标记为 generateValue 的变量（包括导出的环境组键）会保留现有值，缺失时自动生成。",
-    description: "Generate dialog note under the yaml preview",
   },
   "blueprints.generateError": {
     message: "无法生成蓝图",

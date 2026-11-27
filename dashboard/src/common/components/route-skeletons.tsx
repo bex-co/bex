@@ -4,6 +4,12 @@ import { EnvGroupsTableHeader } from "@/features/env-groups/components/env-group
 import { ResourceColumnHeads } from "@/features/projects/components/resource-column-heads";
 import { useOptionalBlueprintDetail } from "@/features/blueprints/lib/blueprint-detail";
 import {
+  GenerateBlueprintSteps,
+  GeneratingBox,
+} from "@/features/blueprints/components/generate-blueprint-steps";
+import { generateBlueprintTitle } from "@/features/blueprints/lib/blueprint-export";
+import { useHandedBlueprintExport } from "@/features/blueprints/hooks/use-handed-blueprint-export";
+import {
   blueprintResourceTables,
   blueprintResourcesShape,
   type BlueprintResourceTables,
@@ -40,6 +46,9 @@ import {
 import { useParams, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
+  Copy,
+  Download,
+  ExternalLink,
   Pencil,
   Plus,
   RefreshCw,
@@ -1044,15 +1053,10 @@ export function BlueprintsListPageSkeleton() {
         <PageHeader
           title={t("blueprints.pageTitle")}
           actions={
-            <>
-              <ReservedButton variant="outline" size="sm">
-                {t("blueprints.generateButton")}
-              </ReservedButton>
-              <ReservedButton variant="default" size="sm">
-                <Plus />
-                {t("blueprints.createButton")}
-              </ReservedButton>
-            </>
+            <ReservedButton variant="default" size="sm">
+              <Plus />
+              {t("blueprints.createButton")}
+            </ReservedButton>
           }
         />
       }
@@ -1563,6 +1567,52 @@ export function BlueprintCreatePageSkeleton() {
           <Skeleton className="h-5 w-full" />
         </Region>
       </Region>
+    </PageFrame>
+  );
+}
+
+/**
+ * The Create Blueprint page's frame (w3/m681): its title, which reads the
+ * environment the page came from once the navigation's state can be read,
+ * then the page's own three steps with the first one generating, as the page
+ * draws them until `generateBlueprint` answers.
+ */
+export function BlueprintGeneratePageSkeleton() {
+  const { t } = useTranslations();
+  const handed = useHandedBlueprintExport();
+  return <BlueprintGenerateFrame title={generateBlueprintTitle(t, handed)} />;
+}
+
+export function BlueprintGenerateFrame({ title }: { title: string }) {
+  const { t } = useTranslations();
+  return (
+    <PageFrame
+      pending="blueprint-generate"
+      width="standard"
+      header={<PageHeader title={title} />}
+    >
+      <GenerateBlueprintSteps
+        pending
+        exportBody={<GeneratingBox />}
+        exportActions={
+          <div className="flex flex-wrap gap-2">
+            <ReservedButton variant="default" size="sm">
+              <Download />
+              {t("blueprints.generateDownload")}
+            </ReservedButton>
+            <ReservedButton variant="outline" size="sm">
+              <Copy />
+              {t("blueprints.generateCopy")}
+            </ReservedButton>
+          </div>
+        }
+        connectAction={
+          <ReservedButton variant="default" size="sm">
+            {t("blueprints.generateConnect")}
+            <ExternalLink />
+          </ReservedButton>
+        }
+      />
     </PageFrame>
   );
 }

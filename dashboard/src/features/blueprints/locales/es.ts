@@ -536,36 +536,95 @@ const esBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.generateButton": {
     message: "Generar Blueprint",
-    description: "Blueprints list header — opens the export dialog (w8/m22)",
+    description:
+      "Generate Blueprint: the selection bar's, a resource row menu's and a project environment menu's entry that opens the Create Blueprint page (w3/m681)",
   },
-  "blueprints.generateTitle": {
-    message: "Generar Blueprint",
-    description: "Generate dialog title",
+  "blueprints.generatePageTitle": {
+    message: "Crear un nuevo Blueprint a partir de tus servicios",
+    description:
+      "Create Blueprint page title and document title, opened from a selection bar or a resource row's menu (w3/m681)",
   },
-  "blueprints.generateDescription": {
+  "blueprints.generatePageTitleEnvironment": {
+    message: "Crear un nuevo Blueprint a partir de {project} / {environment}",
+    description:
+      "Create Blueprint page title and document title, opened from a project environment's menu: the project and environment names",
+  },
+  "blueprints.generateBreadcrumb": {
+    message: "Crear Blueprint",
+    description:
+      "Topbar breadcrumb of the Create Blueprint page (/blueprint/generate)",
+  },
+  "blueprints.generateStepDownload": {
+    message: "Descargar el render.yaml generado",
+    description: "Create Blueprint page: step 1 title",
+  },
+  "blueprints.generateIncludes_one": {
+    message: "Incluye {count} servicio:",
+    description:
+      "Create Blueprint page: step 1 sentence before the list of exported resource names (services, databases and Key Value all count)",
+  },
+  "blueprints.generateIncludes_many": {
+    message: "Incluye {count} de servicios:",
+    description:
+      "Create Blueprint page: step 1 sentence before the list of exported resource names (services, databases and Key Value all count)",
+  },
+  "blueprints.generateIncludes_other": {
+    message: "Incluye {count} servicios:",
+    description:
+      "Create Blueprint page: step 1 sentence before the list of exported resource names (services, databases and Key Value all count)",
+  },
+  "blueprints.generating": {
+    message: "Generando render.yaml...",
+    description: "Create Blueprint page: step 1 while render.yaml is generated",
+  },
+  "blueprints.generateCopiedLabel": {
+    message: "¡Copiado!",
+    description:
+      "Create Blueprint page: the Copy button's label for 2 seconds after copying render.yaml",
+  },
+  "blueprints.generateStepCommit": {
+    message: "Añadir render.yaml a Git",
+    description: "Create Blueprint page: step 2 title",
+  },
+  "blueprints.generateStepCommitBody": {
     message:
-      "Selecciona recursos existentes para exportarlos como un render.yaml que puedas confirmar en un repositorio y conectar como Blueprint.",
-    description: "Generate dialog description",
+      "Haz commit de render.yaml en el directorio raíz de tu repositorio y haz push a tu proveedor de Git.",
+    description: "Create Blueprint page: step 2 text above the git commands",
   },
-  "blueprints.generateEmptyHint": {
-    message: "Selecciona al menos un recurso a partir del cual generar.",
-    description: "Generate dialog hint when nothing is selected",
+  "blueprints.generateStepConnect": {
+    message: "Conectar tu nuevo Blueprint",
+    description: "Create Blueprint page: step 3 title",
   },
-  "blueprints.generateAction": {
-    message: "Generar",
-    description: "Generate dialog primary action",
+  "blueprints.generateStepConnectBody": {
+    message: "Crea una nueva instancia de Blueprint y conecta tu repositorio.",
+    description: "Create Blueprint page: step 3 text, followed by a docs link",
   },
-  "blueprints.generateBack": {
-    message: "Atrás",
-    description: "Generate dialog — return from preview to selection",
+  "blueprints.generateSeeDocs": {
+    message: "Consulta la documentación.",
+    description: "Create Blueprint page: step 3 link to the Blueprint docs",
+  },
+  "blueprints.generateConnect": {
+    message: "Conectar un nuevo Blueprint",
+    description:
+      "Create Blueprint page: step 3 button, opens the New Blueprint Instance page in a new tab",
+  },
+  "blueprints.generateHelpfulResources": {
+    message: "Recursos útiles",
+    description:
+      "Create Blueprint page: heading of the links card beside the steps",
+  },
+  "blueprints.generateLearnBlueprints": {
+    message: "Más información sobre los Blueprints",
+    description:
+      "Create Blueprint page: link to the Blueprint docs in the Helpful Resources card",
+  },
+  "blueprints.copied": {
+    message: "Copiado",
+    description: "Toast after copying a code snippet on a Blueprint page",
   },
   "blueprints.generateCopy": {
     message: "Copiar",
     description: "Generate dialog — copy the yaml to the clipboard",
-  },
-  "blueprints.generateCopied": {
-    message: "render.yaml copiado",
-    description: "Toast after copying the generated manifest",
   },
   "blueprints.generateCopyFailed": {
     message:
@@ -576,11 +635,6 @@ const esBlueprints: Record<string, TranslationEntry> = {
   "blueprints.generateDownload": {
     message: "Descargar render.yaml",
     description: "Generate dialog — download the manifest file",
-  },
-  "blueprints.generateSecretsNote": {
-    message:
-      "Los valores almacenados nunca se exportan. A las variables de servicio marcadas con sync: false se les pide el valor cuando se crea el Blueprint por primera vez. Las variables marcadas con generateValue, incluidas las claves de grupos de entorno exportadas, conservan el valor existente o reciben uno generado si falta.",
-    description: "Generate dialog note under the yaml preview",
   },
   "blueprints.generateError": {
     message: "No se pudo generar el Blueprint",

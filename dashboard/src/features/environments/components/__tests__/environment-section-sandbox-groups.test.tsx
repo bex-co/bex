@@ -22,7 +22,7 @@ beforeAll(() => {
 
 vi.mock("@tanstack/react-router", async () => {
   const { PlainLink } = await import("@/test/mocks/router-link");
-  return { Link: PlainLink };
+  return { Link: PlainLink, useNavigate: () => vi.fn() };
 });
 vi.mock("@/features/environments/hooks/use-update-environment", () => ({
   useUpdateEnvironment: () => ({ update: vi.fn(), saving: false }),

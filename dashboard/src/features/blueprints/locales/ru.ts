@@ -551,36 +551,101 @@ const ruBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.generateButton": {
     message: "Сгенерировать Blueprint",
-    description: "Blueprints list header — opens the export dialog (w8/m22)",
+    description:
+      "Generate Blueprint: the selection bar's, a resource row menu's and a project environment menu's entry that opens the Create Blueprint page (w3/m681)",
   },
-  "blueprints.generateTitle": {
-    message: "Генерация Blueprint",
-    description: "Generate dialog title",
+  "blueprints.generatePageTitle": {
+    message: "Создать новый Blueprint из ваших сервисов",
+    description:
+      "Create Blueprint page title and document title, opened from a selection bar or a resource row's menu (w3/m681)",
   },
-  "blueprints.generateDescription": {
+  "blueprints.generatePageTitleEnvironment": {
+    message: "Создать новый Blueprint из {project} / {environment}",
+    description:
+      "Create Blueprint page title and document title, opened from a project environment's menu: the project and environment names",
+  },
+  "blueprints.generateBreadcrumb": {
+    message: "Создание Blueprint",
+    description:
+      "Topbar breadcrumb of the Create Blueprint page (/blueprint/generate)",
+  },
+  "blueprints.generateStepDownload": {
+    message: "Скачайте сгенерированный render.yaml",
+    description: "Create Blueprint page: step 1 title",
+  },
+  "blueprints.generateIncludes_one": {
+    message: "Включает {count} сервис:",
+    description:
+      "Create Blueprint page: step 1 sentence before the list of exported resource names (services, databases and Key Value all count)",
+  },
+  "blueprints.generateIncludes_few": {
+    message: "Включает {count} сервиса:",
+    description:
+      "Create Blueprint page: step 1 sentence before the list of exported resource names (services, databases and Key Value all count)",
+  },
+  "blueprints.generateIncludes_many": {
+    message: "Включает {count} сервисов:",
+    description:
+      "Create Blueprint page: step 1 sentence before the list of exported resource names (services, databases and Key Value all count)",
+  },
+  "blueprints.generateIncludes_other": {
+    message: "Включает {count} сервиса:",
+    description:
+      "Create Blueprint page: step 1 sentence before the list of exported resource names (services, databases and Key Value all count)",
+  },
+  "blueprints.generating": {
+    message: "Генерация render.yaml...",
+    description: "Create Blueprint page: step 1 while render.yaml is generated",
+  },
+  "blueprints.generateCopiedLabel": {
+    message: "Скопировано!",
+    description:
+      "Create Blueprint page: the Copy button's label for 2 seconds after copying render.yaml",
+  },
+  "blueprints.generateStepCommit": {
+    message: "Добавьте render.yaml в Git",
+    description: "Create Blueprint page: step 2 title",
+  },
+  "blueprints.generateStepCommitBody": {
     message:
-      "Выберите существующие ресурсы, чтобы экспортировать их в render.yaml, который можно закоммитить в репозиторий и подключить как Blueprint.",
-    description: "Generate dialog description",
+      "Закоммитьте render.yaml в корневой каталог репозитория и отправьте изменения своему Git-провайдеру.",
+    description: "Create Blueprint page: step 2 text above the git commands",
   },
-  "blueprints.generateEmptyHint": {
-    message: "Выберите хотя бы один ресурс для генерации.",
-    description: "Generate dialog hint when nothing is selected",
+  "blueprints.generateStepConnect": {
+    message: "Подключите новый Blueprint",
+    description: "Create Blueprint page: step 3 title",
   },
-  "blueprints.generateAction": {
-    message: "Сгенерировать",
-    description: "Generate dialog primary action",
+  "blueprints.generateStepConnectBody": {
+    message:
+      "Создайте новый экземпляр Blueprint и подключите свой репозиторий.",
+    description: "Create Blueprint page: step 3 text, followed by a docs link",
   },
-  "blueprints.generateBack": {
-    message: "Назад",
-    description: "Generate dialog — return from preview to selection",
+  "blueprints.generateSeeDocs": {
+    message: "См. документацию.",
+    description: "Create Blueprint page: step 3 link to the Blueprint docs",
+  },
+  "blueprints.generateConnect": {
+    message: "Подключить новый Blueprint",
+    description:
+      "Create Blueprint page: step 3 button, opens the New Blueprint Instance page in a new tab",
+  },
+  "blueprints.generateHelpfulResources": {
+    message: "Полезные ресурсы",
+    description:
+      "Create Blueprint page: heading of the links card beside the steps",
+  },
+  "blueprints.generateLearnBlueprints": {
+    message: "Подробнее о Blueprint",
+    description:
+      "Create Blueprint page: link to the Blueprint docs in the Helpful Resources card",
+  },
+  "blueprints.copied": {
+    message: "Скопировано",
+    description: "Toast after copying a code snippet on a Blueprint page",
   },
   "blueprints.generateCopy": {
     message: "Копировать",
     description: "Generate dialog — copy the yaml to the clipboard",
-  },
-  "blueprints.generateCopied": {
-    message: "render.yaml скопирован",
-    description: "Toast after copying the generated manifest",
   },
   "blueprints.generateCopyFailed": {
     message:
@@ -591,11 +656,6 @@ const ruBlueprints: Record<string, TranslationEntry> = {
   "blueprints.generateDownload": {
     message: "Скачать render.yaml",
     description: "Generate dialog — download the manifest file",
-  },
-  "blueprints.generateSecretsNote": {
-    message:
-      "Сохранённые значения никогда не экспортируются. Для переменных сервиса с sync: false значения запрашиваются при первом создании Blueprint. Переменные с generateValue — включая экспортированные ключи групп окружения — сохраняют существующее значение или получают сгенерированное, если его нет.",
-    description: "Generate dialog note under the yaml preview",
   },
   "blueprints.generateError": {
     message: "Не удалось сгенерировать Blueprint",

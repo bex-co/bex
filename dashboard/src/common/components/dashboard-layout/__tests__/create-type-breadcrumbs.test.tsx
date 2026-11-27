@@ -36,7 +36,7 @@ function renderAt(href: string) {
         validateSearch: parseNewServiceSearch,
       }),
     ),
-    ...["/new/database", "/new/redis", "/"].map((path) =>
+    ...["/new/database", "/new/redis", "/", "/blueprint/generate"].map((path) =>
       createRoute({
         getParentRoute: () => root,
         path,
@@ -138,5 +138,16 @@ describe("create page breadcrumb type switcher", () => {
     expect(
       screen.queryByRole("button", { name: /choose a service type/ }),
     ).toBeNull();
+  });
+});
+
+// w3/m681: Render's topbar names the page Generate Blueprint opens "Create
+// Blueprint"; bex's sits under Blueprints, as its create page does.
+describe("the Create Blueprint page's breadcrumb", () => {
+  it("reads Blueprints, then Create Blueprint", async () => {
+    renderAt("/blueprint/generate");
+    const blueprints = await screen.findByRole("link", { name: "Blueprints" });
+    expect(blueprints).toHaveAttribute("href", "/blueprints");
+    expect(screen.getByText("Create Blueprint")).toBeInTheDocument();
   });
 });

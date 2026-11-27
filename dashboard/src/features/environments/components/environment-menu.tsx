@@ -24,6 +24,8 @@ import {
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { isolationGated } from "@/features/environments/lib/settings";
 import { useWorkspace } from "@/features/workspaces/context";
+import { GenerateBlueprintMenuItem } from "@/features/blueprints/components/generate-blueprint-menu-item";
+import type { BlueprintExportResource } from "@/features/blueprints/lib/blueprint-export";
 
 /**
  * An environment section's ••• menu, Render's: the Block
@@ -33,13 +35,22 @@ import { useWorkspace } from "@/features/workspaces/context";
  * feature", unless the environment is already isolated, which bex always lets
  * turn off (ADR030). Render shows the toggle only to a member who may change
  * the isolation: here an Admin.
+ *
+ * Generate Blueprint, while the environment has a service, Postgres or Key
+ * Value, opens the Create Blueprint page with all of them titled for the
+ * project and environment (w3/m681). Render offers it in the environment's
+ * New menu, which w1/m684 brings; until then it is here.
  */
 export function EnvironmentMenu({
   environment,
   projectName,
+  exportResources = NO_EXPORT,
 }: {
   environment: EnvironmentView;
   projectName: string;
+  /** The environment's services, Postgres and Key Value, as Render's
+   *  environment menu hands them to Generate Blueprint. */
+  exportResources?: BlueprintExportResource[];
 }) {
   const { t } = useTranslations();
   const capabilities = useCapabilities();
@@ -138,6 +149,16 @@ export function EnvironmentMenu({
               <DropdownMenuSeparator />
             </>
           ) : null}
+          {exportResources.length > 0 ? (
+            <GenerateBlueprintMenuItem
+              handed={{
+                resources: exportResources,
+                source: "project environment menu",
+                projectName,
+                environmentName: environment.name,
+              }}
+            />
+          ) : null}
           <DropdownMenuItem asChild>
             <Link
               to="/project/$projectId/environment/$environmentId/settings"
@@ -171,6 +192,8 @@ export function EnvironmentMenu({
     </>
   );
 }
+
+const NO_EXPORT: BlueprintExportResource[] = [];
 
 /** The toggle's on/off look inside the menu item, which is the control. */
 function SwitchLook({ checked }: { checked: boolean }) {

@@ -1,19 +1,19 @@
 # w3 · m681 — Generate Blueprint starts from selected resources and opens Render's Create Blueprint page
 
-**Worker:** worker3 **Goal:** Generate Blueprint is offered where Render offers it (the selection bar, each resource row's menu, a project environment's menu) and opens Render's three-step Create Blueprint page at `/blueprint/generate`; the Blueprints list's own Generate Blueprint button and dialog, which Render's list does not have, are gone. **Status:** todo
+**Worker:** worker3 **Goal:** Generate Blueprint is offered where Render offers it (the selection bar, each resource row's menu, a project environment's menu) and opens Render's three-step Create Blueprint page at `/blueprint/generate`; the Blueprints list's own Generate Blueprint button and dialog, which Render's list does not have, are gone. **Status:** todo (t001–t004 and t006–t008 done; t005 walked locally, its production walk waits for a pin carrying the milestone's commit)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Record Render's Generate Blueprint entry points and Create Blueprint page in `docs/render-artifacts/blueprint-pages.md` | 25m | — |
-| [t002](t002.md) | The Create Blueprint page at `/blueprint/generate`, built on `generateBlueprint` | 1h15m | t001 |
-| [t003](t003.md) | Generate Blueprint on the selection bar, each resource row's menu and a project environment's menu | 45m | t002 |
-| [t004](t004.md) | The Blueprints list drops its Generate Blueprint button and dialog, as Render's list has none | 20m | t003 |
+| [t001](done/t001.md) | Record Render's Generate Blueprint entry points and Create Blueprint page in `docs/render-artifacts/blueprint-pages.md` — **DONE** | 25m | — |
+| [t002](done/t002.md) | The Create Blueprint page at `/blueprint/generate`, built on `generateBlueprint` — **DONE** | 1h15m | t001 |
+| [t003](done/t003.md) | Generate Blueprint on the selection bar, each resource row's menu and a project environment's menu — **DONE** | 45m | t002 |
+| [t004](done/t004.md) | The Blueprints list drops its Generate Blueprint button and dialog, as Render's list has none — **DONE** | 20m | t003 |
 | [t005](t005.md) | Verify in a real browser at 1440 and 390, locally and on production | 40m | t004 |
-| [t006](t006.md) | Render parity | 20m | t005 |
-| [t007](t007.md) | Simplify | 15m | t006 |
-| [t008](t008.md) | Test coverage | 35m | t006 |
+| [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 35m | t006 |
 | [t009](t009.md) | Closeout | 10m | t007, t008 |
 
 Total: **9 tasks, about 4h45m**.
@@ -37,6 +37,24 @@ Verified 2026-11-25 on main `c196617a8b`.
 - Generate Blueprint is a dialog on `/blueprints` (`features/blueprints/components/generate-blueprint-dialog.tsx`, w8/m22): resources are picked inside the dialog, then a YAML preview, copy and download. It is built on GraphQL `generateBlueprint` (REST `POST /v1/blueprints/generate`, MCP `generate_blueprint`, a labeled bex extension).
 - `BulkResourceToolbar` (`features/projects/components/bulk-resource-toolbar.tsx`) offers Move, Resume and Suspend; the row menus (`features/services/components/service-row-actions.tsx`, `features/databases/components/database-row-actions*.tsx`, `features/keyvalue/components/key-value-row-actions*.tsx`) and the environment card's menu (`features/environments/components/environment-card.tsx`) have no Generate Blueprint. [service-list-bulk-actions.md](../../../docs/render-artifacts/service-list-bulk-actions.md) records Render's action-bar entry; w4/m550 left it out.
 - `/blueprint/generate` is not a page; after w3/m677 it goes to `/`, as Render's does with nothing selected.
+
+## Local walk (2026-11-27)
+
+Walked in headless Chrome (a private Playwright install; the shared browser stays the other session's) against `yarn local-bex`, which now answers `GenerateBlueprint` with a stand-in file naming the selection, and the dashboard on `vite dev`, at 1440 and 390. The walk scripts stayed in `/tmp` and are not committed.
+
+- **The selection bar:** on the Overview, selecting `docs-site` showed Generate Blueprint after Move, before Suspend. It opened `/blueprint/generate` titled "Create a new Blueprint from your services" (the document title too), "Includes 1 service: **docs-site**", the YAML, Download render.yaml (a `render.yaml` holding exactly the YAML) and Copy (the clipboard held the YAML; the button read Copied! and Copy again after 2 seconds), the commit snippet, and Connect a new Blueprint (`/blueprint/new`, `target=_blank`). The breadcrumb read Blueprints › Create Blueprint, with Blueprints highlighted in the sidebar.
+- **A row's menu:** Generate Blueprint, last after Move to project, opened the page for that one resource.
+- **A project environment's menu:** the Production section's ••• menu offered Generate Blueprint between the isolation toggle and All settings; the page read "Create a new Blueprint from storefront / Production" and "Includes 3 services: **eden-cms-v2**, **orders-db**, and **sessions-cache**" (the service first, then the database and the Key Value; the section's environment group left out, as Render's menu leaves groups out).
+- **A reload** kept the page and its selection. It first kept the server's "from your services" document title under the environment's heading; the page now re-runs its title loader in the browser when the two differ, and a reload reads the environment in both.
+- **A direct load** in a fresh tab went to `/`. The Blueprints list's header reads New Blueprint Instance only.
+- **Pending against ready:** with `GenerateBlueprint` held, the page's generating state and its server-rendered pending frame (scripts blocked on a reload) had equal boxes for every step, step title and the Helpful Resources card at 1440 and at 390; only the title's width differed at 1440, because the server cannot see the environment the page came from (the generic title at 390 wraps to the same two lines).
+
+## Decisions (2026-11-27)
+
+- **The selection bar exports a selected environment group too** (`envVarGroups`, with `fromGroup` for a selected service linked to it), named after the datastores. Render's tables select no group; bex's environment section selects them for Move, and `generateBlueprint` exports them, so leaving them out would silently drop what the user picked. The environment menu exports what Render's does: services and datastores only.
+- **The environment's Generate Blueprint is in its ••• menu** until w1/m684 brings Render's New menu (its t004 moves the item there).
+- **Helpful Resources has only Learn about Blueprints**, linking bex's Blueprint docs; Preview Environments is a non-goal (`DO_NOT_DO.md`).
+- **A refused export reads its reason** in an error callout where the YAML would be, with Download and Copy disabled; Render's page shows nothing.
 
 ## Definition of done
 

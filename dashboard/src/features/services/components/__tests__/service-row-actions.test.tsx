@@ -6,9 +6,16 @@ import { SuspendServiceCard } from "@/features/services/components/suspend-servi
 import type { ServiceView } from "@/features/services/types";
 import { toResourceSnapshot } from "@/features/capabilities/lib/resource-actions";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
-import { mockCapabilities } from "@/test/mocks/capabilities";
+import { CREATE_REASON, mockCapabilities } from "@/test/mocks/capabilities";
 import type { ProtectedActionResult } from "@/features/services/lib/protected-confirmation";
 import i18n from "@/i18n/init";
+
+// Generate Blueprint opens the Create Blueprint page (w3/m681).
+const navigate = vi.hoisted(() => vi.fn());
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  useNavigate: () => navigate,
+}));
 
 vi.mock("@/features/projects/hooks/use-move-to-project", () => ({
   useMoveToProject: () => ({
@@ -661,5 +668,46 @@ describe.each([
     expect(screen.getByText(copy.cronResume)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: copy.resume }));
     expect(onRun).toHaveBeenCalledWith("resume", cron);
+  });
+});
+
+describe("ServiceRowActions Generate Blueprint (w3/m681)", () => {
+  beforeEach(() => navigate.mockReset());
+
+  it("opens the Create Blueprint page with this service, as Render's row menu does", async () => {
+    const user = userEvent.setup();
+    render(
+      <ServiceRowActions service={service} pending={null} onRun={vi.fn()} />,
+    );
+    await user.click(screen.getByRole("button", { name: /^Actions for / }));
+    await user.click(
+      screen.getByRole("menuitem", { name: "Generate Blueprint" }),
+    );
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/blueprint/generate",
+      state: {
+        blueprintExport: {
+          resources: [{ kind: "service", id: "app", name: "app" }],
+          source: "table row menu",
+        },
+      },
+    });
+  });
+
+  it("keeps it focusable with the role's reason for a Viewer, and opens nothing", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "VIEWER", canCreate: false, canOperate: false }),
+    );
+    const user = userEvent.setup();
+    render(
+      <ServiceRowActions service={service} pending={null} onRun={vi.fn()} />,
+    );
+    await user.click(screen.getByRole("button", { name: /^Actions for / }));
+    const item = screen.getByRole("menuitem", { name: "Generate Blueprint" });
+    expect(item).toHaveAttribute("aria-disabled", "true");
+    await user.hover(item);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(CREATE_REASON);
+    await user.click(item);
+    expect(navigate).not.toHaveBeenCalled();
   });
 });

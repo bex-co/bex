@@ -518,36 +518,90 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.generateButton": {
     message: "Generate Blueprint",
-    description: "Blueprints list header — opens the export dialog (w8/m22)",
+    description:
+      "Generate Blueprint: the selection bar's, a resource row menu's and a project environment menu's entry that opens the Create Blueprint page (w3/m681)",
   },
-  "blueprints.generateTitle": {
-    message: "Generate Blueprint",
-    description: "Generate dialog title",
+  "blueprints.generatePageTitle": {
+    message: "Create a new Blueprint from your services",
+    description:
+      "Create Blueprint page title and document title, opened from a selection bar or a resource row's menu (w3/m681)",
   },
-  "blueprints.generateDescription": {
+  "blueprints.generatePageTitleEnvironment": {
+    message: "Create a new Blueprint from {project} / {environment}",
+    description:
+      "Create Blueprint page title and document title, opened from a project environment's menu: the project and environment names",
+  },
+  "blueprints.generateBreadcrumb": {
+    message: "Create Blueprint",
+    description:
+      "Topbar breadcrumb of the Create Blueprint page (/blueprint/generate)",
+  },
+  "blueprints.generateStepDownload": {
+    message: "Download generated render.yaml",
+    description: "Create Blueprint page: step 1 title",
+  },
+  "blueprints.generateIncludes_one": {
+    message: "Includes {count} service:",
+    description:
+      "Create Blueprint page: step 1 sentence before the list of exported resource names (services, databases and Key Value all count)",
+  },
+  "blueprints.generateIncludes_other": {
+    message: "Includes {count} services:",
+    description:
+      "Create Blueprint page: step 1 sentence before the list of exported resource names (services, databases and Key Value all count)",
+  },
+  "blueprints.generating": {
+    message: "Generating render.yaml...",
+    description: "Create Blueprint page: step 1 while render.yaml is generated",
+  },
+  "blueprints.generateCopiedLabel": {
+    message: "Copied!",
+    description:
+      "Create Blueprint page: the Copy button's label for 2 seconds after copying render.yaml",
+  },
+  "blueprints.generateStepCommit": {
+    message: "Add render.yaml to Git",
+    description: "Create Blueprint page: step 2 title",
+  },
+  "blueprints.generateStepCommitBody": {
     message:
-      "Select existing resources to export as a render.yaml you can commit to a repo and connect as a Blueprint.",
-    description: "Generate dialog description",
+      "Commit render.yaml to the root directory of your repository and push to your Git provider.",
+    description: "Create Blueprint page: step 2 text above the git commands",
   },
-  "blueprints.generateEmptyHint": {
-    message: "Select at least one resource to generate from.",
-    description: "Generate dialog hint when nothing is selected",
+  "blueprints.generateStepConnect": {
+    message: "Connect your new Blueprint",
+    description: "Create Blueprint page: step 3 title",
   },
-  "blueprints.generateAction": {
-    message: "Generate",
-    description: "Generate dialog primary action",
+  "blueprints.generateStepConnectBody": {
+    message: "Create a new Blueprint instance and connect your repository.",
+    description: "Create Blueprint page: step 3 text, followed by a docs link",
   },
-  "blueprints.generateBack": {
-    message: "Back",
-    description: "Generate dialog — return from preview to selection",
+  "blueprints.generateSeeDocs": {
+    message: "See the docs.",
+    description: "Create Blueprint page: step 3 link to the Blueprint docs",
+  },
+  "blueprints.generateConnect": {
+    message: "Connect a new Blueprint",
+    description:
+      "Create Blueprint page: step 3 button, opens the New Blueprint Instance page in a new tab",
+  },
+  "blueprints.generateHelpfulResources": {
+    message: "Helpful Resources",
+    description:
+      "Create Blueprint page: heading of the links card beside the steps",
+  },
+  "blueprints.generateLearnBlueprints": {
+    message: "Learn about Blueprints",
+    description:
+      "Create Blueprint page: link to the Blueprint docs in the Helpful Resources card",
+  },
+  "blueprints.copied": {
+    message: "Copied",
+    description: "Toast after copying a code snippet on a Blueprint page",
   },
   "blueprints.generateCopy": {
     message: "Copy",
     description: "Generate dialog — copy the yaml to the clipboard",
-  },
-  "blueprints.generateCopied": {
-    message: "render.yaml copied",
-    description: "Toast after copying the generated manifest",
   },
   "blueprints.generateCopyFailed": {
     message:
@@ -558,11 +612,6 @@ const enBlueprints: Record<string, TranslationEntry> = {
   "blueprints.generateDownload": {
     message: "Download render.yaml",
     description: "Generate dialog — download the manifest file",
-  },
-  "blueprints.generateSecretsNote": {
-    message:
-      "Stored values are never exported. Service variables marked sync: false are prompted for when the Blueprint is first created. Variables marked generateValue — including exported environment-group keys — keep an existing value, or get a generated one if missing.",
-    description: "Generate dialog note under the yaml preview",
   },
   "blueprints.generateError": {
     message: "Couldn't generate the Blueprint",

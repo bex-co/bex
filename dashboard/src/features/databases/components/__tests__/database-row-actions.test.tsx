@@ -13,6 +13,13 @@ import {
 } from "@/test/mocks/admin-only";
 import { lifecycleRows, lifecycleState } from "@/test/mocks/resource-actions";
 
+// Generate Blueprint opens the Create Blueprint page (w3/m681).
+const navigate = vi.hoisted(() => vi.fn());
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  useNavigate: () => navigate,
+}));
+
 const remove = vi.fn();
 vi.mock("@/features/databases/hooks/use-delete-database", () => ({
   useDeleteDatabase: () => ({ remove, deleting: null }),
@@ -93,7 +100,8 @@ describe("DatabaseRowActions", () => {
     expect(
       screen.getByRole("button", { name: "Actions for shop-db" }),
     ).toHaveFocus();
-    await user.keyboard("{Enter}{ArrowDown}");
+    // The menu opens on its first item, Delete; Generate Blueprint follows.
+    await user.keyboard("{Enter}");
     const removeItem = await screen.findByRole("menuitem", { name: "Delete" });
     expect(removeItem).toHaveAttribute("aria-disabled", "true");
     expect(removeItem).toHaveFocus();
@@ -299,5 +307,46 @@ describe("DatabaseRowActions", () => {
       "sudo delete database shop-db",
     );
     expect(onDeleted).toHaveBeenCalledWith("shop-db");
+  });
+});
+
+describe("DatabaseRowActions Generate Blueprint (w3/m681)", () => {
+  beforeEach(() => navigate.mockReset());
+
+  it("opens the Create Blueprint page with this database", async () => {
+    const user = userEvent.setup();
+    render(<DatabaseRowActions database={DB} onDeleted={vi.fn()} />);
+    await user.click(
+      screen.getByRole("button", { name: "Actions for shop-db" }),
+    );
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Generate Blueprint" }),
+    );
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/blueprint/generate",
+      state: {
+        blueprintExport: {
+          resources: [{ kind: "database", id: "shop-db", name: "shop-db" }],
+          source: "table row menu",
+        },
+      },
+    });
+  });
+
+  it("is disabled with the role's reason for a Viewer", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "VIEWER", canCreate: false, canOperate: false }),
+    );
+    const user = userEvent.setup();
+    render(<DatabaseRowActions database={DB} onDeleted={vi.fn()} />);
+    await user.click(
+      screen.getByRole("button", { name: "Actions for shop-db" }),
+    );
+    const item = await screen.findByRole("menuitem", {
+      name: "Generate Blueprint",
+    });
+    expect(item).toHaveAttribute("aria-disabled", "true");
+    await user.click(item);
+    expect(navigate).not.toHaveBeenCalled();
   });
 });

@@ -169,6 +169,42 @@ Each table is drawn only when it has rows, in this order, 32 px apart, with no h
 - **The file's problems come from the newest sync.** bex-api resolves a Blueprint's resources from its last applied file, not the file at the branch, so the page reads the newest sync: when it failed with errors located in the file (at a line or a field), they replace the tables under Render's sentence, as Render's page does while its file does not validate. A sync that failed otherwise (a deploy, a busy Blueprint, an unreachable repository) leaves the tables.
 - **bex's three empty messages give way to Render's one.** "No resources yet — sync the Blueprint", "approve the planned sync" and "the last sync failed", and their Go to Syncs link, are gone: Render has none of them, and Syncs, where the waiting plan and the failed sync are, is one click away in the sidebar.
 
+## Create Blueprint (w3/m681)
+
+Read 2026-11-27 for w3/m681 from the same bundle, without sign-in: `index-D5V4ZgbE.js` (sha256 `8d15889ace2d…`, unchanged since 2026-11-25) holds the selection bar and the row menu, `Project-C36VVmJD.js` (`772315df3935…`) a project environment's New menu, `ExportBlueprint-iFmH1Srl.js` (`5e3b63e6fce9…`) the page, `IACSourcesForUser-CCjS67Hn.js` (`dbb9b0508d48…`) the Blueprints list and `CodeSnippet-OVIRl2YL.js` the snippets. Find them by the navigation `source` values `action bar`, `table row menu` and `project environment menu`, and by `Create a new Blueprint from your services` and `Connect a new Blueprint`. No signed-in Render session was available, so this too is bundle-only.
+
+### Where Render offers Generate Blueprint
+
+Each entry point navigates to `/blueprint/generate` with the resources in the navigation's state (`resources`, `ownerTier`, `source`), and each is disabled without `createBlueprint` (`hasPermission === false`), its icon swapped for the protected one:
+
+| Entry point | Shown | Resources | `source` |
+| --- | --- | --- | --- |
+| The floating action bar of a resource table (the Overview, a project environment, a Blueprint's Resources page), after Move | while a resource is selected (`selectedResources`, which leaves sandbox groups out) | the selected services, Postgres, Key Value and workflows | `action bar` |
+| A row's menu: Metrics, Settings, Move, **Generate Blueprint**, then Suspend or Resume | on every service, Postgres, Key Value and workflow row | that resource | `table row menu` |
+| A project environment's New menu ("Add services to environment"): Create new, Env Group, Move existing services, **Generate Blueprint** | while the environment has a service, Postgres, Key Value or workflow | all of them, with `projectName` and `environmentName` | `project environment menu` |
+
+The topbar names the page **Create Blueprint**. Render's Blueprints list (`IACSourcesForUser-*.js`) has no Generate Blueprint: its only action is New Blueprint Instance.
+
+### The page
+
+- **Title**, also the document title: "Create a new Blueprint from your services", or "Create a new Blueprint from &lt;project&gt; / &lt;environment&gt;" when `source` is the environment menu and both names came with it.
+- **No resources** (a direct load, a pasted link): the page navigates to `/`.
+- **The export** is `blueprintExport(serviceIds, databaseIds, redisIds, workflowIds)`, network-only. A resource of any other kind is not exported.
+- **Three numbered steps** in a vertical stepper (the wide column, 4 of 6 grid columns from `lg`):
+  1. **Download generated render.yaml.** While the export loads, a 140 px box reading "Generating render.yaml...". Then "Includes N service:" or "services:" (every exported resource counts, the services first, then Postgres, Key Value and workflows), the names in bold as "A", "A and B" or "A, B, and C"; the YAML in a code snippet with its own Copy; then **Download render.yaml** (a `render.yaml` file, `application/yaml`) and **Copy**, which reads **Copied!** with a check for 2 seconds. Both are disabled, and faded, while the export loads.
+  2. **Add render.yaml to Git.** "Commit render.yaml to the root directory of your repository and push to your Git provider." and the snippet `git add render.yaml` / `git commit -m "Add render.yaml"` / `git push`, with its Copy.
+  3. **Connect your new Blueprint.** "Create a new Blueprint instance and connect your repository. See the docs." (Render's infrastructure-as-code docs) and **Connect a new Blueprint**, the create page in a new tab, disabled while the export loads.
+- **Helpful Resources**, a card beside the steps (below them on a narrow page): Learn about Blueprints, Learn about Preview Environments, each a docs link in a new tab.
+- A failed export shows nothing of its own: the sentence without the YAML.
+
+### How bex builds it (t001)
+
+- **The export is `generateBlueprint`** (GraphQL; REST `POST /v1/blueprints/generate`, MCP `generate_blueprint`, a labeled bex extension, unchanged). It takes services, Postgres, Key Value and environment groups; bex has no workflows.
+- **A selection's environment groups go too.** Render's tables select no environment group; bex's environment section selects them for Move, so the selection bar exports a selected group as `envVarGroups` (a selected service's link to it becomes `fromGroup`), named in the sentence after the datastores. The environment menu exports what Render's does: the services and datastores, not the groups.
+- **The environment's Generate Blueprint is in its ••• menu** until w1/m684 brings Render's New menu, whose t004 moves it there.
+- **Helpful Resources has one link.** Learn about Blueprints opens bex's Blueprint docs (`bex.co/docs/platform/blueprints`), as See the docs does. Learn about Preview Environments is left out: PR previews are a non-goal (`DO_NOT_DO.md`), and bex has no page to send it to.
+- **A refused export reads its reason** in an error callout where the YAML would be, with Download and Copy disabled, where Render's page shows nothing.
+
 ## Page map (bex, w3/m677)
 
 Every card and control of bex's former single page (`routes/blueprints.$blueprintId.tsx`), moved unchanged to the page Render puts its counterpart on. What has no Render counterpart goes with the page it belongs to.
@@ -186,11 +222,11 @@ Every card and control of bex's former single page (`routes/blueprints.$blueprin
 | Validate (`ValidatePanel`) | Settings, 3rd | none: a bex extra |
 | **Disconnect** and its dialog | Settings, last | Disconnect Blueprint, with Render's words and modal since w3/m679 |
 
-## What bex does (w3/m677, w3/m678, w3/m679, w3/m680)
+## What bex does (w3/m677, w3/m678, w3/m679, w3/m680, w3/m681)
 
 - A Blueprint's pages swap the workspace nav for this sidebar: the **Blueprints** back link, the name, then Resources, Syncs and Settings, with the open page highlighted (Resources on the bare URL, Syncs on `/sync` and `/sync/<id>`).
 - Each page is its own URL under `/blueprints/<id>`: the bare URL and `/resources`, then `/syncs`, a sync's `/sync/<syncId>`, and `/settings`. Any other sub-path lands on Resources, and a path past a sync's page on Syncs.
-- Render's `/blueprint/<id>` and its sub-paths redirect there with the query and hash kept. `/blueprint/new` stays the create page, and `/blueprint/generate` goes to `/`, as Render's does with nothing selected, until w3/m681 builds the page.
+- Render's `/blueprint/<id>` and its sub-paths redirect there with the query and hash kept. `/blueprint/new` stays the create page, and `/blueprint/generate` is the Create Blueprint page (w3/m681).
 - The header names the Blueprint with its suffix and status and carries **Manual sync**, which plans a sync and opens its page, or `/sync` with the plan handed over when it changed nothing; a refused plan shows the dismissible **Sync Error** banner (w3/m678).
 - Syncs lists the sync cards, newest first, with **Load more** for older ones; bex's GraphQL lists a plan waiting for approval among them, as Render's dashboard does, where REST and MCP leave it out as Render's API does (w3/m678).
 - A sync's page draws `Sync: <short sha>`, its card, its actions with their states, **Resources already up to date**, Render's critical line, the errors and **Approve** as Render's does, with a field per `sync: false` value the plan needs (bex-api's approve requires them; Render's page asks for none). It reads the sync until it settles. A sync recorded before syncs kept their actions (migration 0353) says so; an id that is not one of this Blueprint's syncs (a plan deleted after 24 hours) says it does not exist and links Syncs (w3/m678).
@@ -199,6 +235,7 @@ Every card and control of bex's former single page (`routes/blueprints.$blueprin
 - Resources draws Render's tables (w3/m680), each only when it has rows: the Blueprint's services, Postgres and Key Value in the Overview's resource table (Name over the type, Status, Runtime, Region, Updated, the row's menu), whose selection toolbar offers Resume and Suspend and whose row menus offer no Move; its build sources under **Build Source Name**, **Unlinked** on one no service builds from, Source and Updated, a row per project above that project's; its environment groups in the Env Groups table. A Blueprint managing nothing reads **No resources managed by this Blueprint**; one whose newest sync failed on its file lists the located errors under "There was a problem syncing with your Blueprint file:" ("were a few problems" for several) instead of the tables. The pending frame draws the tables the Blueprint already read has, each with its rows.
 - Settings is Render's card (w3/m679): **Blueprint Name**, **Auto Sync** (Yes / No, No while paused), **Branch** (the repository's branches, typed or picked) and **Blueprint Path**, each with Render's help, saving only its own field through GraphQL `updateBlueprint`. **Required**, **Name already in use**, Render's branch and file sentences, the server's reason, or **Failed to update Blueprint. Please try again.** read under the row, which stays open and saves nothing. A role without `can_create` sees the rows read-only with the reason. Below it come bex's extras: the Details card (Repository, Created, Last synced), the render.yaml manifest and Validate. **Disconnect Blueprint** is last, a critical button opening Render's modal, its three sentences with the name in bold; a refusal stays in the modal, and a disconnect opens `/blueprints`.
 - bex-api refuses what Render's `update-blueprint` refuses, on REST, GraphQL and MCP alike (w8/418, w3/m679): a path whose file is not on the unchanged branch (404), and a new branch without the file at the path (400). Neither is saved, and a change plans nothing.
+- **Generate Blueprint** is where Render's is (w3/m681): on the selection bar of every resource table (the Overview, a project environment, a Blueprint's Resources page), in each service, Postgres and Key Value row's menu, and in a project environment's ••• menu. Each is disabled with the reason for a role without `can_create`, and opens `/blueprint/generate` with its resources in the navigation's state: Render's title (the environment's form from its menu, in the document title too, which a reload keeps), the three steps with Render's words, `generateBlueprint`'s YAML with Download render.yaml and Copy (Copied! for 2 seconds), the commit snippet, and Connect a new Blueprint opening the create page in a new tab. A direct load goes to `/`. The pending frame is the page with its first step generating. The Blueprints list's own Generate Blueprint button and dialog are gone, as Render's list has none.
 
 ### Still apart
 
@@ -215,7 +252,10 @@ Every card and control of bex's former single page (`routes/blueprints.$blueprin
 - **Settings has no Sync Hook row or Git Credentials row.** The Sync Hook shows only for a Blueprint with a sync key, which Render's docs do not mention and bex has none of; Git Credentials is #GIT-WORKSPACE-OWNED.
 - **The Branch row is a combobox over the repository's branches** (bex's shared Branch row) and the Path row a text field, where Render's Path row browses the repository's files. A branch the repository lacks reads Render's sentence from bex-api's refusal at Save, not from a lookup as it is typed.
 - **Below the Settings card come bex's extras** (Details, the manifest, Validate) before Disconnect Blueprint, which Render's page has right under the card.
-- **Resources' resource table is the Overview's.** Its name column reads Name, with the type as a badge under the name, where Render's reads Service Name beside a type icon and a Blueprint badge; the rows are in the file's order, not sortable; each row's menu is the Overview's (Suspend, Restart, Delete), without Render's Metrics and Settings ([w3/144](../../.pm/w3/144.md)); Generate Blueprint comes with w3/m681; and the selection toolbar sits above the table, as on the Overview, where Render's floats at the bottom of the screen.
+- **Resources' resource table is the Overview's.** Its name column reads Name, with the type as a badge under the name, where Render's reads Service Name beside a type icon and a Blueprint badge; the rows are in the file's order, not sortable; each row's menu is the Overview's (Suspend, Restart, Delete), without Render's Metrics and Settings ([w3/144](../../.pm/w3/144.md)); and the selection toolbar sits above the table, as on the Overview, where Render's floats at the bottom of the screen.
 - **The Build Sources table has no Latest build column,** its Updated is the build source's own change, not its latest build's, and its project rows do not collapse ([w3/142](../../.pm/w3/142.md)).
 - **A repository bex cannot reach leaves the tables.** Render's page says "Render cannot access the following repo:" ([w3/143](../../.pm/w3/143.md)).
 - **The file's problems are a list with their line and column,** as on a sync's page: Render also draws the file at the branch with the erroring lines marked ([w3/137](../../.pm/w3/137.md) for both pages).
+- **The Create Blueprint page's snippets have no line numbers or expand button,** and their copy control toasts where Render's shows a "Copied!" tooltip ([w3/145](../../.pm/w3/145.md)). The page's own Copy reads Copied! as Render's does.
+- **Helpful Resources has no Preview Environments link,** and a refused export reads its reason where Render's page shows nothing (§ How bex builds it).
+- **The environment's Generate Blueprint is in its ••• menu,** not Render's New menu, until w1/m684.

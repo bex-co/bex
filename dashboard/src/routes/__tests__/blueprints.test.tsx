@@ -544,6 +544,21 @@ describe("BlueprintsPage (list)", () => {
     expect(router.state.location.pathname).toBe("/blueprint/new");
   });
 
+  // w3/m681: Render's list (`IACSourcesForUser-*.js`) offers only New
+  // Blueprint Instance; Generate Blueprint starts from selected resources.
+  it("offers New Blueprint Instance only in its header, as Render's list does", async () => {
+    blueprintsState.blueprints = [bp()];
+    renderBlueprintsPage();
+    await screen.findByText("hello-go");
+    const header = document.querySelector<HTMLElement>("[data-page-header]")!;
+    expect(
+      within(header)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toStrictEqual(["New Blueprint Instance"]);
+    expect(screen.queryByText("Generate Blueprint")).toBeNull();
+  });
+
   it("shows an error state when the query fails", async () => {
     blueprintsState.error = new Error("network down");
     renderBlueprintsPage();

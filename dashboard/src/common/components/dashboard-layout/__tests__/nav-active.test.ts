@@ -33,6 +33,15 @@ describe("isNavItemActive", () => {
       expect(isNavItemActive("/settings/team", "/settings")).toBe(true);
     });
 
+    // Render's singular Blueprint URLs sit under Blueprints: the create page
+    // and the Create Blueprint page (w3/m681).
+    it.each(["/blueprint/new", "/blueprint/generate"])(
+      "keeps Blueprints active on %s",
+      (pathname) => {
+        expect(isNavItemActive(pathname, "/blueprints")).toBe(true);
+      },
+    );
+
     it("doesn't match an unrelated path", () => {
       expect(isNavItemActive("/", "/usage")).toBe(false);
       expect(isNavItemActive("/usagex", "/usage")).toBe(false);

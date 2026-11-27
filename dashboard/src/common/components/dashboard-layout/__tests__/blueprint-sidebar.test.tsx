@@ -53,6 +53,7 @@ function renderAt(pathname: string) {
     "/blueprints/$blueprintId",
     "/blueprints/new",
     "/blueprint/new",
+    "/blueprint/generate",
   ].map((path) =>
     createRoute({ getParentRoute: () => rootRoute, path, component: sidebar }),
   );
@@ -184,7 +185,7 @@ describe("BlueprintSidebar (w3/m677, Render's Blueprint sidebar)", () => {
     ]);
   });
 
-  it.each(["/blueprint/new", "/blueprints/new"])(
+  it.each(["/blueprint/new", "/blueprints/new", "/blueprint/generate"])(
     "leaves the create page %s on the workspace sidebar",
     async (path) => {
       renderAt(path);

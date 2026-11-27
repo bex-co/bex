@@ -41,6 +41,7 @@ export const ROUTE_HEAD_INVENTORY: Record<
     "automations_.$automationId_.edit.tsx",
     "automations_.new.tsx",
     "billing.tsx",
+    "blueprint.generate.tsx",
     "blueprint.new.tsx",
     "blueprints.$blueprintId.tsx",
     "blueprints.$blueprintId.index.tsx",

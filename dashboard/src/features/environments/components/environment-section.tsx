@@ -26,6 +26,7 @@ import type { ResourceRow } from "@/features/projects/types";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import { ManageResourcesDialog } from "@/features/environments/components/manage-resources-dialog";
 import { EnvironmentMenu } from "@/features/environments/components/environment-menu";
+import { exportableResources } from "@/features/blueprints/lib/blueprint-export";
 import { NoMatchingResources } from "@/features/environments/components/no-matching-resources";
 import { EnvironmentSectionHeader } from "@/features/environments/components/environment-section-header";
 import type { ServiceView } from "@/features/services/types";
@@ -169,6 +170,9 @@ export function EnvironmentSection({
   ]);
   // Render keeps the env groups in a table of their own under the rest.
   const resourceRows = rows.filter((row) => row.kind !== "envgroup");
+  // Render's environment menu exports the services and datastores, not the
+  // env groups (w3/m681).
+  const environmentExport = exportableResources(resourceRows);
   const groupRows = rows.filter((row) => row.kind === "envgroup");
   const visibleResources = resourceRows.filter((row) =>
     matchesResourceQuery(row, query),
@@ -328,6 +332,7 @@ export function EnvironmentSection({
             <EnvironmentMenu
               environment={environment}
               projectName={projectName}
+              exportResources={environmentExport}
             />
           </>
         }

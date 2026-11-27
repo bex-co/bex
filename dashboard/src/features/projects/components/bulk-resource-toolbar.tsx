@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Pause, Play } from "lucide-react";
+import { Layers, Loader2, Pause, Play } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import {
   Select,
@@ -14,6 +14,8 @@ import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities"
 import { useProtectedPlacement } from "@/features/environments/hooks/use-protected-placement";
 import { StrandedGroupsConfirmDialog } from "@/features/environments/components/stranded-groups-confirm-dialog";
 import { BulkLifecycleDialog } from "@/features/projects/components/bulk-lifecycle-dialog";
+import { useOpenGenerateBlueprint } from "@/features/blueprints/hooks/use-open-generate-blueprint";
+import { exportableResources } from "@/features/blueprints/lib/blueprint-export";
 import {
   useBulkMove,
   type BulkMoveTarget,
@@ -42,11 +44,14 @@ export interface BulkResourceToolbarProps {
 /**
  * The selection toolbar of a resource list (w4/m550), shared by a project
  * environment's card and the Overview's ungrouped list: the selection count,
- * Move, and Render's Resume and Suspend. Resume shows while a selected
- * resource is suspended and Suspend while one is running, both in a mixed
- * selection, as on Render; a refusal disables the action with its reason
- * rather than dropping rows (docs/render-artifacts/service-list-bulk-actions.md).
- * A Blueprint's Resources page has no Move, as Render's `disableMove` (w3/m680).
+ * Move, Generate Blueprint (w3/m681), and Render's Resume and Suspend. Resume
+ * shows while a selected resource is suspended and Suspend while one is
+ * running, both in a mixed selection, as on Render; a refusal disables the
+ * action with its reason rather than dropping rows
+ * (docs/render-artifacts/service-list-bulk-actions.md). Generate Blueprint
+ * shows while a resource it can export is selected and opens the Create
+ * Blueprint page with those. A Blueprint's Resources page has no Move, as
+ * Render's `disableMove` (w3/m680).
  */
 export function BulkResourceToolbar({
   selection,
@@ -74,6 +79,9 @@ export function BulkResourceToolbar({
   const createReasonKey = capabilities.reasonKey("can_create");
   const moveBlocked =
     (createReasonKey ? t(createReasonKey) : undefined) ?? moveReason;
+
+  const generate = useOpenGenerateBlueprint();
+  const toExport = exportableResources(selection.selectedRows);
 
   const lifecycleSelection = lifecycleTargets(selection.selectedRows);
   const toResume = targetsFor("resume", lifecycleSelection);
@@ -173,6 +181,21 @@ export function BulkResourceToolbar({
             </PermissionTooltip>
           </>
         )}
+        {toExport.length > 0 ? (
+          <PermissionTooltip reason={generate.reason}>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={generate.reason !== undefined || lifecycle !== null}
+              onClick={() =>
+                generate.open({ resources: toExport, source: "action bar" })
+              }
+            >
+              <Layers />
+              {t("blueprints.generateButton")}
+            </Button>
+          </PermissionTooltip>
+        ) : null}
         {lifecycleButton("resume")}
         {lifecycleButton("suspend")}
       </div>

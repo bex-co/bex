@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Plus } from "lucide-react";
 import {
   Link,
@@ -28,7 +27,6 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
-import { GenerateBlueprintDialog } from "@/features/blueprints/components/generate-blueprint-dialog";
 import {
   Table,
   TableBody,
@@ -81,7 +79,6 @@ function BlueprintsListPage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const { blueprints, loading, error } = useBlueprints();
-  const [generating, setGenerating] = useState(false);
 
   const showSkeleton = loading && blueprints.length === 0;
 
@@ -91,23 +88,16 @@ function BlueprintsListPage() {
         header={
           <PageHeader
             title={t("blueprints.pageTitle")}
+            // Render's list offers only New Blueprint Instance: Generate
+            // Blueprint starts from selected resources (w3/m681).
             actions={
-              <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setGenerating(true)}
-                >
-                  {t("blueprints.generateButton")}
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => void navigate({ to: "/blueprint/new" })}
-                >
-                  <Plus className="size-4" />
-                  {t("blueprints.createButton")}
-                </Button>
-              </>
+              <Button
+                size="sm"
+                onClick={() => void navigate({ to: "/blueprint/new" })}
+              >
+                <Plus className="size-4" />
+                {t("blueprints.createButton")}
+              </Button>
             }
           />
         }
@@ -196,9 +186,6 @@ function BlueprintsListPage() {
           </Card>
         )}
       </PageFrame>
-      {generating ? (
-        <GenerateBlueprintDialog open onOpenChange={setGenerating} />
-      ) : null}
     </DashboardLayout>
   );
 }

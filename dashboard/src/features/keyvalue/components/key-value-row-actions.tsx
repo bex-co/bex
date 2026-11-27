@@ -4,6 +4,7 @@ import { Button } from "@/common/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -11,6 +12,7 @@ import { DeleteKeyValueDialog } from "@/features/keyvalue/components/key-value-c
 import { useDeleteKeyValue } from "@/features/keyvalue/hooks/use-delete-key-value";
 import type { KeyValueView } from "@/features/keyvalue/types";
 import { MoveToProjectMenu } from "@/features/projects/components/move-to-project-menu";
+import { GenerateBlueprintMenuItem } from "@/features/blueprints/components/generate-blueprint-menu-item";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
 import { useAdminOnlyActions } from "@/features/capabilities/hooks/use-admin-only-actions";
@@ -106,6 +108,16 @@ export function KeyValueRowActionsWithCapabilities({
             resourceId={keyValue.id}
             resourceName={keyValue.name}
             disabled={busy}
+          />
+          <DropdownMenuSeparator />
+          <GenerateBlueprintMenuItem
+            disabled={busy}
+            handed={{
+              resources: [
+                { kind: "keyvalue", id: keyValue.id, name: keyValue.name },
+              ],
+              source: "table row menu",
+            }}
           />
         </DropdownMenuContent>
       </DropdownMenu>

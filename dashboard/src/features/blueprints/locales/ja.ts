@@ -490,36 +490,86 @@ const jaBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.generateButton": {
     message: "Blueprint を生成",
-    description: "Blueprints list header — opens the export dialog (w8/m22)",
+    description:
+      "Generate Blueprint: the selection bar's, a resource row menu's and a project environment menu's entry that opens the Create Blueprint page (w3/m681)",
   },
-  "blueprints.generateTitle": {
-    message: "Blueprint を生成",
-    description: "Generate dialog title",
+  "blueprints.generatePageTitle": {
+    message: "サービスから新しい Blueprint を作成",
+    description:
+      "Create Blueprint page title and document title, opened from a selection bar or a resource row's menu (w3/m681)",
   },
-  "blueprints.generateDescription": {
+  "blueprints.generatePageTitleEnvironment": {
+    message: "{project} / {environment} から新しい Blueprint を作成",
+    description:
+      "Create Blueprint page title and document title, opened from a project environment's menu: the project and environment names",
+  },
+  "blueprints.generateBreadcrumb": {
+    message: "Blueprint を作成",
+    description:
+      "Topbar breadcrumb of the Create Blueprint page (/blueprint/generate)",
+  },
+  "blueprints.generateStepDownload": {
+    message: "生成された render.yaml をダウンロード",
+    description: "Create Blueprint page: step 1 title",
+  },
+  "blueprints.generateIncludes_other": {
+    message: "{count} 件のサービスを含みます:",
+    description:
+      "Create Blueprint page: step 1 sentence before the list of exported resource names (services, databases and Key Value all count)",
+  },
+  "blueprints.generating": {
+    message: "render.yaml を生成しています...",
+    description: "Create Blueprint page: step 1 while render.yaml is generated",
+  },
+  "blueprints.generateCopiedLabel": {
+    message: "コピーしました!",
+    description:
+      "Create Blueprint page: the Copy button's label for 2 seconds after copying render.yaml",
+  },
+  "blueprints.generateStepCommit": {
+    message: "render.yaml を Git に追加",
+    description: "Create Blueprint page: step 2 title",
+  },
+  "blueprints.generateStepCommitBody": {
     message:
-      "既存のリソースを選択して、render.yaml としてエクスポートします。これをリポジトリにコミットして、Blueprint として接続できます。",
-    description: "Generate dialog description",
+      "render.yaml をリポジトリのルートディレクトリにコミットし、Git プロバイダーにプッシュしてください。",
+    description: "Create Blueprint page: step 2 text above the git commands",
   },
-  "blueprints.generateEmptyHint": {
-    message: "生成元のリソースを 1 つ以上選択してください。",
-    description: "Generate dialog hint when nothing is selected",
+  "blueprints.generateStepConnect": {
+    message: "新しい Blueprint を接続",
+    description: "Create Blueprint page: step 3 title",
   },
-  "blueprints.generateAction": {
-    message: "生成",
-    description: "Generate dialog primary action",
+  "blueprints.generateStepConnectBody": {
+    message:
+      "新しい Blueprint インスタンスを作成し、リポジトリを接続してください。",
+    description: "Create Blueprint page: step 3 text, followed by a docs link",
   },
-  "blueprints.generateBack": {
-    message: "戻る",
-    description: "Generate dialog — return from preview to selection",
+  "blueprints.generateSeeDocs": {
+    message: "ドキュメントをご覧ください。",
+    description: "Create Blueprint page: step 3 link to the Blueprint docs",
+  },
+  "blueprints.generateConnect": {
+    message: "新しい Blueprint を接続する",
+    description:
+      "Create Blueprint page: step 3 button, opens the New Blueprint Instance page in a new tab",
+  },
+  "blueprints.generateHelpfulResources": {
+    message: "参考リソース",
+    description:
+      "Create Blueprint page: heading of the links card beside the steps",
+  },
+  "blueprints.generateLearnBlueprints": {
+    message: "Blueprint について",
+    description:
+      "Create Blueprint page: link to the Blueprint docs in the Helpful Resources card",
+  },
+  "blueprints.copied": {
+    message: "コピーしました",
+    description: "Toast after copying a code snippet on a Blueprint page",
   },
   "blueprints.generateCopy": {
     message: "コピー",
     description: "Generate dialog — copy the yaml to the clipboard",
-  },
-  "blueprints.generateCopied": {
-    message: "render.yaml をコピーしました",
-    description: "Toast after copying the generated manifest",
   },
   "blueprints.generateCopyFailed": {
     message:
@@ -530,11 +580,6 @@ const jaBlueprints: Record<string, TranslationEntry> = {
   "blueprints.generateDownload": {
     message: "render.yaml をダウンロード",
     description: "Generate dialog — download the manifest file",
-  },
-  "blueprints.generateSecretsNote": {
-    message:
-      "保存された値はエクスポートされません。sync: false が指定されたサービスの変数は、Blueprint を最初に作成するときに入力を求められます。generateValue が指定された変数（エクスポートされた環境グループのキーを含む）は、既存の値が維持され、存在しない場合は生成されます。",
-    description: "Generate dialog note under the yaml preview",
   },
   "blueprints.generateError": {
     message: "Blueprint を生成できませんでした",
