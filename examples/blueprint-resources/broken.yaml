@@ -1,0 +1,13 @@
+# broken.yaml — a Blueprint file with two problems bex-api places at a line and
+# a field (w3/m680): a plan no web service has, and a database without a name.
+# Point a Blueprint at it to see its Resources page list the file's problems.
+services:
+  - type: web
+    name: resources-web
+    runtime: image
+    image:
+      url: traefik/whoami
+    plan: no-such-plan
+
+databases:
+  - plan: basic-256mb

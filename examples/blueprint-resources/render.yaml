@@ -1,0 +1,45 @@
+# render.yaml — one of each resource a Blueprint's Resources page lists
+# (w3/m680): a web service, a Postgres database, a Key Value instance and an
+# environment group. Nothing builds: the web service runs a prebuilt image.
+#
+# The database and the Key Value instance are paid plans, because a workspace
+# holds one free instance of each and a walk should not depend on that slot
+# being open. Create a Blueprint on this file (Settings or REST, auto-sync off),
+# approve its first sync, then delete the Blueprint's resources afterwards.
+# broken.yaml beside it fails validation at two located fields, for a
+# Blueprint whose file has problems.
+envVarGroups:
+  - name: resources-env
+    envVars:
+      - key: GROUP_MARKER
+        value: group-marker-ok
+
+services:
+  - type: web
+    name: resources-web
+    runtime: image
+    image:
+      url: traefik/whoami
+    plan: free
+    envVars:
+      - fromGroup: resources-env
+      - key: WHOAMI_PORT_NUMBER
+        value: "10000"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: resources-db
+          property: connectionString
+      - key: KEY_VALUE_URL
+        fromService:
+          type: keyvalue
+          name: resources-kv
+          property: connectionString
+
+  - type: keyvalue
+    name: resources-kv
+    plan: starter
+    ipAllowList: []
+
+databases:
+  - name: resources-db
+    plan: basic-256mb
