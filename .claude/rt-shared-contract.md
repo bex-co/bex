@@ -11,14 +11,16 @@ Every `.claude/skills/rt-*/SKILL.md` routine follows this shared contract. Each 
 
 ## Value Bar & Anti-Noise Discipline
 
-- **A run that ships nothing is a success.** Never pad a run with marginal edits just to produce a commit or PR. Zero shipped changes beats a cosmetic or low-signal PR.
+- **A run that ships nothing is a success.** Never pad a run with marginal edits, test-only PRs, or synthetic edge cases just to produce a commit or PR. Zero shipped changes beats a cosmetic or low-signal PR.
 - **False-positive discipline:** if a finding is intentional, load-bearing, or ambiguous, skip it with a one-line reason — do not argue it into a change.
+- **Never bend production code to appease a flawed test:** when a fix breaks an existing CI/unit test, determine whether the test fixture is stale/flawed (e.g., reusing mutated state across subtests) or whether intent genuinely conflicts. Fix the test fixture or stop and report the conflict — **never** add spurious production behavior (such as emitting audit/activity-feed events on a no-op, or magic-number carve-outs) solely to keep an old test green.
+- **Commit hygiene:** keep commit and PR headlines ≤72 characters (no mid-word `…` wraps) and use `refactor(...)` / `chore(...)` — never `fix(...)` — for pure refactors or constant deduplications.
 - **Value bar (mandatory for tidy/maintenance routines: `rt-unify-duplicates`, `rt-flatten-abstractions`, `rt-normalize-abstractions`, `rt-simplify-logic`, `rt-prune-useless-tests`, `rt-remove-dead-code`):** A finding clears the bar only when it:
   1. fixes or prevents a concrete bug, or
   2. removes a real drift/regression hazard (copies that must change together and can drift apart, a structure that already caused bugs, or a genuinely hollow test/dead symbol sweep), or
-  3. makes a unit that is genuinely hard to change clearly safer to change. Never ship on their own: a rename, removing a harmless alias, binding a repeated expression to a local, extracting a single-use helper, moving code without reducing coupling, or deduplicating a few stable lines.
+  3. makes a unit that is genuinely hard to change clearly safer to change. Never ship on their own: a rename, removing a harmless alias, binding a repeated expression to a local, extracting a single-use helper, moving code without reducing coupling, or deduplicating a few stable lines (especially when a drift test already pins parity).
 - **Batch cleanup & minimum PR threshold:** for pure cleanup/refactoring runs (no user-visible bug fix), sweep the full target scope and deliver the findings in **one batched PR/change** instead of opening separate tiny PRs per file. If the entire sweep yields only a single isolated cosmetic/cleanup edit of ≤15 changed lines with no bug risk, skip it and ship nothing.
-- **Fix the whole invariant surface:** when fixing a logic invariant (e.g., rounding/total alignment, plan-vs-apply gating, redaction, authz enforcement), inspect **every sibling output or consumer** of the same struct/contract in the same run (for example, all projections of an estimate: `TotalUSD`, `Resources`, and `Meters`) so one invariant is fixed completely in one PR instead of split across follow-up PRs.
+- **Fix the whole invariant surface:** when fixing a logic invariant (e.g., rounding/total alignment, plan-vs-apply gating, redaction, authz enforcement), inspect **every sibling output, caller, and client consumer** of the same struct/contract in the same run (including `dashboard/`, `mobile/`, CLI, MCP, and sibling auth/validation helpers) so one invariant is fixed completely in one PR instead of split across follow-up PRs. Never copy a sibling pattern without verifying the sibling itself obeys the invariant.
 
 ## Ledger Rules (Never Open Ledger-Only PRs)
 

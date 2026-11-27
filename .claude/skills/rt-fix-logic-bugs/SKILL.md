@@ -17,8 +17,17 @@ Follow the shared contract in [`../../rt-shared-contract.md`](../../rt-shared-co
 Logic-bugfixer additions:
 
 - **Scope:** parse `$ARGUMENTS` per Phase 1. Empty = pick the highest-priority domain from Phase 1.
-- **No-bug PR threshold:** if the audit finds **no real behavioral bug**, do **not** open a PR solely for a single small test case (<30 lines), a doc/comment tweak, or a ledger update. Ship a `test-only` PR without a code fix only when it adds durable property or cross-product matrix coverage for a previously unpinned invariant family.
-- **Cover the whole invariant surface:** whenever you fix a logic invariant (rounding/total agreement, plan-vs-apply gating, redaction, authz enforcement), audit and fix **every sibling projection/consumer of the same struct or contract** in the same PR (e.g., all views of an estimate: `TotalUSD`, `Resources`, and `Meters`) so one invariant never splits across follow-up PRs.
+- **No-bug = no PR (hard stop on test-only padding):** if the audit finds **no real, user- or caller-observable behavioral bug**, leave the working tree clean, make **no commit**, and open **no PR** — report the audited invariants in your summary only. Do **not** open `test-only` PRs, doc/comment-only PRs, ledger-only PRs, or fixes for unconsumed fields / synthetic edge cases with no real user, security, or crash/DoS impact.
+- **Cover the whole invariant surface:** whenever you fix a logic invariant (rounding/total agreement, plan-vs-apply gating, redaction, authz enforcement), audit and fix **every sibling projection, caller, and client consumer** (including `dashboard/`, `mobile/`, CLI, MCP, and sibling auth/validation helpers) in the same PR so one invariant never splits across follow-up PRs. Never mirror a sibling implementation without checking whether the sibling itself has the same bug.
+- **Guard-ordering & lifecycle checklist (mandatory before editing):**
+  1. **Auth / OAuth capability first:** OAuth scope/capability checks (`checkCapability` / `RequireCapability`) MUST run before OpenFGA or DB existence lookups so narrowed tokens get `insufficient_scope` without probing resource existence; resource authorization MUST run before query-param / body validation so unauthorized callers get `401`/`403`/`404` instead of `400`.
+  2. **Cancellation vs upstream failure:** in streaming / SSE / proxy loops, always check `ctx.Err() != nil` before treating a read error as an upstream/driver failure or emitting error frames/logs.
+  3. **Verify sibling state-transition semantics:** never assume how a mutation works from one file alone — verify whether sibling verbs mutate state in-place (e.g., `Scale()` updating `Spec.Replicas` without a new deploy), bump release generations, or run before/after side effects (e.g., `payOverdueInvoices` vs updating Customer email).
+  4. **Never bend production code to appease a broken test:** if a fix fails an existing test, inspect the test fixture first (e.g., reused state across subtests). Fix the fixture or stop and report conflicting intent — never add spurious production side effects (like emitting audit/activity-feed events on a no-op) just to turn CI green.
+- **No test theater:**
+  1. Preview-vs-execute / projection-vs-verb tests **must invoke the real verb** in every cell — never stub the verb to `return nil`.
+  2. Seeded/property generators **must** compute loop bounds outside the loop (`target := 1 + rng.Intn(N); for len(s) < target`) and assert coverage counters proving that every claimed cap/boundary branch was actually hit.
+  3. Every behavior claimed in the PR summary (e.g., client disconnect, bytes vs characters copy across locales) must be verified by an actual test or code check.
 
 ## Phase 1 — Scope
 
