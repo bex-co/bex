@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   countProjectResources,
-  filterProjectResources,
-  parseProjectResourceKind,
-  parseProjectResourceSearch,
+  countsWithUnknown,
+  environmentFilterCounts,
+  matchesResourceQuery,
+  parseEnvironmentResourceFilter,
+  parseLegacyProjectSearch,
 } from "../resource-filter";
 import type { ResourceRow } from "../../types";
 import type { EnvGroupView } from "@/features/env-groups/types";
@@ -30,30 +32,22 @@ const allRows = [
 
 describe("project resource filters", () => {
   it.each([
+    { query: "", ids: ["srv-api", "db-main", "red-cache", "eg-shared"] },
+    { query: "  PUBLIC  ", ids: ["srv-api"] },
+    { query: "DB-MAIN", ids: ["db-main"] },
+    { query: "eg-shared", ids: ["eg-shared"] },
     {
-      kind: "all",
-      query: "",
-      ids: ["srv-api", "db-main", "red-cache", "eg-shared"],
-    },
-    { kind: "services", query: "  PUBLIC  ", ids: ["srv-api"] },
-    { kind: "databases", query: "DB-MAIN", ids: ["db-main"] },
-    { kind: "keyvalues", query: "cache", ids: ["red-cache"] },
-    { kind: "envgroups", query: "eg-shared", ids: ["eg-shared"] },
-    {
-      kind: "all",
       query: "  A  ",
       ids: ["srv-api", "db-main", "red-cache", "eg-shared"],
     },
-    { kind: "services", query: "database", ids: [] },
-    { kind: "all", query: "missing", ids: [] },
-  ] as const)(
-    "filters $kind by '$query' in input order",
-    ({ kind, query, ids }) => {
-      expect(
-        filterProjectResources(allRows, { kind, query }).map((row) => row.id),
-      ).toEqual(ids);
-    },
-  );
+    { query: "missing", ids: [] },
+  ] as const)("matches '$query' by name or id", ({ query, ids }) => {
+    expect(
+      allRows
+        .filter((row) => matchesResourceQuery(row, query))
+        .map((r) => r.id),
+    ).toEqual(ids);
+  });
 
   it("counts repeated rows of every kind and empty input", () => {
     expect(countProjectResources([...allRows, allRows[2]])).toEqual({
@@ -74,80 +68,59 @@ describe("project resource filters", () => {
     });
   });
 
-  it("parses only URL-supported kinds", () => {
-    expect(parseProjectResourceKind("envgroups")).toBe("envgroups");
-    // Sandbox groups have no type filter of their own (w22/m603).
-    expect(parseProjectResourceKind("sandboxgroups")).toBe("all");
-    expect(parseProjectResourceKind("workers")).toBe("all");
+  it("parses only Render's three switcher choices", () => {
+    expect(parseEnvironmentResourceFilter("envgroups")).toBe("envgroups");
+    expect(parseEnvironmentResourceFilter("services")).toBe("services");
+    // bex's pre-w1/m682 kinds are no choice of Render's switcher.
+    expect(parseEnvironmentResourceFilter("databases")).toBe("all");
+    expect(parseEnvironmentResourceFilter("keyvalues")).toBe("all");
+    expect(parseEnvironmentResourceFilter(42)).toBe("all");
+    expect(parseEnvironmentResourceFilter(undefined)).toBe("all");
   });
 
-  it("restores valid URL-owned environment, query, and kind state", () => {
+  it("reads the pre-w1/m682 query keys so their links can redirect", () => {
     expect(
-      parseProjectResourceSearch({
-        env: "env-production",
+      parseLegacyProjectSearch({
+        env: "env-davm6imde41s73canq0g",
         q: "api",
         kind: "services",
       }),
-    ).toEqual({ env: "env-production", q: "api", kind: "services" });
-    // w5/078: undefined, not omitted, or the router keeps the raw value; a
-    // numeric ?q=123 then reached filterProjectResources and threw on trim().
+    ).toStrictEqual({
+      env: "evm-davm6imde41s73canq0g",
+      q: "api",
+      kind: "services",
+    });
+    // w5/078: undefined, not omitted, or the router keeps the raw value.
     expect(
-      parseProjectResourceSearch({ env: 42, q: 123, kind: "workers" }),
+      parseLegacyProjectSearch({ env: 42, q: "", kind: ["x"] }),
     ).toStrictEqual({ env: undefined, q: undefined, kind: undefined });
   });
 
-  it("composes search and kind without escaping the supplied environment members", () => {
-    expect(
-      filterProjectResources([...rows, ...envGroupRows], {
-        query: "api",
-        kind: "services",
-      }),
-    ).toEqual([rows[0]]);
-    expect(
-      filterProjectResources([...rows, ...envGroupRows], {
-        query: "shared",
-        kind: "envgroups",
-      }),
-    ).toEqual(envGroupRows);
-  });
-
-  it("counts every selected-environment category before search", () => {
-    expect(countProjectResources([...rows, ...envGroupRows])).toEqual({
-      all: 3,
-      services: 1,
-      databases: 1,
-      keyvalues: 0,
-      envgroups: 1,
-      sandboxgroups: 0,
-    });
-  });
-
-  // w22/m603: an environment's sandbox groups are counted and listed under
-  // "All", and no type filter selects them.
-  it("counts sandbox group rows and lists them only under All", () => {
+  // Render's Services category counts services, Postgres, Key Value and
+  // sandbox groups (w1/m682).
+  it("counts Render's Services category across every non-group kind", () => {
     const groupRow = {
       kind: "sandboxgroup",
       id: "sbg-agents",
       name: "agents",
     } as ResourceRow;
-    for (const kind of ["services", "envgroups"] as const) {
-      expect(
-        filterProjectResources([...allRows, groupRow], { query: "", kind }),
-      ).not.toContain(groupRow);
-    }
     expect(
-      filterProjectResources([...allRows, groupRow], {
-        query: "sbg-agents",
-        kind: "all",
-      }),
-    ).toEqual([groupRow]);
-    expect(countProjectResources([...allRows, groupRow])).toEqual({
-      all: 5,
-      services: 1,
-      databases: 1,
-      keyvalues: 1,
+      environmentFilterCounts(countProjectResources([...allRows, groupRow])),
+    ).toEqual({ all: 5, services: 4, envgroups: 1 });
+  });
+
+  it("leaves a category unknown while any family it counts is unread (w4/m227)", () => {
+    const counts = countProjectResources(allRows);
+    expect(
+      environmentFilterCounts(countsWithUnknown(counts, ["keyvalues"])),
+    ).toEqual({ all: null, services: null, envgroups: 1 });
+    expect(
+      environmentFilterCounts(countsWithUnknown(counts, ["envgroups"])),
+    ).toEqual({ all: null, services: 3, envgroups: null });
+    expect(environmentFilterCounts(countsWithUnknown(counts, []))).toEqual({
+      all: 4,
+      services: 3,
       envgroups: 1,
-      sandboxgroups: 1,
     });
   });
 });

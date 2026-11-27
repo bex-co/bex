@@ -428,6 +428,37 @@ const koProjects: Record<string, TranslationEntry> = {
     message: '"{name}" 항목을 프로젝트에서 제거하지 못했습니다.',
     description: "Toast shown when unassigning a resource fails",
   },
+  "projects.editProjectName": {
+    message: "프로젝트 이름 편집",
+    description:
+      "Screen-reader text of the project page's name link, which opens Project Settings with the Name card editing (Render's words, w1/m682)",
+  },
+  "projects.addEnvironment": {
+    message: "환경 추가",
+    description:
+      "The project page header's button and the card under a project's only environment that open the new-environment dialog (Render's words, w1/m682)",
+  },
+  "projects.environmentLimitTitle": {
+    message: "{plan} 플랜으로 더 많은 환경을 사용하세요",
+    description:
+      "Title of the paywall Add environment opens at the plan's environments per project; {plan} is the plan name (Render's words, w1/m682)",
+  },
+  "projects.environmentLimitBody": {
+    message:
+      "업그레이드하면 환경을 무제한으로 만들고 {plan} 플랜의 모든 기능을 사용할 수 있습니다.",
+    description:
+      "Body of the environments-per-project paywall; {plan} is the plan name (Render's words, w1/m682)",
+  },
+  "projects.environmentLimitUpgrade": {
+    message: "업그레이드",
+    description:
+      "The environments paywall's button to the workspace's change-plan dialog",
+  },
+  "projects.environmentLimitLearnMore": {
+    message: "자세히 알아보기",
+    description:
+      "The environments paywall's link to the projects and environments docs",
+  },
 };
 
 export default koProjects;

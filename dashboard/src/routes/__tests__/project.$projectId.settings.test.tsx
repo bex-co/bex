@@ -8,7 +8,10 @@ import {
   createRoute,
   createMemoryHistory,
 } from "@tanstack/react-router";
-import { ProjectSettingsPage } from "../project.$projectId.settings";
+import {
+  ProjectSettingsPage,
+  Route as SettingsRoute,
+} from "../project.$projectId.settings";
 import type { ProjectView } from "@/features/projects/hooks/use-projects";
 import { ProjectSettingsPageSkeleton } from "@/common/components/route-skeletons";
 import i18n from "@/i18n/init";
@@ -54,7 +57,7 @@ vi.mock("@/features/keyvalue/hooks/use-key-values", () => ({
   useKeyValues: () => ({ keyValues: catalogState.keyValues }),
 }));
 
-function renderSettingsPage(projectId = "prj-1") {
+function renderSettingsPage(projectId = "prj-1", search = "") {
   const rootRoute = createRootRoute();
   const projectRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -71,6 +74,7 @@ function renderSettingsPage(projectId = "prj-1") {
   const settingsRoute = createRoute({
     getParentRoute: () => projectRoute,
     path: "settings",
+    validateSearch: SettingsRoute.options.validateSearch,
     component: ProjectSettingsPage,
   });
   const router = createRouter({
@@ -78,7 +82,7 @@ function renderSettingsPage(projectId = "prj-1") {
       projectRoute.addChildren([settingsRoute]),
     ]),
     history: createMemoryHistory({
-      initialEntries: [`/project/${projectId}/settings`],
+      initialEntries: [`/project/${projectId}/settings${search}`],
     }),
     context: { client: {} as never, session: null },
   });
@@ -95,6 +99,54 @@ beforeEach(() => {
   listServices.mockClear();
   catalogState.databases = [];
   catalogState.keyValues = [];
+});
+
+const storefront: ProjectView = {
+  id: "prj-1",
+  name: "storefront",
+  ownerId: "tea-1",
+  serviceIds: [],
+  databaseIds: [],
+  keyValueIds: [],
+};
+
+// The project page's name links here, as Render's does (w1/m682).
+describe("ProjectSettingsPage ?edit=name", () => {
+  it("opens the Name card editing, with the field focused, and clears the parameter", async () => {
+    projectsState.projects = [storefront];
+    const { router } = renderSettingsPage("prj-1", "?edit=name");
+
+    const input = await screen.findByRole("textbox", { name: "Project Name" });
+    expect(input).toHaveValue("storefront");
+    expect(input).toHaveFocus();
+    await waitFor(() => expect(router.state.location.searchStr).toBe(""));
+    expect(router.state.location.pathname).toBe("/project/prj-1/settings");
+  });
+
+  it("stays in read mode without it", async () => {
+    projectsState.projects = [storefront];
+    renderSettingsPage();
+    expect(await screen.findByDisplayValue("storefront")).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+  });
+
+  // w21/036, carried from the removed project-page rename dialog.
+  it("refuses an over-long project name inline and never renames", async () => {
+    projectsState.projects = [storefront];
+    const user = userEvent.setup();
+    renderSettingsPage("prj-1", "?edit=name");
+
+    const input = await screen.findByRole("textbox", { name: "Project Name" });
+    await user.clear(input);
+    await user.click(input);
+    await user.paste("a".repeat(101));
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("up to 100 characters");
+    expect(input).toHaveAccessibleDescription(/up to 100 characters/);
+    await user.type(input, "{Enter}");
+    expect(rename).not.toHaveBeenCalled();
+  });
 });
 
 describe("ProjectSettingsPage", () => {

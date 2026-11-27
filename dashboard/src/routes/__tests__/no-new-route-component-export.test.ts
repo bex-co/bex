@@ -33,7 +33,6 @@ const ALLOWLIST = new Set<string>([
   "env-groups.tsx EnvGroupsPage",
   "index.tsx HomePage",
   "new.workspace.tsx NewWorkspacePage",
-  "project.$projectId.index.tsx ProjectPage",
   "project.$projectId.settings.tsx ProjectSettingsPage",
   "services.$serviceId.env.tsx ServiceEnvPage",
   "services.$serviceId.events.tsx ServiceEventsPage",

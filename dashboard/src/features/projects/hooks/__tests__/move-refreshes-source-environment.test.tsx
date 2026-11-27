@@ -257,11 +257,6 @@ function renderSourceStage(server: ReturnType<typeof makeServer>) {
           onRunServiceAction={vi.fn()}
           onDatabaseDeleted={vi.fn()}
           onKeyValueDeleted={vi.fn()}
-          resourceFilter={{
-            environmentId: "evm-stage",
-            query: "",
-            kind: "all",
-          }}
         />
       </>
     );
@@ -281,10 +276,12 @@ function renderSourceStage(server: ReturnType<typeof makeServer>) {
 const allCount = () =>
   screen.getByRole("button", { name: /^All \(\d+\)$/ }).textContent;
 
+// Render's Services category counts services, Postgres and Key Value
+// together (w1/m682): whichever kind moves, three are left.
 const CASES = [
-  { kind: "service", id: "srv-1", count: "Services (1)" },
-  { kind: "database", id: "dpg-1", count: "Databases (0)" },
-  { kind: "keyvalue", id: "red-1", count: "Key Values (0)" },
+  { kind: "service", id: "srv-1", count: "Services (3)" },
+  { kind: "database", id: "dpg-1", count: "Services (3)" },
+  { kind: "keyvalue", id: "red-1", count: "Services (3)" },
 ] as const;
 
 beforeEach(() => {
@@ -295,7 +292,7 @@ beforeEach(() => {
 // w4/m178 (pass 155): the selected source Environment kept a moved resource's
 // row and count until its next poll, because its rows come from the separate
 // Environments list that no Project read updates. Real Apollo cache, real
-// EnvironmentsPanel/EnvironmentCard membership and counts; only the network is
+// EnvironmentsPanel/EnvironmentSection membership and counts; only the network is
 // faked. An older pre-write list read is held until after the write commits
 // so it cannot win by ordering luck.
 describe("Move to project → selected source Environment", () => {

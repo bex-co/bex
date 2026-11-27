@@ -546,9 +546,8 @@ function EnvironmentMenu({
         {environments.map((environment) => (
           <DropdownMenuItem key={environment.id} asChild>
             <Link
-              to="/project/$projectId"
-              params={{ projectId }}
-              search={{ env: environment.id }}
+              to="/project/$projectId/environment/$environmentId"
+              params={{ projectId, environmentId: environment.id }}
               className="min-w-0"
             >
               <Boxes />

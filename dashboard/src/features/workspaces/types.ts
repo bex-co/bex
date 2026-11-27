@@ -226,6 +226,18 @@ export function proFeaturesPlan(plan: string | null | undefined): boolean {
 }
 
 /**
+ * A plan's environments per project (ADR030: two on Hobby, unlimited from
+ * Pro), as `core.MaxEnvironmentsPerProject` counts them; `null` when
+ * unlimited or while the plan is unknown, since the API enforces it either
+ * way.
+ */
+export function environmentsPerProjectLimit(
+  plan: string | null | undefined,
+): number | null {
+  return plan === "hobby" ? 2 : null;
+}
+
+/**
  * Whether a workspace plan may set inbound IP rules on services, static sites,
  * environments and the workspace itself (Render: Scale and Enterprise). An
  * unknown plan (still loading) is treated as allowed; the API enforces the

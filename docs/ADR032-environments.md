@@ -207,7 +207,7 @@ Environment groups now carry an optional `environmentId` in their KV-stored meta
 
 ## Dashboard operations catch-up (w5/m31)
 
-The Environment card's **All settings** action now edits `protectedStatus`, `networkIsolationEnabled`, and the complete `ipAllowList` in one `setEnvironmentACL` mutation. Protection and isolation are switches; CIDRs use an add/remove list. The card displays a protected badge. The existing membership dialog now full-replaces `envGroupIds` alongside services, databases, and Key Value instances.
+The environment section's **All settings** action (the Environment card's before w1/m682) now edits `protectedStatus`, `networkIsolationEnabled`, and the complete `ipAllowList` in one `setEnvironmentACL` mutation. Protection and isolation are switches; CIDRs use an add/remove list. The card displays a protected badge. The existing membership dialog now full-replaces `envGroupIds` alongside services, databases, and Key Value instances.
 
 Protected service actions no longer terminate at a raw GraphQL error. Delete, suspend, and the reachable direct-deploy override path (Blueprint **Sync**) parse only the backend's named protected-environment error, display its exact `apps.ProtectedConfirmation` phrase, and retry with `confirm`. Blueprint sync gained the same optional confirmation field on REST, GraphQL, and MCP so all three adapters can reach the already-existing `DeployStack` guard. The dashboard does not precompute the phrase. Resume, restart, webhook auto-deploy, and ordinary unprotected flows remain unchanged.
 

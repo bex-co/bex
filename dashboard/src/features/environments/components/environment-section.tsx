@@ -1,17 +1,18 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { doomedResourceNames } from "@/features/projects/lib/doomed-resources";
 import {
+  ArrowRightLeft,
   Loader2,
   LockKeyhole,
   MoreVertical,
   Pencil,
+  Plus,
   Settings2,
   ShieldCheck,
   Trash2,
 } from "lucide-react";
-import { Card, CardContent } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
-import { Badge } from "@/common/components/ui/badge";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import {
@@ -59,7 +60,7 @@ import { useDeleteEnvironment } from "@/features/environments/hooks/use-delete-e
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import { ManageResourcesDialog } from "@/features/environments/components/manage-resources-dialog";
 import { EnvironmentSettingsDialog } from "@/features/environments/components/environment-settings-dialog";
-import { EnvironmentCardHeader } from "@/features/environments/components/environment-card-header";
+import { EnvironmentSectionHeader } from "@/features/environments/components/environment-section-header";
 import type { ServiceView } from "@/features/services/types";
 import type {
   PendingLifecycle,
@@ -68,17 +69,27 @@ import type {
 import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
 import type { EnvGroupView } from "@/features/env-groups/types";
-import { ProjectResourceFilters } from "@/features/projects/components/project-resource-filters";
+import {
+  EnvironmentResourceSearch,
+  EnvironmentResourceSwitcher,
+} from "@/features/projects/components/project-resource-filters";
 import {
   countProjectResources,
   countsWithUnknown,
-  filterProjectResources,
-  type ProjectResourceFilterState,
+  environmentFilterCounts,
+  matchesResourceQuery,
 } from "@/features/projects/lib/resource-filter";
+import { useSectionFilter } from "@/features/environments/lib/section-filter";
+import {
+  focusedSectionClass,
+  useFocusedSection,
+} from "@/features/environments/hooks/use-focused-section";
 import { useProtectedPlacement } from "@/features/environments/hooks/use-protected-placement";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { cn } from "@/common/lib/utils/utils";
 
-export interface EnvironmentCardProps {
+export interface EnvironmentSectionProps {
   environment: EnvironmentView;
   /** All the workspace's services — used to resolve this env's rows and as assign candidates. */
   services: ServiceView[];
@@ -99,21 +110,27 @@ export interface EnvironmentCardProps {
    */
   sandboxGroups?: SandboxGroupItem[];
   allEnvironments?: EnvironmentView[];
-  resourceFilter?: ProjectResourceFilterState;
-  onResourceFilterChange?: (filter: ProjectResourceFilterState) => void;
   /** Resource lists that have not answered (w4/m227). */
   unread?: UnreadResources;
+  /**
+   * Render's `/project/<id>/environment/<envId>` names this section: it
+   * scrolls into view and is outlined while this holds (w1/m682).
+   */
+  focused?: boolean;
 }
 
 /**
- * One environment rendered as a card: its name with rename/delete affordances
- * and a "Manage resources" action, over a reused `ResourceTable` of the
- * services, databases, key-value instances, Env Groups, and sandbox groups
- * assigned to it.
- * The Environment's full management dialogs remain here alongside the selected
- * operating view (docs/ADR032-environments.md).
+ * One environment as a section of its project's page, as Render's project
+ * page stacks them (w1/m682): the name as its h2 (with Render's protected
+ * icon and "Protected environment"), the counted All / Services / Env Groups
+ * switcher it remembers, its own search, the table of its services, Postgres,
+ * Key Value and sandbox groups, the table of its env groups, and Render's
+ * empty state. The right of the switcher row holds bex's per-environment
+ * actions (New Service, Manage resources and the rename / settings / delete
+ * menu) until w1/m683 and w1/m684 bring Render's ••• and New menus
+ * (docs/ADR032-environments.md).
  */
-export function EnvironmentCard({
+export function EnvironmentSection({
   environment,
   services,
   databases,
@@ -125,15 +142,13 @@ export function EnvironmentCard({
   envGroups = [],
   sandboxGroups = NO_SANDBOX_GROUPS,
   allEnvironments = [environment],
-  resourceFilter = {
-    environmentId: environment.id,
-    query: "",
-    kind: "all",
-  },
-  onResourceFilterChange = () => undefined,
   unread = NOTHING_UNREAD,
-}: EnvironmentCardProps) {
+  focused = false,
+}: EnvironmentSectionProps) {
   const { t } = useTranslations();
+  const titleId = useId();
+  const [filter, setFilter] = useSectionFilter(environment.id);
+  const [query, setQuery] = useState("");
 
   const { rename, busy: renaming } = useRenameEnvironment();
   const { remove, deleting } = useDeleteEnvironment(environment.projectId);
@@ -197,9 +212,17 @@ export function EnvironmentCard({
     envGroups,
     sandboxGroups,
   ]);
-  const visibleRows = filterProjectResources(rows, resourceFilter);
+  // Render keeps the env groups in a table of their own under the rest.
+  const resourceRows = rows.filter((row) => row.kind !== "envgroup");
+  const groupRows = rows.filter((row) => row.kind === "envgroup");
+  const visibleResources = resourceRows.filter((row) =>
+    matchesResourceQuery(row, query),
+  );
+  const visibleGroups = groupRows.filter((row) =>
+    matchesResourceQuery(row, query),
+  );
   // Judged against the whole membership, so a row merely hidden by the search
-  // stays selected (useResourceSelection).
+  // or the switcher stays selected (useResourceSelection).
   const selection = useResourceSelection(rows);
   // Families this environment has members of whose list has not answered:
   // their rows are unknown, so neither they nor the total can read as zero.
@@ -207,7 +230,11 @@ export function EnvironmentCard({
   const unknown = unreadFamilies(unread).filter(
     (family) => memberIds[family].length > 0,
   );
-  const counts = countsWithUnknown(countProjectResources(rows), unknown);
+  const counts = environmentFilterCounts(
+    countsWithUnknown(countProjectResources(rows), unknown),
+  );
+  const resourcesUnknown = unknown.some((family) => family !== "envgroups");
+  const groupsUnknown = unknown.includes("envgroups");
   const moveTargets = allEnvironments.filter(
     (candidate) => candidate.id !== environment.id,
   );
@@ -218,6 +245,33 @@ export function EnvironmentCard({
   const placementReason = placement.restricts(environment)
     ? placement.reason
     : undefined;
+  // Creating or moving a resource here needs can_create, and in a protected
+  // environment an Admin (w3/m281): a Viewer reads the role's reason, a
+  // Developer the admin-only one, never a 403 after the click.
+  const capabilities = useCapabilities();
+  const createReasonKey = capabilities.reasonKey("can_create");
+  const placeReason =
+    (createReasonKey ? t(createReasonKey) : undefined) ?? placementReason;
+  // Render's empty state offers moving only when the workspace has something
+  // to move.
+  const workspaceHasResources =
+    services.length +
+      databases.length +
+      keyValues.length +
+      sandboxGroups.length >
+    0;
+
+  const showResources = filter !== "envgroups";
+  const showGroups = filter !== "services";
+  const rowsInFilter =
+    (showResources ? resourceRows.length : 0) +
+    (showGroups ? groupRows.length : 0);
+  const visibleInFilter =
+    (showResources ? visibleResources.length : 0) +
+    (showGroups ? visibleGroups.length : 0);
+  const noMatches = rowsInFilter > 0 && visibleInFilter === 0;
+
+  const sectionRef = useFocusedSection(focused, rows.length);
 
   function openRename() {
     setRenameValue(environment.name);
@@ -241,35 +295,92 @@ export function EnvironmentCard({
     if (ok) setDeleteOpen(false);
   }
 
+  const tableProps = {
+    servicePending,
+    onRunServiceAction,
+    onDatabaseDeleted,
+    onKeyValueDeleted,
+    selectedKeys: selection.selected,
+    onSelectedKeysChange: selection.setSelected,
+  };
+  const isProtected = environment.protectedStatus === "protected";
+  // One selection toolbar for both tables, over the first one shown.
+  const toolbarOverResources = showResources && visibleResources.length > 0;
+  const toolbar = (
+    <BulkResourceToolbar
+      selection={selection}
+      moveTargets={moveTargets.map((target) => ({
+        environment: target,
+        label: target.name,
+      }))}
+      moveReason={placementReason}
+      protectedEnvironment={isProtected}
+    />
+  );
+
   return (
-    <Card>
-      <EnvironmentCardHeader
+    <section
+      ref={sectionRef}
+      aria-labelledby={titleId}
+      data-focused={focused ? "" : undefined}
+      className={cn(focusedSectionClass(focused), "space-y-4")}
+    >
+      <EnvironmentSectionHeader
+        titleId={titleId}
         title={
           <>
-            {/* leading-snug: the 22px line keeps descenders unclipped. */}
+            {/* leading-snug: the 28px line keeps descenders unclipped. */}
             <span
               className="min-w-0 truncate leading-snug"
               title={environment.name}
             >
               {environment.name}
             </span>
-            {environment.protectedStatus === "protected" ? (
-              <Badge variant="secondary">
-                <LockKeyhole />
-                {t("environments.protectedBadge")}
-              </Badge>
+            {isProtected ? (
+              <LockKeyhole
+                aria-hidden="true"
+                className="size-4 shrink-0 text-muted-foreground"
+              />
             ) : null}
-            <span className="shrink-0 whitespace-nowrap text-xs font-normal text-muted-foreground">
-              {counts.all !== null
-                ? t("environments.resourceCount", { count: counts.all })
-                : unknown.some((family) => unread.failed.includes(family))
-                  ? t("environments.resourceCountUnknown")
-                  : t("environments.resourceCountLoading")}
-            </span>
           </>
+        }
+        description={
+          isProtected ? (
+            <p className="text-sm text-muted-foreground">
+              {t("environments.protectedDescription")}
+            </p>
+          ) : undefined
+        }
+        switcher={
+          <EnvironmentResourceSwitcher
+            filter={filter}
+            counts={counts}
+            onChange={setFilter}
+          />
         }
         actions={
           <>
+            <PermissionTooltip reason={placeReason}>
+              {placeReason !== undefined ? (
+                <Button variant="outline" size="sm" disabled>
+                  <Plus />
+                  {t("projects.newService")}
+                </Button>
+              ) : (
+                <Button asChild variant="outline" size="sm">
+                  <Link
+                    to="/web/new"
+                    search={{
+                      projectId: environment.projectId,
+                      environmentId: environment.id,
+                    }}
+                  >
+                    <Plus />
+                    {t("projects.newService")}
+                  </Link>
+                </Button>
+              )}
+            </PermissionTooltip>
             <PermissionTooltip reason={placementReason}>
               <Button
                 variant="outline"
@@ -312,59 +423,51 @@ export function EnvironmentCard({
           </>
         }
       />
-      <CardContent className="space-y-4">
-        <ProjectResourceFilters
-          environmentName={environment.name}
-          filter={resourceFilter}
-          counts={counts}
-          onChange={(next) =>
-            onResourceFilterChange({ ...next, environmentId: environment.id })
-          }
-        />
-        <UnreadResourcesNotice unread={unread} families={unknown} />
-        {rows.length === 0 ? (
-          unknown.length > 0 ? null : (
-            <p className="text-sm text-muted-foreground">
-              {t("environments.cardEmpty")}
-            </p>
+      <EnvironmentResourceSearch
+        environmentName={environment.name}
+        query={query}
+        onChange={setQuery}
+      />
+      <UnreadResourcesNotice unread={unread} families={unknown} />
+      {showResources ? (
+        resourceRows.length === 0 ? (
+          resourcesUnknown ? null : (
+            <EnvironmentEmptyState
+              environment={environment}
+              offerMove={workspaceHasResources}
+              reason={placeReason}
+              onMove={() => setAssignOpen(true)}
+            />
           )
-        ) : visibleRows.length === 0 ? (
-          <div className="py-6 text-center" role="status">
-            <p className="font-medium">{t("projects.noMatchesTitle")}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("projects.noMatchesBody")}
-            </p>
-          </div>
-        ) : (
+        ) : visibleResources.length > 0 ? (
           <div className="space-y-3">
-            <BulkResourceToolbar
-              selection={selection}
-              moveTargets={moveTargets.map((target) => ({
-                environment: target,
-                label: target.name,
-              }))}
-              moveReason={placementReason}
-              protectedEnvironment={environment.protectedStatus === "protected"}
-            />
+            {toolbar}
             <ResourceTable
-              rows={visibleRows}
-              servicePending={servicePending}
-              onRunServiceAction={onRunServiceAction}
-              onDatabaseDeleted={onDatabaseDeleted}
-              onKeyValueDeleted={onKeyValueDeleted}
+              rows={visibleResources}
               projectMetadata
-              selectedKeys={selection.selected}
-              onSelectedKeysChange={selection.setSelected}
+              {...tableProps}
             />
           </div>
-        )}
-      </CardContent>
+        ) : null
+      ) : null}
+      {filter === "envgroups" && groupRows.length === 0 && !groupsUnknown ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">
+          {t("environments.noEnvGroups")}
+        </p>
+      ) : null}
+      {showGroups && visibleGroups.length > 0 ? (
+        <div className="space-y-3">
+          {toolbarOverResources ? null : toolbar}
+          <ResourceTable rows={visibleGroups} envGroupColumns {...tableProps} />
+        </div>
+      ) : null}
+      {noMatches ? <NoMatchingResources /> : null}
 
       {/* See the project rename dialog: the title names the dialog, the label
           names the field, and the description is opted out of explicitly so
           Radix does not point at an element that was never rendered (w4/134).
-          The input id carries the environment id because a panel renders one
-          card per environment. */}
+          The input id carries the environment id because the page renders
+          one section per environment. */}
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
         <DialogContent aria-describedby={undefined}>
           <DialogHeader>
@@ -455,7 +558,93 @@ export function EnvironmentCard({
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
       />
-    </Card>
+    </section>
+  );
+}
+
+/**
+ * Render's empty environment (w1/m682): "<env> is empty", a sentence that
+ * offers moving only when the workspace has something to move, and Create new
+ * service and Move existing services, disabled with the reason for a role
+ * that cannot place a resource here. Move opens Manage resources until
+ * w1/m685 brings Render's Move Services modal.
+ */
+function EnvironmentEmptyState({
+  environment,
+  offerMove,
+  reason,
+  onMove,
+}: {
+  environment: EnvironmentView;
+  offerMove: boolean;
+  reason: string | undefined;
+  onMove: () => void;
+}) {
+  const { t } = useTranslations();
+  return (
+    <div className="space-y-4 rounded-lg border border-dashed px-6 py-10 text-center">
+      <div className="space-y-1">
+        <h3 className="font-semibold">
+          {t("environments.emptyTitle", { name: environment.name })}
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          {t(
+            offerMove
+              ? "environments.emptyBodyCreateOrMove"
+              : "environments.emptyBodyCreate",
+          )}
+        </p>
+      </div>
+      <div className="flex flex-col justify-center gap-2 sm:flex-row sm:gap-4">
+        <PermissionTooltip reason={reason}>
+          {reason !== undefined ? (
+            <Button size="sm" disabled>
+              <Plus />
+              {t("environments.createNewService")}
+            </Button>
+          ) : (
+            <Button asChild size="sm">
+              <Link
+                to="/web/new"
+                search={{
+                  projectId: environment.projectId,
+                  environmentId: environment.id,
+                }}
+              >
+                <Plus />
+                {t("environments.createNewService")}
+              </Link>
+            </Button>
+          )}
+        </PermissionTooltip>
+        {offerMove ? (
+          <PermissionTooltip reason={reason}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={reason !== undefined}
+              onClick={onMove}
+            >
+              <ArrowRightLeft />
+              {t("environments.moveExistingServices")}
+            </Button>
+          </PermissionTooltip>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/** A search that matches none of a section's rows. */
+export function NoMatchingResources() {
+  const { t } = useTranslations();
+  return (
+    <div className="py-6 text-center" role="status">
+      <p className="font-medium">{t("projects.noMatchesTitle")}</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {t("projects.noMatchesBody")}
+      </p>
+    </div>
   );
 }
 

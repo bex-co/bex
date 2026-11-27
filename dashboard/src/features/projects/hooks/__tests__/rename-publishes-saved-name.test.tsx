@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ApolloClient, ApolloLink, InMemoryCache } from "@apollo/client";
 import { ApolloProvider, useQuery } from "@apollo/client/react";
@@ -22,7 +22,6 @@ import {
 import { ProjectsDocument } from "@/graphql/definitions";
 import { useProjects } from "@/features/projects/hooks/use-projects";
 import { Route as ProjectRoute } from "@/routes/project.$projectId";
-import { ProjectPage } from "@/routes/project.$projectId.index";
 import {
   ProjectSettingsPage,
   Route as SettingsRoute,
@@ -36,7 +35,7 @@ vi.mock("@/features/workspaces/context/hooks", () => ({
   useWorkspace: () => ({ currentWorkspaceId: "tea-1" }),
 }));
 
-// The Overview's resource table is not under test: rename touches no rows.
+// The project's resource lists are not under test: rename touches no rows.
 const noRows = { loading: false, error: undefined, refetch: vi.fn() };
 vi.mock("@/features/services/hooks/use-services", () => ({
   useServices: () => ({ ...noRows, services: [] }),
@@ -49,9 +48,6 @@ vi.mock("@/features/databases/hooks/use-databases", () => ({
 }));
 vi.mock("@/features/keyvalue/hooks/use-key-values", () => ({
   useKeyValues: () => ({ ...noRows, keyValues: [] }),
-}));
-vi.mock("@/features/environments/components/environments-panel", () => ({
-  EnvironmentsPanel: () => <div data-testid="environments-panel" />,
 }));
 
 /**
@@ -196,10 +192,9 @@ function FailingWatcher() {
 type RealLoader = (ctx: unknown) => Promise<unknown>;
 type RealHead = (ctx: unknown) => DashboardHead;
 
-function renderProject(
-  page: "overview" | "settings",
-  { sidebar = true, failingWatcher = false } = {},
-) {
+// Project Settings' Name card is where a project is renamed: the project
+// page's name links there with `?edit=name` (w1/m682).
+function renderProject({ sidebar = true, failingWatcher = false } = {}) {
   const client = new ApolloClient({
     link,
     cache: new InMemoryCache(apolloCacheConfig),
@@ -224,26 +219,18 @@ function renderProject(
     loader: ProjectRoute.options.loader as RealLoader,
     head: ProjectRoute.options.head as RealHead,
   });
-  const childRoute =
-    page === "overview"
-      ? createRoute({
-          getParentRoute: () => projectRoute,
-          path: "/",
-          component: ProjectPage,
-        })
-      : createRoute({
-          getParentRoute: () => projectRoute,
-          path: "settings",
-          loader: SettingsRoute.options.loader as RealLoader,
-          head: SettingsRoute.options.head as RealHead,
-          component: ProjectSettingsPage,
-        });
+  const childRoute = createRoute({
+    getParentRoute: () => projectRoute,
+    path: "settings",
+    loader: SettingsRoute.options.loader as RealLoader,
+    head: SettingsRoute.options.head as RealHead,
+    validateSearch: SettingsRoute.options.validateSearch,
+    component: ProjectSettingsPage,
+  });
   const router = createRouter({
     routeTree: rootRoute.addChildren([projectRoute.addChildren([childRoute])]),
     history: createMemoryHistory({
-      initialEntries: [
-        page === "overview" ? "/project/prj-1" : "/project/prj-1/settings",
-      ],
+      initialEntries: ["/project/prj-1/settings"],
     }),
     context: { client, session: null } as never,
   });
@@ -254,22 +241,8 @@ function renderProject(
   );
 }
 
-const overviewTitle = (name: string) => formatDashboardTitle(name);
 const settingsTitle = (name: string) =>
   formatDashboardTitle(`${name} / Settings`);
-
-/** Rename through the Overview's pencil → dialog → Save. */
-async function renameOnOverview(to: string) {
-  const user = userEvent.setup();
-  await screen.findByRole("heading", { name: "r3" });
-  await user.click(screen.getByRole("button", { name: "Edit" }));
-  const dialog = await screen.findByRole("dialog");
-  const input = within(dialog).getByRole("textbox", { name: "Project name" });
-  await user.clear(input);
-  await user.type(input, to);
-  await user.click(within(dialog).getByRole("button", { name: "Save" }));
-  return dialog;
-}
 
 /** Rename through the Settings card's Edit → ✓. */
 async function renameOnSettings(to: string) {
@@ -299,39 +272,10 @@ beforeEach(() => {
 afterEach(release);
 
 describe("project rename publishes the saved name (w4/m186)", () => {
-  it("Overview: a pre-save Projects read finishing after the mutation cannot stay published", async () => {
-    // The sidebar's first list read starts before the rename and is held
-    // until just after the server acknowledges it — finding.md's 918 → 1520 →
-    // 1533 ms ordering.
-    server.holdProjects = true;
-    server.releaseAfterRename = true;
-    renderProject("overview");
-
-    const dialog = await renameOnOverview("r4");
-
-    await waitFor(() => expect(toast.success).toHaveBeenCalledTimes(1));
-    await settle();
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("r4");
-    expect(document.title).toBe(overviewTitle("r4"));
-    expect(
-      screen.getByRole("navigation", { name: "sidebar" }),
-    ).toHaveTextContent("r4");
-    expect(dialog).not.toBeInTheDocument();
-    expect(count("→RenameProject")).toBe(1);
-    // The late pre-save list answered with the OLD name, and the
-    // authoritative by-id read only started after it had been written.
-    const lastList = server.log.lastIndexOf("←Projects");
-    const finalRead = server.log.lastIndexOf("→Project");
-    expect(lastList).toBeGreaterThan(server.log.indexOf("←RenameProject"));
-    expect(finalRead).toBeGreaterThan(lastList);
-    expect(toast.error).not.toHaveBeenCalled();
-    expect(toast.warning).not.toHaveBeenCalled();
-  });
-
   it("Settings: the same late read cannot stay published", async () => {
     server.holdProjects = true;
     server.releaseAfterRename = true;
-    renderProject("settings");
+    renderProject();
 
     await renameOnSettings("r4");
 
@@ -345,39 +289,41 @@ describe("project rename publishes the saved name (w4/m186)", () => {
     expect(count("→RenameProject")).toBe(1);
   });
 
-  it("keeps the dialog busy until the late read drains, then publishes", async () => {
+  it("keeps the editor busy until the late read drains, then publishes", async () => {
     server.holdProjects = true; // released by hand, below
-    renderProject("overview");
+    renderProject();
 
-    const dialog = await renameOnOverview("r4");
+    await renameOnSettings("r4");
 
     await waitFor(() => expect(count("←RenameProject")).toBe(1));
     await settle();
     // Saved, but the old list read is still pending: no completion yet.
-    expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     expect(toast.success).not.toHaveBeenCalled();
     expect(count("→Project")).toBe(1); // only the entry load so far
 
     release();
 
-    await waitFor(() => expect(dialog).not.toBeInTheDocument());
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("r4");
-    expect(document.title).toBe(overviewTitle("r4"));
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Save" })).toBeNull(),
+    );
+    expect(screen.getByDisplayValue("r4")).toBeDisabled();
+    expect(document.title).toBe(settingsTitle("r4"));
     expect(count("→RenameProject")).toBe(1);
   });
 
   it("an already-settled page renames normally (control)", async () => {
-    renderProject("overview");
+    renderProject();
     await waitFor(() =>
       expect(
         screen.getByRole("navigation", { name: "sidebar" }),
       ).toHaveTextContent("r3"),
     );
 
-    await renameOnOverview("r4");
+    await renameOnSettings("r4");
 
-    await waitFor(() => expect(document.title).toBe(overviewTitle("r4")));
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("r4");
+    await waitFor(() => expect(document.title).toBe(settingsTitle("r4")));
+    expect(screen.getByDisplayValue("r4")).toBeDisabled();
     expect(
       screen.getByRole("navigation", { name: "sidebar" }),
     ).toHaveTextContent("r4");
@@ -385,12 +331,12 @@ describe("project rename publishes the saved name (w4/m186)", () => {
   });
 
   it("publishes with no active Projects watcher", async () => {
-    renderProject("overview", { sidebar: false });
+    renderProject({ sidebar: false });
 
-    await renameOnOverview("r4");
+    await renameOnSettings("r4");
 
-    await waitFor(() => expect(document.title).toBe(overviewTitle("r4")));
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("r4");
+    await waitFor(() => expect(document.title).toBe(settingsTitle("r4")));
+    expect(screen.getByDisplayValue("r4")).toBeDisabled();
     expect(count("→Projects")).toBe(0);
     expect(count("→RenameProject")).toBe(1);
   });
@@ -399,14 +345,14 @@ describe("project rename publishes the saved name (w4/m186)", () => {
     server.holdProjects = true;
     server.releaseAfterRename = true;
     server.failingOwner = "tea-2";
-    renderProject("overview", { failingWatcher: true });
+    renderProject({ failingWatcher: true });
 
-    await renameOnOverview("r4");
+    await renameOnSettings("r4");
 
     await waitFor(() => expect(toast.success).toHaveBeenCalledTimes(1));
     await settle();
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("r4");
-    expect(document.title).toBe(overviewTitle("r4"));
+    expect(screen.getByDisplayValue("r4")).toBeDisabled();
+    expect(document.title).toBe(settingsTitle("r4"));
     // A list failure is not a refresh failure: the by-id read is what
     // publishes, and it ran after the held list wrote.
     expect(toast.warning).not.toHaveBeenCalled();
@@ -418,9 +364,9 @@ describe("project rename publishes the saved name (w4/m186)", () => {
 
   it("a refused rename stays a refused rename", async () => {
     server.renameRefusal = "a project with that name already exists";
-    renderProject("overview");
+    renderProject();
 
-    const dialog = await renameOnOverview("r4");
+    await renameOnSettings("r4");
 
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(
@@ -428,11 +374,9 @@ describe("project rename publishes the saved name (w4/m186)", () => {
       ),
     );
     await settle();
-    expect(dialog).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Save" })).toBeEnabled();
-    expect(
-      screen.getByRole("heading", { level: 1, hidden: true }),
-    ).toHaveTextContent("r3");
+    // Still editing, ready to try again; the saved name is unchanged.
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+    expect(document.title).toBe(settingsTitle("r3"));
     expect(toast.success).not.toHaveBeenCalled();
     expect(toast.warning).not.toHaveBeenCalled();
     expect(count("→RenameProject")).toBe(1);
@@ -441,15 +385,18 @@ describe("project rename publishes the saved name (w4/m186)", () => {
 
   it("a failed refresh keeps the save, never re-sends it, and retries only the read", async () => {
     server.failProjectReadsAfterRename = 1;
-    renderProject("overview");
+    renderProject();
 
-    const dialog = await renameOnOverview("r4");
+    await renameOnSettings("r4");
 
     await waitFor(() => expect(toast.warning).toHaveBeenCalledTimes(1));
     expect(vi.mocked(toast.warning).mock.calls[0][0]).toBe(
       'Project renamed to "r4", but this page couldn\'t refresh. Try again or reload to see the saved name.',
     );
-    await waitFor(() => expect(dialog).not.toBeInTheDocument()); // busy released
+    // Busy released: the editor closed.
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Save" })).toBeNull(),
+    );
     expect(toast.error).not.toHaveBeenCalled();
     expect(toast.success).not.toHaveBeenCalled();
 
@@ -460,21 +407,21 @@ describe("project rename publishes the saved name (w4/m186)", () => {
     expect(options.action.label).toBe("Try again");
     options.action.onClick();
 
-    await waitFor(() => expect(document.title).toBe(overviewTitle("r4")));
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("r4");
+    await waitFor(() => expect(document.title).toBe(settingsTitle("r4")));
+    expect(screen.getByDisplayValue("r4")).toBeDisabled();
     expect(toast.success).toHaveBeenCalledTimes(1);
     expect(count("→RenameProject")).toBe(1);
   });
 
   it("publishes a newer name another actor saved meanwhile", async () => {
     server.concurrentName = "r5";
-    renderProject("overview");
+    renderProject();
 
-    await renameOnOverview("r4");
+    await renameOnSettings("r4");
 
-    await waitFor(() => expect(document.title).toBe(overviewTitle("r5")));
+    await waitFor(() => expect(document.title).toBe(settingsTitle("r5")));
     await settle();
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("r5");
+    expect(screen.getByDisplayValue("r5")).toBeDisabled();
     expect(
       screen.getByRole("navigation", { name: "sidebar" }),
     ).toHaveTextContent("r5");

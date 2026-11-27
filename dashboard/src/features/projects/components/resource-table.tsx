@@ -42,6 +42,12 @@ export interface ResourceTableProps {
   onKeyValueDeleted: (id: string) => void;
   /** Project Environment views use Render's operational metadata columns. */
   projectMetadata?: boolean;
+  /**
+   * An environment section's env groups table (w1/m682): Render's Env Groups
+   * list columns without its Environment column — Name, Env Vars, Secret
+   * Files and Updated. Every row is an env group.
+   */
+  envGroupColumns?: boolean;
   /** Supplying both selection props enables accessible row/select-visible-all checkboxes. */
   selectedKeys?: ReadonlySet<string>;
   onSelectedKeysChange?: (keys: Set<string>) => void;
@@ -56,6 +62,7 @@ export function ResourceTable({
   onDatabaseDeleted,
   onKeyValueDeleted,
   projectMetadata = false,
+  envGroupColumns = false,
   selectedKeys,
   onSelectedKeysChange,
 }: ResourceTableProps) {
@@ -97,28 +104,20 @@ export function ResourceTable({
             </TableHead>
           ) : null}
           <TableHead>{t("projects.colName")}</TableHead>
-          {!projectMetadata ? (
-            <TableHead className="hidden sm:table-cell">
-              {t("projects.colType")}
-            </TableHead>
-          ) : null}
-          <TableHead>{t("projects.colStatus")}</TableHead>
-          {projectMetadata ? (
+          {envGroupColumns ? (
             <>
-              <TableHead className="hidden md:table-cell">
-                {t("projects.colRuntime")}
+              <TableHead className="whitespace-nowrap text-right">
+                {t("envGroups.colEnvVars")}
               </TableHead>
-              <TableHead className="hidden lg:table-cell">
-                {t("projects.colRegion")}
+              <TableHead className="whitespace-nowrap text-right">
+                {t("envGroups.colSecretFiles")}
               </TableHead>
-              <TableHead className="hidden sm:table-cell">
-                {t("projects.colUpdated")}
+              <TableHead className="hidden whitespace-nowrap text-right sm:table-cell">
+                {t("envGroups.colUpdated")}
               </TableHead>
             </>
           ) : (
-            <TableHead className="hidden md:table-cell">
-              {t("projects.colCreated")}
-            </TableHead>
+            <ResourceColumnHeads projectMetadata={projectMetadata} />
           )}
           <TableHead className="w-0 text-right">
             <span className="sr-only">{t("projects.colActions")}</span>
@@ -136,22 +135,29 @@ export function ResourceTable({
             ))
           : rows.map((row) => {
               const key = resourceSelectionKey(row);
-              return (
+              const checked = selectedKeys?.has(key) ?? false;
+              const onCheckedChange = selectable
+                ? (next: boolean) => {
+                    const keys = new Set(selectedKeys);
+                    if (next) keys.add(key);
+                    else keys.delete(key);
+                    onSelectedKeysChange(keys);
+                  }
+                : undefined;
+              return envGroupColumns ? (
+                <EnvGroupTableRow
+                  key={key}
+                  row={row}
+                  checked={checked}
+                  onCheckedChange={onCheckedChange}
+                />
+              ) : (
                 <ResourceTableRow
                   key={key}
                   row={row}
                   projectMetadata={projectMetadata}
-                  checked={selectedKeys?.has(key) ?? false}
-                  onCheckedChange={
-                    selectable
-                      ? (checked) => {
-                          const next = new Set(selectedKeys);
-                          if (checked) next.add(key);
-                          else next.delete(key);
-                          onSelectedKeysChange(next);
-                        }
-                      : undefined
-                  }
+                  checked={checked}
+                  onCheckedChange={onCheckedChange}
                   servicePending={servicePending}
                   onRunServiceAction={onRunServiceAction}
                   onDatabaseDeleted={onDatabaseDeleted}
@@ -162,6 +168,92 @@ export function ResourceTable({
             })}
       </TableBody>
     </Table>
+  );
+}
+
+function ResourceColumnHeads({
+  projectMetadata,
+}: {
+  projectMetadata: boolean;
+}) {
+  const { t } = useTranslations();
+  return (
+    <>
+      {!projectMetadata ? (
+        <TableHead className="hidden sm:table-cell">
+          {t("projects.colType")}
+        </TableHead>
+      ) : null}
+      <TableHead>{t("projects.colStatus")}</TableHead>
+      {projectMetadata ? (
+        <>
+          <TableHead className="hidden md:table-cell">
+            {t("projects.colRuntime")}
+          </TableHead>
+          <TableHead className="hidden lg:table-cell">
+            {t("projects.colRegion")}
+          </TableHead>
+          <TableHead className="hidden sm:table-cell">
+            {t("projects.colUpdated")}
+          </TableHead>
+        </>
+      ) : (
+        <TableHead className="hidden md:table-cell">
+          {t("projects.colCreated")}
+        </TableHead>
+      )}
+    </>
+  );
+}
+
+/**
+ * One env group in an environment section's env groups table (w1/m682), as
+ * Render's Env Groups list draws it: the name over its id and linked-service
+ * count, its variable and secret file counts, and when it last changed.
+ */
+function EnvGroupTableRow({
+  row,
+  checked,
+  onCheckedChange,
+}: {
+  row: ResourceRow;
+  checked: boolean;
+  onCheckedChange?: (checked: boolean) => void;
+}) {
+  const { t } = useTranslations();
+  const group = row.envGroup;
+  return (
+    <TableRow data-state={checked ? "selected" : undefined}>
+      {onCheckedChange ? (
+        <TableCell className="w-10">
+          <Checkbox
+            aria-label={t("projects.selectResource", { name: row.name })}
+            checked={checked}
+            onCheckedChange={(value) => onCheckedChange(value === true)}
+          />
+        </TableCell>
+      ) : null}
+      <TableCell className="min-w-0 font-medium">
+        <ResourceLink row={row} />
+        <p className="max-w-64 truncate font-mono text-xs font-normal text-muted-foreground">
+          {row.id}
+          {group
+            ? ` · ${t("envGroups.serviceCount", { count: group.serviceLinks.length })}`
+            : null}
+        </p>
+      </TableCell>
+      <TableCell className="text-right tabular-nums">
+        {group ? group.envVarKeys.length : <UnknownValue />}
+      </TableCell>
+      <TableCell className="text-right tabular-nums">
+        {group ? group.secretFileNames.length : <UnknownValue />}
+      </TableCell>
+      <TableCell className="hidden whitespace-nowrap text-right tabular-nums text-muted-foreground sm:table-cell">
+        <RelativeAge value={row.updatedAt} fallback={<UnknownValue />} />
+      </TableCell>
+      {/* An env group has no row menu (ResourceActions). */}
+      <TableCell />
+    </TableRow>
   );
 }
 

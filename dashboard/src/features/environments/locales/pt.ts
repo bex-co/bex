@@ -540,6 +540,47 @@ const ptEnvironments: Record<string, TranslationEntry> = {
     description:
       "Shared create-form Environment select while no Project is chosen (it is disabled until one is)",
   },
+  "environments.protectedDescription": {
+    message: "Ambiente protegido",
+    description:
+      "Line under a protected environment's section heading on the project page (Render's words, w1/m682)",
+  },
+  "environments.emptyTitle": {
+    message: "{name} está vazio",
+    description:
+      "Heading of an environment section with no services, Postgres or Key Value; {name} is the environment (Render's words, w1/m682)",
+  },
+  "environments.emptyBodyCreate": {
+    message: "Comece seu ambiente criando um novo serviço.",
+    description:
+      "An empty environment's sentence when the workspace has nothing to move into it (Render's words, w1/m682)",
+  },
+  "environments.emptyBodyCreateOrMove": {
+    message:
+      "Comece seu ambiente criando um novo serviço ou movendo um existente.",
+    description:
+      "An empty environment's sentence when the workspace has resources that could move into it (Render's words, w1/m682)",
+  },
+  "environments.createNewService": {
+    message: "Criar novo serviço",
+    description:
+      "An empty environment's button to the create flow with the project and environment chosen (Render's words, w1/m682)",
+  },
+  "environments.moveExistingServices": {
+    message: "Mover serviços existentes",
+    description:
+      "An empty environment's button that moves existing resources into it (Render's words, w1/m682)",
+  },
+  "environments.noEnvGroups": {
+    message: "Este ambiente não tem grupos de ambiente.",
+    description:
+      "An environment section's Env Groups view when the environment has none (Render's words, w1/m682)",
+  },
+  "environments.unassignedDescription": {
+    message: "Recursos deste projeto que não estão em nenhum ambiente.",
+    description:
+      "Line under the project page's Unassigned section, which lists the project's resources in no environment (a bex section; Render requires an environment)",
+  },
 };
 
 export default ptEnvironments;

@@ -1,13 +1,61 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { EnvironmentCard } from "@/features/environments/components/environment-card";
-import { ProjectEnvironmentCardSkeleton } from "@/common/components/route-skeletons";
+import { EnvironmentSection } from "@/features/environments/components/environment-section";
+import { ProjectEnvironmentSectionSkeleton } from "@/common/components/route-skeletons";
+import { SECTION_FILTER_STORAGE_KEY } from "@/features/environments/lib/section-filter";
+import { memoryStorage } from "@/test/mocks/storage";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import type { EnvGroupView } from "@/features/env-groups/types";
 import type { ServiceView } from "@/features/services/types";
 import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
+
+// The create links, as the router would write them.
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({
+    children,
+    to,
+    search,
+    className,
+  }: {
+    children: React.ReactNode;
+    to: string;
+    search?: Record<string, string>;
+    className?: string;
+  }) => (
+    <a
+      href={search ? `${to}?${new URLSearchParams(search)}` : to}
+      className={className}
+    >
+      {children}
+    </a>
+  ),
+}));
+
+// The caller's role (w3/m281): unset, every action is open, as the fallback
+// capabilities answer; a test sets a Developer or a Viewer.
+const role = vi.hoisted(() => ({
+  current: null as null | { canManage: boolean; createReason?: string },
+}));
+vi.mock(
+  "@/features/capabilities/hooks/use-capabilities",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@/features/capabilities/hooks/use-capabilities")
+      >();
+    return {
+      ...actual,
+      useCapabilities: () => ({
+        loaded: role.current !== null,
+        canManage: role.current?.canManage ?? false,
+        reasonKey: (action: string) =>
+          action === "can_create" ? role.current?.createReason : undefined,
+      }),
+    };
+  },
+);
 
 const rename = vi.fn();
 
@@ -80,46 +128,51 @@ vi.mock("@/features/env-groups/hooks/use-stranded-link-guard", () => ({
 
 // The manage-resources dialog reaches Apollo when opened; the card never opens
 // it in these tests, but stub it so mounting the (closed) dialog stays inert.
+const manageOpen = vi.fn();
 vi.mock("@/features/environments/components/manage-resources-dialog", () => ({
-  ManageResourcesDialog: () => null,
+  ManageResourcesDialog: ({ open }: { open: boolean }) => {
+    manageOpen(open);
+    return null;
+  },
 }));
 vi.mock("@/features/projects/components/resource-table", () => ({
   resourceSelectionKey: (row: { kind: string; id: string }) =>
     `${row.kind}:${row.id}`,
+  // The section draws two tables (w1/m682): its resources, and its env
+  // groups. Each adds to the one selection, as the real table's checkboxes do.
   ResourceTable: ({
     rows,
+    envGroupColumns,
     selectedKeys,
     onSelectedKeysChange,
   }: {
     rows: Array<{ kind: string; id: string; name: string }>;
+    envGroupColumns?: boolean;
     selectedKeys?: ReadonlySet<string>;
     onSelectedKeysChange?: (keys: Set<string>) => void;
-  }) => (
-    <div data-testid="resource-table">
-      {rows.map((row) => row.name).join(",")}
-      {onSelectedKeysChange && rows[0] ? (
-        <>
-          <button
-            onClick={() =>
-              onSelectedKeysChange(new Set([`${rows[0].kind}:${rows[0].id}`]))
-            }
-          >
-            select first row
-          </button>
-          <button
-            onClick={() =>
-              onSelectedKeysChange(
-                new Set(rows.map((row) => `${row.kind}:${row.id}`)),
-              )
-            }
-          >
-            select all rows
-          </button>
-        </>
-      ) : null}
-      <span>{selectedKeys?.size ?? 0}</span>
-    </div>
-  ),
+  }) => {
+    const table = envGroupColumns ? "groups" : "rows";
+    const add = (picked: typeof rows) =>
+      onSelectedKeysChange?.(
+        new Set([
+          ...(selectedKeys ?? []),
+          ...picked.map((row) => `${row.kind}:${row.id}`),
+        ]),
+      );
+    return (
+      <div data-testid={envGroupColumns ? "env-group-table" : "resource-table"}>
+        {rows.map((row) => row.name).join(",")}
+        {onSelectedKeysChange && rows[0] ? (
+          <>
+            <button onClick={() => add([rows[0]])}>
+              select first {table.slice(0, -1)}
+            </button>
+            <button onClick={() => add(rows)}>select all {table}</button>
+          </>
+        ) : null}
+      </div>
+    );
+  },
 }));
 
 // An environment with no resolvable resources renders the empty state instead
@@ -187,11 +240,11 @@ const apiService: ServiceView = {
   outboundIps: null,
 };
 
-function renderCard(
-  props: Partial<React.ComponentProps<typeof EnvironmentCard>> = {},
+function renderSection(
+  props: Partial<React.ComponentProps<typeof EnvironmentSection>> = {},
 ) {
   return render(
-    <EnvironmentCard
+    <EnvironmentSection
       environment={env}
       services={[]}
       databases={[]}
@@ -206,6 +259,9 @@ function renderCard(
 }
 
 beforeEach(() => {
+  // The section keeps its switcher choice in localStorage (w1/m682).
+  vi.stubGlobal("localStorage", memoryStorage());
+  role.current = null;
   rename.mockReset();
   rename.mockResolvedValue(true);
   remove.mockReset();
@@ -223,68 +279,207 @@ beforeEach(() => {
   }
 });
 
-describe("EnvironmentCard", () => {
-  it("shows the environment name and its empty-resources state", () => {
-    renderCard();
-    expect(screen.getByText("staging")).toBeInTheDocument();
+const sharedGroup: EnvGroupView = {
+  id: "evg-shared",
+  name: "shared",
+  ownerId: "tea-1",
+  environmentId: env.id,
+  createdAt: null,
+  updatedAt: null,
+  revision: "1",
+  availability: null,
+  serviceLinks: [],
+  envVarKeys: [],
+  secretFileNames: [],
+};
+
+const switcherButton = (name: RegExp) =>
+  within(screen.getByRole("group", { name: "Resource type" })).getByRole(
+    "button",
+    { name },
+  );
+
+describe("EnvironmentSection", () => {
+  it("is a section named by its h2, with Render's empty state", () => {
+    renderSection();
+    const section = screen.getByRole("region", { name: "staging" });
     expect(
-      screen.getByText("No resources in this environment yet."),
-    ).toBeInTheDocument();
+      within(section).getByRole("heading", { level: 2, name: "staging" }),
+    ).toBeVisible();
+    expect(
+      within(section).getByRole("heading", {
+        level: 3,
+        name: "staging is empty",
+      }),
+    ).toBeVisible();
+    // Nothing in the workspace to move: Render offers only creating.
+    expect(
+      screen.getByText("Kickstart your environment by creating a new service."),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Create new service" }),
+    ).toHaveAttribute("href", "/web/new?projectId=prj-1&environmentId=env-1");
+    expect(
+      screen.queryByRole("button", { name: "Move existing services" }),
+    ).toBeNull();
+    expect(screen.queryByText("Protected environment")).toBeNull();
   });
 
-  it("keeps search and type state scoped to this environment", async () => {
-    const onResourceFilterChange = vi.fn();
+  it("offers moving into an empty environment when the workspace has resources", async () => {
     const user = userEvent.setup();
-    renderCard({
-      services: [apiService],
-      environment: { ...env, serviceIds: ["srv-api"] },
-      resourceFilter: {
-        environmentId: "env-1",
-        query: "",
-        kind: "all",
-      },
-      onResourceFilterChange,
-    });
-    // The named-environment caller exposes the selection too (w4/333).
+    renderSection({ services: [apiService] });
     expect(
-      within(screen.getByRole("group", { name: "Resource type" })).getByRole(
-        "button",
-        { name: /^All/ },
+      screen.getByText(
+        "Kickstart your environment by creating a new service or by moving an existing one.",
       ),
-    ).toHaveAttribute("aria-pressed", "true");
+    ).toBeVisible();
+    await user.click(
+      screen.getByRole("button", { name: "Move existing services" }),
+    );
+    // Manage resources stands in for Render's Move Services modal (w1/m685).
+    expect(manageOpen).toHaveBeenLastCalledWith(true);
+  });
 
+  // Render disables both with the permission's message; bex's reasons are
+  // the protected-placement rule (w3/m281) and the role's.
+  it.each([
+    {
+      who: "a Developer in a protected environment",
+      caller: { canManage: false },
+      protectedStatus: "protected",
+      reason:
+        "Only an admin can create resources in a protected environment or move them into or out of it.",
+    },
+    {
+      who: "a Viewer",
+      caller: {
+        canManage: false,
+        createReason: "capabilities.reasonCanCreate",
+      },
+      protectedStatus: "unprotected",
+      reason: null,
+    },
+  ])(
+    "disables the empty state's actions for $who",
+    async ({ caller, protectedStatus, reason }) => {
+      role.current = caller;
+      const user = userEvent.setup();
+      renderSection({
+        services: [apiService],
+        environment: { ...env, protectedStatus },
+      });
+      const create = screen.getByRole("button", { name: "Create new service" });
+      const move = screen.getByRole("button", {
+        name: "Move existing services",
+      });
+      expect(create).toBeDisabled();
+      expect(move).toBeDisabled();
+      expect(
+        screen.queryByRole("link", { name: "Create new service" }),
+      ).toBeNull();
+      expect(
+        screen.getByRole("button", { name: "New Service" }),
+      ).toBeDisabled();
+      if (reason) {
+        await user.hover(create.parentElement!);
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(reason);
+      }
+    },
+  );
+
+  it("keeps the empty state's actions for a Developer in an unprotected environment", () => {
+    role.current = { canManage: false };
+    renderSection({ services: [apiService] });
+    expect(
+      screen.getByRole("link", { name: "Create new service" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Move existing services" }),
+    ).toBeEnabled();
+  });
+
+  it("names a protected environment as Render does", () => {
+    renderSection({ environment: { ...env, protectedStatus: "protected" } });
+    expect(screen.getByText("Protected environment")).toBeVisible();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "staging" }),
+    ).toBeVisible();
+  });
+
+  // Render counts services, Postgres, Key Value and sandbox groups under
+  // Services, and keeps env groups in a table of their own.
+  it("counts Render's three categories and draws env groups in their own table", () => {
+    renderSection({
+      services: [apiService],
+      envGroups: [sharedGroup],
+      environment: {
+        ...env,
+        serviceIds: ["srv-api"],
+        envGroupIds: ["evg-shared"],
+      },
+    });
+    expect(switcherButton(/^All/)).toHaveTextContent("All (2)");
+    expect(switcherButton(/^Services/)).toHaveTextContent("Services (1)");
+    expect(switcherButton(/^Env Groups/)).toHaveTextContent("Env Groups (1)");
+    expect(screen.getByTestId("resource-table")).toHaveTextContent(
+      "Public API",
+    );
+    expect(screen.getByTestId("env-group-table")).toHaveTextContent("shared");
+  });
+
+  it("searches only its own rows, by name or id", async () => {
+    const user = userEvent.setup();
+    renderSection({
+      services: [apiService],
+      envGroups: [sharedGroup],
+      environment: {
+        ...env,
+        serviceIds: ["srv-api"],
+        envGroupIds: ["evg-shared"],
+      },
+    });
     await user.type(
       screen.getByRole("searchbox", { name: "Search resources in staging" }),
-      "a",
+      "evg-",
     );
-    expect(onResourceFilterChange).toHaveBeenLastCalledWith({
-      environmentId: "env-1",
-      query: "a",
-      kind: "all",
-    });
+    expect(screen.queryByTestId("resource-table")).toBeNull();
+    expect(screen.getByTestId("env-group-table")).toHaveTextContent("shared");
+    // Counts are the section's, before search.
+    expect(switcherButton(/^All/)).toHaveTextContent("All (2)");
 
-    await user.click(screen.getByRole("button", { name: "Env Groups (0)" }));
-    expect(onResourceFilterChange).toHaveBeenLastCalledWith({
-      environmentId: "env-1",
-      query: "",
-      kind: "envgroups",
-    });
-  });
-
-  it("renders an accessible no-match state for a selected filter", () => {
-    renderCard({
-      services: [apiService],
-      environment: { ...env, serviceIds: ["srv-api"] },
-      resourceFilter: {
-        environmentId: "env-1",
-        query: "missing",
-        kind: "services",
-      },
-    });
-
+    await user.clear(
+      screen.getByRole("searchbox", { name: "Search resources in staging" }),
+    );
+    await user.type(
+      screen.getByRole("searchbox", { name: "Search resources in staging" }),
+      "missing",
+    );
     expect(screen.getByRole("status")).toHaveTextContent(
       "No matching resources",
     );
+  });
+
+  it("shows only the chosen category, and Render's sentence for no env groups", async () => {
+    const user = userEvent.setup();
+    renderSection({
+      services: [apiService],
+      environment: { ...env, serviceIds: ["srv-api"] },
+    });
+    await user.click(switcherButton(/^Env Groups/));
+    expect(switcherButton(/^Env Groups/)).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.queryByTestId("resource-table")).toBeNull();
+    expect(
+      screen.getByText("This environment has no env groups."),
+    ).toBeVisible();
+
+    await user.click(switcherButton(/^Services/));
+    expect(screen.getByTestId("resource-table")).toBeVisible();
+    expect(
+      screen.queryByText("This environment has no env groups."),
+    ).toBeNull();
   });
 
   it("bulk-moves selected rows while preserving unrelated target members", async () => {
@@ -295,7 +490,7 @@ describe("EnvironmentCard", () => {
       name: "production",
       serviceIds: ["srv-existing"],
     };
-    renderCard({
+    renderSection({
       services: [apiService],
       environment: { ...env, serviceIds: ["srv-api"] },
       allEnvironments: [{ ...env, serviceIds: ["srv-api"] }, production],
@@ -329,7 +524,7 @@ describe("EnvironmentCard", () => {
       name: "production",
       serviceIds: ["srv-existing"],
     };
-    renderCard({
+    renderSection({
       services: [apiService],
       environment: { ...env, serviceIds: ["srv-api"] },
       allEnvironments: [{ ...env, serviceIds: ["srv-api"] }, production],
@@ -377,7 +572,7 @@ describe("EnvironmentCard", () => {
       name: "production",
       serviceIds: ["srv-existing"],
     };
-    renderCard({
+    renderSection({
       services: [apiService],
       environment: { ...env, serviceIds: ["srv-api"] },
       allEnvironments: [{ ...env, serviceIds: ["srv-api"] }, production],
@@ -404,7 +599,7 @@ describe("EnvironmentCard", () => {
       id: "env-2",
       name: "production",
     };
-    renderCard({
+    renderSection({
       services: [apiService],
       databases: [
         {
@@ -485,7 +680,7 @@ describe("EnvironmentCard", () => {
       id: "env-2",
       name: "production",
     };
-    renderCard({
+    renderSection({
       services: [apiService],
       envGroups: [linked],
       environment: source,
@@ -493,6 +688,7 @@ describe("EnvironmentCard", () => {
     });
 
     await user.click(screen.getByRole("button", { name: "select all rows" }));
+    await user.click(screen.getByRole("button", { name: "select all groups" }));
     await user.click(
       screen.getByRole("combobox", {
         name: "Move selected resources to environment",
@@ -540,15 +736,14 @@ describe("EnvironmentCard", () => {
       ...env,
       envGroupIds,
     });
-    const card = (source: EnvironmentView, query = "") => (
-      <EnvironmentCard
+    const card = (source: EnvironmentView) => (
+      <EnvironmentSection
         environment={source}
         services={[]}
         databases={[]}
         keyValues={[]}
         envGroups={envGroups}
         allEnvironments={[source, right]}
-        resourceFilter={{ environmentId: null, query, kind: "all" }}
         servicePending={null}
         onRunServiceAction={vi.fn()}
         onDatabaseDeleted={vi.fn()}
@@ -557,12 +752,15 @@ describe("EnvironmentCard", () => {
     );
     const { rerender } = render(card(left(["evg-first", "evg-second"])));
 
-    await user.click(screen.getByRole("button", { name: "select all rows" }));
+    await user.click(screen.getByRole("button", { name: "select all groups" }));
     expect(screen.getByText("Selected: 2")).toBeInTheDocument();
     // A row hidden only by the search stays selected.
-    rerender(card(left(["evg-first", "evg-second"]), "second"));
+    const search = screen.getByRole("searchbox", {
+      name: "Search resources in staging",
+    });
+    await user.type(search, "second");
     expect(screen.getByText("Selected: 2")).toBeInTheDocument();
-    rerender(card(left(["evg-first", "evg-second"])));
+    await user.clear(search);
 
     await user.click(
       screen.getByRole("combobox", {
@@ -592,7 +790,7 @@ describe("EnvironmentCard", () => {
 
   it("renames via the overflow menu", async () => {
     const user = userEvent.setup();
-    renderCard();
+    renderSection();
 
     await user.click(screen.getByRole("button", { name: "More actions" }));
     await user.click(await screen.findByRole("menuitem", { name: "Rename" }));
@@ -611,7 +809,7 @@ describe("EnvironmentCard", () => {
 
   it("refuses an over-long environment name inline and never renames (w21/036)", async () => {
     const user = userEvent.setup();
-    renderCard();
+    renderSection();
 
     await user.click(screen.getByRole("button", { name: "More actions" }));
     await user.click(await screen.findByRole("menuitem", { name: "Rename" }));
@@ -633,7 +831,7 @@ describe("EnvironmentCard", () => {
 
   it("deletes behind a confirmation", async () => {
     const user = userEvent.setup();
-    renderCard();
+    renderSection();
 
     await user.click(screen.getByRole("button", { name: "More actions" }));
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
@@ -659,7 +857,7 @@ describe("EnvironmentCard", () => {
   // confirmation names them; env groups stay.
   it("names the databases and key value stores a delete removes", async () => {
     const user = userEvent.setup();
-    renderCard({
+    renderSection({
       environment: {
         ...env,
         databaseIds: ["dpg-1"],
@@ -697,7 +895,7 @@ describe("EnvironmentCard", () => {
 
   it("full-replaces protection, network isolation, and inbound IP rules", async () => {
     const user = userEvent.setup();
-    renderCard();
+    renderSection();
 
     await user.click(screen.getByRole("button", { name: "More actions" }));
     await user.click(
@@ -738,7 +936,7 @@ describe("EnvironmentCard", () => {
 
   it("edits and removes existing rules and keeps descriptions optional", async () => {
     const user = userEvent.setup();
-    renderCard({
+    renderSection({
       environment: {
         ...env,
         ipAllowListEntries: [
@@ -783,7 +981,7 @@ describe("EnvironmentCard", () => {
 
   it("warns that the allowlist sees Cloudflare on proxied member domains (w1/m171)", async () => {
     const user = userEvent.setup();
-    renderCard({
+    renderSection({
       environment: {
         ...env,
         ipAllowListEntries: [{ cidrBlock: "10.0.0.0/8", description: "" }],
@@ -810,7 +1008,7 @@ describe("EnvironmentCard", () => {
 
   it("shows no Cloudflare warning when no member domain is proxied", async () => {
     const user = userEvent.setup();
-    renderCard({ environment: { ...env, ipAllowListProxiedDomains: [] } });
+    renderSection({ environment: { ...env, ipAllowListProxiedDomains: [] } });
 
     await user.click(screen.getByRole("button", { name: "More actions" }));
     await user.click(
@@ -823,79 +1021,145 @@ describe("EnvironmentCard", () => {
   });
 });
 
-// At 390px the header's title column was squeezed beside the actions until
-// "production" read one letter per line, and the loading preview drew neither
-// that header nor the five type pills, so the card jumped 64px on load
-// (w4/715). jsdom has no layout: these pin the classes the browser measured.
-describe("EnvironmentCard header and loading preview (w4/715)", () => {
-  const protectedEnv: EnvironmentView = {
-    ...env,
-    name: "production",
-    protectedStatus: "protected",
-  };
-
-  function headerParts(container: HTMLElement) {
-    const row = container.querySelector<HTMLElement>(
-      '[data-slot="card-header"] > div',
+// At 390px a squeezed header stacked "production" one letter per line, and a
+// loading preview without the header's rows made the page jump on load
+// (w4/715). jsdom has no layout: these pin the classes the browser measured,
+// shared by the ready section and its preview (w1/m682).
+describe("EnvironmentSection header and loading preview (w4/715)", () => {
+  function headerRows(container: HTMLElement) {
+    const header = container.querySelector<HTMLElement>(
+      "section > div:first-child, [data-skeleton-item] > div:first-child",
     )!;
-    const [title, actions] = Array.from(row.children) as HTMLElement[];
-    return { row, title, actions };
+    const [titleBlock, row] = Array.from(header.children) as HTMLElement[];
+    const [switcher, actions] = Array.from(row.children) as HTMLElement[];
+    const title = titleBlock.firstElementChild as HTMLElement;
+    return { header, titleBlock, title, row, switcher, actions };
   }
 
-  function filterRows(container: HTMLElement) {
-    const filters = container.querySelector<HTMLElement>(
-      '[data-slot="card-content"] > div',
-    )!;
-    const [pills, search] = Array.from(filters.children) as HTMLElement[];
-    // The kind labels without their counts, which only the ready card knows.
-    const labels = Array.from(pills.children).map((pill) =>
-      (pill.textContent ?? "").replace(/\s*\(.*\)$/, ""),
-    );
-    return { filters, labels, search };
-  }
-
-  it("keeps the name and count whole on one line, with the actions under it in a narrow card", () => {
-    renderCard({ environment: protectedEnv });
-    const heading = screen.getByRole("heading", { name: /^production/ });
+  it("keeps the name whole on one line and lets the actions wrap under the switcher", () => {
+    renderSection({ environment: { ...env, name: "production" } });
+    const heading = screen.getByRole("heading", {
+      level: 2,
+      name: "production",
+    });
     const name = within(heading).getByText("production");
     expect(name).toHaveClass("min-w-0", "truncate");
     expect(name).toHaveAttribute("title", "production");
-    expect(within(heading).getByText("0 resources")).toHaveClass(
-      "shrink-0",
-      "whitespace-nowrap",
-    );
-    expect(heading).toHaveClass("h-[1.375rem]");
-    expect(heading.parentElement).toHaveClass(
-      "flex-col",
-      "@md/card-header:flex-row",
+    expect(heading).toHaveClass("h-7");
+    expect(heading.parentElement?.nextElementSibling).toHaveClass(
+      "flex-wrap",
+      "justify-between",
     );
   });
 
-  it("previews the ready card's header, filter rows and search row", () => {
-    const ready = renderCard({ environment: protectedEnv }).container;
-    const pending = render(<ProjectEnvironmentCardSkeleton />).container;
+  it("previews the ready section's header, switcher row and search row", () => {
+    const ready = renderSection().container;
+    const pending = render(<ProjectEnvironmentSectionSkeleton />).container;
 
-    const readyHeader = headerParts(ready);
-    const pendingHeader = headerParts(pending);
-    expect(pendingHeader.row.className).toBe(readyHeader.row.className);
+    const readyHeader = headerRows(ready);
+    const pendingHeader = headerRows(pending);
+    expect(pendingHeader.header.className).toBe(readyHeader.header.className);
+    expect(pendingHeader.titleBlock.className).toBe(
+      readyHeader.titleBlock.className,
+    );
     expect(pendingHeader.title.className).toBe(readyHeader.title.className);
+    expect(pendingHeader.row.className).toBe(readyHeader.row.className);
     expect(pendingHeader.actions.className).toBe(readyHeader.actions.className);
-    // Manage resources at its ready box, then the kebab.
-    expect(pendingHeader.actions.children).toHaveLength(2);
-    expect(pendingHeader.actions.children[0]).toHaveTextContent(
-      readyHeader.actions.children[0].textContent ?? "",
+    // The three switcher pills, each label at its ready box.
+    const labels = (switcher: HTMLElement) =>
+      Array.from(switcher.children).map((pill) =>
+        (pill.textContent ?? "").replace(/\s*\(.*\)$/, ""),
+      );
+    expect(labels(pendingHeader.switcher)).toEqual(
+      labels(readyHeader.switcher),
     );
-    expect(pendingHeader.actions.children[1]).toHaveClass("size-8");
+    expect(labels(pendingHeader.switcher)).toEqual([
+      "All",
+      "Services",
+      "Env Groups",
+    ]);
+    // New Service and Manage resources at their ready boxes, then the kebab.
+    expect(pendingHeader.actions.children).toHaveLength(3);
+    for (const index of [0, 1]) {
+      expect(pendingHeader.actions.children[index]).toHaveTextContent(
+        readyHeader.actions.children[index].textContent ?? "",
+      );
+    }
+    expect(pendingHeader.actions.children[2]).toHaveClass("size-8");
+    // One full-width search box under the header.
+    const pendingSearch = pendingHeader.header.nextElementSibling!;
+    expect(pendingSearch).toHaveClass("h-9", "w-full");
+    expect(readyHeader.header.nextElementSibling).toContainElement(
+      screen.getAllByRole("searchbox")[0],
+    );
+  });
+});
 
-    const readyFilters = filterRows(ready);
-    const pendingFilters = filterRows(pending);
-    expect(pendingFilters.filters.className).toBe(
-      readyFilters.filters.className,
+// Render remembers each environment's choice in localStorage (w1/m682).
+describe("EnvironmentSection's remembered switcher", () => {
+  beforeEach(() => {
+    vi.stubGlobal("localStorage", memoryStorage());
+  });
+
+  it("keeps each environment's own choice across a reload", async () => {
+    const user = userEvent.setup();
+    const production: EnvironmentView = {
+      ...env,
+      id: "env-2",
+      name: "production",
+    };
+    const page = () => (
+      <>
+        <EnvironmentSection
+          environment={env}
+          services={[]}
+          databases={[]}
+          keyValues={[]}
+          servicePending={null}
+          onRunServiceAction={vi.fn()}
+          onDatabaseDeleted={vi.fn()}
+          onKeyValueDeleted={vi.fn()}
+        />
+        <EnvironmentSection
+          environment={production}
+          services={[]}
+          databases={[]}
+          keyValues={[]}
+          servicePending={null}
+          onRunServiceAction={vi.fn()}
+          onDatabaseDeleted={vi.fn()}
+          onKeyValueDeleted={vi.fn()}
+        />
+      </>
     );
-    expect(pendingFilters.labels).toEqual(readyFilters.labels);
-    expect(pendingFilters.labels).toHaveLength(5);
-    // One full-width search box, and nothing beside it.
-    expect(pendingFilters.search).toHaveClass("h-9", "w-full");
-    expect(pending.querySelector('[class*="sm:w-36"]')).toBeNull();
+    const first = render(page());
+    const staging = () => screen.getByRole("region", { name: "staging" });
+    const prod = () => screen.getByRole("region", { name: "production" });
+    const pressed = (section: HTMLElement) =>
+      within(section)
+        .getAllByRole("button", { pressed: true })
+        .map((button) => button.textContent);
+    await user.click(
+      within(staging()).getByRole("button", { name: /^Env Groups/ }),
+    );
+    await user.click(within(prod()).getByRole("button", { name: /^Services/ }));
+    first.unmount();
+
+    render(page());
+    expect(pressed(staging())).toEqual(["Env Groups (0)"]);
+    expect(pressed(prod())).toEqual(["Services (0)"]);
+  });
+
+  it("falls back to All when the stored value is malformed", () => {
+    for (const raw of ["{not json", '["envgroups"]', '{"env-1":"databases"}']) {
+      localStorage.setItem(SECTION_FILTER_STORAGE_KEY, raw);
+      const view = renderSection();
+      expect(
+        within(screen.getByRole("group", { name: "Resource type" }))
+          .getAllByRole("button", { pressed: true })
+          .map((button) => button.textContent),
+      ).toEqual(["All (0)"]);
+      view.unmount();
+    }
   });
 });

@@ -534,6 +534,47 @@ const jaEnvironments: Record<string, TranslationEntry> = {
     description:
       "Shared create-form Environment select while no Project is chosen (it is disabled until one is)",
   },
+  "environments.protectedDescription": {
+    message: "保護された環境",
+    description:
+      "Line under a protected environment's section heading on the project page (Render's words, w1/m682)",
+  },
+  "environments.emptyTitle": {
+    message: "{name} は空です",
+    description:
+      "Heading of an environment section with no services, Postgres or Key Value; {name} is the environment (Render's words, w1/m682)",
+  },
+  "environments.emptyBodyCreate": {
+    message: "新しいサービスを作成して、環境を始めましょう。",
+    description:
+      "An empty environment's sentence when the workspace has nothing to move into it (Render's words, w1/m682)",
+  },
+  "environments.emptyBodyCreateOrMove": {
+    message:
+      "新しいサービスを作成するか、既存のサービスを移動して、環境を始めましょう。",
+    description:
+      "An empty environment's sentence when the workspace has resources that could move into it (Render's words, w1/m682)",
+  },
+  "environments.createNewService": {
+    message: "新しいサービスを作成",
+    description:
+      "An empty environment's button to the create flow with the project and environment chosen (Render's words, w1/m682)",
+  },
+  "environments.moveExistingServices": {
+    message: "既存のサービスを移動",
+    description:
+      "An empty environment's button that moves existing resources into it (Render's words, w1/m682)",
+  },
+  "environments.noEnvGroups": {
+    message: "この環境には環境グループがありません。",
+    description:
+      "An environment section's Env Groups view when the environment has none (Render's words, w1/m682)",
+  },
+  "environments.unassignedDescription": {
+    message: "このプロジェクトのうち、どの環境にも属していないリソースです。",
+    description:
+      "Line under the project page's Unassigned section, which lists the project's resources in no environment (a bex section; Render requires an environment)",
+  },
 };
 
 export default jaEnvironments;

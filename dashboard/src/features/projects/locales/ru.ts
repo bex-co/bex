@@ -458,6 +458,37 @@ const ruProjects: Record<string, TranslationEntry> = {
     message: "Не удалось убрать «{name}» из его проекта.",
     description: "Toast shown when unassigning a resource fails",
   },
+  "projects.editProjectName": {
+    message: "Изменить название проекта",
+    description:
+      "Screen-reader text of the project page's name link, which opens Project Settings with the Name card editing (Render's words, w1/m682)",
+  },
+  "projects.addEnvironment": {
+    message: "Добавить окружение",
+    description:
+      "The project page header's button and the card under a project's only environment that open the new-environment dialog (Render's words, w1/m682)",
+  },
+  "projects.environmentLimitTitle": {
+    message: "Больше окружений с тарифом {plan}",
+    description:
+      "Title of the paywall Add environment opens at the plan's environments per project; {plan} is the plan name (Render's words, w1/m682)",
+  },
+  "projects.environmentLimitBody": {
+    message:
+      "Повысьте тариф, чтобы получить неограниченное число окружений и все возможности тарифа {plan}.",
+    description:
+      "Body of the environments-per-project paywall; {plan} is the plan name (Render's words, w1/m682)",
+  },
+  "projects.environmentLimitUpgrade": {
+    message: "Повысить тариф",
+    description:
+      "The environments paywall's button to the workspace's change-plan dialog",
+  },
+  "projects.environmentLimitLearnMore": {
+    message: "Подробнее",
+    description:
+      "The environments paywall's link to the projects and environments docs",
+  },
 };
 
 export default ruProjects;

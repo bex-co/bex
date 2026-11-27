@@ -25,7 +25,8 @@ describe("route skeleton manifest (w5/m79)", () => {
     const classified = Object.keys(ROUTE_SKELETON_MANIFEST).sort();
 
     expect(classified).toEqual(generated);
-    // 137: + a sandbox group's Sandboxes, Snapshots, Custom images and
+    // 138: + Render's environment URL on a project's page (w1/m682).
+    // 137 before it: + a sandbox group's Sandboxes, Snapshots, Custom images and
     // Settings pages, and links by a sandbox's or a snapshot's id (w1/m658).
     // 131 before them: + a deploy's Confirm Rollback page under /services and /static
     // (w1/m646).
@@ -36,7 +37,7 @@ describe("route skeleton manifest (w5/m79)", () => {
     // 116 before them: + /build-sources/$buildSourceId detail layout, Builds index,
     // Build Detail, Services, Environment, and Settings routes (w2/m614).
     // 110 before them: + /build-sources and /build-sources/new (w2/m613).
-    expect(classified).toHaveLength(137);
+    expect(classified).toHaveLength(138);
   });
 
   it("points every classification at a real route owner", () => {

@@ -527,6 +527,46 @@ const koEnvironments: Record<string, TranslationEntry> = {
     description:
       "Shared create-form Environment select while no Project is chosen (it is disabled until one is)",
   },
+  "environments.protectedDescription": {
+    message: "보호된 환경",
+    description:
+      "Line under a protected environment's section heading on the project page (Render's words, w1/m682)",
+  },
+  "environments.emptyTitle": {
+    message: "{name} 환경이 비어 있습니다",
+    description:
+      "Heading of an environment section with no services, Postgres or Key Value; {name} is the environment (Render's words, w1/m682)",
+  },
+  "environments.emptyBodyCreate": {
+    message: "새 서비스를 만들어 환경을 시작하세요.",
+    description:
+      "An empty environment's sentence when the workspace has nothing to move into it (Render's words, w1/m682)",
+  },
+  "environments.emptyBodyCreateOrMove": {
+    message: "새 서비스를 만들거나 기존 서비스를 옮겨 환경을 시작하세요.",
+    description:
+      "An empty environment's sentence when the workspace has resources that could move into it (Render's words, w1/m682)",
+  },
+  "environments.createNewService": {
+    message: "새 서비스 만들기",
+    description:
+      "An empty environment's button to the create flow with the project and environment chosen (Render's words, w1/m682)",
+  },
+  "environments.moveExistingServices": {
+    message: "기존 서비스 옮기기",
+    description:
+      "An empty environment's button that moves existing resources into it (Render's words, w1/m682)",
+  },
+  "environments.noEnvGroups": {
+    message: "이 환경에는 환경 그룹이 없습니다.",
+    description:
+      "An environment section's Env Groups view when the environment has none (Render's words, w1/m682)",
+  },
+  "environments.unassignedDescription": {
+    message: "이 프로젝트에서 어떤 환경에도 속하지 않은 리소스입니다.",
+    description:
+      "Line under the project page's Unassigned section, which lists the project's resources in no environment (a bex section; Render requires an environment)",
+  },
 };
 
 export default koEnvironments;

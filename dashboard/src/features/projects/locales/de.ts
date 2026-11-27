@@ -438,6 +438,37 @@ const deProjects: Record<string, TranslationEntry> = {
     message: "„{name}“ konnte nicht aus seinem Projekt entfernt werden.",
     description: "Toast shown when unassigning a resource fails",
   },
+  "projects.editProjectName": {
+    message: "Projektnamen bearbeiten",
+    description:
+      "Screen-reader text of the project page's name link, which opens Project Settings with the Name card editing (Render's words, w1/m682)",
+  },
+  "projects.addEnvironment": {
+    message: "Umgebung hinzufügen",
+    description:
+      "The project page header's button and the card under a project's only environment that open the new-environment dialog (Render's words, w1/m682)",
+  },
+  "projects.environmentLimitTitle": {
+    message: "Mehr Umgebungen mit {plan}",
+    description:
+      "Title of the paywall Add environment opens at the plan's environments per project; {plan} is the plan name (Render's words, w1/m682)",
+  },
+  "projects.environmentLimitBody": {
+    message:
+      "Mach ein Upgrade für unbegrenzte Umgebungen und alle Funktionen des {plan}-Plans.",
+    description:
+      "Body of the environments-per-project paywall; {plan} is the plan name (Render's words, w1/m682)",
+  },
+  "projects.environmentLimitUpgrade": {
+    message: "Upgraden",
+    description:
+      "The environments paywall's button to the workspace's change-plan dialog",
+  },
+  "projects.environmentLimitLearnMore": {
+    message: "Mehr erfahren",
+    description:
+      "The environments paywall's link to the projects and environments docs",
+  },
 };
 
 export default deProjects;

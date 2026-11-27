@@ -2,8 +2,15 @@ import { useRef } from "react";
 import { InvitationFrame } from "@/features/invites/invitation-frame";
 import { EnvGroupsTableHeader } from "@/features/env-groups/components/env-groups-table-header";
 import { WebhooksTableHeader } from "@/features/webhooks/components/webhooks-table-header";
-import { EnvironmentCardHeader } from "@/features/environments/components/environment-card-header";
-import { ProjectResourceFiltersSkeleton } from "@/features/projects/components/project-resource-filters";
+import { EnvironmentSectionHeader } from "@/features/environments/components/environment-section-header";
+import {
+  EnvironmentResourceSearchSkeleton,
+  EnvironmentResourceSwitcherSkeleton,
+} from "@/features/projects/components/project-resource-filters";
+import {
+  PROJECT_HEADER_CLASS,
+  PROJECT_HEADER_ROW_CLASS,
+} from "@/features/projects/lib/project-header-layout";
 import { WebhooksPageHeader } from "@/features/webhooks/components/webhooks-panel";
 import { ServiceCreateHeader } from "@/features/services/components/service-create-header";
 import {
@@ -1280,93 +1287,71 @@ export function WebhookCreatePageSkeleton() {
 }
 
 /**
- * The project page while its route loads (w4/715): the eyebrow's own 16px
- * line over the 32px name row (44px on a touch layout; the ready header is
- * 48px, or 60px), then the environments section and card at their ready
- * heights.
+ * The project page while its route loads (w4/715, w1/m682): Render's header
+ * (the eyebrow's own 16px line over the name row with + Add environment at
+ * its ready box, under a rule) over one environment section at its ready
+ * rows, the representative count before the project's environments are
+ * known.
  */
 export function ProjectOverviewPageSkeleton() {
   const { t } = useTranslations();
   return (
     <PageScroll>
-      <PendingFrame route="project-overview" className="w-full space-y-6">
-        <Region name="project-header">
+      <PendingFrame route="project-overview" className="w-full space-y-10">
+        <Region name="project-header" className={PROJECT_HEADER_CLASS}>
           <p className="relative w-fit text-xs font-semibold uppercase tracking-wide">
             <ReservedText>{t("projects.eyebrow")}</ReservedText>
           </p>
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className={cn("size-8", TOUCH_TARGET_SIZE)} />
+          <div className={PROJECT_HEADER_ROW_CLASS}>
+            <div className="flex h-7 items-center gap-2">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="size-4" />
+            </div>
+            <ReservedButton
+              variant="outline"
+              size="sm"
+              className={TOUCH_TARGET_HEIGHT}
+            >
+              <Plus />
+              {t("projects.addEnvironment")}
+            </ReservedButton>
           </div>
         </Region>
-        <ProjectEnvironmentsSkeleton />
+        <Region name="environments" className="space-y-16">
+          <ProjectEnvironmentSectionSkeleton />
+        </Region>
       </PendingFrame>
     </PageScroll>
   );
 }
 
 /**
- * The environments section: the 28px heading over the 256px environment
- * picker, and the New Service and New Environment buttons at their ready
- * boxes, so they wrap under the picker where the ready row does (390px).
+ * An environment section while its environment loads (w4/715, w1/m682): the
+ * ready section's own header (`EnvironmentSectionHeader`: the 28px name line,
+ * then the three switcher pills with New Service, Manage resources and the
+ * kebab at their ready boxes, which wrap under the pills where the ready row
+ * does at 390px), the full-width search box, then the selection toolbar and
+ * rows. So the toolbar starts at the same y pending and ready, at 1440px and
+ * at 390px.
  */
-export function ProjectEnvironmentsSkeleton() {
+export function ProjectEnvironmentSectionSkeleton() {
   const { t } = useTranslations();
   return (
-    <Region name="environments" className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-2">
-          <div className="flex h-7 items-center">
-            <Skeleton className="h-5 w-32" />
-          </div>
-          <Skeleton className={cn("h-9 w-64", TOUCH_TARGET_HEIGHT)} />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <ReservedButton
-            variant="default"
-            size="sm"
-            className={TOUCH_TARGET_HEIGHT}
-          >
-            <Plus />
-            {t("projects.newService")}
-          </ReservedButton>
-          <ReservedButton
-            variant="outline"
-            size="sm"
-            className={TOUCH_TARGET_HEIGHT}
-          >
-            <Plus />
-            {t("environments.newButton")}
-          </ReservedButton>
-        </div>
-      </div>
-      <ProjectEnvironmentCardSkeleton />
-    </Region>
-  );
-}
-
-/**
- * An environment card while its environment loads (w4/715): the ready card's
- * own header layout (`EnvironmentCardHeader`: the actions beside the title
- * line, or under it in a narrow card) with Manage resources at its ready box
- * and the kebab, the five type pills over the search box
- * (`ProjectResourceFiltersSkeleton`), then the selection toolbar and rows. So
- * the toolbar starts at the same y pending and ready, at 1440px and at 390px.
- */
-export function ProjectEnvironmentCardSkeleton() {
-  const { t } = useTranslations();
-  return (
-    <Card>
-      <EnvironmentCardHeader
+    <div data-skeleton-item="environment-section" className="space-y-4">
+      <EnvironmentSectionHeader
         titleAs="div"
-        title={
-          <>
-            <Skeleton className="h-4 w-28" />
-            <Skeleton className="h-3 w-16" />
-          </>
-        }
+        title={<Skeleton className="h-5 w-32" />}
+        switcher={<EnvironmentResourceSwitcherSkeleton />}
         actions={
           <>
+            <ReservedButton
+              variant="outline"
+              size="sm"
+              className={TOUCH_TARGET_HEIGHT}
+            >
+              <Plus />
+              {t("projects.newService")}
+            </ReservedButton>
             <ReservedButton
               variant="outline"
               size="sm"
@@ -1379,14 +1364,12 @@ export function ProjectEnvironmentCardSkeleton() {
           </>
         }
       />
-      <CardContent className="space-y-4">
-        <ProjectResourceFiltersSkeleton />
-        <div className="space-y-3">
-          <SelectionToolbarSkeleton touch />
-          <TableRowsSkeleton rows={3} columns={5} />
-        </div>
-      </CardContent>
-    </Card>
+      <EnvironmentResourceSearchSkeleton />
+      <div className="space-y-3">
+        <SelectionToolbarSkeleton touch />
+        <TableRowsSkeleton rows={3} columns={5} />
+      </div>
+    </div>
   );
 }
 

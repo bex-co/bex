@@ -842,7 +842,13 @@ export const ROUTE_SKELETON_MANIFEST = {
   },
   "/project/$projectId/": {
     kind: "render",
-    owner: "routes/project.$projectId.index.tsx",
+    owner: "routes/project.$projectId._overview.tsx",
+    shape: "project-overview",
+    regions: ["project-header", "environments"],
+  },
+  "/project/$projectId/environment/$environmentId": {
+    kind: "render",
+    owner: "routes/project.$projectId._overview.tsx",
     shape: "project-overview",
     regions: ["project-header", "environments"],
   },

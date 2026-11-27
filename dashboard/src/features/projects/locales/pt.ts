@@ -447,6 +447,37 @@ const ptProjects: Record<string, TranslationEntry> = {
     message: "Falha ao remover “{name}” do projeto.",
     description: "Toast shown when unassigning a resource fails",
   },
+  "projects.editProjectName": {
+    message: "Editar nome do projeto",
+    description:
+      "Screen-reader text of the project page's name link, which opens Project Settings with the Name card editing (Render's words, w1/m682)",
+  },
+  "projects.addEnvironment": {
+    message: "Adicionar ambiente",
+    description:
+      "The project page header's button and the card under a project's only environment that open the new-environment dialog (Render's words, w1/m682)",
+  },
+  "projects.environmentLimitTitle": {
+    message: "Tenha mais ambientes com o {plan}",
+    description:
+      "Title of the paywall Add environment opens at the plan's environments per project; {plan} is the plan name (Render's words, w1/m682)",
+  },
+  "projects.environmentLimitBody": {
+    message:
+      "Faça upgrade para ter ambientes ilimitados e todos os recursos do plano {plan}.",
+    description:
+      "Body of the environments-per-project paywall; {plan} is the plan name (Render's words, w1/m682)",
+  },
+  "projects.environmentLimitUpgrade": {
+    message: "Fazer upgrade",
+    description:
+      "The environments paywall's button to the workspace's change-plan dialog",
+  },
+  "projects.environmentLimitLearnMore": {
+    message: "Saiba mais",
+    description:
+      "The environments paywall's link to the projects and environments docs",
+  },
 };
 
 export default ptProjects;

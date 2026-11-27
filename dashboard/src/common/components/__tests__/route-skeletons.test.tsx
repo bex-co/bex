@@ -642,13 +642,17 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     const eyebrow = header.firstElementChild!;
     expect(eyebrow).toHaveClass("text-xs", "uppercase", "tracking-wide");
     expect(eyebrow).toHaveTextContent("Project");
+    // Render's header carries + Add environment (w1/m682).
+    expect(header).toHaveTextContent("Add environment");
 
     const environments = container.querySelector<HTMLElement>(
       '[data-skeleton-region="environments"]',
     )!;
+    // One section: its 28px name line over the switcher row and search.
     expect(environments.querySelector(".h-7 > .h-5")).not.toBeNull();
     expect(environments).toHaveTextContent("New Service");
-    expect(environments).toHaveTextContent("New Environment");
+    expect(environments).toHaveTextContent("Manage resources");
+    expect(environments).toHaveTextContent("Env Groups (0)");
   });
 
   it("uses editor-card geometry for the service environment skeleton", () => {

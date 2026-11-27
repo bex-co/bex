@@ -25,7 +25,8 @@ export interface ProjectBuildSourcesSectionProps {
 
 /**
  * Surfaces Build Sources scoped to `projectId` on the Project Overview page
- * (`project.$projectId.index.tsx`), sharing the workspace Build Sources Apollo
+ * (`features/projects/pages/project-page.tsx`), sharing the workspace Build
+ * Sources Apollo
  * cache so creating a Build Source updates Project Overview immediately.
  */
 export function ProjectBuildSourcesSection({

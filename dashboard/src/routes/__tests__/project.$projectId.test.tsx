@@ -1,5 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -8,7 +14,10 @@ import {
   createRoute,
   createMemoryHistory,
 } from "@tanstack/react-router";
-import { ProjectPage } from "../project.$projectId.index";
+import { Route as OverviewRoute } from "../project.$projectId._overview";
+import { ProjectPage } from "@/features/projects/pages/project-page";
+import { parseLegacyProjectSearch } from "@/features/projects/lib/resource-filter";
+import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import type { ServiceView } from "@/features/services/types";
 import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
@@ -87,9 +96,38 @@ vi.mock("@/features/projects/hooks/use-projects", () => ({
   useProjects: () => projectsState,
 }));
 
-const rename = vi.fn();
-vi.mock("@/features/projects/hooks/use-rename-project", () => ({
-  useRenameProject: () => ({ rename, busy: false }),
+// The header counts the project's environments against the plan (w1/m682).
+const workspaceState = vi.hoisted(() => ({ plan: "hobby" as string }));
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({
+    currentWorkspaceId: "tea-1",
+    currentWorkspace: { id: "tea-1", plan: workspaceState.plan },
+  }),
+}));
+const environmentsState = vi.hoisted(() => ({
+  environments: [] as EnvironmentView[],
+  loading: false,
+}));
+vi.mock("@/features/environments/hooks/use-environments", () => ({
+  useEnvironments: () => ({
+    environments: environmentsState.environments,
+    loading: environmentsState.loading,
+    error: undefined,
+    refetch: vi.fn(),
+  }),
+}));
+vi.mock("@/features/environments/components/new-environment-dialog", () => ({
+  NewEnvironmentDialog: ({ open }: { open: boolean }) =>
+    open ? <div role="dialog" aria-label="New environment" /> : null,
+}));
+const capabilityState = vi.hoisted(() => ({
+  createReason: undefined as string | undefined,
+}));
+vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
+  useCapabilities: () => ({
+    reasonKey: (action: string) =>
+      action === "can_create" ? capabilityState.createReason : undefined,
+  }),
 }));
 
 const buildSourcesState = vi.hoisted(() => ({
@@ -125,13 +163,16 @@ vi.mock("@/features/environments/components/environments-panel", () => ({
   EnvironmentsPanel: ({
     projectRows,
     catalog,
+    focusedId,
   }: {
     projectRows: Array<{ name: string }>;
     catalog?: { failed: string[] };
+    focusedId?: string | null;
   }) => (
     <div
       data-testid="environments-panel"
       data-failed={catalog?.failed.join(",") ?? ""}
+      data-focused={focusedId ?? ""}
     >
       {projectRows.map((row) => row.name).join(",")}
     </div>
@@ -187,7 +228,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   };
 }
 
-function renderProjectPage(projectId = "prj-1") {
+function renderProjectPage(path: string = "/project/prj-1") {
   const rootRoute = createRootRoute();
   const projectRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -201,19 +242,39 @@ function renderProjectPage(projectId = "prj-1") {
         : ({ state: "not-found" } as const);
     },
   });
-  const projectIndexRoute = createRoute({
+  // The real `_overview` layout's search and redirect, over Render's two URLs.
+  const overviewRoute = createRoute({
     getParentRoute: () => projectRoute,
-    path: "/",
+    id: "_overview",
     component: ProjectPage,
+    validateSearch: parseLegacyProjectSearch,
+    beforeLoad: (ctx) =>
+      (OverviewRoute.options.beforeLoad as (c: unknown) => void)(ctx),
+  });
+  const indexRoute = createRoute({
+    getParentRoute: () => overviewRoute,
+    path: "/",
+  });
+  const environmentRoute = createRoute({
+    getParentRoute: () => overviewRoute,
+    path: "environment/$environmentId",
+  });
+  const settingsRoute = createRoute({
+    getParentRoute: () => projectRoute,
+    path: "settings",
+    component: () => <p>settings page</p>,
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([
-      projectRoute.addChildren([projectIndexRoute]),
+      projectRoute.addChildren([
+        overviewRoute.addChildren([indexRoute, environmentRoute]),
+        settingsRoute,
+      ]),
     ]),
-    history: createMemoryHistory({ initialEntries: [`/project/${projectId}`] }),
+    history: createMemoryHistory({ initialEntries: [path] }),
     context: { client: {} as never, session: null },
   });
-  return render(<RouterProvider router={router} />);
+  return { router, ...render(<RouterProvider router={router} />) };
 }
 
 beforeEach(() => {
@@ -232,8 +293,41 @@ beforeEach(() => {
   buildSourcesState.buildSources = [];
   buildSourcesState.loading = false;
   buildSourcesState.error = undefined;
-  rename.mockReset();
+  workspaceState.plan = "hobby";
+  environmentsState.environments = [];
+  environmentsState.loading = false;
+  capabilityState.createReason = undefined;
 });
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+const storefront: ProjectView = {
+  id: "prj-1",
+  name: "storefront",
+  ownerId: "tea-1",
+  serviceIds: [],
+  databaseIds: [],
+  keyValueIds: [],
+};
+
+function environment(id: string, name: string): EnvironmentView {
+  return {
+    id,
+    projectId: "prj-1",
+    name,
+    ownerId: "tea-1",
+    createdAt: null,
+    serviceIds: [],
+    databaseIds: [],
+    keyValueIds: [],
+    envGroupIds: [],
+    protectedStatus: "unprotected",
+    networkIsolationEnabled: false,
+    ipAllowListEntries: [],
+  };
+}
 
 describe("ProjectPage", () => {
   it("renders the project's own resources", async () => {
@@ -284,7 +378,7 @@ describe("ProjectPage", () => {
   });
 
   it("renders nothing for an unknown project id — the layout's redirect home is in flight (w9/m55)", async () => {
-    renderProjectPage("prj-missing");
+    renderProjectPage("/project/prj-missing");
 
     await waitFor(() =>
       expect(
@@ -295,104 +389,165 @@ describe("ProjectPage", () => {
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   });
 
-  it("renames the project via the inline pencil button", async () => {
-    projectsState.projects = [
-      {
-        id: "prj-1",
-        name: "storefront",
-        ownerId: "tea-1",
-        serviceIds: [],
-        databaseIds: [],
-        keyValueIds: [],
-      },
-    ];
-    rename.mockResolvedValue(true);
-    const user = userEvent.setup();
-
+  // Render's header: the name links to Project Settings with its Name card
+  // editing, and there is no rename dialog on the page (w1/m682).
+  it("links the name to Project Settings' Name editor", async () => {
+    projectsState.projects = [storefront];
     renderProjectPage();
 
-    await screen.findByRole("heading", { name: "storefront" });
-    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const heading = await screen.findByRole("heading", {
+      level: 1,
+      name: "storefront",
+    });
+    const link = screen.getByRole("link", {
+      name: "storefront Edit project name",
+    });
+    expect(link).toContainElement(heading);
+    expect(link).toHaveAttribute("href", "/project/prj-1/settings?edit=name");
+    expect(screen.getByText("Project")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+  });
 
-    const dialog = await screen.findByRole("dialog");
-    // By accessible name, not a bare getByRole("textbox"): the field used to
-    // expose only its current value, so a name-based query is what would have
-    // caught w4/134 and is what keeps it caught.
-    const input = within(dialog).getByRole("textbox", { name: "Project name" });
-    await user.clear(input);
-    await user.type(input, "new-name");
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+  it("opens the new-environment dialog below the plan's limit", async () => {
+    projectsState.projects = [storefront];
+    environmentsState.environments = [environment("evm-1", "production")];
+    const user = userEvent.setup();
+    renderProjectPage();
 
-    expect(rename).toHaveBeenCalledWith("prj-1", "new-name");
+    await user.click(
+      await screen.findByRole("button", { name: "Add environment" }),
+    );
+    expect(
+      screen.getByRole("dialog", { name: "New environment" }),
+    ).toBeVisible();
+  });
+
+  it("shows Render's paywall instead at Hobby's two environments", async () => {
+    projectsState.projects = [storefront];
+    environmentsState.environments = [
+      environment("evm-1", "production"),
+      environment("evm-2", "staging"),
+    ];
+    const user = userEvent.setup();
+    renderProjectPage();
+
+    const button = await screen.findByRole("button", {
+      name: /Add environment/,
+    });
+    expect(button).toHaveTextContent("2/2");
+    await user.click(button);
+    const paywall = await screen.findByRole("dialog", {
+      name: "Get more environments with Pro",
+    });
+    expect(paywall).toHaveTextContent(
+      "Upgrade to get unlimited environments and all Pro plan features.",
+    );
+    expect(
+      screen.queryByRole("dialog", { name: "New environment" }),
+    ).toBeNull();
+  });
+
+  it("has no environment limit from Pro up", async () => {
+    workspaceState.plan = "pro";
+    projectsState.projects = [storefront];
+    environmentsState.environments = [
+      environment("evm-1", "production"),
+      environment("evm-2", "staging"),
+    ];
+    const user = userEvent.setup();
+    renderProjectPage();
+
+    const button = await screen.findByRole("button", {
+      name: "Add environment",
+    });
+    expect(button).not.toHaveTextContent("2/2");
+    await user.click(button);
+    expect(
+      screen.getByRole("dialog", { name: "New environment" }),
+    ).toBeVisible();
+  });
+
+  it("disables Add environment with the role's reason", async () => {
+    projectsState.projects = [storefront];
+    capabilityState.createReason = "capabilities.reasonCanCreate";
+    renderProjectPage();
+    expect(
+      await screen.findByRole("button", { name: "Add environment" }),
+    ).toBeDisabled();
   });
 });
 
-// w4/134's second half: Radix points every DialogContent at a description id
-// (@radix-ui/react-dialog 1.1.15, dist/index.mjs:225-228) and warns when that
-// element does not exist, so both rename dialogs logged a missing-description
-// warning on open. They opt out explicitly with aria-describedby={undefined}
-// rather than the warning being suppressed globally or a description invented.
-describe("rename dialog accessibility", () => {
-  it("opens with no missing-description warning and no dangling reference", async () => {
-    projectsState.projects = [
-      {
-        id: "prj-1",
-        name: "storefront",
-        ownerId: "tea-1",
-        serviceIds: [],
-        databaseIds: [],
-        keyValueIds: [],
-      },
+// Render's `/project/<id>/environment/<envId>` (w1/m682).
+describe("ProjectPage environment URL", () => {
+  it("outlines the named section for two seconds, then resets the address on scroll", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    projectsState.projects = [storefront];
+    environmentsState.environments = [
+      environment("evm-1", "production"),
+      environment("evm-2", "staging"),
     ];
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
-    const user = userEvent.setup();
+    const { router } = renderProjectPage("/project/prj-1/environment/evm-2");
 
-    renderProjectPage();
-    await screen.findByRole("heading", { name: "storefront" });
-    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const panel = await screen.findByTestId("environments-panel");
+    expect(panel).toHaveAttribute("data-focused", "evm-2");
+    // A scroll inside the two seconds (the smooth scroll itself) keeps it.
+    const scroller = document.querySelector("[data-page-scroll]")!;
+    fireEvent.scroll(scroller);
+    expect(router.state.location.pathname).toBe(
+      "/project/prj-1/environment/evm-2",
+    );
 
-    const dialog = await screen.findByRole("dialog");
-    expect(dialog).not.toHaveAttribute("aria-describedby");
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(panel).toHaveAttribute("data-focused", "");
+    expect(router.state.location.pathname).toBe(
+      "/project/prj-1/environment/evm-2",
+    );
 
-    const logged = [...warn.mock.calls, ...error.mock.calls]
-      .map((args) => String(args[0]))
-      .join("\n");
-    expect(logged).not.toMatch(/aria-describedby/);
-    expect(logged).not.toMatch(/Missing `Description`/);
-
-    warn.mockRestore();
-    error.mockRestore();
+    fireEvent.scroll(scroller);
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/project/prj-1"),
+    );
+    // The same page: no remount, nothing focused.
+    expect(screen.getByTestId("environments-panel")).toBe(panel);
   });
 
-  // w21/036: the rename field applies the server's label rule before submit.
-  it("refuses an over-long project name inline and never renames", async () => {
-    projectsState.projects = [
-      {
-        id: "prj-1",
-        name: "storefront",
-        ownerId: "tea-1",
-        serviceIds: [],
-        databaseIds: [],
-        keyValueIds: [],
-      },
-    ];
-    const user = userEvent.setup();
-    renderProjectPage();
-
-    await screen.findByRole("heading", { name: "storefront" });
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-    const dialog = await screen.findByRole("dialog");
-    const input = within(dialog).getByRole("textbox", { name: "Project name" });
-    await user.clear(input);
-    await user.click(input);
-    await user.paste("a".repeat(101));
-
-    expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
-    expect(within(dialog).getByRole("alert")).toHaveTextContent(
-      "up to 100 characters",
+  it("lands an unknown environment on the project's own page, with no error", async () => {
+    projectsState.projects = [storefront];
+    environmentsState.environments = [environment("evm-1", "production")];
+    const { router } = renderProjectPage("/project/prj-1/environment/evm-gone");
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/project/prj-1"),
     );
-    await user.type(input, "{Enter}");
-    expect(rename).not.toHaveBeenCalled();
+    expect(screen.getByTestId("environments-panel")).toHaveAttribute(
+      "data-focused",
+      "",
+    );
+    expect(
+      screen.getByRole("heading", { level: 1, name: "storefront" }),
+    ).toBeVisible();
+  });
+
+  it("waits for the environments before judging the id", async () => {
+    projectsState.projects = [storefront];
+    environmentsState.loading = true;
+    const { router } = renderProjectPage("/project/prj-1/environment/evm-2");
+    await screen.findByTestId("environments-panel");
+    expect(router.state.location.pathname).toBe(
+      "/project/prj-1/environment/evm-2",
+    );
+  });
+
+  it.each([
+    ["?env=evm-2&q=api&kind=databases", "/project/prj-1/environment/evm-2", ""],
+    ["?env=unassigned", "/project/prj-1/environment/unassigned", ""],
+    ["?q=api&kind=services", "/project/prj-1", ""],
+  ])("redirects an old %s link once", async (search, pathname, searchStr) => {
+    projectsState.projects = [storefront];
+    environmentsState.environments = [environment("evm-2", "staging")];
+    const { router } = renderProjectPage(`/project/prj-1${search}`);
+    await waitFor(() => expect(router.state.location.pathname).toBe(pathname));
+    expect(router.state.location.searchStr).toBe(searchStr);
   });
 });

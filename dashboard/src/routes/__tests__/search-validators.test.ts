@@ -17,6 +17,8 @@ import { Route as ServiceShellRoute } from "../services.$serviceId.shell";
 import { Route as ProjectApplicationLogsRoute } from "../project.$projectId.observability.logs.application";
 import { Route as ProjectRequestLogsRoute } from "../project.$projectId.observability.logs.request";
 import { Route as ProjectMetricsRoute } from "../project.$projectId.observability.metrics";
+import { Route as ProjectOverviewRoute } from "../project.$projectId._overview";
+import { Route as ProjectSettingsRoute } from "../project.$projectId.settings";
 import { Route as SandboxGroupIndexRoute } from "../sandbox-groups_.$sandboxGroupId.index";
 import { Route as SandboxGroupImagesRoute } from "../sandbox-groups_.$sandboxGroupId.images";
 import { Route as SandboxGroupSnapshotsRoute } from "../sandbox-groups_.$sandboxGroupId.snapshots";
@@ -172,6 +174,25 @@ describe.each([
     WorkspaceSettingsRoute,
     { plan: "upgrade" },
     { plan: undefined },
+  ],
+  // The project page's pre-w1/m682 keys, read only to redirect them.
+  [
+    "/project/$projectId",
+    ProjectOverviewRoute,
+    { env: "env-davm6imde41s73canq0g", q: "", kind: 3, other: "x" },
+    { env: "evm-davm6imde41s73canq0g", q: undefined, kind: undefined },
+  ],
+  [
+    "/project/$projectId/settings",
+    ProjectSettingsRoute,
+    { edit: "name" },
+    { edit: "name" },
+  ],
+  [
+    "/project/$projectId/settings",
+    ProjectSettingsRoute,
+    { edit: "delete" },
+    { edit: undefined },
   ],
   [
     "/services/$serviceId/metrics",

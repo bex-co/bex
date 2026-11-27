@@ -426,6 +426,36 @@ const zhProjects: Record<string, TranslationEntry> = {
     message: "从项目中移除「{name}」失败。",
     description: "Toast shown when unassigning a resource fails",
   },
+  "projects.editProjectName": {
+    message: "编辑项目名称",
+    description:
+      "Screen-reader text of the project page's name link, which opens Project Settings with the Name card editing (Render's words, w1/m682)",
+  },
+  "projects.addEnvironment": {
+    message: "添加环境",
+    description:
+      "The project page header's button and the card under a project's only environment that open the new-environment dialog (Render's words, w1/m682)",
+  },
+  "projects.environmentLimitTitle": {
+    message: "升级到 {plan}，获得更多环境",
+    description:
+      "Title of the paywall Add environment opens at the plan's environments per project; {plan} is the plan name (Render's words, w1/m682)",
+  },
+  "projects.environmentLimitBody": {
+    message: "升级即可使用无限个环境，以及 {plan} 套餐的全部功能。",
+    description:
+      "Body of the environments-per-project paywall; {plan} is the plan name (Render's words, w1/m682)",
+  },
+  "projects.environmentLimitUpgrade": {
+    message: "升级",
+    description:
+      "The environments paywall's button to the workspace's change-plan dialog",
+  },
+  "projects.environmentLimitLearnMore": {
+    message: "了解更多",
+    description:
+      "The environments paywall's link to the projects and environments docs",
+  },
 };
 
 export default zhProjects;

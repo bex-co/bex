@@ -25,12 +25,14 @@ export interface NewEnvironmentDialogProps {
   projectId: string;
   /**
    * Controlled variant: when both are provided, the dialog's open state is
-   * driven externally (the Environments panel's own "New environment" button)
+   * driven externally (the project page's Add environment button and card)
    * and it renders no trigger of its own. Omitted, it manages its own state
    * behind its default trigger button — mirrors NewProjectDialog's shape.
    */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** The new environment's id, once it is listed (the page outlines it). */
+  onCreated?: (id: string) => void;
 }
 
 /**
@@ -43,6 +45,7 @@ export function NewEnvironmentDialog({
   projectId,
   open: openProp,
   onOpenChange: onOpenChangeProp,
+  onCreated,
 }: NewEnvironmentDialogProps) {
   const { t } = useTranslations();
   const { create, busy } = useCreateEnvironment(projectId);
@@ -64,7 +67,9 @@ export function NewEnvironmentDialog({
     // The create hook resolves only after a post-save Environments read, so
     // the new environment is listed once this closes — no callback needed.
     const id = await create(name.trim());
-    if (id) handleOpenChange(false);
+    if (!id) return;
+    handleOpenChange(false);
+    onCreated?.(id);
   }
 
   return (

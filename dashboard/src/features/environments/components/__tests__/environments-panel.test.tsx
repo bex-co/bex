@@ -1,23 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EnvironmentsPanel } from "@/features/environments/components/environments-panel";
+import { namesSection } from "@/features/environments/lib/sections";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
-import { parseProjectResourceSearch } from "@/features/projects/lib/resource-filter";
-
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    children,
-    search,
-  }: {
-    children: React.ReactNode;
-    search?: Record<string, string>;
-  }) => (
-    <a href="#new" data-search={JSON.stringify(search)}>
-      {children}
-    </a>
-  ),
-}));
+import type { ResourceRow } from "@/features/projects/types";
 
 const environmentsState: {
   environments: EnvironmentView[];
@@ -40,16 +27,20 @@ vi.mock("@/features/sandbox-groups/hooks/use-sandbox-groups", () => ({
   useSandboxGroups: () => ({ groups: [], loading: false, error: undefined }),
 }));
 
-// Stub the children so this test targets the panel's own states + wiring; the
-// card and dialog have their own tests and reach Apollo directly.
-vi.mock("@/features/environments/components/environment-card", () => ({
-  EnvironmentCard: ({ environment }: { environment: EnvironmentView }) => (
-    <div data-testid="env-card">{environment.name}</div>
+// Stub the sections so this test targets the panel's own stacking and states;
+// a section has its own tests and reaches Apollo directly.
+vi.mock("@/features/environments/components/environment-section", () => ({
+  EnvironmentSection: ({
+    environment,
+    focused,
+  }: {
+    environment: EnvironmentView;
+    focused?: boolean;
+  }) => (
+    <div data-testid="env-section" data-focused={focused ? "" : undefined}>
+      {environment.name}
+    </div>
   ),
-}));
-vi.mock("@/features/environments/components/new-environment-dialog", () => ({
-  NewEnvironmentDialog: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="new-env-dialog" /> : null,
 }));
 vi.mock("@/features/projects/components/resource-table", () => ({
   ResourceTable: ({ rows }: { rows: Array<{ name: string }> }) => (
@@ -58,6 +49,40 @@ vi.mock("@/features/projects/components/resource-table", () => ({
     </div>
   ),
 }));
+
+const empty: EnvironmentView = {
+  id: "evm-1",
+  projectId: "prj-1",
+  name: "staging",
+  ownerId: "tea-1",
+  createdAt: null,
+  serviceIds: [],
+  databaseIds: [],
+  keyValueIds: [],
+  envGroupIds: [],
+  protectedStatus: "unprotected",
+  networkIsolationEnabled: false,
+  ipAllowListEntries: [],
+};
+const environment = (id: string, name: string, extra = {}) => ({
+  ...empty,
+  id,
+  name,
+  ...extra,
+});
+
+// An environment id's 20-character xid suffix.
+const XID = "davm6imde41s73canq0g";
+
+const projectOnly: ResourceRow = {
+  kind: "service",
+  id: "srv-unassigned",
+  name: "Unassigned API",
+  createdAt: null,
+  updatedAt: null,
+  runtime: null,
+  region: null,
+};
 
 function renderPanel(
   props: Partial<React.ComponentProps<typeof EnvironmentsPanel>> = {},
@@ -77,6 +102,9 @@ function renderPanel(
   );
 }
 
+const sectionNames = () =>
+  screen.getAllByTestId("env-section").map((section) => section.textContent);
+
 beforeEach(() => {
   environmentsState.environments = [];
   environmentsState.loading = false;
@@ -84,140 +112,127 @@ beforeEach(() => {
 });
 
 describe("EnvironmentsPanel", () => {
-  it.each([
-    {
-      label: "keeps an explicit empty environment",
-      requestedId: "env-2",
-      memberKind: null,
-      expectedId: "env-2",
-    },
-    {
-      label: "uses Unassigned for a missing selection and empty environments",
-      requestedId: "env-deleted",
-      memberKind: null,
-      expectedId: "unassigned",
-    },
-    {
-      label: "uses the first environment when a service is assigned elsewhere",
-      requestedId: null,
-      memberKind: "serviceIds",
-      expectedId: "env-1",
-    },
-    {
-      label: "uses the first environment when a database is assigned elsewhere",
-      requestedId: null,
-      memberKind: "databaseIds",
-      expectedId: "env-1",
-    },
-    {
-      label:
-        "uses the first environment when a key value is assigned elsewhere",
-      requestedId: null,
-      memberKind: "keyValueIds",
-      expectedId: "env-1",
-    },
-    {
-      label: "does not count environment groups as running resources",
-      requestedId: null,
-      memberKind: "envGroupIds",
-      expectedId: "unassigned",
-    },
-    {
-      label: "honors explicit Unassigned with populated environments",
-      requestedId: "unassigned",
-      memberKind: "serviceIds",
-      expectedId: "unassigned",
-    },
-  ] as const)("$label", ({ requestedId, memberKind, expectedId }) => {
-    const empty: EnvironmentView = {
-      id: "env-1",
-      projectId: "prj-1",
-      name: "staging",
-      ownerId: "tea-1",
-      createdAt: null,
-      serviceIds: [],
-      databaseIds: [],
-      keyValueIds: [],
-      envGroupIds: [],
-      protectedStatus: "unprotected",
-      networkIsolationEnabled: false,
-      ipAllowListEntries: [],
-    };
+  // Render's project page stacks every environment (w1/m682).
+  it("stacks every environment in the project's order", () => {
     environmentsState.environments = [
-      empty,
-      {
-        ...empty,
-        id: "env-2",
-        name: "production",
-        ...(memberKind ? { [memberKind]: ["assigned-resource"] } : {}),
-      },
+      environment("evm-1", "production"),
+      environment("evm-2", "staging"),
+      environment("evm-3", "preview"),
     ];
-    const onResourceFilterChange = vi.fn();
-    renderPanel({
-      projectRows: [
-        {
-          kind: "service",
-          id: "srv-unassigned",
-          name: "Unassigned API",
-          createdAt: null,
-          updatedAt: null,
-          runtime: null,
-          region: null,
-        },
-      ],
-      resourceFilter: {
-        environmentId: requestedId,
-        query: "api",
-        kind: "services",
-      },
-      onResourceFilterChange,
-    });
+    renderPanel();
+    expect(sectionNames()).toEqual(["production", "staging", "preview"]);
+    // More than one environment: no Add environment card.
+    expect(
+      screen.queryByRole("button", { name: "Add environment" }),
+    ).toBeNull();
+  });
 
-    if (expectedId === "unassigned") {
-      expect(
-        screen.getByRole("heading", { name: "Unassigned" }),
-      ).toBeInTheDocument();
-      // The Unassigned caller exposes the URL's kind as pressed (w4/333).
-      expect(
-        within(screen.getByRole("group", { name: "Resource type" })).getByRole(
-          "button",
-          { name: /^Services/ },
-        ),
-      ).toHaveAttribute("aria-pressed", "true");
-    } else {
-      expect(screen.getByTestId("env-card")).toHaveTextContent(
-        expectedId === "env-1" ? "staging" : "production",
-      );
-    }
-    if (requestedId === expectedId) {
-      expect(onResourceFilterChange).not.toHaveBeenCalled();
-    } else {
-      expect(onResourceFilterChange).toHaveBeenCalledWith({
-        environmentId: expectedId,
-        query: "api",
-        kind: "services",
-      });
-    }
+  it("shows Render's Add environment card under a project's only environment", async () => {
+    const user = userEvent.setup();
+    const onAddEnvironment = vi.fn();
+    environmentsState.environments = [environment("evm-1", "production")];
+    renderPanel({ onAddEnvironment });
+    await user.click(screen.getByRole("button", { name: "Add environment" }));
+    expect(onAddEnvironment).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables the Add environment card with the role's reason", () => {
+    environmentsState.environments = [environment("evm-1", "production")];
+    renderPanel({ addEnvironmentReason: "Viewers can't create resources." });
+    expect(
+      screen.getByRole("button", { name: "Add environment" }),
+    ).toBeDisabled();
+  });
+
+  it("keeps project-only resources in an Unassigned section after the environments", () => {
+    environmentsState.environments = [
+      environment("evm-1", "production", { serviceIds: ["srv-in"] }),
+      environment("evm-2", "staging"),
+    ];
+    renderPanel({ projectRows: [projectOnly] });
+    const unassigned = screen.getByRole("region", { name: "Unassigned" });
+    expect(within(unassigned).getByTestId("resource-table")).toHaveTextContent(
+      "Unassigned API",
+    );
+    // After the last environment, in document order.
+    const last = screen.getAllByTestId("env-section").at(-1)!;
+    expect(
+      last.compareDocumentPosition(unassigned) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("draws no Unassigned section when every project resource has an environment", () => {
+    environmentsState.environments = [
+      environment("evm-1", "production", { serviceIds: ["srv-unassigned"] }),
+      environment("evm-2", "staging"),
+    ];
+    renderPanel({ projectRows: [projectOnly] });
+    expect(screen.queryByRole("region", { name: "Unassigned" })).toBeNull();
+  });
+
+  it("keeps Unassigned to say a failed list may hide its rows (w4/m227)", () => {
+    environmentsState.environments = [
+      environment("evm-1", "production"),
+      environment("evm-2", "staging"),
+    ];
+    renderPanel({
+      catalog: {
+        pending: [],
+        failed: ["services"],
+        retry: async () => undefined,
+      },
+    });
+    const unassigned = screen.getByRole("region", { name: "Unassigned" });
+    expect(within(unassigned).getByRole("alert")).toBeVisible();
+  });
+
+  it("outlines the section the environment URL names, whichever id spelling it uses", () => {
+    environmentsState.environments = [
+      environment("evm-1", "production"),
+      environment(`evm-${XID}`, "staging"),
+    ];
+    // A pre-w2/m165 link spells the same environment `env-`.
+    const { rerender } = renderPanel({ focusedId: `env-${XID}` });
+    const focused = () =>
+      screen
+        .getAllByTestId("env-section")
+        .filter((section) => section.hasAttribute("data-focused"))
+        .map((section) => section.textContent);
+    expect(focused()).toEqual(["staging"]);
+
+    rerender(
+      <EnvironmentsPanel
+        projectId="prj-1"
+        services={[]}
+        databases={[]}
+        keyValues={[]}
+        servicePending={null}
+        onRunServiceAction={vi.fn()}
+        onDatabaseDeleted={vi.fn()}
+        onKeyValueDeleted={vi.fn()}
+        focusedId="evm-unknown"
+      />,
+    );
+    expect(focused()).toEqual([]);
   });
 
   it("shows the empty state when the project has no environments", () => {
     renderPanel();
     expect(screen.getByText(/No environments yet/)).toBeInTheDocument();
-    expect(screen.queryByTestId("env-card")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("env-section")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add environment" }),
+    ).toBeVisible();
   });
 
-  // Without the picker's box the card rose 40px (44px at 390) while the
-  // environments loaded, then dropped when the picker appeared (w4/715).
-  it("reserves the environment picker's box while environments load", () => {
+  it("previews a section while environments load", () => {
     environmentsState.loading = true;
-    renderPanel();
-    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
-    const heading = screen.getByRole("heading", { name: "Environments" });
-    const titleColumn = heading.parentElement!.parentElement!;
-    expect(titleColumn.querySelector('[data-slot="skeleton"]')).toHaveClass(
-      "h-9",
-      "w-64",
-    );
+    const { container } = renderPanel();
+    expect(
+      container.querySelector('[data-skeleton-item="environment-section"]'),
+    ).not.toBeNull();
+    expect(screen.queryByTestId("env-section")).toBeNull();
   });
 
   it("shows an error state when the query fails", () => {
@@ -228,370 +243,26 @@ describe("EnvironmentsPanel", () => {
     ).toBeInTheDocument();
   });
 
-  // w1/m153: a refresh that fails over environments already on screen keeps the
-  // card (and whatever dialog or draft it holds) and says so inline.
-  it("keeps the card mounted and shows the error inline when a refresh fails over cached data", () => {
-    environmentsState.environments = [
-      {
-        id: "env-1",
-        projectId: "prj-1",
-        name: "staging",
-        ownerId: "tea-1",
-        createdAt: null,
-        serviceIds: [],
-        databaseIds: [],
-        keyValueIds: [],
-        envGroupIds: [],
-        protectedStatus: "unprotected",
-        networkIsolationEnabled: false,
-        ipAllowListEntries: [],
-      },
-    ];
+  // w1/m153: a refresh that fails over environments already on screen keeps
+  // the sections (and whatever dialog or draft they hold) and says so inline.
+  it("keeps the sections mounted and shows the error inline when a refresh fails over cached data", () => {
+    environmentsState.environments = [environment("evm-1", "staging")];
     environmentsState.error = new Error("poll failed");
     renderPanel();
 
-    expect(screen.getByTestId("env-card")).toHaveTextContent("staging");
+    expect(screen.getByTestId("env-section")).toHaveTextContent("staging");
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Couldn't refresh environments. Showing the last loaded data.",
     );
   });
+});
 
-  it("renders only the selected environment", () => {
-    environmentsState.environments = [
-      {
-        id: "env-1",
-        projectId: "prj-1",
-        name: "staging",
-        ownerId: "tea-1",
-        createdAt: null,
-        serviceIds: [],
-        databaseIds: [],
-        keyValueIds: [],
-        envGroupIds: [],
-        protectedStatus: "unprotected",
-        networkIsolationEnabled: false,
-        ipAllowListEntries: [],
-      },
-      {
-        id: "env-2",
-        projectId: "prj-1",
-        name: "production",
-        ownerId: "tea-1",
-        createdAt: null,
-        serviceIds: ["api"],
-        databaseIds: [],
-        keyValueIds: [],
-        envGroupIds: [],
-        protectedStatus: "unprotected",
-        networkIsolationEnabled: false,
-        ipAllowListEntries: [],
-      },
-    ];
-    renderPanel();
-    const cards = screen.getAllByTestId("env-card");
-    expect(cards.map((c) => c.textContent)).toEqual(["staging"]);
-  });
-
-  it("carries the selected project and environment into New Service", () => {
-    environmentsState.environments = [
-      {
-        id: "env-production",
-        projectId: "prj-1",
-        name: "production",
-        ownerId: "tea-1",
-        createdAt: null,
-        serviceIds: [],
-        databaseIds: [],
-        keyValueIds: [],
-        envGroupIds: [],
-        protectedStatus: "unprotected",
-        networkIsolationEnabled: false,
-        ipAllowListEntries: [],
-      },
-    ];
-    renderPanel({
-      resourceFilter: {
-        environmentId: "env-production",
-        query: "",
-        kind: "all",
-      },
-    });
-
-    expect(screen.getByRole("link", { name: "New Service" })).toHaveAttribute(
-      "data-search",
-      JSON.stringify({
-        projectId: "prj-1",
-        environmentId: "env-production",
-      }),
-    );
-  });
-
-  it("keeps a legacy project link on its environment and creates canonical links", () => {
-    const empty: EnvironmentView = {
-      id: "evm-davm6imde41s73canq00",
-      projectId: "prj-1",
-      name: "staging",
-      ownerId: "tea-1",
-      createdAt: null,
-      serviceIds: [],
-      databaseIds: [],
-      keyValueIds: [],
-      envGroupIds: [],
-      protectedStatus: "unprotected",
-      networkIsolationEnabled: false,
-      ipAllowListEntries: [],
-    };
-    environmentsState.environments = [
-      empty,
-      { ...empty, id: "evm-davm6imde41s73canq0g", name: "production" },
-    ];
-    const search = parseProjectResourceSearch({
-      env: "env-davm6imde41s73canq0g",
-    });
-    const onResourceFilterChange = vi.fn();
-    renderPanel({
-      resourceFilter: {
-        environmentId: search.env ?? null,
-        query: "",
-        kind: "all",
-      },
-      onResourceFilterChange,
-    });
-
-    expect(screen.getByTestId("env-card")).toHaveTextContent("production");
-    expect(onResourceFilterChange).not.toHaveBeenCalled();
-    expect(screen.getByRole("link", { name: "New Service" })).toHaveAttribute(
-      "data-search",
-      JSON.stringify({
-        projectId: "prj-1",
-        environmentId: "evm-davm6imde41s73canq0g",
-      }),
-    );
-  });
-
-  it("opens the new-environment dialog from the header button", async () => {
-    const user = userEvent.setup();
-    renderPanel();
-    expect(screen.queryByTestId("new-env-dialog")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /New Environment/ }));
-    expect(screen.getByTestId("new-env-dialog")).toBeInTheDocument();
-  });
-
-  it("renders the URL-selected Environment and falls back an unknown id", async () => {
-    environmentsState.environments = [
-      {
-        id: "env-1",
-        projectId: "prj-1",
-        name: "staging",
-        ownerId: "tea-1",
-        createdAt: null,
-        serviceIds: [],
-        databaseIds: [],
-        keyValueIds: [],
-        envGroupIds: [],
-        protectedStatus: "unprotected",
-        networkIsolationEnabled: false,
-        ipAllowListEntries: [],
-      },
-      {
-        id: "env-2",
-        projectId: "prj-1",
-        name: "production",
-        ownerId: "tea-1",
-        createdAt: null,
-        serviceIds: [],
-        databaseIds: [],
-        keyValueIds: [],
-        envGroupIds: [],
-        protectedStatus: "unprotected",
-        networkIsolationEnabled: false,
-        ipAllowListEntries: [],
-      },
-    ];
-    const { unmount } = renderPanel({
-      resourceFilter: { environmentId: "env-2", query: "", kind: "all" },
-    });
-    expect(screen.getByTestId("env-card")).toHaveTextContent("production");
-    unmount();
-
-    const onResourceFilterChange = vi.fn();
-    renderPanel({
-      resourceFilter: {
-        environmentId: "env-deleted",
-        query: "api",
-        kind: "services",
-      },
-      onResourceFilterChange,
-    });
-    expect(screen.getByTestId("env-card")).toHaveTextContent("staging");
-    await waitFor(() =>
-      expect(onResourceFilterChange).toHaveBeenCalledWith({
-        environmentId: "env-1",
-        query: "api",
-        kind: "services",
-      }),
-    );
-  });
-
-  it("lands on Unassigned when every Environment is empty (w1/m159)", () => {
-    // A row-level "Move to project" joins the Project without an Environment.
-    // Defaulting to environments[0] then opened an empty page while the moved
-    // resource sat under Unassigned, seconds after a success toast (w1/086).
-    environmentsState.environments = [
-      {
-        id: "env-1",
-        projectId: "prj-1",
-        name: "qa-e4",
-        ownerId: "tea-1",
-        createdAt: null,
-        serviceIds: [],
-        databaseIds: [],
-        keyValueIds: [],
-        envGroupIds: [],
-        protectedStatus: "unprotected",
-        networkIsolationEnabled: false,
-        ipAllowListEntries: [],
-      },
-    ];
-    renderPanel({
-      projectRows: [
-        {
-          kind: "keyvalue",
-          id: "red-moved",
-          name: "qa-20260914-kv4",
-          status: "available",
-          href: "/keyvalue/red-moved",
-        } as never,
-      ],
-    });
-
-    expect(
-      screen.getByRole("heading", { name: "Unassigned" }),
-    ).toBeInTheDocument();
-    expect(screen.getByTestId("resource-table").textContent).toContain(
-      "qa-20260914-kv4",
-    );
-  });
-
-  it("does not pin the first Environment into the URL before resources load (w1/m159)", () => {
-    // Cold load of /project/<id>: Environments resolve before the resource
-    // lists. Canonicalizing in that gap wrote env-1 into the URL, which then
-    // stuck, so a moved resource stayed off screen on every fresh load.
-    environmentsState.environments = [
-      {
-        id: "env-1",
-        projectId: "prj-1",
-        name: "qa-e1",
-        ownerId: "tea-1",
-        createdAt: null,
-        serviceIds: [],
-        databaseIds: [],
-        keyValueIds: [],
-        envGroupIds: [],
-        protectedStatus: "unprotected",
-        networkIsolationEnabled: false,
-        ipAllowListEntries: [],
-      },
-    ];
-    const onResourceFilterChange = vi.fn();
-    const props = {
-      projectId: "prj-1",
-      services: [],
-      databases: [],
-      keyValues: [],
-      servicePending: null,
-      onRunServiceAction: vi.fn(),
-      onDatabaseDeleted: vi.fn(),
-      onKeyValueDeleted: vi.fn(),
-      onResourceFilterChange,
-    };
-    const { rerender } = render(
-      <EnvironmentsPanel {...props} projectRows={[]} resourcesLoading />,
-    );
-    expect(onResourceFilterChange).not.toHaveBeenCalled();
-
-    rerender(
-      <EnvironmentsPanel
-        {...props}
-        resourcesLoading={false}
-        projectRows={[
-          {
-            kind: "keyvalue",
-            id: "red-moved",
-            name: "qa-20260930-m159kv",
-            status: "available",
-            href: "/keyvalue/red-moved",
-          } as never,
-        ]}
-      />,
-    );
-    expect(onResourceFilterChange).toHaveBeenCalledTimes(1);
-    expect(onResourceFilterChange).toHaveBeenCalledWith({
-      environmentId: "unassigned",
-      query: "",
-      kind: "all",
-    });
-  });
-
-  it("keeps project-only resources reachable through Unassigned", () => {
-    environmentsState.environments = [];
-    renderPanel({
-      projectRows: [
-        {
-          kind: "service",
-          id: "srv-legacy",
-          name: "Legacy API",
-          createdAt: null,
-          updatedAt: null,
-          runtime: null,
-          region: null,
-        },
-      ],
-      resourceFilter: {
-        environmentId: "unassigned",
-        query: "",
-        kind: "all",
-      },
-    });
-
-    expect(
-      screen.getByRole("heading", { name: "Unassigned" }),
-    ).toBeInTheDocument();
-    expect(screen.getByTestId("resource-table")).toHaveTextContent(
-      "Legacy API",
-    );
-  });
-
-  it("does not canonicalize an explicit Unassigned URL while rows are empty", async () => {
-    environmentsState.environments = [
-      {
-        id: "env-1",
-        projectId: "prj-1",
-        name: "production",
-        ownerId: "tea-1",
-        createdAt: null,
-        serviceIds: [],
-        databaseIds: [],
-        keyValueIds: [],
-        envGroupIds: [],
-        protectedStatus: "unprotected",
-        networkIsolationEnabled: false,
-        ipAllowListEntries: [],
-      },
-    ];
-    const onResourceFilterChange = vi.fn();
-    renderPanel({
-      resourceFilter: {
-        environmentId: "unassigned",
-        query: "",
-        kind: "all",
-      },
-      onResourceFilterChange,
-    });
-
-    expect(
-      screen.getByRole("heading", { name: "Unassigned" }),
-    ).toBeInTheDocument();
-    await waitFor(() => expect(onResourceFilterChange).not.toHaveBeenCalled());
+describe("namesSection", () => {
+  it("knows the project's environments, in either id spelling, and Unassigned", () => {
+    const environments = [{ id: "evm-1" }, { id: `evm-${XID}` }];
+    expect(namesSection(environments, `evm-${XID}`)).toBe(true);
+    expect(namesSection(environments, `env-${XID}`)).toBe(true);
+    expect(namesSection(environments, "unassigned")).toBe(true);
+    expect(namesSection(environments, "evm-3")).toBe(false);
   });
 });

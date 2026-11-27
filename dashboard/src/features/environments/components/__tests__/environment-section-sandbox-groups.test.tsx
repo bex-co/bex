@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { EnvironmentCard } from "@/features/environments/components/environment-card";
+import { EnvironmentSection } from "@/features/environments/components/environment-section";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import type { SandboxGroupItem } from "@/features/sandbox-groups/hooks/use-sandbox-groups";
 import type { ServiceView } from "@/features/services/types";
@@ -142,7 +142,7 @@ const groups = [
 
 function renderCard(sandboxGroups?: SandboxGroupItem[]) {
   return render(
-    <EnvironmentCard
+    <EnvironmentSection
       environment={staging}
       allEnvironments={[staging, production]}
       services={[api]}
@@ -187,14 +187,17 @@ beforeEach(() => {
   dialogGroups.current = null;
 });
 
-describe("EnvironmentCard sandbox groups", () => {
+describe("EnvironmentSection sandbox groups", () => {
   it("lists only this environment's groups, after its services, in its count", () => {
     renderCard(groups);
 
     expect(bodyRowNames()).toEqual(["api", "agents", "batch"]);
-    expect(screen.getByText("3 resources")).toBeInTheDocument();
-    // "All" counts them; no type pill of their own (the skeleton's five stay).
+    // "All" counts them, and so does Render's Services category (w1/m682);
+    // they have no category of their own.
     expect(screen.getByRole("button", { name: "All (3)" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Services (3)" }),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Sandbox Groups/ }),
     ).not.toBeInTheDocument();
@@ -211,7 +214,7 @@ describe("EnvironmentCard sandbox groups", () => {
       id: "evm-davm6imde41s73canq0g",
     };
     render(
-      <EnvironmentCard
+      <EnvironmentSection
         environment={legacy}
         services={[]}
         databases={[]}

@@ -12,7 +12,6 @@ import {
   KeyValuesDocument,
   ServicesDocument,
 } from "@/graphql/definitions";
-import type { ProjectResourceFilterState } from "@/features/projects/lib/resource-filter";
 import { blankSelection } from "@/test/mocks/blank-selection";
 import { mockWorkspaceContext } from "@/test/mocks/workspace";
 import { EnvironmentsPanel } from "@/features/environments/components/environments-panel";
@@ -194,11 +193,8 @@ function fakeApi(
   };
 }
 
-// The Project Overview's resource wiring around the real panel and card.
-function ProjectOverview({
-  environmentId = "evm-blue" as string | null,
-  onFilterChange = (() => undefined) as (f: ProjectResourceFilterState) => void,
-}) {
+// The project page's resource wiring around the real panel and sections.
+function ProjectOverview() {
   const { services, databases, keyValues, catalog } =
     useProjectResourceCatalog();
   return (
@@ -213,17 +209,21 @@ function ProjectOverview({
       onRunServiceAction={vi.fn()}
       onDatabaseDeleted={vi.fn()}
       onKeyValueDeleted={vi.fn()}
-      resourceFilter={{ environmentId, query: "", kind: "all" }}
-      onResourceFilterChange={onFilterChange}
     />
   );
 }
 
+// The Blue environment's section; a failed list also keeps the Unassigned
+// section, which says so on its own (w1/m682).
+const blue = () => screen.getByRole("region", { name: "Blue" });
+const blueAlert = async () => {
+  await screen.findAllByRole("alert");
+  return within(blue()).getByRole("alert");
+};
 const typeButton = (name: RegExp) =>
-  within(screen.getByRole("group", { name: "Resource type" })).getByRole(
-    "button",
-    { name },
-  );
+  within(
+    within(blue()).getByRole("group", { name: "Resource type" }),
+  ).getByRole("button", { name });
 
 describe("Project Overview resource availability (w4/m227)", () => {
   it("explains failed lists instead of an empty environment, and recovers", async () => {
@@ -234,13 +234,9 @@ describe("Project Overview resource availability (w4/m227)", () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     render(<ProjectOverview />, { wrapper: api.wrapper });
 
-    const alert = await screen.findByRole("alert");
+    const alert = await blueAlert();
     expect(alert).toHaveTextContent(/couldn't load/);
-    expect(screen.getByText("Count unavailable")).toBeInTheDocument();
-    expect(screen.queryByText(/0 resources/)).toBeNull();
-    expect(
-      screen.queryByText(/No resources in this environment yet/),
-    ).toBeNull();
+    expect(screen.queryByText(/is empty/)).toBeNull();
     expect(typeButton(/^All/)).toHaveTextContent("All (—)");
     expect(typeButton(/^Services/)).toHaveTextContent("(—)");
 
@@ -252,8 +248,8 @@ describe("Project Overview resource availability (w4/m227)", () => {
     );
     expect(screen.queryByRole("alert")).toBeNull();
     expect(typeButton(/^All/)).toHaveTextContent("All (2)");
-    expect(typeButton(/^Services/)).toHaveTextContent("(1)");
-    expect(typeButton(/^Key Values/)).toHaveTextContent("(1)");
+    // Render's Services category holds the service and the Key Value.
+    expect(typeButton(/^Services/)).toHaveTextContent("(2)");
     // Retry re-read the two failed lists once each; nothing else was sent.
     expect(api.reads).toMatchObject({ Services: 2, KeyValues: 2 });
     expect(api.others).toEqual([]);
@@ -263,11 +259,11 @@ describe("Project Overview resource availability (w4/m227)", () => {
     const api = fakeApi({ Services: ["error", "held-error"] });
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     render(<ProjectOverview />, { wrapper: api.wrapper });
-    const alert = await screen.findByRole("alert");
+    const alert = await blueAlert();
     await user.click(within(alert).getByRole("button", { name: "Try again" }));
     await waitFor(() =>
       expect(
-        within(screen.getByRole("alert")).getByRole("button", {
+        within(within(blue()).getByRole("alert")).getByRole("button", {
           name: "Try again",
         }),
       ).toBeDisabled(),
@@ -275,7 +271,7 @@ describe("Project Overview resource availability (w4/m227)", () => {
     await act(async () => api.release());
     await waitFor(() =>
       expect(
-        within(screen.getByRole("alert")).getByRole("button", {
+        within(within(blue()).getByRole("alert")).getByRole("button", {
           name: "Try again",
         }),
       ).toBeEnabled(),
@@ -297,21 +293,22 @@ describe("Project Overview resource availability (w4/m227)", () => {
         .refetchQueries({ include: [ServicesDocument] })
         .catch(() => []);
     });
-    expect(await screen.findByRole("alert")).toHaveTextContent(/out of date/);
-    expect(screen.getByRole("list", { name: "resources" })).toHaveTextContent(
-      /storefront/,
-    );
+    expect(await blueAlert()).toHaveTextContent(/out of date/);
+    expect(
+      within(blue()).getByRole("list", { name: "resources" }),
+    ).toHaveTextContent(/storefront/);
   });
 
   it("names only the failed family and keeps the healthy rows", async () => {
     const api = fakeApi({ KeyValues: ["error"] });
     render(<ProjectOverview />, { wrapper: api.wrapper });
-    await screen.findByRole("alert");
-    expect(screen.getByRole("list", { name: "resources" })).toHaveTextContent(
-      "storefront",
-    );
-    expect(typeButton(/^Services/)).toHaveTextContent("(1)");
-    expect(typeButton(/^Key Values/)).toHaveTextContent("(—)");
+    await blueAlert();
+    expect(
+      within(blue()).getByRole("list", { name: "resources" }),
+    ).toHaveTextContent("storefront");
+    // The Key Value is unknown, so the category that counts it is too.
+    expect(typeButton(/^Services/)).toHaveTextContent("(—)");
+    expect(typeButton(/^Env Groups/)).toHaveTextContent("(0)");
   });
 
   it("ignores a family this environment has no members of", async () => {
@@ -320,47 +317,38 @@ describe("Project Overview resource availability (w4/m227)", () => {
     await waitFor(() =>
       expect(typeButton(/^All/)).toHaveTextContent("All (2)"),
     );
-    expect(screen.queryByRole("alert")).toBeNull();
+    // Blue has no database or env group; only Unassigned, whose project-only
+    // databases the failed list may hide, says so.
+    expect(within(blue()).queryByRole("alert")).toBeNull();
   });
 
-  it("keeps the ordinary empty view for a successful empty read", async () => {
+  it("keeps Render's empty state for a successful empty read", async () => {
     const api = fakeApi({ Services: ["empty"], KeyValues: ["empty"] });
     render(<ProjectOverview />, { wrapper: api.wrapper });
-    expect(
-      await screen.findByText(/No resources in this environment yet/),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/0 resources/)).toBeInTheDocument();
+    expect(await screen.findByText("Blue is empty")).toBeInTheDocument();
+    expect(typeButton(/^All/)).toHaveTextContent("All (0)");
     expect(screen.queryByRole("alert")).toBeNull();
-  });
-
-  it("does not rewrite the selected scope from failed lists", async () => {
-    const api = fakeApi({ Services: ["error"] });
-    const onFilterChange = vi.fn();
-    render(
-      <ProjectOverview environmentId={null} onFilterChange={onFilterChange} />,
-      { wrapper: api.wrapper },
-    );
-    await screen.findByRole("alert");
-    expect(onFilterChange).not.toHaveBeenCalled();
+    // Nothing failed and nothing is project-only: no Unassigned section.
+    expect(screen.queryByRole("region", { name: "Unassigned" })).toBeNull();
   });
 
   it("does not call Unassigned empty while a list is unavailable", async () => {
     const api = fakeApi({ Services: ["error"] });
-    render(<ProjectOverview environmentId="unassigned" />, {
-      wrapper: api.wrapper,
-    });
-    await screen.findByRole("alert");
+    render(<ProjectOverview />, { wrapper: api.wrapper });
+    await blueAlert();
+    const unassigned = screen.getByRole("region", { name: "Unassigned" });
+    expect(within(unassigned).getByRole("alert")).toHaveTextContent(
+      /couldn't load/,
+    );
     expect(
-      screen.getByRole("heading", { name: "Unassigned" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText(/No resources in this environment yet/),
+      within(unassigned).queryByText(/No resources in this environment yet/),
     ).toBeNull();
   });
 
   it("explains unread lists on a Project with no environments", async () => {
     const api = fakeApi({ Services: ["error"] }, { environments: "none" });
-    render(<ProjectOverview environmentId={null} />, { wrapper: api.wrapper });
-    expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't load/);
+    render(<ProjectOverview />, { wrapper: api.wrapper });
+    const alerts = await screen.findAllByRole("alert");
+    expect(alerts[0]).toHaveTextContent(/couldn't load/);
   });
 });

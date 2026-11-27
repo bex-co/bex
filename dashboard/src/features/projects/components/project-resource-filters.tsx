@@ -6,109 +6,116 @@ import { ReservedButton } from "@/common/components/reserved-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { TOUCH_TARGET_HEIGHT } from "@/common/lib/touch-target";
 import { cn } from "@/common/lib/utils/utils";
-import type {
-  ProjectResourceDisplayCounts,
-  ProjectResourceFilterState,
-  ProjectResourceKind,
-} from "@/features/projects/lib/resource-filter";
+import type { EnvironmentResourceFilter } from "@/features/projects/lib/resource-filter";
 
-const KIND_KEYS: Array<{
-  kind: ProjectResourceKind;
+const FILTER_KEYS: Array<{
+  filter: EnvironmentResourceFilter;
   key:
     | "projects.filterAll"
     | "projects.filterServices"
-    | "projects.filterDatabases"
-    | "projects.filterKeyValues"
     | "projects.filterEnvGroups";
 }> = [
-  { kind: "all", key: "projects.filterAll" },
-  { kind: "services", key: "projects.filterServices" },
-  { kind: "databases", key: "projects.filterDatabases" },
-  { kind: "keyvalues", key: "projects.filterKeyValues" },
-  { kind: "envgroups", key: "projects.filterEnvGroups" },
+  { filter: "all", key: "projects.filterAll" },
+  { filter: "services", key: "projects.filterServices" },
+  { filter: "envgroups", key: "projects.filterEnvGroups" },
 ];
 
-export function ProjectResourceFilters({
-  environmentName,
+/**
+ * An environment section's counted All / Services / Env Groups switcher, as
+ * Render's project page draws it (w1/m682). Each count is the section's own,
+ * before search.
+ */
+export function EnvironmentResourceSwitcher({
   filter,
   counts,
   onChange,
 }: {
-  environmentName: string;
-  filter: ProjectResourceFilterState;
-  counts: ProjectResourceDisplayCounts;
-  onChange: (filter: ProjectResourceFilterState) => void;
+  filter: EnvironmentResourceFilter;
+  counts: Record<EnvironmentResourceFilter, number | null>;
+  onChange: (filter: EnvironmentResourceFilter) => void;
 }) {
   const { t } = useTranslations();
   return (
-    <div className="space-y-3">
-      <div
-        role="group"
-        className="flex flex-wrap gap-1"
-        aria-label={t("projects.filterTypeLabel")}
-      >
-        {KIND_KEYS.map(({ kind, key }) => {
-          // The variant is the only visual cue; assistive technology needs
-          // the same state (w4/333).
-          const selected = filter.kind === kind;
-          return (
-            <Button
-              key={kind}
-              size="sm"
-              variant={selected ? "default" : "outline"}
-              aria-pressed={selected}
-              onClick={() => onChange({ ...filter, kind })}
-            >
-              {/* An unread family has no count, not zero (w4/m227). */}
-              {t(key)} ({counts[kind] ?? "—"})
-            </Button>
-          );
+    <div
+      role="group"
+      className="flex flex-wrap gap-1"
+      aria-label={t("projects.filterTypeLabel")}
+    >
+      {FILTER_KEYS.map(({ filter: option, key }) => {
+        // The variant is the only visual cue; assistive technology needs
+        // the same state (w4/333).
+        const selected = filter === option;
+        return (
+          <Button
+            key={option}
+            size="sm"
+            variant={selected ? "default" : "outline"}
+            aria-pressed={selected}
+            onClick={() => onChange(option)}
+          >
+            {/* An unread family has no count, not zero (w4/m227). */}
+            {t(key)} ({counts[option] ?? "—"})
+          </Button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** The section's "Search resources in <env>" box, which filters only it. */
+export function EnvironmentResourceSearch({
+  environmentName,
+  query,
+  onChange,
+}: {
+  environmentName: string;
+  query: string;
+  onChange: (query: string) => void;
+}) {
+  const { t } = useTranslations();
+  return (
+    <div className="relative">
+      <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        type="search"
+        value={query}
+        onChange={(event) => onChange(event.target.value)}
+        aria-label={t("projects.searchLabel", {
+          environment: environmentName,
         })}
-      </div>
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          type="search"
-          value={filter.query}
-          onChange={(event) =>
-            onChange({ ...filter, query: event.target.value })
-          }
-          aria-label={t("projects.searchLabel", {
-            environment: environmentName,
-          })}
-          placeholder={t("projects.searchPlaceholder", {
-            environment: environmentName,
-          })}
-          className="pl-8"
-        />
-      </div>
+        placeholder={t("projects.searchPlaceholder", {
+          environment: environmentName,
+        })}
+        className="pl-8"
+      />
     </div>
   );
 }
 
 /**
- * The filters' loading preview (w4/715): the five type pills at their ready
- * boxes, each count reserved as one digit, so they wrap onto the same rows
- * (two at 390px), over the full-width search box, at the project layout's
- * touch size (w3/099).
+ * The switcher's loading preview (w4/715): the three pills at their ready
+ * boxes, each count reserved as one digit, at the project layout's touch size
+ * (w3/099).
  */
-export function ProjectResourceFiltersSkeleton() {
+export function EnvironmentResourceSwitcherSkeleton() {
   const { t } = useTranslations();
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-1">
-        {KIND_KEYS.map(({ kind, key }) => (
-          <ReservedButton
-            key={kind}
-            variant="outline"
-            size="sm"
-            className={TOUCH_TARGET_HEIGHT}
-          >
-            {t(key)} (0)
-          </ReservedButton>
-        ))}
-      </div>
-      <Skeleton className={cn("h-9 w-full", TOUCH_TARGET_HEIGHT)} />
+    <div className="flex flex-wrap gap-1">
+      {FILTER_KEYS.map(({ filter, key }) => (
+        <ReservedButton
+          key={filter}
+          variant="outline"
+          size="sm"
+          className={TOUCH_TARGET_HEIGHT}
+        >
+          {t(key)} (0)
+        </ReservedButton>
+      ))}
     </div>
   );
+}
+
+/** The full-width search box's loading preview. */
+export function EnvironmentResourceSearchSkeleton() {
+  return <Skeleton className={cn("h-9 w-full", TOUCH_TARGET_HEIGHT)} />;
 }
