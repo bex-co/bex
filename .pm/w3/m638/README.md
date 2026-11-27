@@ -1,18 +1,18 @@
 # w3 · m638 — Rust's latest stable reaches native Rust builds within about a day
 
-**Worker:** worker3 **Goal:** a new stable Rust release (patch or minor) becomes native Rust builds' default toolchain within about a day with nobody's action, digest-pinned and smoke-tested, as Go's does since w4/719. **Status:** todo
+**Worker:** worker3 **Goal:** a new stable Rust release (patch or minor) becomes native Rust builds' default toolchain within about a day with nobody's action, digest-pinned and smoke-tested, as Go's does since w4/719. **Status:** todo (t001–t003, t005–t007 done; t004 waits for a dispatched run on main, then t008)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Plan a Rust bump | 45m | — |
-| t002 | Smoke a candidate Rust image | 40m | — |
-| t003 | Apply a Rust bump | 30m | t001 |
+| t001 | [Plan a Rust bump](done/t001.md) — **DONE** | 45m | — |
+| t002 | [Smoke a candidate Rust image](done/t002.md) — **DONE** | 40m | — |
+| t003 | [Apply a Rust bump](done/t003.md) — **DONE** | 30m | t001 |
 | t004 | Rust bump workflow | 45m | t002, t003 |
-| t005 | Record the exception | 20m | t004 |
-| t006 | Simplify | 15m | t005 |
-| t007 | Test coverage | 30m | t005 |
+| t005 | [Record the exception](done/t005.md) — **DONE** | 20m | t004 |
+| t006 | [Simplify](done/t006.md) — **DONE** | 15m | t005 |
+| t007 | [Test coverage](done/t007.md) — **DONE** | 30m | t005 |
 | t008 | Closeout | 10m | t007 |
 
 ## Definition of done

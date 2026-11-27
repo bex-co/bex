@@ -75,6 +75,9 @@ deploy-latency.yml 12
 # w4/719. Every 3h; no history yet, so deploy-latency's window: a stop of
 # about half a day holds a new Go release back past Render's day.
 go-line-bump.yml 12
+# w3/m638. Every 3h, as go-line-bump; no history yet, so its window: a stop of
+# about half a day holds a new Rust release back past the day.
+rust-line-bump.yml 12
 # block-eden-mono w1/m25. Hourly backup for push-triggered deploys; this repo's
 # hourly crons fired every 6-10 h on 2026-11-10, so 20 h of silence must trip.
 deploy.yml 20

@@ -465,6 +465,47 @@ func TestNativeGoLineIsItsImageTag(t *testing.T) {
 	}
 }
 
+// rust-line-bump.yml rewrites the Rust entry's version and digest to each new
+// stable Rust release (w3/m638): it stays one line "1", the default, on
+// rust:1-bookworm pinned by digest, its version a Rust 1.x release, and the
+// inventory entry lists native.go alone and follows it.
+func TestNativeRustLineIsItsImageTag(t *testing.T) {
+	rust := nativeToolchains[nativeRustRuntime]
+	if len(rust.lines) != 1 {
+		t.Fatalf("Rust has %d lines, want the one stable line", len(rust.lines))
+	}
+	line := rust.lines[0]
+	if line.line != "1" || rust.defaultLine != "1" {
+		t.Errorf("Rust line %s (default %s), want 1 and 1", line.line, rust.defaultLine)
+	}
+	if !regexp.MustCompile(`^1\.[0-9]+\.[0-9]+$`).MatchString(line.version) {
+		t.Errorf("Rust version %q is not a Rust 1.x release", line.version)
+	}
+	if !regexp.MustCompile(`^rust:1-bookworm@sha256:[a-f0-9]{64}$`).MatchString(line.image) {
+		t.Errorf("Rust image %s is not rust:1-bookworm pinned by digest", line.image)
+	}
+	inv, err := LoadToolchainInventory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, img := range inv.Images {
+		if img.ID != "native-rust" {
+			continue
+		}
+		found = true
+		if img.Committed != line.image || img.Upstream != "docker.io/library/rust:1-bookworm" {
+			t.Errorf("native-rust inventory %s (%s) does not follow the Rust line %s", img.Committed, img.Upstream, line.image)
+		}
+		if len(img.Files) != 1 || img.Files[0] != "lego/operator/internal/build/native.go" {
+			t.Errorf("native-rust lists %v, want native.go alone", img.Files)
+		}
+	}
+	if !found {
+		t.Error("toolchain-freshness.json has no native-rust entry")
+	}
+}
+
 // Every pinned line is a reviewed inventory entry (docs/ADR060 D7).
 func TestNativeToolchainLinesAreInventoried(t *testing.T) {
 	inv, err := LoadToolchainInventory()

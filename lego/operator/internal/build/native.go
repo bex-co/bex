@@ -224,8 +224,11 @@ var nativeToolchains = map[string]nativeToolchain{
 	}},
 	// Rust stays one stable image: rustup inside it applies Render's own
 	// RUSTUP_TOOLCHAIN / rust-toolchain signals itself. version is the image's
-	// RUST_VERSION, which the default's log line names (w8/327); refresh it
-	// with the digest.
+	// RUST_VERSION, which the default's log line names (w8/327). Render
+	// defaults to the latest stable Rust, so rust-line-bump.yml moves version
+	// and the digest to each new stable release within hours of the official
+	// image carrying it (w3/m638). It rewrites this entry, so keep its shape:
+	// one line "1", the default, on rust:1-bookworm.
 	nativeRustRuntime: {label: "Rust", defaultLine: "1", lines: []nativeLine{
 		{line: "1", version: "1.100.0", image: "rust:1-bookworm@sha256:75d26c23c24cc6ea1cdabf0714a6bff8fd7bf3248716043fd7ae86dac7f41b94"},
 	}},

@@ -2,9 +2,10 @@
 """Build-toolchain freshness inventory: validate, resolve, issue decisions.
 
 A changed upstream digest is a review request: nothing here commits or merges
-a pin, and only go-apply edits one, the native Go line that follows each new
-stable Go release (w4/719, go-line-bump.yml). Public registry metadata only;
-no cluster or push credentials.
+a pin, and only go-apply and rust-apply edit one, the native Go and Rust lines
+that follow each new stable release (w4/719 go-line-bump.yml, w3/m638
+rust-line-bump.yml). Public registry metadata only; no cluster or push
+credentials.
 """
 from __future__ import annotations
 
@@ -13,11 +14,14 @@ import json
 import os
 import re
 import sys
+import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import NamedTuple
 
 SCHEMA = "bex.build-toolchain-freshness/v1"
 CLUSTER_BUILDER_ID = "cnb-builder"
@@ -244,12 +248,19 @@ def fixture_digests() -> dict[str, str] | None:
     return data
 
 
-def http_json(url: str, headers: dict[str, str] | None = None) -> dict:
+def http_text(url: str, headers: dict[str, str] | None = None) -> str:
     req = urllib.request.Request(url, headers=headers or {})
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, json.JSONDecodeError, TimeoutError) as err:
+            return resp.read().decode("utf-8")
+    except (urllib.error.URLError, UnicodeDecodeError, TimeoutError) as err:
+        raise RuntimeError(f"{url}: {err}") from err
+
+
+def http_json(url: str, headers: dict[str, str] | None = None) -> dict:
+    try:
+        return json.loads(http_text(url, headers))
+    except json.JSONDecodeError as err:
         raise RuntimeError(f"{url}: {err}") from err
 
 
@@ -586,23 +597,43 @@ def resolve(path: Path) -> dict:
     return {"images": images, "schema": SCHEMA}
 
 
-# The native Go line moves itself (w4/719). Render's native Go "automatically
-# updates to the latest stable Go 1.x version … usually within 24 hours of a
-# new release" (changelog 2026-04-16), so go-line-bump.yml runs go-release
-# every few hours and, on a "bump" plan, smoke-builds the image on both
-# architectures and runs go-apply, the one command here that edits the tree.
-# A digest that moves without a new Go release stays a reviewed change.
-GO_ID = "native-go"
-GO_TAG = "golang:{line}-bookworm"
-GO_PLATFORMS = ("linux/amd64", "linux/arm64")
-# native.go's Go entry: one line, which is also the default and its image's tag.
-GO_ENTRY_RE = re.compile(
-    r'(\t"go": \{label: "Go", defaultLine: ")[0-9.]+(", lines: \[\]nativeLine\{\n'
-    r'\t\t\{line: ")[0-9.]+(", image: ")golang:[0-9.]+-bookworm@sha256:[a-f0-9]{64}("\},\n\t\}\},)'
-)
+# The native Go and Rust lines move themselves. Render's native Go
+# "automatically updates to the latest stable Go 1.x version … usually within
+# 24 hours of a new release" (changelog 2026-04-16, w4/719), and "by default,
+# Render uses the latest stable Rust toolchain" (render.com/docs/rust-toolchain,
+# w3/m638). go-line-bump.yml and rust-line-bump.yml run <cmd>-release every few
+# hours and, on a "bump" plan, smoke-build the image on both architectures and
+# run <cmd>-apply, the only commands here that edit the tree. A digest that
+# moves without a new release stays a reviewed change.
+PLATFORMS = ("linux/amd64", "linux/arm64")
+Release = tuple[int, int, int]
 
 
-def go_release(version: str) -> tuple[int, int, int]:
+class MovingLine(NamedTuple):
+    cmd: str  # the <cmd>-release / <cmd>-apply prefix and <cmd>-line-bump.yml
+    ident: str  # its inventory entry
+    label: str
+    env: str  # the image config Env that records the release
+    feed: str  # where the newest stable release is read, for messages
+    item: str  # the board item that made it move itself
+    parse: Callable[[str], Release]
+    latest: Callable[[], Release]
+    tag: Callable[[Release], str]  # the official tag that carries a release
+    # native.go's entry. Its groups are the fixed text around the values apply
+    # writes: values(release) in order, then the digest-pinned image.
+    entry_re: re.Pattern[str]
+    values: Callable[[Release], tuple[str, ...]]
+
+    @property
+    def workflow(self) -> str:
+        return f"{self.cmd}-line-bump.yml"
+
+
+def release_name(release: Release) -> str:
+    return ".".join(str(part) for part in release)
+
+
+def go_release(version: str) -> Release:
     """go1.27.4, 1.27.4 or go1.20 (Go's name for 1.20.0) as numbers."""
     match = re.fullmatch(r"(?:go)?(\d+)\.(\d+)(?:\.(\d+))?", version.strip())
     if not match:
@@ -610,39 +641,102 @@ def go_release(version: str) -> tuple[int, int, int]:
     return int(match.group(1)), int(match.group(2)), int(match.group(3) or 0)
 
 
-def go_name(release: tuple[int, int, int]) -> str:
-    return ".".join(str(part) for part in release)
+def rust_release(version: str) -> Release:
+    """1.100.0 as numbers. The line is rust:1-bookworm, so a Rust 2 fails the
+    plan for a person to review instead of waiting for a tag that never comes."""
+    match = re.fullmatch(r"1\.(\d+)\.(\d+)", version.strip())
+    if not match:
+        raise RuntimeError(f"not a stable Rust 1.x release: {version!r}")
+    return 1, int(match.group(1)), int(match.group(2))
 
 
-def latest_go_release() -> tuple[int, int, int]:
+def fixture_release(ident: str, parse: Callable[[str], Release]) -> Release | None:
+    """FRESHNESS_LATEST_LINES's newest release for ident, None without the fixture."""
+    fixed, version = fixture_version(ident)
+    if not fixed:
+        return None
+    if not version:
+        raise RuntimeError(f"FRESHNESS_LATEST_LINES has no {ident} release")
+    return parse(version)
+
+
+def latest_go_release() -> Release:
     """go.dev's newest stable release (FRESHNESS_LATEST_LINES native-go in tests)."""
-    fixed, version = fixture_version(GO_ID)
+    fixed = fixture_release("native-go", go_release)
     if fixed:
-        if not version:
-            raise RuntimeError("FRESHNESS_LATEST_LINES has no native-go release")
-        return go_release(version)
-    feed = http_json(LINE_SOURCES[GO_ID][0])
+        return fixed
+    feed = http_json(LINE_SOURCES["native-go"][0])
     stable = [go_release(item["version"]) for item in feed if isinstance(item, dict) and item.get("stable")]
     if not stable:
         raise RuntimeError("go.dev lists no stable release")
     return max(stable)
 
 
-def image_go_versions(upstream: str, digest: str) -> dict[str, str]:
-    """GOLANG_VERSION of each GO_PLATFORMS image under one golang index digest.
+RUST_CHANNEL = "https://static.rust-lang.org/dist/channel-rust-stable.toml"
 
-    FRESHNESS_GO_VERSIONS (tests) maps a digest to one version for every
+
+def latest_rust_release() -> Release:
+    """The stable channel's rust (FRESHNESS_LATEST_LINES native-rust in tests).
+
+    rustup installs `stable` from this manifest, whose [pkg.rust] version reads
+    "1.100.0 (0ef1bc386 2026-11-09)".
+    """
+    fixed = fixture_release("native-rust", rust_release)
+    if fixed:
+        return fixed
+    try:
+        channel = tomllib.loads(http_text(RUST_CHANNEL))
+    except tomllib.TOMLDecodeError as err:
+        raise RuntimeError(f"{RUST_CHANNEL}: {err}") from err
+    version = ((channel.get("pkg") or {}).get("rust") or {}).get("version")
+    if not isinstance(version, str) or not version.strip():
+        raise RuntimeError(f"{RUST_CHANNEL} names no [pkg.rust] version")
+    return rust_release(version.split()[0])
+
+
+GO = MovingLine(
+    cmd="go", ident="native-go", label="Go", env="GOLANG_VERSION",
+    feed="go.dev's newest stable release", item="w4/719",
+    parse=go_release, latest=latest_go_release,
+    tag=lambda release: f"golang:{release[0]}.{release[1]}-bookworm",
+    # One line, which is also the default and its image's tag.
+    entry_re=re.compile(
+        r'(\t"go": \{label: "Go", defaultLine: ")[0-9.]+(", lines: \[\]nativeLine\{\n'
+        r'\t\t\{line: ")[0-9.]+(", image: ")golang:[0-9.]+-bookworm@sha256:[a-f0-9]{64}("\},\n\t\}\},)'
+    ),
+    values=lambda release: (f"{release[0]}.{release[1]}",) * 2,
+)
+RUST = MovingLine(
+    cmd="rust", ident="native-rust", label="Rust", env="RUST_VERSION",
+    feed="static.rust-lang.org's stable channel", item="w3/m638",
+    parse=rust_release, latest=latest_rust_release,
+    tag=lambda release: "rust:1-bookworm",
+    # One line "1", the default, on rust:1-bookworm: only the version the build
+    # log names (w8/327) and the digest move.
+    entry_re=re.compile(
+        r'(\tnativeRustRuntime: \{label: "Rust", defaultLine: "1", lines: \[\]nativeLine\{\n'
+        r'\t\t\{line: "1", version: ")[0-9.]+(", image: ")rust:1-bookworm@sha256:[a-f0-9]{64}("\},\n\t\}\},)'
+    ),
+    values=lambda release: (release_name(release),),
+)
+MOVING_LINES = {spec.cmd: spec for spec in (GO, RUST)}
+
+
+def platform_versions(upstream: str, digest: str, env: str) -> dict[str, str]:
+    """env of each PLATFORMS image under one index digest.
+
+    FRESHNESS_PLATFORM_VERSIONS (tests) maps a digest to one version for every
     platform, or to a platform → version object.
     """
-    fixture = os.environ.get("FRESHNESS_GO_VERSIONS")
+    fixture = os.environ.get("FRESHNESS_PLATFORM_VERSIONS")
     if fixture:
         try:
             value = json.loads(Path(fixture).read_text(encoding="utf-8")).get(digest, {})
         except (OSError, json.JSONDecodeError, AttributeError) as err:
-            fail(f"FRESHNESS_GO_VERSIONS is not a readable JSON object: {err}")
-        return {platform: value for platform in GO_PLATFORMS} if isinstance(value, str) else dict(value)
-    configs = platform_configs(upstream, digest, GO_PLATFORMS)
-    return {key: version for key, config in configs.items() if (version := config_env(config, "GOLANG_VERSION"))}
+            fail(f"FRESHNESS_PLATFORM_VERSIONS is not a readable JSON object: {err}")
+        return {platform: value for platform in PLATFORMS} if isinstance(value, str) else dict(value)
+    configs = platform_configs(upstream, digest, PLATFORMS)
+    return {key: version for key, config in configs.items() if (version := config_env(config, env))}
 
 
 def inventory_entry(inventory: dict, ident: str) -> dict:
@@ -652,90 +746,96 @@ def inventory_entry(inventory: dict, ident: str) -> dict:
     return entry
 
 
-def go_plan(path: Path) -> dict:
-    """Whether the native Go pin is behind go.dev's newest stable release.
+def line_plan(spec: MovingLine, path: Path) -> dict:
+    """Whether a moving line's pin is behind its newest stable release.
 
     action is "current", "wait" (the official image does not carry the
     release on every platform yet) or "bump" with the image to pin.
     """
-    entry = inventory_entry(validate(path), GO_ID)
+    entry = inventory_entry(validate(path), spec.ident)
     committed = entry["committed"]
-    pinned = image_go_versions(entry["upstream"], digest_of(committed))
-    if set(pinned) != set(GO_PLATFORMS):
-        fail(f"{committed}: no GOLANG_VERSION for {sorted(set(GO_PLATFORMS) - set(pinned))}")
-    current = min(go_release(version) for version in pinned.values())
-    latest = latest_go_release()
-    plan = {"action": "current", "committed": committed, "current": go_name(current),
-            "id": GO_ID, "latest": go_name(latest)}
+    pinned = platform_versions(entry["upstream"], digest_of(committed), spec.env)
+    if set(pinned) != set(PLATFORMS):
+        fail(f"{committed}: no {spec.env} for {sorted(set(PLATFORMS) - set(pinned))}")
+    current = min(spec.parse(version) for version in pinned.values())
+    latest = spec.latest()
+    plan = {"action": "current", "committed": committed, "current": release_name(current),
+            "id": spec.ident, "latest": release_name(latest)}
     if latest <= current:
-        plan["reason"] = f"native Go is on {go_name(current)}, go.dev's newest stable release"
+        plan["reason"] = f"native {spec.label} is on {release_name(current)}, {spec.feed}"
         return plan
-    line = f"{latest[0]}.{latest[1]}"
-    upstream = "docker.io/library/" + GO_TAG.format(line=line)
+    tag = spec.tag(latest)
+    upstream = "docker.io/library/" + tag
+    out = f"{spec.label} {release_name(latest)} is out, but {upstream}"
+    stays = f"(native {spec.label} stays on {release_name(current)})"
     plan["action"] = "wait"
     try:
         digest = resolve_upstream(upstream)
     except NotFound:
-        plan["reason"] = (f"Go {go_name(latest)} is out, but {upstream} is not published yet "
-                          f"(native Go stays on {go_name(current)})")
+        plan["reason"] = f"{out} is not published yet {stays}"
         return plan
-    carried = image_go_versions(upstream, digest)
-    behind = sorted(p for p in GO_PLATFORMS if carried.get(p) is None or go_release(carried[p]) != latest)
+    carried = platform_versions(upstream, digest, spec.env)
+    behind = sorted(p for p in PLATFORMS if carried.get(p) is None or spec.parse(carried[p]) != latest)
     if behind:
-        plan["reason"] = (f"Go {go_name(latest)} is out, but {upstream}@{digest} does not carry it on "
-                          f"{', '.join(behind)} yet (native Go stays on {go_name(current)})")
+        plan["reason"] = f"{out}@{digest} does not carry it on {', '.join(behind)} yet {stays}"
         return plan
     plan.update({
         "action": "bump",
-        "image": GO_TAG.format(line=line) + "@" + digest,
-        "line": line,
-        "reason": f"native Go {go_name(current)} → {go_name(latest)}, go.dev's newest stable release",
+        "image": tag + "@" + digest,
+        "reason": f"native {spec.label} {release_name(current)} → {release_name(latest)}, {spec.feed}",
         "upstream": upstream,
     })
     return plan
 
 
-def go_apply(plan_path: Path, path: Path) -> str:
-    """Rewrite the native Go pin and its inventory entry to a "bump" plan."""
+def line_apply(spec: MovingLine, plan_path: Path, path: Path) -> str:
+    """Rewrite a moving line's pin and its inventory entry to a "bump" plan."""
     try:
         plan = json.loads(plan_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as err:
-        fail(f"cannot read the Go plan {plan_path}: {err}")
+        fail(f"cannot read the {spec.label} plan {plan_path}: {err}")
     if not isinstance(plan, dict) or plan.get("action") != "bump":
-        fail("go-apply needs a go-release plan whose action is bump")
-    image, line, upstream = plan.get("image", ""), plan.get("line", ""), plan.get("upstream", "")
-    tag = GO_TAG.format(line=line)
-    if (not re.fullmatch(r"\d+\.\d+", line) or not DIGEST_RE.search(image)
+        fail(f"{spec.cmd}-apply needs a {spec.cmd}-release plan whose action is bump")
+    image, upstream = plan.get("image", ""), plan.get("upstream", "")
+    try:
+        latest, current = (spec.parse(str(plan.get(key, ""))) for key in ("latest", "current"))
+    except RuntimeError as err:
+        fail(f"malformed {spec.label} plan: {err}")
+    tag = spec.tag(latest)
+    if (not isinstance(image, str) or not DIGEST_RE.search(image)
             or image != tag + "@" + digest_of(image) or upstream != "docker.io/library/" + tag):
-        fail(f"malformed Go plan: image {image!r}, line {line!r}, upstream {upstream!r}")
+        fail(f"malformed {spec.label} plan: image {image!r}, latest {plan.get('latest')!r}, upstream {upstream!r}")
     inventory = validate(path)
-    entry = inventory_entry(inventory, GO_ID)
+    entry = inventory_entry(inventory, spec.ident)
     if entry["committed"] == image:
-        return f"noop: native Go already pins {image}"
+        return f"noop: native {spec.label} already pins {image}"
     if entry["committed"] != plan.get("committed"):
-        return f"noop: native Go moved to {entry['committed']} since the plan; the next run plans again"
+        return f"noop: native {spec.label} moved to {entry['committed']} since the plan; the next run plans again"
     if len(entry["files"]) != 1:
-        fail(f"{GO_ID} must list native.go alone, not {entry['files']}")
+        fail(f"{spec.ident} must list native.go alone, not {entry['files']}")
     target = repo_root() / entry["files"][0]
-    rewritten, count = GO_ENTRY_RE.subn(
-        lambda m: f"{m.group(1)}{line}{m.group(2)}{line}{m.group(3)}{image}{m.group(4)}",
+    values = (*spec.values(latest), image, "")
+    rewritten, count = spec.entry_re.subn(
+        lambda m: "".join(text + value for text, value in zip(m.groups(), values, strict=True)),
         target.read_text(encoding="utf-8"))
     if count != 1:
-        fail(f"{entry['files'][0]}: want one native Go entry in GO_ENTRY_RE's shape, found {count}")
+        fail(f"{entry['files'][0]}: want one native {spec.label} entry in {spec.cmd}'s entry_re shape, found {count}")
     target.write_text(rewritten, encoding="utf-8")
     now = os.environ.get("FRESHNESS_NOW") or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    latest_name, current_name = release_name(latest), release_name(current)
     entry.update({
         "upstream": upstream,
         "committed": image,
         "resolved_at": now,
-        "source": (f"Go {plan['latest']} (was {plan['current']}), go.dev's newest stable release, applied "
-                   f"{now[:10]} by go-line-bump.yml (w4/719): official {tag} carries "
-                   f"GOLANG_VERSION={plan['latest']} on the linux/amd64 and linux/arm64 image configs"),
+        "source": (f"{spec.label} {latest_name} (was {current_name}), {spec.feed}, applied {now[:10]} by "
+                   f"{spec.workflow} ({spec.item}): official {tag} carries {spec.env}={latest_name} on the "
+                   "linux/amd64 and linux/arm64 image configs"),
     })
-    # As committed: insertion order, two-space indent (dump sorts keys).
-    path.write_text(json.dumps(inventory, indent=2) + "\n", encoding="utf-8")
+    # As committed: insertion order, two-space indent and literal non-ASCII
+    # (dump sorts keys), so no other entry's line changes.
+    path.write_text(json.dumps(inventory, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     validate(path)
-    return f"native Go {plan['current']} → {plan['latest']}: {image}"
+    return f"native {spec.label} {current_name} → {latest_name}: {image}"
 
 
 def drifted(report: dict) -> list[dict]:
@@ -769,10 +869,12 @@ def issue_body(report: dict) -> str:
                 f"- **newer line upstream: `{image['newer_line']}`**: move the pin to that"
                 " line's tag and digest (Render builds with the newest), not to the observed digest"
             )
-        if image["id"] == GO_ID:
+        moving = next((spec for spec in MOVING_LINES.values() if spec.ident == image["id"]), None)
+        if moving:
             section.append(
-                "- `go-line-bump.yml` moves this pin by itself once the official image carries a new"
-                " Go release; a new digest with the same Go (a Debian rebuild) still needs review"
+                f"- `{moving.workflow}` moves this pin by itself once the official image carries a new"
+                f" {moving.label} release; a new digest with the same {moving.label} (a Debian rebuild)"
+                " still needs review"
             )
         if image.get("missing_line"):
             section.append(
@@ -818,8 +920,8 @@ def main(argv: list[str]) -> None:
             "       toolchain-freshness.py resolve [inventory]\n"
             "       toolchain-freshness.py issue-body <resolve.json>\n"
             "       toolchain-freshness.py issue-action <resolve.json>\n"
-            "       toolchain-freshness.py go-release [inventory]\n"
-            "       toolchain-freshness.py go-apply <go-release.json> [inventory]",
+            "       toolchain-freshness.py go-release|rust-release [inventory]\n"
+            "       toolchain-freshness.py go-apply|rust-apply <plan.json> [inventory]",
             file=sys.stderr,
         )
         raise SystemExit(2)
@@ -842,16 +944,17 @@ def main(argv: list[str]) -> None:
             fail("issue-action requires a resolve JSON path")
         print(issue_action(load_report(Path(rest[0]))))
         return
-    if cmd == "go-release":
+    line, _, verb = cmd.partition("-")
+    if line in MOVING_LINES and verb == "release":
         try:
-            sys.stdout.write(dump(go_plan(inventory_path(rest[0] if rest else None))))
+            sys.stdout.write(dump(line_plan(MOVING_LINES[line], inventory_path(rest[0] if rest else None))))
         except (RuntimeError, KeyError, TypeError) as err:
-            fail(f"go-release: {err}")
+            fail(f"{cmd}: {err}")
         return
-    if cmd == "go-apply":
+    if line in MOVING_LINES and verb == "apply":
         if not rest:
-            fail("go-apply requires a go-release JSON path")
-        print(go_apply(Path(rest[0]), inventory_path(rest[1] if len(rest) > 1 else None)))
+            fail(f"{cmd} requires a {line}-release JSON path")
+        print(line_apply(MOVING_LINES[line], Path(rest[0]), inventory_path(rest[1] if len(rest) > 1 else None)))
         return
     fail(f"unknown command {cmd}")
 
