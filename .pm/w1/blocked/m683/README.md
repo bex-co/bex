@@ -1,6 +1,6 @@
 # w1 · m683 — An environment's settings are Render's page at `/project/<id>/environment/<envId>/settings`, opened from the section's ••• menu
 
-**Worker:** worker1 **Goal:** each environment has Render's settings page and ••• menu, and bex's settings dialog is retired. **Status:** todo (t001–t007 and t009–t011 done and walked on the local stub; t008's production walk and t012 wait for a pin that carries the milestone)
+**Worker:** worker1 **Goal:** each environment has Render's settings page and ••• menu, and bex's settings dialog is retired. **Status:** blocked (pin must carry `cf73fe4fab`: t008's production walk as the QA user, then t012; t001–t007 and t009–t011 done, and t008's local walk passed)
 
 ## Tasks (in order)
 
@@ -33,7 +33,7 @@ Total: **12 tasks, about 8h45m**.
 
 - **Source:** `/pm-brainstorm one aspect of render parity to w3` (2026-11-26), filed to w1 by `/pm` the same day after re-reading Render's dashboard bundle. Render's public dashboard bundle, read 2026-11-26 without sign-in (entry `index-D5V4ZgbE.js`; chunk hashes change with every Render deploy, so find the code by the strings quoted here): `index` holds the settings page's cards ("Environment name is required", "Name is already used by another environment in this project", "For staging and development", "Best for production", "Restrict connections", "Yes, remove restrictions", `sudo delete environment`, "projects require at least one environment"); the `Project` chunk holds the ••• menu ("Block cross-environment connections", "All settings"). render.com/docs/projects documents "••• → All settings".
 - **bex today (checked 2026-11-26):** settings are a dialog (`environment-settings-dialog.tsx`); `/project/<id>/environment/<envId>/settings` answers NotFound; nothing refuses deleting the last environment.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)).
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)).
 - **Expected outcome:** the path Render's docs describe works on bex, and a Render URL to an environment's settings opens the same page.
 - **Why now:** w1/m682 adds the section this menu sits on; the dialog's controls (protection, isolation, IP rules) already exist and only change place and words, so the gap is the page and the menu.
 - **Render parity task:** included (t009): dashboard UI, and possibly a coded last-environment refusal on REST/GraphQL/MCP.
