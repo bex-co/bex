@@ -24,12 +24,14 @@ import (
 	"maps"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -665,8 +667,145 @@ func (r *blueprintActionResolver) planEnvGroupMove(ctx context.Context, action *
 	if target := placements.targets[group.grouping]; !unknown && target.environmentID == current && target.environmentID != "" {
 		return nil // stays put
 	}
+	// A move the apply would refuse for stranded links is refused here with
+	// the same code and guidance, judged on the workspace the file leaves:
+	// the apply moves services before groups (applyStackEnvGroupMoves runs
+	// after the service writes), so a linked service the file moves along
+	// reads in its target environment by the time the group moves, and only
+	// a service still sitting elsewhere strands it. Without this the plan
+	// names an "environment" update the sync then fails.
+	if err := r.refuseStrandedEnvGroupMove(ctx, name, group, placements); err != nil {
+		return err
+	}
 	addChangedFields(action, "environment")
 	return nil
+}
+
+// envMoveToken is where the apply leaves a resource with the declaration's
+// placement: an existing environment by id, a grouping the apply has yet to
+// create by name (its id is minted at apply time), or no environment. Two
+// resources share an environment after the apply exactly when their tokens
+// match.
+func envMoveToken(grouping string, ungrouped bool, targets map[string]groupingTarget, currentEnv string) string {
+	if grouping != "" {
+		if id := targets[grouping].environmentID; id != "" {
+			return "env\x00" + id
+		}
+		return "new\x00" + grouping
+	}
+	if ungrouped {
+		return "none"
+	}
+	// Declared at the top level, or absent from the file: stays where it is.
+	if currentEnv == "" {
+		return "none"
+	}
+	return "env\x00" + currentEnv
+}
+
+// refuseStrandedEnvGroupMove refuses the plan of a group whose move into its
+// declared grouping would strand a linked service or build-source carrier
+// outside it, as the apply's validateLinkedServiceEnvironments refuses it.
+// Service links are additive at apply (an existing source keeps its current
+// links and appends newly declared ones), so the stranded set is the current
+// links plus the file's new fromGroup links, each judged on the environment
+// the file leaves it in. A carrier never has an environment, so any carrier
+// link strands a move into an environment. When a link read is unavailable
+// the move is still named: a move the plan cannot prove stranded must not
+// pass as no change, and the apply still guards it.
+func (r *blueprintActionResolver) refuseStrandedEnvGroupMove(ctx context.Context, name string, group parsedEnvGroup, placements blueprintPlacements) error {
+	target := envMoveToken(group.grouping, false, placements.targets, "")
+	if target == "none" {
+		return nil // workspace scope never strands a link
+	}
+	byService := make(map[string]parsedService, len(r.parsed.services))
+	for _, svc := range r.parsed.services {
+		byService[svc.req.Name] = svc
+	}
+	var stranded []string
+	addStranded := func(manifestName, token string) {
+		if token != target && !slices.Contains(stranded, manifestName) {
+			stranded = append(stranded, manifestName)
+		}
+	}
+	currentEnvOf := func(app *appv1alpha1.App) string {
+		if app == nil {
+			return ""
+		}
+		return app.Labels[core.LabelEnvironment]
+	}
+	// The file's new fromGroup links land before the group moves.
+	for _, svc := range r.parsed.services {
+		if !slices.Contains(svc.groupLinks, name) {
+			continue
+		}
+		var current string
+		if live := r.services[svc.req.Name]; live != nil {
+			current = currentEnvOf(live)
+		}
+		addStranded(svc.req.Name, envMoveToken(svc.grouping, svc.ungrouped, placements.targets, current))
+	}
+	// The stored links, each judged on the environment the file leaves it in.
+	gid := r.envGroups[r.liveEnvGroupName(name)]
+	if gid != "" {
+		ref := gid + "-env"
+		linked := func(app *appv1alpha1.App) bool {
+			refs, _ := rollout.EffectiveGroupSecrets(app)
+			return slices.Contains(refs, ref)
+		}
+		for manifestName, live := range r.services {
+			if !linked(live) {
+				continue
+			}
+			token := envMoveToken("", false, placements.targets, currentEnvOf(live))
+			if ps, ok := byService[manifestName]; ok {
+				token = envMoveToken(ps.grouping, ps.ungrouped, placements.targets, currentEnvOf(live))
+			}
+			addStranded(manifestName, token)
+		}
+		if carriers, err := r.carrierApps(ctx); err == nil {
+			for carrierName, carrier := range carriers {
+				if linked(carrier) {
+					addStranded(carrierName, envMoveToken("", false, placements.targets, currentEnvOf(carrier)))
+				}
+			}
+		}
+	}
+	if len(stranded) == 0 {
+		return nil
+	}
+	slices.Sort(stranded)
+	quoted := make([]string, len(stranded))
+	for i, s := range stranded {
+		quoted[i] = strconv.Quote(s)
+	}
+	noun := "services"
+	if len(stranded) == 1 {
+		noun = "service"
+	}
+	project, environment, _ := strings.Cut(group.grouping, "\x00")
+	// BadRequest, as every plan-side refusal: validate locates
+	// blueprintResourceErrors through the BadRequest chain, while the code
+	// stays the apply's so callers match one refusal on both sides.
+	return blueprintResourceErrors{{kind: BlueprintResourceEnvVarGroup, name: name, err: core.NewBadRequestError(
+		"ENV_GROUP_MOVE_INCOMPATIBLE_SERVICES",
+		fmt.Sprintf("cannot move into environment %q with linked %s %s outside it: move them into the same environment first", project+"/"+environment, noun, strings.Join(quoted, ", ")),
+		nil,
+	)}}
+}
+
+// carrierApps is the workspace's build-source carriers by name for the link
+// scan: the resolver loads them only when the file declares or links build
+// sources, but a pre-existing carrier link strands a group move all the same.
+// A read failure degrades to the service scan, as EnvGroupWritesOwed does.
+func (r *blueprintActionResolver) carrierApps(ctx context.Context) (map[string]*appv1alpha1.App, error) {
+	if r.buildSources != nil {
+		return r.buildSources, nil
+	}
+	if r.snap == nil {
+		return nil, nil
+	}
+	return r.snap.buildSources(ctx)
 }
 
 // planEnvironments lists each projects[].environments[] entry the apply writes
