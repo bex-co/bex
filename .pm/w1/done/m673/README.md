@@ -1,6 +1,6 @@
 # w1 · m673 — The image URL is checked against its registry before the service is created, as Render's create form does
 
-**Worker:** worker1 **Goal:** while a user types an image URL, in the create form and in Settings' image source, bex reads the image from its registry with the chosen credential, as Render's `isDeployableImage` does. Each of Render's outcomes is shown under the field before the service exists: not found or private, invalid URL, credential refused, wrong platform, too large, or reachable. **Status:** blocked (pin must carry `0a715b42cc`: t005's production walk as the QA user, then t009; t001–t004 and t006–t008 done, and t005's dev-1 walk passed)
+**Worker:** worker1 **Goal:** while a user types an image URL, in the create form and in Settings' image source, bex reads the image from its registry with the chosen credential, as Render's `isDeployableImage` does. Each of Render's outcomes is shown under the field before the service exists: not found or private, invalid URL, credential refused, wrong platform, too large, or reachable. **Status:** done
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | Backend: read an image from its registry behind the SSRF guard and classify it into Render's five failure codes — **DONE** | 2h | t001 |
 | [t003](done/t003.md) | GraphQL `isDeployableImage(externalImageReference)` with its key scope and authorization — **DONE** | 1h15m | t002 |
 | [t004](done/t004.md) | Dashboard: the image tab checks the URL as it is typed, in the create form and in Settings — **DONE** | 2h | t003 |
-| [t005](t005.md) | Verify in a real browser and over GraphQL, on dev-1 and on production | 1h | t004 |
+| [t005](done/t005.md) | Verify in a real browser and over GraphQL, on dev-1 and on production — **DONE** | 1h | t004 |
 | [t006](done/t006.md) | Render parity — **DONE** | 30m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 45m | t006 |
-| [t009](t009.md) | Closeout | 10m | t007, t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t007, t008 |
 
 Total: **9 tasks, about 8h40m**.
 
@@ -52,7 +52,7 @@ Verified 2026-11-26 on main `ff791487b5`.
 
 ## Source + Goal linkage
 
-- **Source:** [w1/153](../../done/153.md), found by the w1/m645 dashboard ledger, 2026-11-26.
+- **Source:** [w1/153](../153.md), found by the w1/m645 dashboard ledger, 2026-11-26.
 - **Goal linkage:** Render parity, the top product principle ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first)). Deploying a prebuilt image is a core hosting path ([ADR004](../../../../docs/ADR004-app-deployment.md)).
 - **Expected outcome:** a mistyped tag, a private image without its credential, a wrong token or an arm64-only image is caught in the form in about a second. Today it is a service that exists and fails its first deploy.
 - **Why now:** the w1/m645 ledger left this as one of its last `gap` rows in Services, and w4/734 (refuse an image over 10 GB at deploy) shares the size rule. The pre-create check is where Render shows that rule first.
@@ -60,6 +60,23 @@ Verified 2026-11-26 on main `ff791487b5`.
 
 ## Progress (2026-11-26)
 
-- t001–t004 and t006–t008 shipped in `0a715b42cc` (with `8428d9dc67`, the cross-workspace matrix's caller-scoped entry): Render's `isDeployableImage` on bex-api's GraphQL (`lego/backend/internal/registryread`, `registrycreds/imagecheck.go`), and the image tab's live check in the create form and in Settings' Update Source, in eight locales. Details are in each task under [done/](done/).
-- t005: the dev-1 walk passed on GraphQL, with API keys, and in the browser at 1440 and 390 px. Every pending frame held the ready state's height ([t005](t005.md) § dev-1 walk). The production walk waits for a pin carrying the milestone.
+- t001–t004 and t006–t008 shipped in `0a715b42cc` (with `8428d9dc67`, the cross-workspace matrix's caller-scoped entry): Render's `isDeployableImage` on bex-api's GraphQL (`lego/backend/internal/registryread`, `registrycreds/imagecheck.go`), and the image tab's live check in the create form and in Settings' Update Source, in eight locales. Details are in each task under [done/](done).
+- t005: the dev-1 walk passed on GraphQL, with API keys, and in the browser at 1440 and 390 px. Every pending frame held the ready state's height ([t005](done/t005.md#dev-1-walk-2026-11-26)). The production walk waits for a pin carrying the milestone.
 - Follow-up: [w1/173](../../173.md) (the field's label, Render's unparseable-path sentence and the Git-repository hint). The credential list filtered by registry is [w4/735](../../../w4/735.md).
+
+## Unblocked (2026-11-27)
+
+- **Affected:** w1/m673 t005 (step 4) and t009.
+- **Source:** verified evidence. The newest `chore(deploy): pin platform images to 6ba91ca5b72f` on `origin/main` (`9c76d4ae72`) carries the milestone's commit: `git merge-base --is-ancestor 0a715b42cc 6ba91ca5b72f` succeeds.
+- **Remaining gates:** none. The gate `pin must carry 0a715b42cc` cleared by itself.
+- **Next:** a `/loopx w1` worker walks t005 step 4 as the QA user in `bex-canary` on disposable services, at 1440 and 390 px, in the create form and in Settings' Update Source, then deletes them, signs out and runs t009. Acceptance: the production walk is recorded in t005 with what was compared at each width.
+
+## Closeout (2026-11-27)
+
+The definition of done holds on production at pin `6ba91ca5b72f`. The production walk is recorded in [t005](done/t005.md#production-walk-2026-11-27), run as the QA user in `bex-canary` on a disposable image service and two dummy credentials, all deleted afterwards.
+
+- DoD 1–3: GraphQL `isDeployableImage` answers deployable, `does_not_exist`, `unsupported_platform` (production's `linux/amd64`) and `invalid_registry_credential`. Loopback, metadata and `nip.io` hosts get `invalid_input_url` in about 0.2 s.
+- DoD 4: both image fields show the spinner, then the check mark or the caution, with Render's sentence. Deploy and Connect stay disabled until the image is deployable. With the check held back, every pending frame matched its ready frame in all eight locales at 1440 and 390 px. That held for the create form, for Settings' Update Source (the check it opens with and a typed one), and after a hovered navigation.
+- DoD 5: walked on production with a public image, a missing tag, a malformed URL, the wrong platform, a private path with no credential, and a wrong credential for its own registry and for another registry. A private image with its right credential was not walked, as on dev-1: the run had no private image with a read-only token. The in-process registry tests cover that case.
+
+At 390 px the create form lets the window scroll once its fields show. The cause is the shared page scroller's leak that w1/m657 found, not this milestone. Its fix `83a2ff4630` is on main but not yet in pin `6ba91ca5b72f`, and adding its `relative` to the live scroller removed the scroll.
