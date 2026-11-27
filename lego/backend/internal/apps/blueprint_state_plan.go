@@ -703,6 +703,15 @@ func envMoveToken(grouping string, ungrouped bool, targets map[string]groupingTa
 	return "env\x00" + currentEnv
 }
 
+// storedServiceEnvironment is the control-plane environment read the apply's
+// scoping guards judge a linked service by (envgroups, hook-wired in
+// production): the store's row first, the App label when the store holds no
+// record. A resolver without it (nil seam, fakes) judges by the label, as the
+// unwired apply does.
+type storedServiceEnvironment interface {
+	StoredServiceEnvironment(ctx context.Context, app *appv1alpha1.App) (string, error)
+}
+
 // refuseStrandedEnvGroupMove refuses the plan of a group whose move into its
 // declared grouping would strand a linked service or build-source carrier
 // outside it, as the apply's validateLinkedServiceEnvironments refuses it.
@@ -710,9 +719,11 @@ func envMoveToken(grouping string, ungrouped bool, targets map[string]groupingTa
 // links and appends newly declared ones), so the stranded set is the current
 // links plus the file's new fromGroup links, each judged on the environment
 // the file leaves it in. A carrier never has an environment, so any carrier
-// link strands a move into an environment. When a link read is unavailable
-// the move is still named: a move the plan cannot prove stranded must not
-// pass as no change, and the apply still guards it.
+// link strands a move into an environment. Every linked service is judged by
+// the stored environment, not the App label the store reconciler has yet to
+// re-stamp, so the plan refuses exactly what the apply refuses. When a link
+// read is unavailable the move is still named: a move the plan cannot prove
+// stranded must not pass as no change, and the apply still guards it.
 func (r *blueprintActionResolver) refuseStrandedEnvGroupMove(ctx context.Context, name string, group parsedEnvGroup, placements blueprintPlacements) error {
 	target := envMoveToken(group.grouping, false, placements.targets, "")
 	if target == "none" {
@@ -728,11 +739,14 @@ func (r *blueprintActionResolver) refuseStrandedEnvGroupMove(ctx context.Context
 			stranded = append(stranded, manifestName)
 		}
 	}
-	currentEnvOf := func(app *appv1alpha1.App) string {
+	currentEnvOf := func(app *appv1alpha1.App) (string, error) {
 		if app == nil {
-			return ""
+			return "", nil
 		}
-		return app.Labels[core.LabelEnvironment]
+		if se, ok := r.service.EnvGroups.(storedServiceEnvironment); ok {
+			return se.StoredServiceEnvironment(ctx, app)
+		}
+		return app.Labels[core.LabelEnvironment], nil
 	}
 	// The file's new fromGroup links land before the group moves.
 	for _, svc := range r.parsed.services {
@@ -741,7 +755,10 @@ func (r *blueprintActionResolver) refuseStrandedEnvGroupMove(ctx context.Context
 		}
 		var current string
 		if live := r.services[svc.req.Name]; live != nil {
-			current = currentEnvOf(live)
+			var err error
+			if current, err = currentEnvOf(live); err != nil {
+				return err
+			}
 		}
 		addStranded(svc.req.Name, envMoveToken(svc.grouping, svc.ungrouped, placements.targets, current))
 	}
@@ -757,16 +774,24 @@ func (r *blueprintActionResolver) refuseStrandedEnvGroupMove(ctx context.Context
 			if !linked(live) {
 				continue
 			}
-			token := envMoveToken("", false, placements.targets, currentEnvOf(live))
+			current, err := currentEnvOf(live)
+			if err != nil {
+				return err
+			}
+			token := envMoveToken("", false, placements.targets, current)
 			if ps, ok := byService[manifestName]; ok {
-				token = envMoveToken(ps.grouping, ps.ungrouped, placements.targets, currentEnvOf(live))
+				token = envMoveToken(ps.grouping, ps.ungrouped, placements.targets, current)
 			}
 			addStranded(manifestName, token)
 		}
 		if carriers, err := r.carrierApps(ctx); err == nil {
 			for carrierName, carrier := range carriers {
 				if linked(carrier) {
-					addStranded(carrierName, envMoveToken("", false, placements.targets, currentEnvOf(carrier)))
+					current, err := currentEnvOf(carrier)
+					if err != nil {
+						return err
+					}
+					addStranded(carrierName, envMoveToken("", false, placements.targets, current))
 				}
 			}
 		}

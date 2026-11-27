@@ -1536,6 +1536,16 @@ func (s *Service) serviceEnvironment(ctx context.Context, a *appv1alpha1.App) (s
 	return a.Labels[core.LabelEnvironment], nil
 }
 
+// StoredServiceEnvironment reports the environment the control-plane store
+// holds for the service behind a, falling back to the App label when the
+// store is unwired or holds no record for it: the same read the move and
+// link guards judge by (serviceEnvironment), exposed so a Blueprint plan
+// refuses exactly what the apply refuses instead of judging a label the
+// store reconciler has yet to re-stamp.
+func (s *Service) StoredServiceEnvironment(ctx context.Context, a *appv1alpha1.App) (string, error) {
+	return s.serviceEnvironment(ctx, a)
+}
+
 // validateLinkedServiceEnvironments refuses a group scope change to
 // environmentID while any linked service sits elsewhere. A group without an
 // environment links to any service (w8/179), so a move to workspace scope
