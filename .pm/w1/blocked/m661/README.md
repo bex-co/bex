@@ -1,6 +1,6 @@
 # w1 · m661 — A multi-instance deploy's page shows "Scaling: N of M instances", as on Render
 
-**Worker:** worker1 **Goal:** the deploy header of a service that runs more than one instance, or autoscales, shows Render's **Scaling** fact, how many instances run this deploy out of how many it needs, live while the deploy rolls out. **Status:** todo (t001–t004 and t006–t008 done; t005 walked DoD 1–3 on production, and its fix for the autoscaled header's frame waits for a pin, then t005's re-check and t009)
+**Worker:** worker1 **Goal:** the deploy header of a service that runs more than one instance, or autoscales, shows Render's **Scaling** fact, how many instances run this deploy out of how many it needs, live while the deploy rolls out. **Status:** blocked (pin must carry `3cd45fd9d1`: t005's re-check of an autoscaled service's deploy page on production, then t009; t001–t004 and t006–t008 done, and t005 walked DoD 1–3 on production)
 
 ## Tasks (in order)
 
@@ -26,9 +26,9 @@
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm one aspect of render parity to w1` (2026-11-26), verified the same day before filing. Render's dashboard bundle (entry `index-D5V4ZgbE.js`): `DeployDetailsHeader` renders a **Scaling** fact, "`<deployed>` of `<total>` instances", and `index`'s `P$` computes it: `deployed` counts the service's instances whose `deployID` is this deploy and whose status is succeeded or running; `total` is the autoscaling minimum when autoscaling is on, else `numInstances`; shown only when autoscaling is on or the service runs more than one instance, and only on a live, queued or in-progress deploy (`useDeployDetails`). No flag gates it (the step timeline's `instance_overview` flag gates only the trace queries, see [w1/155](../blocked/155.md)).
+- **Source:** `/pm-brainstorm one aspect of render parity to w1` (2026-11-26), verified the same day before filing. Render's dashboard bundle (entry `index-D5V4ZgbE.js`): `DeployDetailsHeader` renders a **Scaling** fact, "`<deployed>` of `<total>` instances", and `index`'s `P$` computes it: `deployed` counts the service's instances whose `deployID` is this deploy and whose status is succeeded or running; `total` is the autoscaling minimum when autoscaling is on, else `numInstances`; shown only when autoscaling is on or the service runs more than one instance, and only on a live, queued or in-progress deploy (`useDeployDetails`). No flag gates it (the step timeline's `instance_overview` flag gates only the trace queries, see [w1/155](../155.md)).
 - **bex today (verified 2026-11-26):** the deploy header puts Pre-deploy "where Render's Scaling sits" (`dashboard/src/features/deploys/components/deploy-header.tsx:67`). GraphQL `serviceInstances(id)` answers `ServiceInstance { id createdAt }` (`lego/backend/internal/api/testdata/schema.graphql:2832,3514`; `apps.Service.ListInstances`, `lego/backend/internal/apps/service.go:1778`), with no deploy or status. Render's public `serviceInstance` is also only `{id, createdAt}` (pinned `render-public-api-1.json`), so REST and MCP already match and stay as they are; the gap is GraphQL and the dashboard. Pods carry `app.bex.co/revision` (`lego/types/v1alpha1/labels.go:33`), and deploy rows carry their release generation, so an instance can be tied to its deploy.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)).
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)).
 - **Expected outcome:** a user watching a deploy of a multi-instance or autoscaled service (w1/m20) sees it roll out one instance at a time, as on Render, instead of one status until it is done.
 - **Why now:** bex's header already holds a placeholder where Render's fact sits, and the instance-to-deploy link is the one fact missing; zero-downtime rollouts roll one instance at a time (ADR018 § Deploys: Zero-downtime rollout), so the progress exists and is not shown.
 - **Not duplicated (checked 2026-11-26 across every workstream):** w4/664 (blocked) is about scale-up events, w4/m173 (blocked) about instance metering; neither shows rollout progress.
@@ -51,4 +51,8 @@ t005 walked DoD 1–3 on production pin `6ba91ca5b72f` as the QA user in `bex-ca
   - The instances are not read in the loader. The fact's value shows a bar in its own 20 px line until they land, which changes no geometry, and the loader adds no third round trip to a navigation.
 - **Not chosen.** Reading the instances in the loader too, which draws the count at mount at the cost of a third sequential read on every scaled-out service's deploy page. Reserving the fact in the ready header whenever the service supports scaling, which would show a Scaling fact Render does not show on single-instance services.
 - **dev-1.** With the dashboard from this tree, an autoscaled service (disposable) with an instance count of 1 mounted with the fact and never moved, hovered and held, in all eight locales at 390 px and at 1440 px. With the read switched off it moved 48 px again.
-- **Filed:** [w1/179](../179.md), a digest-pinned image reference wrapping the Image fact past its frame at 390 px. It predates this milestone.
+- **Filed:** [w1/179](../../179.md), a digest-pinned image reference wrapping the Image fact past its frame at 390 px. It predates this milestone.
+
+## Parked (2026-11-27)
+
+**Gate:** pin must carry `3cd45fd9d1`. Nothing is needed from the user. Then a worker runs [t005 § Next](t005.md#next-once-the-pin-carries-the-fix) and t009.
