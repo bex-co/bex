@@ -1055,7 +1055,9 @@ const (
 // substituteCaptures expands a destination path's "*"s, ":splat" and declared
 // ":name" tokens, bounding the total first so a repeated token cannot amplify
 // a capture past maxExpandedRoutePathBytes. The destination's nth "*" takes
-// the source's nth capture (starCapture), and ":splat" its first. Undeclared
+// the source's nth capture (starCapture), and ":splat" its first, falling
+// back to a ":splat" source segment's capture when the source has no "*"
+// (splatCapture). Undeclared
 // ":name" tokens stay literal (writers refuse them; a direct CR write must
 // not panic).
 func substituteCaptures(destPath string, stars []string, captures map[string]string) (string, error) {
@@ -1088,7 +1090,7 @@ func substituteCaptures(destPath string, stars []string, captures map[string]str
 			continue
 		}
 		if name == "splat" {
-			add(i, j, starCapture(stars, 0))
+			add(i, j, splatCapture(stars, captures))
 		} else if value, ok := captures[name]; ok {
 			add(i, j, value)
 		}
@@ -1120,6 +1122,19 @@ func starCapture(stars []string, i int) string {
 		return ""
 	}
 	return stars[min(i, len(stars)-1)]
+}
+
+// splatCapture is what a destination's ":splat" expands to: the source's
+// first "*" capture, or, when the source has no "*" to capture with, the
+// segment a whole ":splat" source segment captured. A source ":splat" matches
+// exactly like any ":name" (matchPiece), but the expander used to read only
+// the star captures, so a starless "/blog/:splat" → "/new/:splat" rule saved
+// on every surface and silently redirected "/blog/hello" to "/new/".
+func splatCapture(stars []string, captures map[string]string) string {
+	if len(stars) > 0 {
+		return stars[0]
+	}
+	return captures["splat"]
 }
 
 func expandDest(dest, splat string, allowAbsolute bool) (*url.URL, error) {
