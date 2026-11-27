@@ -1,6 +1,6 @@
 # w1 · m682 — A project's page stacks every environment as its own section, as Render's does
 
-**Worker:** worker1 **Goal:** `/project/<id>` draws each environment as Render's section (name, protection, counted switcher, search, tables, empty state), serves Render's `/project/<id>/environment/<envId>` URL, and carries Render's header. **Status:** todo (t001–t008, t010–t012 done; t009 walked on the local stub, production walk pending)
+**Worker:** worker1 **Goal:** `/project/<id>` draws each environment as Render's section (name, protection, counted switcher, search, tables, empty state), serves Render's `/project/<id>/environment/<envId>` URL, and carries Render's header. **Status:** blocked (pin must carry `7d4d5df684`: t009's production walk as the QA user, then t013; t001–t008 and t010–t012 done, and t009's local walk passed)
 
 ## Tasks (in order)
 
@@ -33,8 +33,8 @@ Total: **13 tasks, about 9h50m**.
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm one aspect of render parity to w3` (2026-11-26), filed to w1 by `/pm` the same day after re-reading Render's dashboard bundle. Render's public dashboard bundle, read 2026-11-26 without sign-in (entry `index-D5V4ZgbE.js`; chunk hashes change with every Render deploy, so find the code by the strings quoted here): the `Project` chunk maps `environments` to one section each (h2, protected icon, the counted switcher stored per environment, "Search resources in <env>", "<env> is empty", the Add environment card); `page-templates` holds the header ("Edit project name", `?edit=name`, "Get more environments with <plan>"). [render.com/docs/projects](https://render.com/docs/projects) says "click the ••• menu at the top right of that environment's section on the project's page".
-- **bex today (checked 2026-11-26):** one URL-selected environment (`environments-panel.tsx`, `selectEnvironmentId`, `?env=`), as Render showed in July ([`dashboard-walk/workspace.md`](../../../docs/render-artifacts/dashboard-walk/workspace.md), w5/m41) and as ADR018's Projects & environments row (◐) records.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)); AGENTS.md: when an existing design conflicts with parity, amend the design.
+- **bex today (checked 2026-11-26):** one URL-selected environment (`environments-panel.tsx`, `selectEnvironmentId`, `?env=`), as Render showed in July ([`dashboard-walk/workspace.md`](../../../../docs/render-artifacts/dashboard-walk/workspace.md), w5/m41) and as ADR018's Projects & environments row (◐) records.
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)); AGENTS.md: when an existing design conflicts with parity, amend the design.
 - **Expected outcome:** a user following Render's docs finds each environment's section, its menu and its New button on bex's project page, and every resource of the project is visible without switching environments.
 - **Why now:** Render replaced the layout bex copied in July. w1/m683 (environment settings), w1/m684 (New menu) and w1/m685 (Move Services) attach to this section, and w3/m681 t003 adds Generate Blueprint to its menu.
 - **Not duplicated (checked 2026-11-26 across every workstream):** no open item touches the project page's layout; w3/m681 adds one menu item.
