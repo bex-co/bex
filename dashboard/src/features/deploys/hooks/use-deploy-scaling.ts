@@ -35,7 +35,9 @@ export type DeployScalingFact = DeployScaling | "loading" | null;
  * instance, its instances with the deploy each runs. Only a deploy the fact
  * shows on reads them, every 3 seconds while the deploy is queued or in
  * progress and at the page's baseline once it is not, with one read as the
- * rollout ends so the count it ended on shows at once.
+ * rollout ends so the count it ended on shows at once. The route loader warms
+ * the autoscaling read (deploy-page-prefetch.ts), so the page mounts knowing
+ * whether the fact shows rather than growing by it.
  */
 export function useDeployScaling(
   serviceId: string,

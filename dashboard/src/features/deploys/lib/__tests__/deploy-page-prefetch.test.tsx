@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, renderHook, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { ApolloClient, ApolloLink, InMemoryCache } from "@apollo/client";
 import { ApolloProvider } from "@apollo/client/react";
@@ -14,6 +14,7 @@ import { apolloCacheConfig } from "@/common/apollo/cache";
 import type { RouterContext } from "@/common/types/router-context";
 import type { DeployView } from "@/features/deploys/hooks/use-deploy";
 import { DeployNotices } from "@/features/deploys/components/deploy-notices";
+import { useDeployScaling } from "@/features/deploys/hooks/use-deploy-scaling";
 import { ServiceBaseProvider } from "@/features/services/lib/service-base";
 import type { ServiceView } from "@/features/services/types";
 import { RollbackComparisonDocument } from "@/graphql/definitions";
@@ -306,6 +307,90 @@ describe("prefetchDeployPage", () => {
     });
     await prefetchDeployPage(api.client, "srv-1", "dep-2");
     expect(api.names().sort()).toEqual(["Deploy", "Deploys", "Server"]);
+  });
+});
+
+const serverOf = (type: string, replicas: number): Answers => ({
+  ...SERVER,
+  "server.type": type,
+  "server.replicas": replicas,
+});
+
+const AUTOSCALED: Answers = {
+  autoscalingConfig: {},
+  "autoscalingConfig.__typename": "Autoscaling",
+  "autoscalingConfig.enabled": true,
+  "autoscalingConfig.minInstances": 2,
+  "autoscalingConfig.maxInstances": 3,
+};
+
+// w1/m661: an autoscaled service whose instance count is 1 counts its
+// instances in the deploy header, but only its autoscaling says so. The page
+// read it after mounting, so the header grew a row of facts when it landed:
+// 48 px at 390 on production. The loader now reads it with the deploy.
+describe("prefetchDeployPage and the Scaling fact", () => {
+  it("reads an autoscaled service's autoscaling, so the header keeps the fact's place on its first render", async () => {
+    const api = bexApi({
+      Deploy: deployAnswer({ status: "live" }),
+      Server: serverOf("web_service", 1),
+      AutoscalingConfig: AUTOSCALED,
+    });
+    await prefetchDeployPage(api.client, "srv-1", "dep-2");
+    expect(api.names().sort()).toEqual([
+      "AutoscalingConfig",
+      "Deploy",
+      "Server",
+    ]);
+    expect(
+      api.asked.find((r) => r.name === "AutoscalingConfig")?.variables,
+    ).toEqual({ id: "srv-1" });
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <ApolloProvider client={api.client}>{children}</ApolloProvider>
+    );
+    const { result } = renderHook(
+      () =>
+        useDeployScaling(
+          "srv-1",
+          { id: "srv-1", type: "web_service", replicas: 1 } as ServiceView,
+          view({ status: "live" }),
+        ),
+      { wrapper },
+    );
+    // The first render already holds the fact's place; only the count is
+    // still on its way, in place.
+    expect(result.current).toBe("loading");
+    expect(api.names().filter((n) => n === "AutoscalingConfig")).toHaveLength(
+      1,
+    );
+  });
+
+  it.each([
+    ["a static site", "static_site", "live"],
+    ["a cron job", "cron_job", "live"],
+    ["a deactivated deploy", "web_service", "deactivated"],
+  ])(
+    "reads no autoscaling for %s, whose header has no Scaling fact",
+    async (_, type, status) => {
+      const api = bexApi({
+        Deploy: deployAnswer({ status }),
+        Server: serverOf(type, 1),
+        AutoscalingConfig: AUTOSCALED,
+      });
+      await prefetchDeployPage(api.client, "srv-1", "dep-2");
+      expect(api.names()).not.toContain("AutoscalingConfig");
+    },
+  );
+
+  it("never blocks a navigation on a failed autoscaling read", async () => {
+    const api = bexApi({
+      Deploy: deployAnswer({ status: "live" }),
+      Server: serverOf("web_service", 1),
+      AutoscalingConfig: "fail",
+    });
+    await expect(
+      prefetchDeployPage(api.client, "srv-1", "dep-2"),
+    ).resolves.toBeUndefined();
   });
 });
 
