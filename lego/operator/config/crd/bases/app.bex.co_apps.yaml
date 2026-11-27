@@ -949,13 +949,17 @@ spec:
                   properties:
                     destination:
                       description: |-
-                        Destination is the target path ("/new", "/index.html"). A trailing "/*" in
-                        Source is appended to a Destination that ends in "/*".
+                        Destination is the target path or http(s) URL ("/new", "/index.html",
+                        "/new-*"). Each "*" in it takes the string the Source's "*" in the same
+                        position captured (the last one past the Source's count), ":splat" the
+                        first, and ":name" the Source's segment of that name.
                       maxLength: 2048
                       type: string
                     source:
-                      description: Source is the request path pattern to match (e.g.
-                        "/old", "/app/*").
+                      description: |-
+                        Source is the request path pattern to match (e.g. "/old", "/app/*",
+                        "/blog*"). As on Render, a "*" matches any string, "/" included, from its
+                        position, and a whole ":name" segment matches one segment.
                       maxLength: 2048
                       type: string
                     type:

@@ -1543,13 +1543,17 @@ type StaticRoute struct {
 	// +kubebuilder:validation:Enum=redirect;rewrite
 	Type string `json:"type"`
 
-	// Source is the request path pattern to match (e.g. "/old", "/app/*").
+	// Source is the request path pattern to match (e.g. "/old", "/app/*",
+	// "/blog*"). As on Render, a "*" matches any string, "/" included, from its
+	// position, and a whole ":name" segment matches one segment.
 	// +required
 	// +kubebuilder:validation:MaxLength=2048
 	Source string `json:"source"`
 
-	// Destination is the target path ("/new", "/index.html"). A trailing "/*" in
-	// Source is appended to a Destination that ends in "/*".
+	// Destination is the target path or http(s) URL ("/new", "/index.html",
+	// "/new-*"). Each "*" in it takes the string the Source's "*" in the same
+	// position captured (the last one past the Source's count), ":splat" the
+	// first, and ":name" the Source's segment of that name.
 	// +required
 	// +kubebuilder:validation:MaxLength=2048
 	Destination string `json:"destination"`

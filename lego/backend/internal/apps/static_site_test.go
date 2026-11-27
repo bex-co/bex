@@ -361,6 +361,29 @@ func TestValidateRoutesNamedPlaceholders(t *testing.T) {
 	}
 }
 
+// Render's "*" works anywhere in a source and a destination (w4/m698), so
+// every writer saves such a rule as written, and a ":name" beside a "*" is
+// still checked against the source.
+func TestValidateRoutesAcceptsRenderWildcards(t *testing.T) {
+	for _, r := range []StaticRouteView{
+		{Type: "redirect", Source: "/blog*", Destination: "/posts*"},
+		{Type: "redirect", Source: "/old-*", Destination: "/new-*"},
+		{Type: "rewrite", Source: "/*/feed", Destination: "/feeds/*.xml"},
+		{Type: "rewrite", Source: "/*.html", Destination: "/*/"},
+		{Type: "rewrite", Source: "/guides/*", Destination: "/*/index.html"},
+		{Type: "redirect", Source: "/*/:id", Destination: "/items/:id/*"},
+		{Type: "redirect", Source: "/*/x/*", Destination: "https://cdn.example.com/*/y/*"},
+	} {
+		if err := validateRoutes([]StaticRouteView{r}); err != nil {
+			t.Errorf("wildcard route %+v refused: %v", r, err)
+		}
+	}
+	err := validateRoutes([]StaticRouteView{{Type: "redirect", Source: "/*/:id", Destination: "/items/:other/*"}})
+	if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), ":other") {
+		t.Errorf("undeclared :other beside a * => %v, want a 400 naming it", err)
+	}
+}
+
 // w21/043: a rule path's budget is bytes, as len() counts it, and the message
 // says so: 701 Chinese characters are 2101 bytes. The dashboard row counts the
 // same way, so the two agree on which rules fit.

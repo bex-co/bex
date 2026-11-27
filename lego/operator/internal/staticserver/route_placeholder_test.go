@@ -48,7 +48,7 @@ func TestRouteNamedPlaceholders(t *testing.T) {
 			t.Errorf("%s: act=%v target=%v err=%v, want %v %q", tc.path, act, target, err, tc.act, tc.want)
 		}
 	}
-	// A trailing "/*" never claims the bare path, as in matchPattern (w8/325).
+	// A trailing "/*" never claims the bare path (w8/325).
 	for _, path := range []string{"/blog/posts/", "/blog/posts/a/b", "/blog/posts", "/combo/9"} {
 		if act, _, _ := matchRoutes(routes, path); act != actNone {
 			t.Errorf("%s: matched, want no match", path)

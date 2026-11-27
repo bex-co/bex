@@ -25,8 +25,8 @@ import (
 // exercise — a literal path, the splat rewrite, a redirect that splats, and a
 // named capture — plus the malformed edges substituteCaptures must survive: an
 // undeclared ":name" that stays literal, a dangling ":", adjacent tokens, a
-// trailing slash-star with no path, and a repeated splat that would amplify a
-// capture. Seeds live as source so a reviewer sees exactly what the untrusted
+// trailing slash-star with no path, a "*" mid-path and beside a token, and a
+// repeated splat that would amplify a capture. Seeds live as source so a reviewer sees exactly what the untrusted
 // surface is probed with; the on-disk testdata/fuzz cache is never committed.
 func captureFuzzSeeds(f *testing.F) {
 	f.Helper()
@@ -48,6 +48,10 @@ func captureFuzzSeeds(f *testing.F) {
 		{"/:splat", "", "splat", "z"},
 		{"/a/*/*", "b", "", ""},
 		{"/%2e%2e/*", "../x", "", ""},
+		{"/new-*", "page", "", ""},
+		{"/*/index.html", "docs", "", ""},
+		{"/*:splat*", "a", "", ""},
+		{"/" + strings.Repeat("*", 300), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "", ""},
 	}
 	for _, seed := range seeds {
 		f.Add(seed.dest, seed.splat, seed.name, seed.value)
@@ -67,14 +71,14 @@ func FuzzSubstituteCaptures(f *testing.F) {
 		if name != "" {
 			captures[name] = value
 		}
-		out, err := substituteCaptures(destPath, splat, captures)
+		out, err := substituteCaptures(destPath, []string{splat}, captures)
 		if err != nil {
 			return
 		}
 		if len(out) > maxExpandedRoutePathBytes {
 			t.Fatalf("substituteCaptures(%q, %q, %v) expanded to %d bytes, past the %d bound", destPath, splat, captures, len(out), maxExpandedRoutePathBytes)
 		}
-		if !strings.Contains(destPath, ":") && !strings.HasSuffix(destPath, "/*") && out != destPath {
+		if !strings.ContainsAny(destPath, ":*") && out != destPath {
 			t.Fatalf("substituteCaptures(%q, %q, %v) = %q, a token-free destination must stay literal", destPath, splat, captures, out)
 		}
 	})

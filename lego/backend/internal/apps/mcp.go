@@ -584,8 +584,8 @@ type listCustomDomainsArgs struct {
 // rules — Render's route (type/source/destination) and header (path/name/value).
 type staticRouteArg struct {
 	Type        string `json:"type" jsonschema:"redirect (301 to destination) or rewrite (serve destination's content with 200)"`
-	Source      string `json:"source" jsonschema:"request path pattern to match, e.g. /old or /app/* (trailing /* is a wildcard)"`
-	Destination string `json:"destination" jsonschema:"target path, e.g. /new or /index.html; :splat or a trailing /* substitutes the wildcard capture"`
+	Source      string `json:"source" jsonschema:"request path pattern to match, e.g. /old, /app/* or /blog*: * matches any string, / included, from its position, and a whole :name segment matches one segment"`
+	Destination string `json:"destination" jsonschema:"target path or http(s) URL, e.g. /new, /index.html or /new-*: each * takes the string the source's * captured, and :name the source's segment"`
 }
 
 type staticHeaderArg struct {

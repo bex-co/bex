@@ -866,12 +866,12 @@ const (
 )
 
 // matchRoutes evaluates the ordered routes against reqPath, first match wins,
-// returning the action and the expanded destination. Source patterns support a
-// trailing "/*" wildcard and whole-segment ":name" placeholders; captures
-// substitute ":splat"/trailing "/*" and ":name" tokens in the destination.
+// returning the action and the expanded destination. matchRouteSource is the
+// source grammar; expandDestCaptures puts what it captured into the
+// destination.
 func matchRoutes(routes []appv1alpha1.StaticRoute, reqPath string) (routeAction, *url.URL, error) {
 	for _, rt := range routes {
-		splat, captures, ok := matchRoutePattern(rt.Source, reqPath)
+		stars, names, ok := matchRouteSource(rt.Source, reqPath)
 		if !ok {
 			continue
 		}
@@ -884,91 +884,164 @@ func matchRoutes(routes []appv1alpha1.StaticRoute, reqPath string) (routeAction,
 		default:
 			continue
 		}
-		dest, err := expandDestCaptures(rt.Destination, splat, captures, true)
+		dest, err := expandDestCaptures(rt.Destination, stars, names, true)
 		return action, dest, err
 	}
 	return actNone, nil, nil
 }
 
-// matchPattern reports whether reqPath matches pattern and returns the splat (the
-// text captured by a trailing "/*"). "/*" matches everything (splat = the path
-// minus its leading slash); "/foo/*" matches "/foo/" and "/foo/...", never the
-// bare "/foo", as on Render (w8/325); any other pattern is an exact match
-// (splat empty).
-func matchPattern(pattern, reqPath string) (string, bool) {
-	if pattern == "/*" {
-		return strings.TrimPrefix(reqPath, "/"), true
+// matchRouteSource matches reqPath against a route source by Render's rule
+// (render.com/docs/redirects-rewrites § Wildcards, w4/m698): a "*" matches
+// any string, "/" included, from its position, and a whole ":name" segment
+// matches one non-empty segment (w4/m240). Everything else is literal. So
+// "/*" matches every path, "/" included, and "/x/*" needs the slash after
+// "/x", never matching the bare "/x" (w8/325). stars holds what each "*"
+// captured, in source order.
+//
+// The text before the first "*" is anchored at the start of the path and the
+// text after the last "*" at its end, so a source with one "*" has exactly
+// one capture. The pieces between two "*"s match leftmost: an earlier "*"
+// takes the shortest string that lets the rest match. Matching is linear in
+// the path, and a ":name" between two "*"s shares a work budget of the same
+// order (findPiece).
+func matchRouteSource(source, reqPath string) (stars []string, names map[string]string, ok bool) {
+	head, rest, hasStar := strings.Cut(source, "*")
+	start, ok := matchPiece(head, true, !hasStar, reqPath, &names)
+	if !ok || !hasStar {
+		return nil, names, ok && start == len(reqPath)
 	}
-	if prefix, ok := strings.CutSuffix(pattern, "/*"); ok { // "/foo/*" -> "/foo"
-		if rest, ok := strings.CutPrefix(reqPath, prefix+"/"); ok {
-			return rest, true
-		}
-		return "", false
+	tail, last := rest, strings.LastIndexByte(rest, '*')
+	if last >= 0 {
+		tail = rest[last+1:]
 	}
-	return "", pattern == reqPath
-}
-
-// matchRoutePattern is matchPattern plus whole-segment ":name" captures. A
-// placeholder matches exactly one non-empty segment and may precede a
-// trailing "/*", which, as in matchPattern, needs the slash after the last
-// segment: "/:lang/*" matches "/en/" but not "/en". Patterns without
-// placeholders keep matchPattern semantics.
-func matchRoutePattern(pattern, reqPath string) (string, map[string]string, bool) {
-	base, hasSplat := strings.CutSuffix(pattern, "/*")
-	hasPlaceholder := false
-	for seg := range strings.SplitSeq(base, "/") {
-		if _, ok := routepattern.PlaceholderName(seg); ok {
-			hasPlaceholder = true
-			break
-		}
-	}
-	if !hasPlaceholder {
-		splat, ok := matchPattern(pattern, reqPath)
-		return splat, nil, ok
-	}
-	patSegs := strings.Split(base, "/")
-	reqSegs := strings.Split(reqPath, "/")
-	if !segmentsFit(hasSplat, len(patSegs), len(reqSegs)) {
-		return "", nil, false
-	}
-	captures, ok := routeCaptures(patSegs, reqSegs)
+	end, ok := tailStart(tail, reqPath, start)
 	if !ok {
-		return "", nil, false
+		return nil, nil, false
 	}
-	if !hasSplat {
-		return "", captures, true
-	}
-	return strings.Join(reqSegs[len(patSegs):], "/"), captures, true
-}
-
-// segmentsFit reports whether a request's segments can match a pattern's: a
-// trailing "/*" consumes any number beyond the pattern's segments, and
-// without one the counts must be equal.
-func segmentsFit(splat bool, pattern, request int) bool {
-	if splat {
-		return request > pattern
-	}
-	return request == pattern
-}
-
-// routeCaptures matches pattern segments against request segments, each
-// ":name" placeholder taking exactly one non-empty request segment. ok is
-// false on the first mismatch.
-func routeCaptures(patSegs, reqSegs []string) (map[string]string, bool) {
-	captures := map[string]string{}
-	for i, seg := range patSegs {
-		if name, ok := routepattern.PlaceholderName(seg); ok {
-			if reqSegs[i] == "" {
-				return nil, false
+	between := reqPath[start:end]
+	stars = make([]string, 0, strings.Count(rest, "*")+1)
+	from := 0
+	if last >= 0 {
+		work := routeMatchWorkFloor + routeMatchWorkPerByte*(len(reqPath)+len(source))
+		for piece := range strings.SplitSeq(rest[:last], "*") {
+			at, n, ok := findPiece(piece, between[from:], &names, &work)
+			if !ok {
+				return nil, nil, false
 			}
-			captures[name] = reqSegs[i]
+			stars = append(stars, between[from:from+at])
+			from += at + n
+		}
+	}
+	// The tail is matched last so that, as everywhere else, a repeated ":name"
+	// (writers refuse one; a direct CR write can hold it) keeps its last segment.
+	if n, ok := matchPiece(tail, false, true, reqPath[end:], &names); !ok || n != len(reqPath)-end {
+		return nil, nil, false
+	}
+	return append(stars, between[from:]), names, true
+}
+
+// The bytes findPiece may read trying a piece with a ":name" at each
+// candidate: a floor no path of a sane length reaches, plus a multiple of the
+// path and source, so the bound stays linear in them.
+const (
+	routeMatchWorkFloor   = 64 << 10
+	routeMatchWorkPerByte = 16
+)
+
+// matchPiece matches a "*"-free piece of a route source against the start of
+// s and returns how far into s it read: the bytes it matched when ok, where
+// it stopped otherwise. A segment of the piece is a ":name" placeholder only
+// when it is a whole segment of the source: wholeStart says the piece starts
+// the source and wholeEnd that it ends it, since a segment that touches a
+// "*" is literal.
+func matchPiece(piece string, wholeStart, wholeEnd bool, s string, names *map[string]string) (int, bool) {
+	pos := 0
+	for i := 0; i < len(piece); {
+		if name, next, ok := placeholderAt(piece, i, wholeStart, wholeEnd); ok {
+			n := strings.IndexByte(s[pos:], '/')
+			if n < 0 {
+				n = len(s) - pos
+			}
+			if n == 0 {
+				return pos, false
+			}
+			if *names == nil {
+				*names = map[string]string{}
+			}
+			(*names)[name] = s[pos : pos+n]
+			pos, i = pos+n, next
 			continue
 		}
-		if seg != reqSegs[i] {
-			return nil, false
+		if pos == len(s) || s[pos] != piece[i] {
+			return pos, false
+		}
+		pos, i = pos+1, i+1
+	}
+	return pos, true
+}
+
+// placeholderAt reports whether a whole ":name" segment starts at piece[i],
+// returning its name and the index after it.
+func placeholderAt(piece string, i int, wholeStart, wholeEnd bool) (string, int, bool) {
+	if piece[i] != ':' || i == 0 && !wholeStart || i > 0 && piece[i-1] != '/' {
+		return "", 0, false
+	}
+	next := strings.IndexByte(piece[i:], '/')
+	switch {
+	case next >= 0:
+		next += i
+	case wholeEnd:
+		next = len(piece)
+	default:
+		return "", 0, false
+	}
+	name, ok := routepattern.PlaceholderName(piece[i:next])
+	return name, next, ok
+}
+
+// tailStart returns where the piece after a source's last "*" starts in s
+// when it ends s, no earlier than from. A ":name" holds no slash, so the
+// piece's slashes are the last ones in s, and only its first fragment, the
+// literal text that touches the "*", comes before them.
+func tailStart(tail, s string, from int) (int, bool) {
+	at := len(s)
+	for range strings.Count(tail, "/") {
+		if at = strings.LastIndexByte(s[:at], '/'); at < 0 {
+			return 0, false
 		}
 	}
-	return captures, true
+	first, _, _ := strings.Cut(tail, "/")
+	at -= len(first)
+	return at, at >= from
+}
+
+// findPiece finds the leftmost match of a piece between two "*"s in s,
+// returning where it starts and its length. A piece with no ":name" is a
+// plain substring. One with a ":name" is tried at each occurrence of the
+// literal text before it, and each try charges what it read to *work, so a
+// pathological source on a long path gives up instead of reading the path
+// once per candidate.
+func findPiece(piece, s string, names *map[string]string, work *int) (int, int, bool) {
+	lead, _, hasName := strings.Cut(piece, "/:")
+	if !hasName {
+		at := strings.Index(s, piece)
+		return at, len(piece), at >= 0
+	}
+	lead += "/"
+	for from := 0; *work > 0; {
+		i := strings.Index(s[from:], lead)
+		if i < 0 {
+			return 0, 0, false
+		}
+		at := from + i
+		n, ok := matchPiece(piece, false, false, s[at:], names)
+		if ok {
+			return at, n, true
+		}
+		*work -= n + len(piece)
+		from = at + 1
+	}
+	return 0, 0, false
 }
 
 const (
@@ -979,19 +1052,28 @@ const (
 // expandDest separates URL syntax before substituting decoded path data. Never
 // parse the expanded path again: a captured ?/#/% is a filename character, not
 // a new query, fragment, or escape. Configured query/fragment values stay literal.
-// substituteCaptures expands ":splat", declared ":name" tokens and a
-// trailing "/*" alias in a destination path, bounding the total first so a
-// repeated token cannot amplify a capture past maxExpandedRoutePathBytes.
-// Undeclared ":name" tokens stay literal (writers refuse them; a direct CR
-// write must not panic).
-func substituteCaptures(destPath, splat string, captures map[string]string) (string, error) {
+// substituteCaptures expands a destination path's "*"s, ":splat" and declared
+// ":name" tokens, bounding the total first so a repeated token cannot amplify
+// a capture past maxExpandedRoutePathBytes. The destination's nth "*" takes
+// the source's nth capture (starCapture), and ":splat" its first. Undeclared
+// ":name" tokens stay literal (writers refuse them; a direct CR write must
+// not panic).
+func substituteCaptures(destPath string, stars []string, captures map[string]string) (string, error) {
 	type token struct {
 		start, end int
 		value      string
 	}
 	var tokens []token
-	expandedLen := len(destPath)
+	expandedLen, starsSeen := len(destPath), 0
+	add := func(start, end int, value string) {
+		tokens = append(tokens, token{start, end, value})
+		expandedLen += len(value) - (end - start)
+	}
 	for i := 0; i < len(destPath); {
+		if destPath[i] == '*' {
+			add(i, i+1, starCapture(stars, starsSeen))
+			starsSeen++
+		}
 		if destPath[i] != ':' {
 			i++
 			continue
@@ -1006,28 +1088,16 @@ func substituteCaptures(destPath, splat string, captures map[string]string) (str
 			continue
 		}
 		if name == "splat" {
-			tokens = append(tokens, token{i, j, splat})
-			expandedLen += len(splat) - (j - i)
-			i = j
-			continue
-		}
-		if value, ok := captures[name]; ok {
-			tokens = append(tokens, token{i, j, value})
-			expandedLen += len(value) - (j - i)
-			i = j
-			continue
+			add(i, j, starCapture(stars, 0))
+		} else if value, ok := captures[name]; ok {
+			add(i, j, value)
 		}
 		i = j
-	}
-	hasSplatToken := strings.Contains(destPath, ":splat")
-	trailing := !hasSplatToken && strings.HasSuffix(destPath, "/*")
-	if trailing {
-		expandedLen += len(splat) - 1
 	}
 	if expandedLen > maxExpandedRoutePathBytes {
 		return "", errors.New("expanded destination exceeds size limit")
 	}
-	if len(tokens) == 0 && !trailing {
+	if len(tokens) == 0 {
 		return destPath, nil
 	}
 	var b strings.Builder
@@ -1038,20 +1108,25 @@ func substituteCaptures(destPath, splat string, captures map[string]string) (str
 		b.WriteString(tok.value)
 		pos = tok.end
 	}
-	if trailing {
-		b.WriteString(destPath[pos : len(destPath)-1])
-		b.WriteString(splat)
-	} else {
-		b.WriteString(destPath[pos:])
-	}
+	b.WriteString(destPath[pos:])
 	return b.String(), nil
 }
 
-func expandDest(dest, splat string, allowAbsolute bool) (*url.URL, error) {
-	return expandDestCaptures(dest, splat, nil, allowAbsolute)
+// starCapture is what a destination's ith "*" expands to: the string the
+// source's ith "*" captured, its last capture past the source's count, and
+// nothing for a source without a "*".
+func starCapture(stars []string, i int) string {
+	if len(stars) == 0 {
+		return ""
+	}
+	return stars[min(i, len(stars)-1)]
 }
 
-func expandDestCaptures(dest, splat string, captures map[string]string, allowAbsolute bool) (*url.URL, error) {
+func expandDest(dest, splat string, allowAbsolute bool) (*url.URL, error) {
+	return expandDestCaptures(dest, []string{splat}, nil, allowAbsolute)
+}
+
+func expandDestCaptures(dest string, stars []string, captures map[string]string, allowAbsolute bool) (*url.URL, error) {
 	if len(dest) > maxRouteDestinationBytes {
 		return nil, errors.New("destination exceeds size limit")
 	}
@@ -1076,7 +1151,7 @@ func expandDestCaptures(dest, splat string, captures map[string]string, allowAbs
 	} else if target.Host != "" || target.Scheme != "" || !safeRedirectTarget(target.Path) {
 		return nil, errors.New("destination must be local")
 	}
-	expanded, err := substituteCaptures(target.Path, splat, captures)
+	expanded, err := substituteCaptures(target.Path, stars, captures)
 	if err != nil {
 		return nil, err
 	}
@@ -1088,10 +1163,11 @@ func expandDestCaptures(dest, splat string, captures map[string]string, allowAbs
 	return target, nil
 }
 
-// matchHeaderPattern keeps file selectors separate from route splat captures.
-// A globstar requires at least one directory: Render distinguishes /*.css from
-// /**/*.css, and /**/* also matches a trailing directory slash. Unsupported
-// metacharacters retain their literal meaning; matching is bounded by path size.
+// matchHeaderPattern is the header grammar, segment-bounded unlike a route
+// source's "*" (matchRouteSource). A globstar requires at least one directory:
+// Render distinguishes /*.css from /**/*.css, and /**/* also matches a
+// trailing directory slash. Unsupported metacharacters retain their literal
+// meaning; matching is bounded by path size.
 func matchHeaderPattern(pattern, reqPath string) bool {
 	if suffix, ok := strings.CutPrefix(pattern, "/**/*"); ok && !strings.ContainsAny(suffix, "/*") {
 		slash := strings.LastIndexByte(reqPath, '/')
@@ -1102,8 +1178,14 @@ func matchHeaderPattern(pattern, reqPath string) bool {
 		file, underPrefix := strings.CutPrefix(reqPath, prefix)
 		return underPrefix && !strings.Contains(file, "/") && strings.HasSuffix(file, suffix)
 	}
-	_, ok := matchPattern(pattern, reqPath)
-	return ok
+	if pattern == "/*" {
+		return true
+	}
+	// "/x/*" covers "/x/" and the paths below it, never the bare "/x" (w8/325).
+	if prefix, ok := strings.CutSuffix(pattern, "/*"); ok {
+		return strings.HasPrefix(reqPath, prefix+"/")
+	}
+	return pattern == reqPath
 }
 
 // applyHeaders adds every custom header whose path pattern matches reqPath. Set

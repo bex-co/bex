@@ -17,8 +17,14 @@ limitations under the License.
 package staticserver
 
 import (
+	"maps"
+	"regexp"
+	"slices"
+	"strings"
 	"testing"
+	"unicode/utf8"
 
+	"github.com/bex-co/bex/lego/types/routepattern"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -55,6 +61,19 @@ func routeFuzzSeeds(f *testing.F) {
 		{"/*", "//evil.example", "/", "redirect"},
 		{"/*", "http://evil.example/*", "/", "rewrite"},
 		{"/x", "\\evil", "/x", "redirect"},
+		// Render's wildcard anywhere in the path (w4/m698).
+		{"/blog*", "/posts*", "/blog/2024/x", "redirect"},
+		{"/old-*", "/new-*", "/old-page", "redirect"},
+		{"/*/feed", "/feeds/*.xml", "/a/b/feed", "rewrite"},
+		{"/*.html", "/*/", "/a/b.html", "redirect"},
+		{"/guides/*", "/*/index.html", "/guides/intro", "rewrite"},
+		{"/*/:id", "/items/:id/*", "/shop/7", "redirect"},
+		{"/*/:id/*", "/:id/*/*", "/a/7/b", "redirect"},
+		{"/*/x/*", "/*/y/*", "/a/x/b/x/c", "redirect"},
+		{"/a**b", "/**", "/a/c/b", "rewrite"},
+		{"/:id*", "/*", "/:id-x", "redirect"},
+		{"/a*a", "/*", "/a", "redirect"},
+		{"*/:id/*/:id", "/:id", "/0//1", "redirect"}, // a repeated name keeps its last segment
 	} {
 		f.Add(s.typ, s.source, s.dest, s.path)
 	}
@@ -86,6 +105,68 @@ func FuzzMatchRoutes(f *testing.F) {
 			t.Fatalf("expanded path exceeds the size bound: %d bytes", len(target.Path))
 		}
 	})
+}
+
+// FuzzRouteSourceMatchesReference checks matchRouteSource against a second,
+// independent reading of Render's rule: a regular expression in which each
+// "*" is a lazy any-string group and each whole ":name" segment one
+// non-empty segment, anchored at both ends. Both must agree on whether a path
+// matches and on every capture. Inputs stay short enough that the work
+// budget's floor covers them.
+func FuzzRouteSourceMatchesReference(f *testing.F) {
+	routeFuzzSeeds(f)
+	f.Fuzz(func(t *testing.T, _, source, _, reqPath string) {
+		if len(source) > 128 || len(reqPath) > 128 || !utf8.ValidString(source) || !utf8.ValidString(reqPath) {
+			return
+		}
+		re, groups := routeSourceReference(source)
+		stars, names, ok := matchRouteSource(source, reqPath)
+		m := re.FindStringSubmatch(reqPath)
+		if ok != (m != nil) {
+			t.Fatalf("source %q on %q: matched=%v, reference %v", source, reqPath, ok, m != nil)
+		}
+		if !ok {
+			return
+		}
+		wantStars, wantNames := []string{}, map[string]string{}
+		for i, group := range groups {
+			if group == "*" {
+				wantStars = append(wantStars, m[i+1])
+			} else {
+				wantNames[group] = m[i+1]
+			}
+		}
+		if !slices.Equal(stars, wantStars) || !maps.Equal(names, wantNames) {
+			t.Fatalf("source %q on %q: stars %q names %v, reference %q %v", source, reqPath, stars, names, wantStars, wantNames)
+		}
+	})
+}
+
+// routeSourceReference translates a route source into the reference regular
+// expression, returning the group each submatch fills: "*" or a ":name".
+func routeSourceReference(source string) (*regexp.Regexp, []string) {
+	var b strings.Builder
+	var groups []string
+	b.WriteString(`(?s)^`)
+	for i, seg := range strings.Split(source, "/") {
+		if i > 0 {
+			b.WriteByte('/')
+		}
+		if name, ok := routepattern.PlaceholderName(seg); ok {
+			b.WriteString(`([^/]+)`)
+			groups = append(groups, name)
+			continue
+		}
+		for j, part := range strings.Split(seg, "*") {
+			if j > 0 {
+				b.WriteString(`(.*?)`)
+				groups = append(groups, "*")
+			}
+			b.WriteString(regexp.QuoteMeta(part))
+		}
+	}
+	b.WriteByte('$')
+	return regexp.MustCompile(b.String()), groups
 }
 
 // FuzzMatchHeaderPattern drives the custom-header selector matcher with the same

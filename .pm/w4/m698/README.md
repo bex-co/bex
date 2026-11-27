@@ -1,17 +1,17 @@
 # w4 · m698 — `*` in a redirect or rewrite rule works anywhere in the path, as on Render
 
-**Worker:** worker4 **Goal:** a static site's redirect/rewrite rule matches a `*` at any position of its source and expands a `*` at any position of its destination, as Render documents, instead of treating every `*` except a trailing `/*` as literal text and saving rules that never fire. **Status:** todo
+**Worker:** worker4 **Goal:** a static site's redirect/rewrite rule matches a `*` at any position of its source and expands a `*` at any position of its destination, as Render documents, instead of treating every `*` except a trailing `/*` as literal text and saving rules that never fire. **Status:** todo (t001, t002, t004–t006 done; t003's ADR029/ADR018 record done, its production walk waits for a deploy carrying the change)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | A route source's `*` matches any string from its position, without changing header path matching | 1h30m | — |
-| [t002](t002.md) | A route destination's `*` expands to the captured string wherever it appears | 45m | t001 |
+| [t001](done/t001.md) | A route source's `*` matches any string from its position, without changing header path matching — **DONE** | 1h30m | — |
+| [t002](done/t002.md) | A route destination's `*` expands to the captured string wherever it appears — **DONE** | 45m | t001 |
 | [t003](t003.md) | Tests, a walk on a fixture static site, and the ADR029/ADR018 record | 45m | t002 |
-| [t004](t004.md) | Render parity | 25m | t003 |
-| [t005](t005.md) | Simplify | 15m | t004 |
-| [t006](t006.md) | Test coverage | 30m | t004, t005 |
+| [t004](done/t004.md) | Render parity — **DONE** | 25m | t003 |
+| [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 30m | t004, t005 |
 | [t007](t007.md) | Closeout | 10m | t006 |
 
 Total: **7 tasks, about 4h20m**.

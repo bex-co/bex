@@ -93,6 +93,10 @@ func TestHeaderPatternsServedResponses(t *testing.T) {
 	}
 }
 
+// The same "/*.yaml" selects root files as a header path and any path as a
+// route source: a header's "*" stays inside one segment (Render's header
+// table), while a route's "*" matches any string from its position, "/"
+// included (render.com/docs/redirects-rewrites § Wildcards, w4/m698).
 func TestHeaderPatternsPreserveRouteContract(t *testing.T) {
 	h, _ := newTestHandler(t, Site{
 		Headers: []appv1alpha1.StaticHeader{
@@ -100,14 +104,16 @@ func TestHeaderPatternsPreserveRouteContract(t *testing.T) {
 			{Path: "/**/*.yaml", Name: "X-Policy", Value: "nested"},
 			{Path: "/*.yaml", Name: "X-Root", Value: "yes"},
 			{Path: "/index.html", Name: "X-Destination", Value: "yes"},
+			{Path: "/yaml.html", Name: "X-Destination", Value: "yes"},
 		},
 		Routes: []appv1alpha1.StaticRoute{
-			{Type: "redirect", Source: "/*.yaml", Destination: "/should-not-match"},
 			{Type: "redirect", Source: "/old/*", Destination: "/archive/:splat"},
+			{Type: "rewrite", Source: "/*.yaml", Destination: "/yaml.html"},
 			{Type: "rewrite", Source: "/*", Destination: "/index.html"},
 		},
 	}, map[string]Object{
 		key("index.html"):  {Body: []byte("rewritten")},
+		key("yaml.html"):   {Body: []byte("yaml page")},
 		key("render.yaml"): {Body: []byte("original")},
 	})
 	for _, tc := range []struct {
@@ -115,8 +121,9 @@ func TestHeaderPatternsPreserveRouteContract(t *testing.T) {
 		status                             int
 	}{
 		{"/render.yaml", "original", "global", "yes", "", 200},
-		{"/missing.yaml", "rewritten", "global", "yes", "", 200},
-		{"/nested/missing.yaml", "rewritten", "nested", "", "", 200},
+		{"/missing.yaml", "yaml page", "global", "yes", "", 200},
+		{"/nested/missing.yaml", "yaml page", "nested", "", "", 200},
+		{"/missing.txt", "rewritten", "global", "", "", 200},
 		{"/old/deep/file.yaml", "", "", "", "/archive/deep/file.yaml", 301}, // a 301 carries no rule (w8/324)
 	} {
 		for _, method := range []string{http.MethodGet, http.MethodHead} {
