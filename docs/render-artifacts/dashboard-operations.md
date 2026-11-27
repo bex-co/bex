@@ -305,7 +305,7 @@ Grouped by product area, then sorted by name.
 | `serviceEnvVarKeys` | query | matched | ADR018 § Environment & config: Env vars (list · get · replace · set · delete) |
 | `serviceEnvVars` | query | matched | ADR018 § Environment & config: Env vars (list · get · replace · set · delete) |
 | `servicesForEnvGroup` | query | matched | ADR018 § Environment & config: Environment groups (+ link / unlink) |
-| `servicesForOwnerToLinkSearch` | query | gap | `w1/154` (Render's env var editor links a service, database or Key Value; DO_NOT_DO's Link-database line rests on a premise Render no longer holds) |
+| `servicesForOwnerToLinkSearch` | query | gap | `w1/154` (the Datastore URL item in a service's Add variable menu, behind no flag: it adds a Postgres or Key Value URL as `DATABASE_URL` or `REDIS_URL`, internal in the same region and external otherwise. Parked on the user's decision to lift DO_NOT_DO's Link-database line or keep it with a new reason) |
 | `updateEnvGroup` | mutation | matched | ADR018 § Environment & config: Environment groups (+ link / unlink) |
 | `updateEnvGroupName` | mutation | matched | ADR018 § Environment & config: Environment groups (+ link / unlink) |
 | `updateEnvGroupVars` | mutation | matched | ADR018 § Environment & config: Environment groups (+ link / unlink) |
