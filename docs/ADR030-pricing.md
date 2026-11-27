@@ -1,6 +1,6 @@
 # ADR030 — Price sheet + estimated spend
 
-**Status:** Accepted · 2026-07-13 · revised 2026-08-19 (workspace plan fees at 30% off Render) · revised 2026-07-26 by w7/m50 · revised 2026-09-06 (§7 paid-only Background Workers, w6/025) · revised 2026-10-15 (§7 paid-only Cron Jobs, w8/048) · revised 2026-11-16 (§18 cron job minimum, w9/m448) **Author:** w8/m7
+**Status:** Accepted · 2026-07-13 · revised 2026-08-19 (workspace plan fees at 30% off Render) · revised 2026-07-26 by w7/m50 · revised 2026-09-06 (§7 paid-only Background Workers, w6/025) · revised 2026-10-15 (§7 paid-only Cron Jobs, w8/048) · revised 2026-11-16 (§18 cron job minimum, w9/m448) · revised 2026-11-26 (§19 the idle plan-fee waiver, w4/m689) **Author:** w8/m7
 
 ---
 
@@ -349,6 +349,24 @@ From **2026-11-18T00:00:00Z**, in every workspace and with no allowlist, a runni
   - whether a suspended cron job owes it (bex: not if it was suspended the whole month);
   - what the invoice line is called (bex: "Cron job minimum");
   - whether it counts against any included usage (bex: no; no plan includes compute).
+
+### 19. A paid workspace with no services and no activity in a month pays no plan fee for it, as on Render (w4/m689, 2026-11-26)
+
+Render's pricing FAQ (render.com/pricing, read 2026-11-26): "If a workspace has no services (live or suspended) and no activity during a month, the workspace subscription fee for that month will be waived." No Render docs page states the rule (`render.com/docs/llms.txt` has no "waive", read 2026-11-26). Render defines neither a service nor activity for it, so the definitions below are bex's choices where Render publishes nothing.
+
+- **Today there is no fee to waive.** §2's plan fees are listed (the plan picker, `GET /pricing`) but never charged. A workspace's Subscription carries metered Prices only (`internal/billing/contracts.go` refuses any other), and no item attaches the licensed plan-fee SKU. So every Pro and Scale workspace pays no plan fee today, empty or not, and an empty one already pays what Render's rule leaves it to pay. bex writes no waiver line while no fee is charged: a negative line on an invoice that carries no fee would discount the workspace's usage, which is a credit, not a waiver. The rest of this section is the rule the plan-fee SKU ships with. Its code, surfaces and Stripe check are w4/m689 t002–t004, parked on the user's decision to charge the fee.
+- **Scope.** Pro and Scale, and Enterprise where its contract carries a catalog fee. Hobby has no fee. A workspace in an organization pays no fee of its own (§2), so an organization's one fee is waived only when every workspace in it qualifies, the primary included.
+- **A service.** A web service, private service, background worker, cron job, static site, Postgres or Key Value that existed at any moment of the month, in any state: live, suspended, failed or still deploying. One created and deleted inside the month counts. Sandboxes, object storage buckets and environment groups are not services, though creating or changing one is activity.
+- **Activity.** An `allowed` event in the workspace's audit log (`audit_events`, one row per authorized write, [ADR006](ADR006-bex-api.md) § Audit log) whose caller is one of the workspace's members, by any sign-in or token of theirs, or one of its API keys, other than a sign-in or sign-out (`auth.Login`, `auth.Logout`). Reads are never logged, billing-page reads included, so they never count. A denied attempt changed nothing and does not count. bex's own actions are not the workspace's activity: the billing worker, the operator, a bex admin's comp or exclusion.
+- **Month.** The calendar month (UTC), the period §13, §14 and §18 use. It is not the Stripe subscription period.
+- **Which invoice carries it.** Stripe bills a licensed recurring Price in advance, at the start of its period, and bex's metered usage in arrears. A month's fee is therefore already invoiced when the month ends. Its waiver is one negative pending invoice item on the workspace's (or the organization primary's) live Subscription, the mechanism §18 uses, and it lands on the next invoice, the one that bills that month's usage. It is decided 49 hours after the month ends, as §18 is. The line reads "<Plan> plan fee waived for <Month YYYY>: no services or activity" and equals the fee billed for that month, prorated as it was billed. It is idempotent per workspace (or organization) and month. A workspace whose fee was comped or not billed gets none. The plan-fee SKU aligns its charge with the calendar month or amends this paragraph. The waiver is never an [ADR071](ADR071-tenant-billing-credits.md) credit (`.pm/DO_NOT_DO.md`).
+- **Surfaces.** Once a fee is charged, REST `GET /v1/usage`, GraphQL `usage`, MCP `get_usage` and the Billing page show a waived month with its plan and amount, from one core read. The field is absent where the workspace owes no fee.
+- **Decision state.** A recommendation under ADR008's Render parity first, not a recorded user decision, and recorded unsigned in [ADR018 § Billing & invoicing](ADR018/billing-invoicing.md). Charging the listed plan fee at all is the user's decision. Until it is made, bex charges no workspace a fee, which is itself a difference from Render that has no sign-off.
+- **Unverified against Render.**
+  - Which resources count as services. bex counts its datastores, which Render lists beside its services.
+  - What counts as activity. bex counts every member or API-key write and no read.
+  - Whether an organization's fee follows the same rule, and whether it needs every workspace to qualify.
+  - Whether a partial month's prorated fee is waived as billed, and what the invoice line is called.
 
 ## Consequences
 
