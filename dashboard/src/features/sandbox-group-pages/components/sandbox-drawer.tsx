@@ -386,27 +386,28 @@ function SnapshotsTab({ sandbox }: { sandbox: SandboxRow }) {
   return (
     <ul className="divide-y rounded-lg border">
       {snapshots.map((snap) => (
-        <li
-          key={snap.id}
-          className="flex items-center justify-between gap-3 p-3"
-        >
-          <div className="min-w-0">
+        // The badge shares the name's line so the date and size get the
+        // row's whole width on one line: beside the badge, Spanish and
+        // Portuguese wrapped them at 390 px and the row outgrew its frame
+        // (w1/m658 t009).
+        <li key={snap.id} className="space-y-1 p-3">
+          <div className="flex items-center justify-between gap-2">
             <Link
               to="/sandbox-groups/$sandboxGroupId/snapshots"
               params={{ sandboxGroupId: group.id }}
               search={{ snapshot: snap.id }}
-              className="block truncate text-sm font-medium hover:underline"
+              className="truncate text-sm font-medium hover:underline"
             >
               {snap.name ?? snap.id}
             </Link>
-            <span className="text-muted-foreground text-xs">
-              <LocalDateTime value={snap.requestedAt} />
-              {snap.sizeBytes != null
-                ? ` · ${formatBytes(snap.sizeBytes, 1)}`
-                : ""}
-            </span>
+            <SnapshotStatusBadge status={snap.status} />
           </div>
-          <SnapshotStatusBadge status={snap.status} />
+          <span className="text-muted-foreground block truncate text-xs">
+            <LocalDateTime value={snap.requestedAt} />
+            {snap.sizeBytes != null
+              ? ` · ${formatBytes(snap.sizeBytes, 1)}`
+              : ""}
+          </span>
         </li>
       ))}
     </ul>

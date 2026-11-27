@@ -199,6 +199,20 @@ describe("SandboxesPage (w1/m658)", () => {
     expect(lastCall()).toMatchObject({ live: true });
   });
 
+  // t009's second production check: Russian's "Pause live updates" is 383
+  // px wide and pushed the columns button 49 px past 390 px's column, so the
+  // page scrolled sideways. The button now shrinks and its label truncates.
+  it("lets the live-updates label shrink instead of overflowing the toolbar", () => {
+    renderPage();
+    const button = screen.getByRole("button", { name: /Pause live updates/ });
+    expect(button).toHaveClass("min-w-0", "shrink");
+    expect(button).not.toHaveClass("shrink-0");
+    expect(button.parentElement).toHaveClass("min-w-0");
+    expect(within(button).getByText("Pause live updates")).toHaveClass(
+      "truncate",
+    );
+  });
+
   it("terminates the selected sandboxes and names the ones that failed", async () => {
     state.terminate.mockResolvedValue(["sbx-0000000000000000000b"]);
     renderPage();

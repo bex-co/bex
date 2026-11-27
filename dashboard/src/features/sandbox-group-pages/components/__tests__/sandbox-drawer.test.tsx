@@ -389,6 +389,51 @@ describe("SandboxDrawer's loading frames (w1/m658 t009)", () => {
     expect(rowFrames(dialog.querySelector("ul")!)).toEqual(loading);
   });
 
+  // t009's second production check: beside the badge, the date and size
+  // wrapped in Spanish and Portuguese at 390 px, so the row grew 24 px past
+  // its one-line frame. Both now put the badge on the name's line and keep
+  // the date and size to one line under it.
+  it("keeps a snapshot's date and size to one line under its name and badge", () => {
+    const layout = (list: Element) => {
+      const lines = [...list.querySelector("li")!.children];
+      return {
+        lines: lines.length,
+        badgeOnNameLine:
+          lines[0].querySelector("[data-slot=badge]") !== null &&
+          lines[0].classList.contains("flex"),
+        metaOneLine:
+          lines[1].classList.contains("block") &&
+          lines[1].classList.contains("truncate"),
+      };
+    };
+    const expected = { lines: 2, badgeOnNameLine: true, metaOneLine: true };
+    state.events = { events: [], loading: false, hasMore: false };
+    state.snapshots = { snapshots: [], loading: true, error: undefined };
+    const { rerender } = render(drawer("snapshots"));
+    const dialog = screen.getByRole("dialog");
+    expect(layout(dialog.querySelector("ul")!)).toEqual(expected);
+
+    state.snapshots = {
+      snapshots: [
+        {
+          id: "snp-0000000000000000000t",
+          name: "nightly",
+          status: "available",
+          requestedAt: "2026-11-26T10:01:00Z",
+          sizeBytes: 1024,
+        },
+      ],
+      loading: false,
+      error: undefined,
+    };
+    rerender(drawer("snapshots"));
+    const ready = dialog.querySelector("ul")!;
+    expect(layout(ready)).toEqual(expected);
+    expect(ready.querySelector("li > :last-child")).toHaveTextContent(
+      "1.0 KiB",
+    );
+  });
+
   it("draws the ready header and tab bar while the sandbox loads", () => {
     state.events = { events: [], loading: false, hasMore: false };
     state.details = { sandbox: null, loading: true, refetch: vi.fn() };

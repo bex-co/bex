@@ -176,10 +176,14 @@ export function SandboxesPage({
           placeholder={t("sandboxGroupPages.searchSandboxes")}
         />
         <TimeRangeSelect value={range} onChange={onRange} />
-        <div className="flex items-center gap-2 sm:ml-auto">
+        {/* The live-updates label shrinks to an ellipsis rather than push
+            the columns button off a narrow screen (Russian's is 383 px, past
+            390 px's column; w1/m658 t009). */}
+        <div className="flex min-w-0 items-center gap-2 sm:ml-auto">
           <Button
             size="sm"
             variant="outline"
+            className="min-w-0 shrink"
             onClick={() => setLive((v) => !v)}
           >
             {live ? (
@@ -187,9 +191,11 @@ export function SandboxesPage({
             ) : (
               <Play className="size-4" aria-hidden="true" />
             )}
-            {live
-              ? t("sandboxGroupPages.pauseLive")
-              : t("sandboxGroupPages.resumeLive")}
+            <span className="truncate">
+              {live
+                ? t("sandboxGroupPages.pauseLive")
+                : t("sandboxGroupPages.resumeLive")}
+            </span>
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

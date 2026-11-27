@@ -183,18 +183,18 @@ export function SnapshotRowsFrame() {
     <div data-skeleton-region="snapshot-rows">
       <LoadingStatus label="sandboxGroupPages.loading" />
       <ul className="divide-y rounded-lg border" aria-hidden="true">
-        <li className="flex items-center justify-between gap-3 p-3">
-          <div className="min-w-0">
-            <span className="relative block w-fit text-sm font-medium">
+        <li className="space-y-1 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="relative truncate text-sm font-medium">
               <ReservedText>{t("sandboxGroupPages.colSnapshot")}</ReservedText>
             </span>
-            <span className="text-muted-foreground relative text-xs">
-              <ReservedText>{t("sandboxGroupPages.colCaptured")}</ReservedText>
-            </span>
+            <ReservedBadge variant="secondary">
+              {t("sandboxGroupPages.snapshotAvailable")}
+            </ReservedBadge>
           </div>
-          <ReservedBadge variant="secondary">
-            {t("sandboxGroupPages.snapshotAvailable")}
-          </ReservedBadge>
+          <span className="text-muted-foreground relative block w-fit max-w-full truncate text-xs">
+            <ReservedText>{t("sandboxGroupPages.colCaptured")}</ReservedText>
+          </span>
         </li>
       </ul>
     </div>

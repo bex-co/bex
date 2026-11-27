@@ -94,3 +94,18 @@ t009 step 3 ran on pin `410850e80281` as the QA user in `bex-canary`, in a group
 
 **Gate:** pin must carry `a07bbe305e`. Nothing is needed from the user. Then a worker signs in as the QA user (`bash scripts/qa-login.sh`), makes a disposable group in `bex-canary` with a sandbox that has run a command and a snapshot, and an imported image with a sandbox started from it, and compares each frame t009 lists with its ready state at 1440 and 390 px, holding GraphQL to keep it pending: the layout's header, the Sandboxes, Snapshots, Custom images and Settings skeletons, the sandbox drawer (cold, and its Events, Snapshots and Details tabs), the snapshot drawer's and image drawer's Sandboxes, and the image drawer's versions. It also ends a sandbox from its drawer and sees its Terminated event without a reload. Then it deletes the group, signs out, and runs t013.
 
+
+## Unblock (2026-11-26, second)
+
+- **Affects:** t009 (DoD 6's loading frames on production, left from the walk on pin `410850e80281`), then t013.
+- **Source:** verified evidence. Production's newest pin, `chore(deploy): pin platform images to 6ba91ca5b72f` (`9c76d4ae72`), carries `a07bbe305e` (`git merge-base --is-ancestor a07bbe305e 6ba91ca5b72f` exits 0), so the gate `pin must carry a07bbe305e` holds. No decision was needed and none was made.
+- **Next:** as the QA user in a new disposable group of `bex-canary`, each frame the park lists against its ready state at 1440 and 390 px with GraphQL held, the window itself not scrolling while a frame is held (the w1/m657 lesson; its fix `83a2ff4630` is not on this pin), and a sandbox ended from its drawer showing its Terminated event without a reload; then the group deleted, the session signed out, and t013.
+
+## Production check (2026-11-26, pin `6ba91ca5b72f`)
+
+t009's frames ran again on pin `6ba91ca5b72f` as the QA user in `bex-canary`, in a group `qa-20261126-m658-f` (disposable) that the check deleted afterwards ([t009](t009.md#production-check-2026-11-26-pin-6ba91ca5b72f)).
+
+- **English held.** At 1440 and 390 every frame the park listed matched its ready state, except where the data decides (row counts, an event's kind, the credentials body, a suspended sandbox's Timeout). The window could not scroll in any held frame or ready state.
+- **Terminate sandbox** showed its Terminated event in the drawer without a reload.
+- **Two locales failed at 390.** In Russian the Sandboxes page scrolled sideways by 49 px, because the live-updates button outgrew the column. In Spanish and Portuguese the drawer's snapshot row wrapped its date and size and outgrew its frame by 24 px.
+- **The fix:** the button's label ends in an ellipsis. The row puts its badge on the name's line, with the date and size on one line under it, and the row's frame does the same. On dev-1, in all eight locales at 1440 and 390, nothing scrolls sideways and the row is 66 px loading and ready.
