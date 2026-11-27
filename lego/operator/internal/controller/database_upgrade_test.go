@@ -18,10 +18,15 @@ package controller
 
 import (
 	"context"
+	"maps"
+	"slices"
+	"strconv"
+	"strings"
 	"testing"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -471,5 +476,191 @@ func TestPostUpgradeBackupStartsWhileFirstReadyIsHeld(t *testing.T) {
 	backup.SetGroupVersionKind(cnpgBackupGVK)
 	if err := cl.Get(context.Background(), types.NamespacedName{Namespace: "default", Name: "upgrade-db-post-upgrade-pg17"}, backup); err != nil {
 		t.Fatalf("post-upgrade backup on the held pass: %v", err)
+	}
+}
+
+// TestPendingMajorUpgradeCarriesTheSourcesOperandSettings (w3/m702): CNPG's
+// major-upgrade Job starts the old server with the settings the Cluster
+// carried when the target image landed. For every source 13-17 and every
+// target above it, the Cluster projected while the upgrade is pending has the
+// target's image and the source's own PostgreSQL settings, so it preloads only
+// libraries the source's operand carries and sets no parameter the source's
+// server does not know. Once CNPG reports the target's data directory, the
+// projection is the target's own, before its instance is ready.
+func TestPendingMajorUpgradeCarriesTheSourcesOperandSettings(t *testing.T) {
+	versions := permittedPostgresVersions(t)
+	operands := map[string]string{}
+	for _, v := range versions {
+		operands[v] = "ghcr.io/bex-co/bex-operator:" + v + ".1-postgres-abc@sha256:0" + v
+	}
+	withBexOperands(t, operands)
+	plan, _ := resolvePlan(appv1alpha1.DatabaseSpec{})
+	project := func(version, data, running string) (string, map[string]any) {
+		spec := cnpgClusterSpec(clusterParams{plan: plan, storageGB: 1, version: version, dataVersion: data,
+			runningVersion: running, dbname: "app", owner: "app"})
+		image, _ := spec["imageName"].(string)
+		return image, spec["postgresql"].(map[string]any)
+	}
+	for _, source := range versions {
+		for _, target := range versions {
+			if from, to := mustAtoi(t, source), mustAtoi(t, target); to <= from {
+				continue
+			}
+			_, settled := project(source, source, source)
+			_, fresh := project(target, target, target)
+			image, pending := project(target, source, source)
+			if image != operands[target] {
+				t.Errorf("%s → %s pending: imageName %q, want the target's %q", source, target, image, operands[target])
+			}
+			if !equality.Semantic.DeepEqual(pending, settled) {
+				t.Errorf("%s → %s pending: postgresql = %v, want the source's own %v", source, target, pending, settled)
+			}
+			carried := append([]any{"pg_stat_statements"}, pgExtensionPreloadLibraries(source)...)
+			for _, library := range pending["shared_preload_libraries"].([]any) {
+				if !slices.Contains(carried, library) {
+					t.Errorf("%s → %s pending: preloads %v, which the %s operand does not carry", source, target, library, source)
+				}
+			}
+			parameters := pending["parameters"].(map[string]any)
+			if _, set := parameters["output_plugin_libraries"]; set && source == "13" {
+				t.Errorf("13 → %s pending: sets output_plugin_libraries, which a 13 server does not know", target)
+			}
+			for name := range parameters {
+				if strings.HasPrefix(name, "duckdb.") && mustAtoi(t, source) < 16 {
+					t.Errorf("%s → %s pending: sets %s without pg_duckdb", source, target, name)
+				}
+			}
+			// 16 and 17 preload what 18 does: only the allowlist, a reload,
+			// differs, so a pending upgrade from them restarts nothing.
+			if mustAtoi(t, source) >= 16 {
+				if !slices.Equal(pending["shared_preload_libraries"].([]any), fresh["shared_preload_libraries"].([]any)) {
+					t.Errorf("%s → %s pending: preload %v, want the target's %v", source, target,
+						pending["shared_preload_libraries"], fresh["shared_preload_libraries"])
+				}
+				for name, value := range fresh["parameters"].(map[string]any) {
+					if name != "extwlist.extensions" && parameters[name] != value {
+						t.Errorf("%s → %s pending: %s = %v, want the target's %v", source, target, name, parameters[name], value)
+					}
+				}
+			}
+			// pg_upgrade succeeded: the target's own settings, while the
+			// instance is not ready yet and runningVersion still reads source.
+			if _, upgraded := project(target, target, source); !equality.Semantic.DeepEqual(upgraded, fresh) {
+				t.Errorf("%s → %s upgraded: postgresql = %v, want the target's %v", source, target, upgraded, fresh)
+			}
+			// A Cluster that has not reported its data directory falls back
+			// to the version the Database recorded.
+			if _, unreported := project(target, "", source); !equality.Semantic.DeepEqual(unreported, settled) {
+				t.Errorf("%s → %s unreported data major: postgresql = %v, want the source's %v", source, target, unreported, settled)
+			}
+		}
+	}
+	// A source major served by an upstream image carries none of the
+	// operand's libraries, so a pending upgrade projects none of them.
+	withBexOperands(t, map[string]string{"18": operands["18"]})
+	if image, pending := project("18", "15", "15"); image != operands["18"] ||
+		!slices.Equal(pending["shared_preload_libraries"].([]any), []any{"pg_stat_statements"}) {
+		t.Errorf("upstream 15 → bex 18 pending: image %q preload %v, want the 18 operand and pg_stat_statements alone",
+			image, pending["shared_preload_libraries"])
+	}
+}
+
+func mustAtoi(t *testing.T, s string) int {
+	t.Helper()
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+// clusterPostgresqlSpec is the fake CNPG Cluster's image and PostgreSQL
+// settings as the last pass projected them.
+func clusterPostgresqlSpec(t *testing.T, cl client.Client, req reconcile.Request) (image string, preload []string, parameters map[string]string) {
+	t.Helper()
+	cluster := &unstructured.Unstructured{}
+	cluster.SetGroupVersionKind(cnpgClusterGVK)
+	if err := cl.Get(context.Background(), req.NamespacedName, cluster); err != nil {
+		t.Fatal(err)
+	}
+	image, _, _ = unstructured.NestedString(cluster.Object, "spec", "imageName")
+	preload, _, _ = unstructured.NestedStringSlice(cluster.Object, "spec", "postgresql", "shared_preload_libraries")
+	parameters, _, _ = unstructured.NestedStringMap(cluster.Object, "spec", "postgresql", "parameters")
+	return image, preload, parameters
+}
+
+// TestReconcileKeepsTheSourcesPreloadUntilPgUpgradeSucceeds (w3/m702): a
+// 15 → 18 upgrade through the reconcile. Accepted, the Cluster takes 18's
+// image with 15's preload, so the old server pg_upgrade starts finds every
+// library it loads. Once CNPG reports the 18 data directory, pg_duckdb
+// joins the preload while the Database still reads Upgrading, before the
+// target's instance writes its configuration. A run that fails leaves 15's
+// settings exactly as they were before the upgrade.
+func TestReconcileKeepsTheSourcesPreloadUntilPgUpgradeSucceeds(t *testing.T) {
+	for _, fails := range []bool{false, true} {
+		var extra []client.Object
+		if fails {
+			extra = append(extra, majorUpgradeJob(true))
+		}
+		r, cl, req := newMajorUpgradeReconciler(t, "Cluster in healthy state", extra...)
+		ctx := context.Background()
+		var db appv1alpha1.Database
+		if err := cl.Get(ctx, req.NamespacedName, &db); err != nil {
+			t.Fatal(err)
+		}
+		db.Spec.Version = "15"
+		if err := cl.Update(ctx, &db); err != nil {
+			t.Fatal(err)
+		}
+		db.Status.CurrentVersion = "15"
+		if err := cl.Status().Update(ctx, &db); err != nil {
+			t.Fatal(err)
+		}
+		setClusterStatus(t, cl, req, "Cluster in healthy state", 1, 15)
+		reconcileDB(t, r, cl, req)
+		_, before, beforeParameters := clusterPostgresqlSpec(t, cl, req)
+		if slices.Contains(before, "pg_duckdb") || beforeParameters["output_plugin_libraries"] == "" {
+			t.Fatalf("15 before the upgrade: preload %v output_plugin_libraries %q", before, beforeParameters["output_plugin_libraries"])
+		}
+
+		if err := cl.Get(ctx, req.NamespacedName, &db); err != nil {
+			t.Fatal(err)
+		}
+		db.Spec.Version = "18"
+		if err := cl.Update(ctx, &db); err != nil {
+			t.Fatal(err)
+		}
+		reconcileDB(t, r, cl, req)
+		image, preload, parameters := clusterPostgresqlSpec(t, cl, req)
+		if want, _ := cnpgOperandImage("18"); image != want {
+			t.Errorf("accepted: imageName %q, want 18's %q", image, want)
+		}
+		if !slices.Equal(preload, before) || !maps.Equal(parameters, beforeParameters) {
+			t.Errorf("accepted: preload %v parameters %v, want 15's %v %v", preload, parameters, before, beforeParameters)
+		}
+
+		if fails {
+			setClusterStatus(t, cl, req, "Upgrading Postgres major version", 0, 15)
+			if db := reconcileDB(t, r, cl, req); db.Spec.Version != "15" || db.Status.Phase != appv1alpha1.DBPhaseFailed {
+				t.Fatalf("failed run: spec.version %q phase %q, want 15 Failed", db.Spec.Version, db.Status.Phase)
+			}
+			reconcileDB(t, r, cl, req)
+			image, preload, parameters := clusterPostgresqlSpec(t, cl, req)
+			if want, _ := cnpgOperandImage("15"); image != want || !slices.Equal(preload, before) || !maps.Equal(parameters, beforeParameters) {
+				t.Errorf("after the failed run: image %q preload %v parameters %v, want 15's %q %v %v",
+					image, preload, parameters, want, before, beforeParameters)
+			}
+			continue
+		}
+
+		setClusterStatus(t, cl, req, "Upgrading Postgres major version", 0, 18)
+		db = reconcileDB(t, r, cl, req)
+		if db.Status.Phase != appv1alpha1.DBPhaseUpgrading || db.Status.CurrentVersion != "15" {
+			t.Errorf("pg_upgrade done, instance not ready: phase %q current %q, want Upgrading 15", db.Status.Phase, db.Status.CurrentVersion)
+		}
+		_, preload, parameters = clusterPostgresqlSpec(t, cl, req)
+		if !slices.Contains(preload, "pg_duckdb") || parameters["duckdb.threads"] != "1" {
+			t.Errorf("pg_upgrade done: preload %v duckdb.threads %q, want 18's settings", preload, parameters["duckdb.threads"])
+		}
 	}
 }

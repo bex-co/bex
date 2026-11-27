@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strconv"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -103,12 +102,8 @@ type readReplicaSource struct {
 func readReplicaSourceOf(db *appv1alpha1.Database, primary *unstructured.Unstructured) readReplicaSource {
 	spec, _, _ := unstructured.NestedMap(primary.Object, "spec")
 	ready, _, _ := unstructured.NestedInt64(primary.Object, "status", "readyInstances")
-	major, _, _ := unstructured.NestedInt64(primary.Object, "status", "pgDataImageInfo", "majorVersion")
 	phase, _, _ := unstructured.NestedString(primary.Object, "status", "phase")
-	src := readReplicaSource{spec: spec}
-	if major > 0 {
-		src.major = strconv.FormatInt(major, 10)
-	}
+	src := readReplicaSource{spec: spec, major: clusterDataMajor(primary)}
 	src.settled = ready > 0 && src.major != "" && !db.Spec.Suspended &&
 		!(cnpgClusterState{phase: phase}).majorUpgradeRunning() &&
 		!majorUpgradePending(db.Spec.Version, src.major)

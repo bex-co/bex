@@ -187,14 +187,21 @@ type clusterParams struct {
 	plan      tiers.PostgresTier
 	storageGB int32
 	version   string
-	// runningVersion is the major CNPG reports the cluster runs
+	// runningVersion is the major the Database recorded the cluster runs
 	// (status.currentVersion), and creating says the Cluster does not exist
-	// yet. Both only matter for an unversioned Database.
+	// yet. They pick an unversioned Database's image; runningVersion also
+	// stands in for dataVersion until the Cluster reports one.
 	runningVersion string
-	creating       bool
-	currentImage   string
-	dbname         string
-	owner          string
+	// dataVersion is the major CNPG reports the data directory holds
+	// (status.pgDataImageInfo.majorVersion). It moves to an upgrade's target
+	// as soon as pg_upgrade succeeds, before the target's instance starts,
+	// while runningVersion waits for that instance to be ready. Empty until
+	// the Cluster reports it.
+	dataVersion  string
+	creating     bool
+	currentImage string
+	dbname       string
+	owner        string
 	// namespace is the Database's own namespace. It scopes the archive identity
 	// a recovery reads from — see databaseArchiveBase.
 	namespace string
@@ -556,26 +563,7 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 			"topologyKey":           "kubernetes.io/hostname",
 		}
 	}
-	// The CRD enum is closed and every permitted major has a reviewed
-	// multi-arch digest (an adopted bex operand, else the upstream pin). A
-	// mutable major tag would let a registry retag silently replace the
-	// tenant's database runtime.
-	image, bexOperand, extensionsMajor := "", false, p.version
-	if p.version == "" {
-		image, extensionsMajor = unversionedOperandImage(p.runningVersion, p.creating)
-		bexOperand = image != ""
-		if image == "" && !p.creating {
-			// Omitting imageName withdraws a previously projected pin and can
-			// cause admission to choose a different major. Preserve live intent
-			// until this major's reviewed operand can actually be selected.
-			image = p.currentImage
-			if major := adoptedOperandMajor(image); major != "" {
-				extensionsMajor, bexOperand = major, true
-			}
-		}
-	} else {
-		image, bexOperand = cnpgOperandImage(p.version)
-	}
+	image, bexOperand, extensionsMajor := clusterOperand(p)
 	if image != "" {
 		spec["imageName"] = image
 	}
@@ -677,7 +665,8 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	preload := []any{"pg_stat_statements"}
 	// A bex operand's extension allowlist (ADR092 D3) is only projected with
 	// the image that carries it: on any other image these libraries do not
-	// exist and the server would not start.
+	// exist and the server would not start. While a major upgrade is pending
+	// that is the source's operand, not the target image's (pendingUpgradeSource).
 	if bexOperand {
 		extensionParams := p
 		extensionParams.version = extensionsMajor
@@ -1201,6 +1190,7 @@ func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alph
 	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, cluster, func() error {
 		params.creating = cluster.GetResourceVersion() == ""
 		params.currentImage, _, _ = unstructured.NestedString(cluster.Object, "spec", "imageName")
+		params.dataVersion = clusterDataMajor(cluster)
 		params.holdLogicalWorkers = holdsRecoveredSubscriptions(db, cluster, params.creating)
 		spec := cnpgClusterSpec(params)
 		keepRecoveryApplication(cluster, spec)
@@ -1862,6 +1852,60 @@ func majorUpgradePending(desired, observed string) bool {
 	return wantErr == nil && haveErr == nil && have > 0 && want > have
 }
 
+// clusterOperand resolves a Cluster's serving image, and whether its
+// extension settings are a bex operand's and for which major. The CRD enum is
+// closed and every permitted major has a reviewed multi-arch digest (an
+// adopted bex operand, else the upstream pin). A mutable major tag would let a
+// registry retag silently replace the tenant's database runtime.
+func clusterOperand(p clusterParams) (image string, bexOperand bool, extensionsMajor string) {
+	if p.version != "" {
+		image, bexOperand = cnpgOperandImage(p.version)
+		if source, pending := pendingUpgradeSource(p); pending {
+			_, bexOperand = cnpgOperandImage(source)
+			return image, bexOperand, source
+		}
+		return image, bexOperand, p.version
+	}
+	image, extensionsMajor = unversionedOperandImage(p.runningVersion, p.creating)
+	if image != "" || p.creating {
+		return image, image != "", extensionsMajor
+	}
+	// Omitting imageName withdraws a previously projected pin and can cause
+	// admission to choose a different major. Preserve live intent until this
+	// major's reviewed operand can actually be selected.
+	if major := adoptedOperandMajor(p.currentImage); major != "" {
+		return p.currentImage, true, major
+	}
+	return p.currentImage, false, extensionsMajor
+}
+
+// pendingUpgradeSource is the major a versioned Database's data directory
+// still holds while its major upgrade is pending, and whether one is. The
+// Cluster then carries that major's operand extension settings with the
+// target's image (w3/m702). CNPG's major-upgrade Job starts the old server
+// with no options, so it reads the custom.conf the source's instance manager
+// rewrote from the Cluster when the target image landed: the target's
+// settings there named a library the source does not carry (pg_duckdb before
+// 16) or a parameter its server does not know (output_plugin_libraries on
+// 13), and pg_upgrade could not start it. The data directory's major moves to
+// the target as soon as pg_upgrade succeeds, before CNPG creates the target's
+// instance, so the projection is the target's own by the time that instance
+// writes its configuration and no extra restart follows. A failed run returns
+// spec.version to the source, which is then the projection anyway.
+func pendingUpgradeSource(p clusterParams) (string, bool) {
+	source := cmp.Or(p.dataVersion, p.runningVersion)
+	return source, majorUpgradePending(p.version, source)
+}
+
+// clusterDataMajor is the major CNPG reports a Cluster's data directory
+// holds (status.pgDataImageInfo.majorVersion), or "" before it reports one.
+func clusterDataMajor(cluster *unstructured.Unstructured) string {
+	if major, _, _ := unstructured.NestedInt64(cluster.Object, "status", "pgDataImageInfo", "majorVersion"); major > 0 {
+		return strconv.FormatInt(major, 10)
+	}
+	return ""
+}
+
 // restartPending reports whether a manual restart (spec.restartedAt) has not yet
 // rolled through every instance. CNPG restarts each instance Pod whose
 // restartAnnotation differs from the Cluster's and stamps the new value on the
@@ -2091,15 +2135,11 @@ func (r *DatabaseReconciler) readClusterStatus(
 	r.stampWALArchiving(ctx, db, cluster, backupEnabled)
 	ready, _, _ := unstructured.NestedInt64(cluster.Object, "status", "readyInstances")
 	phase, _, _ := unstructured.NestedString(cluster.Object, "status", "phase")
-	major, _, _ := unstructured.NestedInt64(cluster.Object, "status", "pgDataImageInfo", "majorVersion")
-	state := cnpgClusterState{ready: ready, phase: phase, message: cnpgConditionMessage(cluster, phase)}
+	state := cnpgClusterState{ready: ready, phase: phase, message: cnpgConditionMessage(cluster, phase), currentVersion: clusterDataMajor(cluster)}
 	if state.majorUpgradeRunning() {
 		if failed, message := r.failedMajorUpgradeJob(ctx, cluster); failed {
 			state.upgradeJobFailed, state.message = true, message
 		}
-	}
-	if major > 0 {
-		state.currentVersion = fmt.Sprintf("%d", major)
 	}
 	stampPrimaryStatus(db, cluster)
 	// Trigger a CNPG switchover when spec.failoverAt has advanced and HA is on.
