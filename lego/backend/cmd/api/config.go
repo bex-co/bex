@@ -19,6 +19,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/netip"
 	"net/url"
 	"slices"
@@ -44,6 +45,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/webhooks"
+	"github.com/bex-co/bex/lego/types/netutil"
 )
 
 // Config is every environment-derived value bex-api runs on, parsed and
@@ -1012,14 +1014,18 @@ func (p *parser) outboundIPs(name string) []string {
 
 // edgeIPv4 — policy "fail": an apex domain's A-record fallback is a record
 // the tenant keeps, so a value that is not one public IPv4 refuses startup
-// rather than hand out an address nothing serves on (w4/740).
+// rather than hand out an address nothing serves on (w4/740). "Public" is the
+// shared netutil.UnsafeOriginIP policy, not merely !IsPrivate: netip's
+// IsGlobalUnicast/IsPrivate still accept the IANA special-purpose ranges
+// (shared CGNAT space, documentation, benchmarking, reserved), none of which
+// is publicly routable.
 func (p *parser) edgeIPv4(name string) string {
 	v := strings.TrimSpace(p.getenv(name))
 	if v == "" {
 		return ""
 	}
 	addr, err := netip.ParseAddr(v)
-	if err != nil || !addr.Is4() || !addr.IsGlobalUnicast() || addr.IsPrivate() {
+	if err != nil || !addr.Is4() || netutil.UnsafeOriginIP(net.IP(addr.AsSlice())) {
 		p.errorf("%s: %q is not a public IPv4 address", name, v)
 		return ""
 	}

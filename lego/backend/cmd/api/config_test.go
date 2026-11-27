@@ -628,12 +628,21 @@ func TestLoadConfigEdgeIPv4(t *testing.T) {
 	if err != nil || cfg.EdgeIPv4 != "" {
 		t.Fatalf("unset: EdgeIPv4=%q err=%v, want empty", cfg.EdgeIPv4, err)
 	}
-	cfg, _, err = loadFor(t, map[string]string{"BEX_EDGE_IPV4": " 203.0.113.10 "})
-	if err != nil || cfg.EdgeIPv4 != "203.0.113.10" {
-		t.Fatalf("EdgeIPv4=%q err=%v, want 203.0.113.10", cfg.EdgeIPv4, err)
+	// The valid fixture is a genuinely public address (Render's 216.24.57.1,
+	// the commit's canonical example): documentation ranges like TEST-NET-3
+	// are not publicly routable, so the gate refuses them below.
+	cfg, _, err = loadFor(t, map[string]string{"BEX_EDGE_IPV4": " 216.24.57.1 "})
+	if err != nil || cfg.EdgeIPv4 != "216.24.57.1" {
+		t.Fatalf("EdgeIPv4=%q err=%v, want 216.24.57.1", cfg.EdgeIPv4, err)
 	}
+	// Beyond the unparsable and the RFC 1918/loopback/link-local families,
+	// the IANA special-purpose ranges netutil.UnsafeOriginIP denies are not
+	// publicly routable either: a committed CGNAT, documentation,
+	// benchmarking or reserved address would hand every apex tenant a record
+	// nothing serves on.
 	for _, bad := range []string{"203.0.113", "203.0.113.10/32", "203.0.113.10,198.51.100.7", "2001:db8::1", "::ffff:203.0.113.10",
-		"10.0.0.5", "192.168.1.1", "127.0.0.1", "169.254.169.254", "0.0.0.0", "255.255.255.255", "edge.onbex.co"} {
+		"10.0.0.5", "192.168.1.1", "127.0.0.1", "169.254.169.254", "0.0.0.0", "255.255.255.255", "edge.onbex.co",
+		"100.64.0.1", "100.127.255.255", "192.0.2.1", "198.51.100.7", "203.0.113.10", "198.18.0.1", "192.0.0.170", "240.0.0.1"} {
 		if _, _, err := loadFor(t, map[string]string{"BEX_EDGE_IPV4": bad}); err == nil ||
 			!strings.Contains(err.Error(), "BEX_EDGE_IPV4") {
 			t.Errorf("%q: err = %v, want a startup refusal", bad, err)
