@@ -18,6 +18,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"log"
 	"strings"
 )
@@ -83,6 +84,24 @@ func (b *Base) AuthorizeOrganizationAuditLog(ctx context.Context, orgID string) 
 func (b *Base) authorizeAuditLog(ctx context.Context, object, verb string, resolveErr error) (orgKey bool, err error) {
 	orgID, isOrgKey, err := b.OrganizationKey(ctx)
 	if err == nil && !isOrgKey {
+		// An org's own log names who is told it was not found, exactly as the
+		// org's key management does (apikeys.authorizeOrganizationKeys): a
+		// caller who cannot view the org learns nothing from its id, while a
+		// Member or Guest the org holds is refused FORBIDDEN. Check the verb's
+		// own OAuth capability first so a narrowed token lacking can_manage
+		// never reaches OpenFGA or learns whether the org exists, and route
+		// every refusal through authorizeAndAudit so denials stay audited.
+		if target, isOrg := strings.CutPrefix(object, OrganizationObjectPrefix); isOrg && resolveErr == nil {
+			if checkCapability(ctx, RelCanManage) == nil {
+				if verr := b.checkAuthz(ctx, RelCanView, object); verr != nil {
+					if !IsLoginRefusal(verr) && errors.Is(verr, ErrForbidden) {
+						resolveErr = NewOrganizationNotFoundError(target)
+					} else {
+						resolveErr = verr
+					}
+				}
+			}
+		}
 		return false, b.authorizeAndAudit(ctx, RelCanManage, object, "", verb, resolveErr)
 	}
 	if err == nil {
