@@ -163,7 +163,7 @@ function service(id: string, name: string): ServiceView {
   return { id, name } as ServiceView;
 }
 
-function renderList() {
+function renderList(initialEntry = "/env-groups") {
   const rootRoute = createRootRoute();
   const route = createRoute({
     getParentRoute: () => rootRoute,
@@ -177,7 +177,7 @@ function renderList() {
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([route, detailRoute]),
-    history: createMemoryHistory({ initialEntries: ["/env-groups"] }),
+    history: createMemoryHistory({ initialEntries: [initialEntry] }),
     context: { client: {} as never, session: null },
   });
   return { ...render(<RouterProvider router={router} />), router };
@@ -293,6 +293,34 @@ describe("EnvGroupsPage", () => {
     ).toBeInTheDocument();
   });
 
+  // w3/m705: the URL owns the dialog, so Render's /new/env-group, which
+  // redirects to ?new=env-group, lands in it; closing it clears the param.
+  it("opens New Environment Group from ?new=env-group and clears it on close", async () => {
+    const user = userEvent.setup();
+    const { router } = renderList("/env-groups?new=env-group");
+    expect(
+      await screen.findByRole("button", { name: "Create Environment Group" }),
+    ).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Create Environment Group" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(router.state.location.search).not.toHaveProperty("new");
+
+    await user.click(
+      (
+        await screen.findAllByRole("button", { name: "New Environment Group" })
+      )[0],
+    );
+    await waitFor(() =>
+      expect(router.state.location.search).toMatchObject({ new: "env-group" }),
+    );
+    // replace, not push: opening the dialog stacks no history entry.
+    expect(router.history.length).toBe(1);
+  });
+
   it("renders distinct empty and error states", async () => {
     const view = renderList();
     expect(
@@ -355,7 +383,9 @@ describe("EnvGroupsPage", () => {
     const { router } = renderList();
 
     await user.click(
-      (await screen.findAllByRole("button", { name: "New Environment Group" }))[0],
+      (
+        await screen.findAllByRole("button", { name: "New Environment Group" })
+      )[0],
     );
     await user.type(screen.getByLabelText("Group name"), "Shared production");
     await user.click(
@@ -387,7 +417,11 @@ describe("EnvGroupsPage", () => {
       const user = userEvent.setup();
       renderList();
       await user.click(
-        (await screen.findAllByRole("button", { name: "New Environment Group" }))[0],
+        (
+          await screen.findAllByRole("button", {
+            name: "New Environment Group",
+          })
+        )[0],
       );
       // A workspace group links to a service in an Environment too (w8/179).
       expect(
@@ -424,7 +458,9 @@ describe("EnvGroupsPage", () => {
     const user = userEvent.setup();
     renderList();
     await user.click(
-      (await screen.findAllByRole("button", { name: "New Environment Group" }))[0],
+      (
+        await screen.findAllByRole("button", { name: "New Environment Group" })
+      )[0],
     );
     expect(screen.getByRole("alert")).toHaveTextContent("Couldn't load");
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
@@ -443,7 +479,9 @@ describe("EnvGroupsPage", () => {
     const { router } = renderList();
 
     await user.click(
-      (await screen.findAllByRole("button", { name: "New Environment Group" }))[0],
+      (
+        await screen.findAllByRole("button", { name: "New Environment Group" })
+      )[0],
     );
     await user.type(screen.getByLabelText("Group name"), "Shared production");
     await user.click(

@@ -1058,6 +1058,70 @@ export const ROUTE_SKELETON_MANIFEST = {
     to: "/sandbox-groups/$sandboxGroupId/snapshots",
     reason: "data-dependent redirect",
   },
+  // Render's resource and create URLs (w3/m705).
+  "/env-group/$": {
+    kind: "redirect",
+    owner: "routes/env-group.$.tsx",
+    destination: "/env-groups/$groupId",
+  },
+  "/env-groups/new": {
+    kind: "redirect",
+    owner: "routes/env-groups_.new.tsx",
+    destination: "/new/env-group",
+  },
+  "/new/env-group": {
+    kind: "redirect",
+    owner: "routes/new.env-group.tsx",
+    destination: "/env-groups?new=env-group",
+  },
+  "/sandbox-group/$": {
+    kind: "redirect",
+    owner: "routes/sandbox-group.$.tsx",
+    destination: "canonical sandbox group route",
+  },
+  // Every sub-path but `billing` redirects in beforeLoad; Billing waits for
+  // the switcher's list to name the org's primary workspace.
+  "/organization/$": {
+    kind: "delegate",
+    owner: "routes/organization.$.tsx",
+    to: "/w/$",
+    reason: "data-dependent redirect",
+  },
+  "/new/$": {
+    kind: "redirect",
+    owner: "routes/new.$.tsx",
+    destination: "create page for the slug",
+  },
+  "/$serviceTypeSlug/new": {
+    kind: "redirect",
+    owner: "routes/$serviceTypeSlug.new.tsx",
+    destination: "create page for the slug",
+  },
+  "/t/$": {
+    kind: "redirect",
+    owner: "routes/t.$.tsx",
+    destination: "/w/$",
+  },
+  "/network-access/$": {
+    kind: "redirect",
+    owner: "routes/network-access.$.tsx",
+    destination: "/workspace/settings#inbound-ip-rules",
+  },
+  "/settings/spend-limit": {
+    kind: "redirect",
+    owner: "routes/settings_.spend-limit.tsx",
+    destination: "/workspace/settings#build-pipeline",
+  },
+  "/resource/$": {
+    kind: "redirect",
+    owner: "routes/resource.$.tsx",
+    destination: "canonical route for the id's prefix",
+  },
+  "/build-sources/$buildSourceId/builds/": {
+    kind: "redirect",
+    owner: "routes/build-sources_.$buildSourceId.builds.index.tsx",
+    destination: "/build-sources/$buildSourceId/ or its build's page",
+  },
 } satisfies { [Path in RoutePath]: RouteSkeletonDisposition };
 
 export type RouteSkeletonManifest = typeof ROUTE_SKELETON_MANIFEST;

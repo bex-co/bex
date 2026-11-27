@@ -25,7 +25,11 @@ describe("route skeleton manifest (w5/m79)", () => {
     const classified = Object.keys(ROUTE_SKELETON_MANIFEST).sort();
 
     expect(classified).toEqual(generated);
-    // 150: + Render's Create Blueprint page, `/blueprint/generate` (w3/m681).
+    // 162: + Render's environment group, sandbox group, organization, create
+    // (`/new/…`, `/<slug>/new`, `/env-groups/new`), team settings, Network
+    // Access, spend limit, `/resource/<id>` and build source Builds URLs
+    // (w3/m705).
+    // 150 before them: + Render's Create Blueprint page, `/blueprint/generate` (w3/m681).
     // 149 before it: + a Blueprint sync's page and Render's `/sync` with no id (w3/m678).
     // 147 before them: + an environment's settings page and its other pages'
     // landing on the project (w1/m683).
@@ -44,7 +48,7 @@ describe("route skeleton manifest (w5/m79)", () => {
     // 116 before them: + /build-sources/$buildSourceId detail layout, Builds index,
     // Build Detail, Services, Environment, and Settings routes (w2/m614).
     // 110 before them: + /build-sources and /build-sources/new (w2/m613).
-    expect(classified).toHaveLength(150);
+    expect(classified).toHaveLength(162);
   });
 
   it("points every classification at a real route owner", () => {

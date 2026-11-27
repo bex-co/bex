@@ -65,14 +65,29 @@ export const Route = createFileRoute("/env-groups")({
         }),
     ]);
   },
+  // `?new=env-group` opens New Environment Group: the URL owns the dialog, so
+  // Render's `/new/env-group` lands in it (w3/m705; the `?new=` idiom of
+  // routes/index.tsx).
+  validateSearch: (search: Record<string, unknown>): { new?: "env-group" } => ({
+    new: search.new === "env-group" ? "env-group" : undefined,
+  }),
   head: ({ match }) => translatedTitleHead("envGroups.pageTitle", match),
 });
 
 export function EnvGroupsPage() {
   const hydrated = useIsHydrated();
   const { t } = useTranslations();
-  // The header button and the empty state both open the one create dialog.
-  const [createOpen, setCreateOpen] = useState(false);
+  // The header button and the empty state both open the one create dialog,
+  // whose open state the URL owns (`?new=env-group`); `replace` keeps opening
+  // and closing it out of the back-button history.
+  const { new: newParam } = Route.useSearch();
+  const routeNavigate = Route.useNavigate();
+  const createOpen = newParam === "env-group";
+  const setCreateOpen = (open: boolean) =>
+    void routeNavigate({
+      search: open ? { new: "env-group" } : {},
+      replace: true,
+    });
   const { currentWorkspaceId } = useWorkspace();
   const navigate = useNavigate();
   const { groups, loading, error, refetch } = useEnvGroups();

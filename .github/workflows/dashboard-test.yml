@@ -9,6 +9,7 @@ on:
       - "dashboard/**"
       # Backend files the dashboard's drift guards read. push and pull_request
       # keep one list; scripts/ci_test_inputs.py fails on a read it misses.
+      - "docs/render-artifacts/dashboard-routes.md"
       - "docs/render-artifacts/fixtures/render-webhook-vocabulary-*.json"
       - "lego/backend/internal/agentsession/agent-profiles.json"
       - "lego/backend/internal/agentsessions/secrets.go"
@@ -46,6 +47,7 @@ on:
     branches: [main]
     paths:
       - "dashboard/**"
+      - "docs/render-artifacts/dashboard-routes.md"
       - "docs/render-artifacts/fixtures/render-webhook-vocabulary-*.json"
       - "lego/backend/internal/agentsession/agent-profiles.json"
       - "lego/backend/internal/agentsessions/secrets.go"

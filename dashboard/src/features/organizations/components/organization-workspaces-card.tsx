@@ -125,9 +125,14 @@ function WorkspaceRow({
 export function OrganizationWorkspacesCard({
   organization,
   role,
+  createOpen,
+  onCreateOpenChange,
 }: {
   organization: Organization;
   role: OrganizationRole | null;
+  /** The New Workspace dialog's open state, when the URL owns it. */
+  createOpen?: boolean;
+  onCreateOpenChange?: (open: boolean) => void;
 }) {
   const { t } = useTranslations();
   const navigate = useNavigate();
@@ -154,6 +159,8 @@ export function OrganizationWorkspacesCard({
               organizationId={organization.id}
               organizationName={organization.name}
               plan={organization.plan}
+              open={createOpen}
+              onOpenChange={onCreateOpenChange}
             />
           ) : null
         }

@@ -41,10 +41,15 @@ export function CreateOrganizationWorkspaceDialog({
   organizationId,
   organizationName,
   plan,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   organizationId: string;
   organizationName: string;
   plan: string;
+  /** Set to let the caller own the open state (the page's `?new=workspace`). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const { t } = useTranslations();
   const nameId = useId();
@@ -52,7 +57,9 @@ export function CreateOrganizationWorkspaceDialog({
   const messageId = useId();
   const { create, busy, refusal, clearRefusal } =
     useCreateOrganizationWorkspace(organizationId);
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = onOpenChange ?? setUncontrolledOpen;
   const [name, setName] = useState("");
   const [privacy, setPrivacy] = useState<WorkspacePrivacy>(
     DEFAULT_WORKSPACE_PRIVACY,

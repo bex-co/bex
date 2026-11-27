@@ -21,7 +21,7 @@ Render's API returns `dashboardUrl` values in these shapes, Render's official CL
 | Postgres | `/d/{dpg-id}` | CLI switch | `/databases/$databaseId` | alias → redirect |
 | Key Value | `/r/{red-id}` | CLI switch (legacy Redis segment) | `/keyvalue/$keyValueId` | alias → redirect |
 | Project | `/project/{prj-id}` | repo capture (`project.$projectId.index.tsx` cites it) | `/project/$projectId` | already matches |
-| Env group | `/env-group/{evg-id}` (the list is `/env-groups`) | verified 2026-11-27 in Render's dashboard bundle (`index-D5V4ZgbE.js` routes `/env-group/:id` and `/env-group/*`; the `urls` chunk builds `` `/env-group/${e.id}` ``); list page `dashboard.render.com/env-groups` (live link, 2026-07-16) | `/env-groups/$groupId` | gap: Render's singular `/env-group/{evg-id}` answers 404 until w3/m705 aliases it (until 2026-11-27 this row read the plural path, inferred, as already matching) |
+| Env group | `/env-group/{evg-id}` (the list is `/env-groups`) | verified 2026-11-27 in Render's dashboard bundle (`index-D5V4ZgbE.js` routes `/env-group/:id` and `/env-group/*`; the `urls` chunk builds `` `/env-group/${e.id}` ``); list page `dashboard.render.com/env-groups` (live link, 2026-07-16) | `/env-groups/$groupId` | alias → redirect (w3/m705; query and hash kept). Until 2026-11-27 this row read the plural path, inferred, as already matching |
 | Blueprint | `/blueprint/{exs-id}`, with `/resources`, `/syncs`, `/sync/{syncId}` and `/settings` | verified 2026-11-26 in Render's dashboard bundle (`index-D5V4ZgbE.js`, the `iac-source-app` routes; [blueprint-pages.md](blueprint-pages.md)); list `dashboard.render.com/blueprints` + `blueprint/new` (create) are live | `/blueprints/$blueprintId` | alias → redirect (w3/m677; sub-path, query and hash kept; `/blueprint/new` stays the create page); a sync's own page `/blueprints/$blueprintId/sync/$syncId` (w3/m678) |
 | Workflow | `/wf/{id}` | CLI switch | — | non-goal (workflows off-roadmap, `.pm/DO_NOT_DO.md`) |
 
@@ -106,7 +106,7 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/:param/:param/runs/*` | — | non-goal | a workflow's sidebar pattern; DO_NOT_DO: workflows & tasks |
 | `/:param/:param/tasks/*` | — | non-goal | a workflow's sidebar pattern; DO_NOT_DO: workflows & tasks |
 | `/:param/:param/versions/*` | — | non-goal | a workflow's sidebar pattern; DO_NOT_DO: workflows & tasks |
-| `/:param/new` | `/web/new`, `/worker/new`, `/pserv/new`, `/static/new`, `/cron/new` | matched | `routes/_serviceCreate.*.new.tsx` (2026-11-22); `/workflow/new` has its own row |
+| `/:param/new` | `/web/new`, `/worker/new`, `/pserv/new`, `/static/new`, `/cron/new`; any other name `$serviceTypeSlug.new` → its create page | matched | `routes/_serviceCreate.*.new.tsx` (2026-11-22); Render's create slug table (`/postgres/new`, `/kv/new`, `/background-worker/new`, …) read case-insensitively, anything else → `/new`'s landing (`routes/$serviceTypeSlug.new.tsx`, w3/m705); `/workflow/new` has its own row |
 | `/billing` | `/billing` | matched | bex's Billing page (w5/m70) |
 | `/billing#credit-balance` | `/billing#credit-balance` | matched | `features/usage/components/usage-page.tsx` |
 | `/billing#free-usage` | `/billing` | gap | `w3/m707` |
@@ -134,7 +134,7 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/build-sources` | `/build-sources` | matched | `routes/build-sources.tsx` |
 | `/build-sources/:param` | `/build-sources/$buildSourceId` | matched | `routes/build-sources_.$buildSourceId*.tsx` |
 | `/build-sources/:param/*` | `/build-sources/$buildSourceId/…` | matched | `routes/build-sources_.$buildSourceId*.tsx` |
-| `/build-sources/:param/builds` | `/build-sources/$buildSourceId` | matched | `routes/build-sources_.$buildSourceId*.tsx`; the builds list is the page's index |
+| `/build-sources/:param/builds` | `build-sources_.$buildSourceId.builds.index` → `/build-sources/$buildSourceId`, `?build=<id>` → `…/builds/$buildId` | matched | the builds list is the page's index and a build has its own page; the route came with w3/m705, whose router test found this row answered by bex's not-found page |
 | `/build-sources/:param/environment` | `/build-sources/$buildSourceId/environment` | matched | `routes/build-sources_.$buildSourceId*.tsx` |
 | `/build-sources/:param/services` | `/build-sources/$buildSourceId/services` | matched | `routes/build-sources_.$buildSourceId*.tsx` |
 | `/build-sources/:param/settings` | `/build-sources/$buildSourceId/settings` | matched | `routes/build-sources_.$buildSourceId*.tsx` |
@@ -187,8 +187,8 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/email-confirm` | — | n/a | reached only from Render's own sign-in flow and account emails; bex's are its own (`/auth/*`, ADR012) |
 | `/email-confirm-next` | — | n/a | Render's second variant of its sign-in pages (`auth_variant: next`), an experiment beside the classic path's row |
 | `/email-reset/confirm` | — | n/a | reached only from Render's own sign-in flow and account emails; bex's are its own (`/auth/*`, ADR012) |
-| `/env-group/*` | — | gap | `w3/m705` |
-| `/env-group/:param` | — | gap | `w3/m705` |
+| `/env-group/*` | `env-group.$` → `/env-groups/$groupId` | matched | w3/m705: Render's group has one page, so a sub-path lands on it (`routes/env-group.$.tsx`) |
+| `/env-group/:param` | `env-group.$` → `/env-groups/$groupId` | matched | w3/m705 (`routes/env-group.$.tsx`); query and hash kept |
 | `/env-groups` | `/env-groups` | matched | `routes/env-groups.tsx` |
 | `/github/authorization-expired` | — | n/a | an error page of Render's own GitHub sign-in and connect callbacks; bex's are `/auth/error` and its GitHub App flow (ADR026) |
 | `/github/connect-forbidden` | — | n/a | an error page of Render's own GitHub sign-in and connect callbacks; bex's are `/auth/error` and its GitHub App flow (ADR026) |
@@ -211,15 +211,15 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/login/oauth/authorize` | — | n/a | an OAuth authorization endpoint clients read from the server's metadata; bex publishes Hydra's (ADR012) |
 | `/login/sso` | — | non-goal | DO_NOT_DO: SSO / SAML (ADR018 § Identity, workspaces & account: SSO / SAML · SCIM (—)) |
 | `/login/sso-next` | — | non-goal | DO_NOT_DO: SSO / SAML (ADR018 § Identity, workspaces & account: SSO / SAML · SCIM (—)) |
-| `/network-access` | — | gap | Render's Network Access page: `w3/m705` |
+| `/network-access` | `network-access.$` → `/workspace/settings#inbound-ip-rules` | partial | w3/m705: Render's page holds one panel, Inbound IP Restrictions, which is bex's Inbound IP Rules card; a page of its own under a Networking group: `w3/155` |
 | `/networking/*` | — | gap | Render's private links have no disposition yet: `w7/071` |
-| `/new` | — | gap | Render's create chooser: `w3/m705` |
-| `/new/:param` | — | gap | Render's `/new/:serviceTypeSlug` slug table: `w3/m705` |
+| `/new` | `new.$` → `/web/new` | partial | w3/m705: New Web Service, whose type switcher lists every type; Render's "Create a new Service" chooser page: `w3/154` |
+| `/new/:param` | `new.$` → the slug's create page | matched | w3/m705: Render's create slug table read case-insensitively (`newPathLanding`), `team` → `/new/workspace`, anything else → `/new`'s landing; on Render a breadcrumb pattern of the New Service page, whose slug route is `/:param/new` |
 | `/new/database` | `/new/database` | matched | `routes/new.database.tsx` (2026-11-22) |
-| `/new/env-group` | — | gap | Render's New Environment Group page: `w1/m684` (t003) |
+| `/new/env-group` | `/new/env-group` → `/env-groups?new=env-group`, the list's New Environment Group dialog | partial | w3/m705 (`routes/new.env-group.tsx`); Render's full page: `w1/m684` (t003) |
 | `/new/project` | `/new/project` | matched | `routes/new.project.tsx` |
 | `/new/redis` | `/new/redis` | matched | `routes/new.redis.tsx` (2026-11-22) |
-| `/new/team` | — | gap | `w3/m705` |
+| `/new/team` | `new.$` → `/new/workspace` | matched | w3/m705: Render's `NewTeam` page serves `/new/team` and `/new/workspace` |
 | `/new/workspace` | `/new/workspace` | matched | `routes/new.workspace.tsx` |
 | `/notifications` | `/notifications` | matched | `routes/notifications.tsx` |
 | `/oauth` | — | n/a | reached only from Render's own sign-in flow and account emails; bex's are its own (`/auth/*`, ADR012) |
@@ -231,12 +231,12 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/observability#metrics-stream` | — | non-goal | DO_NOT_DO: external log and metric drains |
 | `/observability/*` | — | non-goal | DO_NOT_DO: external log and metric drains |
 | `/org-invite/:param` | — | n/a | the link in Render's own organization invitation email; bex's mail bex's own (ADR115) |
-| `/organization/:param` | — | gap | `w3/m705` |
-| `/organization/:param/*` | — | gap | `w3/m705` |
-| `/organization/:param/billing` | — | gap | `w3/m705` |
-| `/organization/:param/members` | — | gap | `w3/m705` |
-| `/organization/:param/new/workspace` | — | gap | `w3/m705` |
-| `/organization/:param/settings` | — | gap | `w3/m705` |
+| `/organization/:param` | `organization.$` → `/org/$orgId/workspaces` | matched | w3/m705: Workspaces is Render's page for the org; `/org/<id>` refuses an org the caller is not in |
+| `/organization/:param/*` | `organization.$` → `/org/$orgId/workspaces` | matched | w3/m705: Render's `/organization/:id/*` route draws Workspaces |
+| `/organization/:param/billing` | `organization.$` → the org's primary workspace's `/billing` | partial | w3/m705: through `/w/<primary>/billing`, which checks the caller is in it; Render's org Billing (a default payment method and billing email for the org's workspaces) is behind `org_default_payment_method`, and bex bills each org workspace on its own payment method, ADR018 § Billing & invoicing: Who sees and manages billing (ADR115 D2) |
+| `/organization/:param/members` | `organization.$` → `/org/$orgId/members` | matched | w3/m705 |
+| `/organization/:param/new/workspace` | `organization.$` → `/org/$orgId/workspaces?new=workspace`, the New Workspace dialog | partial | w3/m705; Render's New Workspace page with the org chosen: `w3/157` |
+| `/organization/:param/settings` | `organization.$` → `/org/$orgId/settings` | matched | w3/m705 |
 | `/password-reset` | — | n/a | reached only from Render's own sign-in flow and account emails; bex's are its own (`/auth/*`, ADR012) |
 | `/password-reset-next` | — | n/a | Render's second variant of its sign-in pages (`auth_variant: next`), an experiment beside the classic path's row |
 | `/password-reset/confirm` | — | n/a | reached only from Render's own sign-in flow and account emails; bex's are its own (`/auth/*`, ADR012) |
@@ -317,23 +317,23 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/register/gitlab-next` | — | non-goal | DO_NOT_DO: GitLab git-provider integration |
 | `/register/google` | — | n/a | reached only from Render's own sign-in flow and account emails; bex's are its own (`/auth/*`, ADR012) |
 | `/register/google-next` | — | n/a | Render's second variant of its sign-in pages (`auth_variant: next`), an experiment beside the classic path's row |
-| `/resource/:param` | — | gap | `w3/m705` |
-| `/resource/:param/*` | — | gap | `w3/m705` |
-| `/sandbox-group/:param` | — | gap | `w3/m705` |
-| `/sandbox-group/:param/*` | — | gap | `w3/m705` |
-| `/sandbox-group/:param/builds/*` | — | gap | `w3/m705` |
-| `/sandbox-group/:param/builds/:param` | — | gap | `w3/m705` |
-| `/sandbox-group/:param/sandboxes/*` | — | gap | `w3/m705` |
-| `/sandbox-group/:param/sandboxes/:param` | — | gap | `w3/m705` |
-| `/sandbox-group/:param/settings` | — | gap | `w3/m705` |
-| `/sandbox-group/:param/snapshots/*` | — | gap | `w3/m705` |
-| `/sandbox-group/:param/snapshots/:param` | — | gap | `w3/m705` |
-| `/sandbox-group/new` | — | gap | `w3/m705` |
+| `/resource/:param` | `resource.$` → the page of the id's kind | matched | w3/m705 (`resourceAliasPath`): the kind read from the id's prefix, as Render's `ResourceRedirector` reads it; a `prj-` id, an unknown prefix and a short id go home, as on Render |
+| `/resource/:param/*` | `resource.$` → the page of the id's kind, sub-path kept | matched | w3/m705; a sandbox's or a snapshot's opens its drawer as it opens |
+| `/sandbox-group/:param` | `sandbox-group.$` → `/sandbox-groups/$sandboxGroupId` | matched | w3/m705 (`sandboxGroupAliasPath`); query and hash kept |
+| `/sandbox-group/:param/*` | `sandbox-group.$` → `/sandbox-groups/$sandboxGroupId` | matched | w3/m705: a sub-path bex has no page for lands on Sandboxes |
+| `/sandbox-group/:param/builds/*` | `sandbox-group.$` → `/sandbox-groups/$sandboxGroupId/images` | matched | w3/m705: Render's Custom images |
+| `/sandbox-group/:param/builds/:param` | `sandbox-group.$` → `…/images?image=<name>` | matched | w3/m705: the image's drawer, on Versions |
+| `/sandbox-group/:param/sandboxes/*` | `sandbox-group.$` → `/sandbox-groups/$sandboxGroupId` | matched | w3/m705: Sandboxes is the group's index |
+| `/sandbox-group/:param/sandboxes/:param` | `sandbox-group.$` → `…?sandbox=<sbx-id>` | matched | w3/m705: the sandbox's drawer; Render's `configurations` and `snapshots` tabs open Details and Snapshots |
+| `/sandbox-group/:param/settings` | `sandbox-group.$` → `/sandbox-groups/$sandboxGroupId/settings` | matched | w3/m705 |
+| `/sandbox-group/:param/snapshots/*` | `sandbox-group.$` → `/sandbox-groups/$sandboxGroupId/snapshots` | matched | w3/m705 |
+| `/sandbox-group/:param/snapshots/:param` | `sandbox-group.$` → `…/snapshots?snapshot=<snp-id>` | matched | w3/m705: the snapshot's drawer |
+| `/sandbox-group/new` | `sandbox-group.$` → `/?new=sandbox-group`, the create dialog | partial | w3/m705: the dialog bex's New menu opens; Render's New Sandbox Group page: `w3/156` |
 | `/select-plan` | — | n/a | reached only from Render's own sign-in flow and account emails; bex's are its own (`/auth/*`, ADR012) |
 | `/select-repo` | — | gap | Render's repository picker that starts a create: `w3/148` |
 | `/services` | — | gap | Render draws its home page at `/services`: `w3/146` |
 | `/settings` | `/settings` | matched | w1/m45 |
-| `/settings/spend-limit` | — | gap | `w3/m705` |
+| `/settings/spend-limit` | `settings_.spend-limit` → `/workspace/settings#build-pipeline` | matched | w3/m705: Render's `AccountSpendLimitRedirect` sends a team's owner to its workspace settings' `#build-pipeline` |
 | `/signup-survey` | — | flagged | Render's sign-up survey, `signup_survey_oct_2026` |
 | `/sso` | — | non-goal | DO_NOT_DO: SSO / SAML (ADR018 § Identity, workspaces & account: SSO / SAML · SCIM (—)) |
 | `/start` | — | n/a | reached only from Render's own sign-in flow and account emails; bex's are its own (`/auth/*`, ADR012) |
@@ -368,8 +368,8 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/success/workspace/:param/*` | — | n/a | the return page of Render's own workspace checkout; bex's checkout returns to its own page |
 | `/suspended` | — | n/a | reached only from Render's own sign-in flow and account emails; bex's are its own (`/auth/*`, ADR012) |
 | `/suspended-next` | — | n/a | Render's second variant of its sign-in pages (`auth_variant: next`), an experiment beside the classic path's row |
-| `/t/:param/settings` | — | gap | `w3/m705` |
-| `/t/:param/settings/*` | — | gap | `w3/m705` |
+| `/t/:param/settings` | `t.$` → `/w/$` → `/workspace/settings` | matched | w3/m705: Render's older team scheme, the same page as `/w/:id/settings` |
+| `/t/:param/settings/*` | `t.$` → `/w/$` → `/workspace/settings` | matched | w3/m705 |
 | `/team-invite/:param` | — | n/a | the link in Render's own invitation email; bex's invitations mail bex's `/invite` link (ADR024) |
 | `/test-error` | — | n/a | Render's error-boundary test page |
 | `/u/:param` | `u.$` → `/settings` | matched | w1/m45 |

@@ -3,7 +3,10 @@ import { Route as AgentsRoute } from "../agents";
 import { Route as AgentDetailRoute } from "../agents_.$agentSessionId";
 import { Route as BuildSourcesRoute } from "../build-sources";
 import { Route as BuildSourcesNewRoute } from "../build-sources_.new";
+import { Route as BuildSourceBuildsRoute } from "../build-sources_.$buildSourceId.builds.index";
 import { Route as DatabaseIndexRoute } from "../databases.$databaseId.index";
+import { Route as EnvGroupsRoute } from "../env-groups";
+import { Route as OrganizationWorkspacesRoute } from "../org.$orgId.workspaces";
 import { Route as DatabaseLogsRoute } from "../databases.$databaseId.logs";
 import { Route as DatabaseMetricsRoute } from "../databases.$databaseId.metrics";
 import { Route as IndexRoute } from "../index";
@@ -165,6 +168,33 @@ describe.each([
     { ...NO_RANGE, range: "4h" },
   ],
   ["/", IndexRoute, { new: "bogus" }, { new: undefined }],
+  // w3/m705: the create dialogs Render's URLs open.
+  ["/env-groups", EnvGroupsRoute, { new: "env-group" }, { new: "env-group" }],
+  ["/env-groups", EnvGroupsRoute, { new: "project" }, { new: undefined }],
+  [
+    "/org/$orgId/workspaces",
+    OrganizationWorkspacesRoute,
+    { new: "workspace" },
+    { new: "workspace" },
+  ],
+  [
+    "/org/$orgId/workspaces",
+    OrganizationWorkspacesRoute,
+    { new: true },
+    { new: undefined },
+  ],
+  [
+    "/build-sources/$buildSourceId/builds/",
+    BuildSourceBuildsRoute,
+    { build: "bld-1" },
+    { build: "bld-1" },
+  ],
+  [
+    "/build-sources/$buildSourceId/builds/",
+    BuildSourceBuildsRoute,
+    { build: "" },
+    { build: undefined },
+  ],
   // The three create dialogs the overview owns in its URL (w1/m45, w22/m311).
   ["/", IndexRoute, { new: "database" }, { new: "database" }],
   ["/", IndexRoute, { new: "project" }, { new: "project" }],

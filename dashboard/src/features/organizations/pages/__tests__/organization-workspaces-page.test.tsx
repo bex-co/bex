@@ -1,7 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
-import { screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
+import { Route as OrganizationWorkspacesRoute } from "@/routes/org.$orgId.workspaces";
 import { OrganizationWorkspacesPage } from "@/features/organizations/pages/organization-workspaces-page";
 import { OrganizationWorkspacesRouteSkeleton } from "@/features/organizations/components/organization-route-skeletons";
 import { useOrganizations } from "@/features/organizations/hooks/use-organizations";
@@ -168,6 +176,65 @@ describe("OrganizationWorkspacesPage (w7/m464)", () => {
     );
     expect(setCurrentWorkspaceId).toHaveBeenCalledWith("tea-web");
     await screen.findByText("overview");
+  });
+
+  // w3/m705: the route's `?new=workspace`, where Render's
+  // /organization/<id>/new/workspace lands, opens an Owner's New Workspace
+  // dialog; closing it clears the param.
+  async function renderRouteAt(href: string, org: Organization) {
+    state = ready(org);
+    const rootRoute = createRootRoute();
+    const page = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/org/$orgId/workspaces",
+      validateSearch: OrganizationWorkspacesRoute.options
+        .validateSearch as never,
+      component: OrganizationWorkspacesRoute.options.component!,
+    });
+    const router = createRouter({
+      // The file Route's options are typed for the generated tree, not this one.
+      routeTree: rootRoute.addChildren([page as never]),
+      history: createMemoryHistory({ initialEntries: [href] }),
+      context: { client: {} as never, session: null },
+    });
+    render(<RouterProvider router={router} />);
+    // An open dialog hides the page from the accessibility tree.
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Acme",
+      hidden: true,
+    });
+    return router;
+  }
+
+  it("opens an Owner's New Workspace from ?new=workspace and clears it on close", async () => {
+    const router = await renderRouteAt(
+      "/org/org-1/workspaces?new=workspace",
+      organization("OWNER"),
+    );
+    expect(
+      await screen.findByRole("heading", { name: "New workspace in Acme" }),
+    ).toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(router.state.location.search).not.toHaveProperty("new"),
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "New Workspace" }));
+    await waitFor(() =>
+      expect(router.state.location.search).toMatchObject({ new: "workspace" }),
+    );
+    expect(router.history.length).toBe(1);
+  });
+
+  it("opens nothing for a Member, who cannot create workspaces", async () => {
+    await renderRouteAt(
+      "/org/org-1/workspaces?new=workspace",
+      organization("MEMBER"),
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("says when the org is not found or the caller is not in it", async () => {

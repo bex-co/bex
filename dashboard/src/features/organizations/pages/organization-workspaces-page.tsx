@@ -9,8 +9,13 @@ import { OrganizationWorkspacesCardSkeleton } from "@/features/organizations/com
  */
 export function OrganizationWorkspacesPage({
   organizationId,
+  createOpen,
+  onCreateOpenChange,
 }: {
   organizationId: string;
+  /** The New Workspace dialog's open state, when the URL owns it. */
+  createOpen?: boolean;
+  onCreateOpenChange?: (open: boolean) => void;
 }) {
   return (
     <OrganizationPageShell
@@ -21,7 +26,12 @@ export function OrganizationWorkspacesPage({
       }
     >
       {({ organization, role }) => (
-        <OrganizationWorkspacesCard organization={organization} role={role} />
+        <OrganizationWorkspacesCard
+          organization={organization}
+          role={role}
+          createOpen={createOpen}
+          onCreateOpenChange={onCreateOpenChange}
+        />
       )}
     </OrganizationPageShell>
   );

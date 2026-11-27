@@ -11,11 +11,29 @@ export const Route = createFileRoute("/org/$orgId/workspaces")({
   pendingComponent: OrganizationWorkspacesRouteSkeleton,
   beforeLoad: requireAuth(),
   loader: (match) => loadOrganizationRoute(match, "workspaces"),
+  // `?new=workspace` opens an Owner's New Workspace dialog: the URL owns it,
+  // so Render's `/organization/<id>/new/workspace` lands in it (w3/m705).
+  validateSearch: (search: Record<string, unknown>): { new?: "workspace" } => ({
+    new: search.new === "workspace" ? "workspace" : undefined,
+  }),
   head: ({ match }) =>
     translatedTitleHead("organizations.workspacesTitle", match),
 });
 
 function OrganizationWorkspacesRoute() {
   const { orgId } = Route.useParams();
-  return <OrganizationWorkspacesPage organizationId={orgId} />;
+  const { new: newParam } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  return (
+    <OrganizationWorkspacesPage
+      organizationId={orgId}
+      createOpen={newParam === "workspace"}
+      onCreateOpenChange={(open) =>
+        void navigate({
+          search: open ? { new: "workspace" } : {},
+          replace: true,
+        })
+      }
+    />
+  );
 }
