@@ -1,6 +1,6 @@
 # w4 · m688 — Every Render docs page has a disposition, and a weekly job fails when Render adds, removes or rewrites one
 
-**Worker:** worker4 **Goal:** Render's documentation is watched like its changelog and its dashboard bundle: every page in `render.com/docs/llms.txt` has one disposition in a ledger, and a weekly job fails, naming the page and its pointer, when Render adds, removes or rewrites one. **Status:** in progress (t001, t002, t004, t005 done; t003 waits for its dispatched run on `main`)
+**Worker:** worker4 **Goal:** Render's documentation is watched like its changelog and its dashboard bundle: every page in `render.com/docs/llms.txt` has one disposition in a ledger, and a weekly job fails, naming the page and its pointer, when Render adds, removes or rewrites one. **Status:** done
 
 ## Tasks (in order)
 
@@ -8,10 +8,10 @@
 | --- | --- | --- | --- |
 | [t001](done/t001.md) | `scripts/render-docs-drift.sh` reads `llms.txt` and every page, and compares hashes with the ledger — **DONE** | 1h30m | — |
 | [t002](done/t002.md) | The ledger: one row per page with its disposition; read every product page with at most one reference and file each unowned gap — **DONE** | 3h | t001 |
-| [t003](t003.md) | A weekly `render-docs` job, and the ledger in ADR018's method paragraph | 45m | t002 |
+| [t003](done/t003.md) | A weekly `render-docs` job, and the ledger in ADR018's method paragraph — **DONE** | 45m | t002 |
 | [t004](done/t004.md) | Simplify — **DONE** | 15m | t003 |
 | [t005](done/t005.md) | Test coverage — **DONE** | 30m | t003, t004 |
-| [t006](t006.md) | Closeout | 10m | t005 |
+| [t006](done/t006.md) | Closeout — **DONE** | 10m | t005 |
 
 Total: **6 tasks, about 6h10m**.
 
