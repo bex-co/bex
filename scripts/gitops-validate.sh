@@ -928,7 +928,10 @@ edge_ipv4_of() {
     - <<<"$1" | sed '/^$/d'
 }
 prod_edge_ipv4="$(edge_ipv4_of "$prod_operator_render")"
-if ! grep -Eqx '([0-9]{1,3}\.){3}[0-9]{1,3}' <<<"$prod_edge_ipv4"; then
+# Octet-aware: [0-9]{1,3} would also pass 999.999.999.999, which bex-api
+# refuses at startup (a crash loop, not a quiet wrong record) — fail here.
+octet='(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])'
+if ! grep -Eqx "(${octet}\\.){3}${octet}" <<<"$prod_edge_ipv4"; then
   echo "FAIL: prod bex-api must declare BEX_EDGE_IPV4 once as one IPv4 address (the bex-traefik load balancer's), got: '$prod_edge_ipv4'" >&2
   fail=1
 fi
