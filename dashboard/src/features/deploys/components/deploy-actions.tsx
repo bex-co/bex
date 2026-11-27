@@ -61,6 +61,11 @@ export interface DeployActionsProps {
    * Absent or true leaves the row to its status.
    */
   buildAvailable?: boolean | null;
+  /**
+   * False on a service whose dashboard offers no Rollback, a cron job
+   * (offersDashboardRollback, w1/157). Absent leaves the row to its status.
+   */
+  offerRollback?: boolean;
   onChanged?: () => void;
   /** A list shares its service-wide projection across all deploy rows. */
   projection?: ResourceActionsState;
@@ -81,6 +86,7 @@ export function DeployActions({
   commitId,
   trigger,
   buildAvailable,
+  offerRollback = true,
   onChanged,
   projection,
 }: DeployActionsProps) {
@@ -92,7 +98,9 @@ export function DeployActions({
   const deployActions = projection ?? ownProjection;
   const statusCancel = isCancelableDeployStatus(status);
   const statusRollback =
-    isRollbackableDeployStatus(status) && buildAvailable !== false;
+    offerRollback &&
+    isRollbackableDeployStatus(status) &&
+    buildAvailable !== false;
 
   // The selected row's own status outranks the service-wide summary: a
   // rollbackable row stays a target when the latest-20 scan found none

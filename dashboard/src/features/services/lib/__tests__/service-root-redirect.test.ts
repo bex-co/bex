@@ -3,6 +3,7 @@ import { isRedirect } from "@tanstack/react-router";
 import {
   redirectBuildsByType,
   redirectCronCompute,
+  redirectCronRollback,
   redirectPlanByType,
   redirectRunsByType,
   redirectServiceRoot,
@@ -182,6 +183,36 @@ describe("a cron job's Runs, Deploys and Compute URLs (w3/m554)", () => {
     ]) {
       expect(
         await thrown(redirectCronCompute(clientFor(type), "srv-1")),
+      ).toBeNull();
+    }
+  });
+});
+
+// Render's cron deploy page has no `/rollback` route (w1/157).
+describe("a deploy's Confirm Rollback URL", () => {
+  it("lands a cron job's on that deploy's page", async () => {
+    const error = await thrown(
+      redirectCronRollback(clientFor("cron_job"), "srv-1", "dep-2"),
+    );
+    expect(isRedirect(error)).toBe(true);
+    expect(error).toMatchObject({
+      options: {
+        to: "/services/$serviceId/deploys/$deployId",
+        params: { serviceId: "srv-1", deployId: "dep-2" },
+        replace: true,
+      },
+    });
+  });
+
+  it("renders the page for every other type, and an unknown one", async () => {
+    for (const type of [
+      "web_service",
+      "private_service",
+      "background_worker",
+      null,
+    ]) {
+      expect(
+        await thrown(redirectCronRollback(clientFor(type), "srv-1", "dep-2")),
       ).toBeNull();
     }
   });

@@ -65,6 +65,7 @@ import {
   deployEndedStatus,
   preDeployStatusKey as preDeployKey,
   isCancelableDeployStatus,
+  offersDashboardRollback,
 } from "@/features/deploys/lib/deploy-status";
 import { DeployActions } from "@/features/deploys/components/deploy-actions";
 import {
@@ -181,6 +182,7 @@ function ServiceEventsFeed({ serviceId }: { serviceId: string }) {
   // The service's createdAt bounds the history and autoDeploy words the
   // auto-deploy events; a cron job's runs have their own Runs page (w2/m360).
   const { service } = useServer(serviceId, { poll: false });
+  const rollbackOffered = offersDashboardRollback(service?.type);
   // Hidden, not selected (w6/m122): seeding from the catalog made the feed render
   // `events ∩ catalog`, so any type the backend emits that the catalog omits was
   // invisible AND — the option list being catalog-derived too — unselectable. An
@@ -354,11 +356,14 @@ function ServiceEventsFeed({ serviceId }: { serviceId: string }) {
                 // be a no-op restart (w4/051). Mirrors the deploys list's guard
                 // so the events feed, list, and detail page all agree. A
                 // previous deploy whose build the registry no longer holds
-                // cannot be rolled back to, so it gets no action (w8/m156).
+                // cannot be rolled back to, so it gets no action (w8/m156),
+                // and a cron job's dashboard offers no Rollback (w1/157).
                 const hasAction =
                   !!deployId &&
                   (isCancelableDeployStatus(status) ||
-                    (status === "deactivated" && !goneBuilds.has(deployId)));
+                    (rollbackOffered &&
+                      status === "deactivated" &&
+                      !goneBuilds.has(deployId)));
 
                 return (
                   <EventRow

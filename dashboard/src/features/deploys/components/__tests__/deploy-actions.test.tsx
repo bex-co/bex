@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { bumpAccessGeneration } from "@/features/capabilities/lib/access-generation";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -93,6 +93,7 @@ function renderActions(
     commitId?: string | null;
     trigger?: string | null;
     buildAvailable?: boolean | null;
+    offerRollback?: boolean;
   },
 ) {
   const root = createRootRoute();
@@ -100,14 +101,18 @@ function renderActions(
     getParentRoute: () => root,
     path: "/services/$serviceId/deploys/$deployId",
     component: () => (
-      <DeployActions
-        serviceId="web"
-        deployId="dep-1"
-        status={status}
-        commitId={commit?.commitId}
-        trigger={commit?.trigger}
-        buildAvailable={commit?.buildAvailable}
-      />
+      <>
+        <span data-testid="deploy-page" />
+        <DeployActions
+          serviceId="web"
+          deployId="dep-1"
+          status={status}
+          commitId={commit?.commitId}
+          trigger={commit?.trigger}
+          buildAvailable={commit?.buildAvailable}
+          offerRollback={commit?.offerRollback}
+        />
+      </>
     ),
   });
   // Rollback is a link to the deploy's Confirm Rollback page (w1/m646).
@@ -285,6 +290,24 @@ describe("DeployActions", () => {
     expect(
       screen.queryByRole("button", { name: /^Rollback to / }),
     ).not.toBeInTheDocument();
+  });
+
+  // w1/157: Render's cron job has no Rollback in its dashboard.
+  it("offers no Rollback where the service's dashboard has none, and keeps Cancel", async () => {
+    renderActions("deactivated", { offerRollback: false });
+    // The page around the control has rendered, so its absence is real.
+    await screen.findByTestId("deploy-page");
+    expect(
+      screen.queryByRole("link", { name: /^Rollback to / }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^Rollback to / }),
+    ).not.toBeInTheDocument();
+    cleanup();
+    renderActions("build_in_progress", { offerRollback: false });
+    expect(
+      await screen.findByRole("button", { name: /^Cancel / }),
+    ).toBeInTheDocument();
   });
 
   it("keeps Rollback when the build is stored or its state is unknown", async () => {

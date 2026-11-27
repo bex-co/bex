@@ -11,7 +11,7 @@ Captured 2026-11-26 for w1/m646 from Render's public dashboard bundle (read with
 - A deploy that cannot be rolled back to (`rollbackSupportStatus` other than `ROLLBACK_SUPPORTED`) redirects to the deploy page, replacing the history entry.
 - The section is a block titled **Confirm Rollback**, lead "Rolling back reverts certain configuration changes." plus an inline link "Learn more." to `/docs/rollbacks`. Then the comparison, then the notices, then the buttons **Rollback to this deploy** and **Cancel** (secondary). Cancel goes back to the deploy page. While the mutation runs, both are disabled and the first shows a spinner. A failure shows an inline error (`Error:` and the message) under the buttons.
 - Success opens the new rollback deploy's page.
-- Render's cron deploy page (`CronJobDeployContainer-*.js`) has no rollback route.
+- Render's cron deploy page (`CronJobDeployContainer-*.js`) has no rollback route and no Rollback control, and its cron Deploys rows offer none. bex's dashboard offers no Rollback on a cron job either, and its API still rolls one back (w1/157, [ADR018 § Rollback](../ADR018/deploys.md)).
 
 ## The read
 

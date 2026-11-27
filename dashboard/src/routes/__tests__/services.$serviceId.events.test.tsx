@@ -594,6 +594,23 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
     ).toHaveAttribute("href", "/services/app/deploys/dep-live-001/rollback");
     expect(rollbackService).not.toHaveBeenCalled();
   });
+
+  // w1/157: Render's cron job has no Rollback in its dashboard, so a cron
+  // job's previous deploy has no action in its Events.
+  it("offers no Rollback on a cron job's previous deploy", async () => {
+    serverState.service = { id: "app", type: "cron_job" } as never;
+    mockUseQuery.mockReturnValue({
+      data: { serviceEvents: [deactivatedDeployEvent()] },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(await screen.findByText(/dep-live-001/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^Rollback/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Rollback/ })).toBeNull();
+  });
 });
 
 // w4/568: an instance-count, autoscaling or plan change says what changed;

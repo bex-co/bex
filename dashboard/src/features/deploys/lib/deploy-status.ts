@@ -2,6 +2,8 @@
 // rows) and the deploy detail page's header (w9/m1) — one place so the two
 // surfaces can't drift on what a status badge looks like.
 
+import { isCronType } from "@/features/services/lib/service-type";
+
 export type DeployBadgeVariant =
   "default" | "secondary" | "destructive" | "outline";
 
@@ -43,6 +45,19 @@ export function isCancelableDeployStatus(status: string): boolean {
  */
 export function isRollbackableDeployStatus(status: string): boolean {
   return status === "deactivated";
+}
+
+/**
+ * Whether the dashboard offers Rollback on a service of this wire type: every
+ * type but a cron job. Render's cron job has none: its Deploys rows carry no
+ * action, its deploy page has no Rollback, and it has no `/rollback` route
+ * (w1/157, docs/ADR018/deploys.md § Rollback). The API still rolls one back.
+ * An unknown type keeps the control, as before the service is read.
+ */
+export function offersDashboardRollback(
+  serviceType: string | null | undefined,
+): boolean {
+  return !(serviceType && isCronType(serviceType));
 }
 
 export function deployStatusVariant(status: string): DeployBadgeVariant {

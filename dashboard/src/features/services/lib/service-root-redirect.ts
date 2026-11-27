@@ -116,6 +116,26 @@ export async function redirectCronCompute(
 }
 
 /**
+ * A cron job has no Confirm Rollback page (w1/157): Render's cron deploy page
+ * has no `/rollback` route, so a cron deploy's Rollback URL lands on that
+ * deploy's page, where bex sends any deploy it cannot roll back to. Every
+ * other type, and an unknown one, renders the page.
+ */
+export async function redirectCronRollback(
+  client: RouterContext["client"],
+  serviceId: string,
+  deployId: string,
+): Promise<void> {
+  const type = await serviceType(client, serviceId);
+  if (type === null || !isCronType(type)) return;
+  throw redirect({
+    to: "/services/$serviceId/deploys/$deployId",
+    params: { serviceId, deployId },
+    replace: true,
+  });
+}
+
+/**
  * A cron job's Plan URL renders its plan page, Render's `/cron/<id>/plan`
  * (w3/105, docs/render-artifacts/cron-dashboard.md), and a suspended one's
  * lands on Settings with its query, as Render's redirects there. Every other

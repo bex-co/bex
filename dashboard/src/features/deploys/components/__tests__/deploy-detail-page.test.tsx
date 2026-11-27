@@ -69,6 +69,7 @@ const serverState: {
   service:
     | {
         id: string;
+        type?: string;
         repo?: string | null;
         buildSourceId?: string | null;
         autoDeploy?: boolean | null;
@@ -152,7 +153,12 @@ vi.mock("../deploy-notices", () => ({
   ),
 }));
 vi.mock("../deploy-actions", () => ({
-  DeployActions: () => <div data-testid="deploy-actions" />,
+  DeployActions: ({ offerRollback }: { offerRollback?: boolean }) => (
+    <div
+      data-testid="deploy-actions"
+      data-offer-rollback={String(offerRollback)}
+    />
+  ),
 }));
 vi.mock("../deploy-rollback", () => ({
   DeployRollback: ({
@@ -317,6 +323,25 @@ describe("DeployDetailPage", () => {
       "data-follow-build",
       "false",
     );
+  });
+
+  // w1/157: Render's cron deploy page has no Rollback; Cancel stays.
+  it("offers no Rollback on a cron job's deploy page, as Render's has none", () => {
+    for (const [type, offered] of [
+      ["cron_job", "false"],
+      ["web_service", "true"],
+      ["background_worker", "true"],
+    ]) {
+      serverState.service = { id: "web", type };
+      const { unmount } = render(
+        <DeployDetailPage serviceId="web" deployId="dep-1" />,
+      );
+      expect(screen.getByTestId("deploy-actions")).toHaveAttribute(
+        "data-offer-rollback",
+        offered,
+      );
+      unmount();
+    }
   });
 
   // Render's deploy page passes the deploy's creation as its log's start

@@ -18,6 +18,7 @@ import { useDeployScaling } from "../hooks/use-deploy-scaling";
 import { useCanceledStepEnd } from "../hooks/use-canceled-step-end";
 import { deployWindowEnd } from "../lib/deploy-window";
 import { deployTitle } from "../lib/deploy-presentation";
+import { offersDashboardRollback } from "../lib/deploy-status";
 import { rangeStart, type LogRange } from "../lib/log-range";
 import { DeployHeader } from "./deploy-header";
 import { DeployLogPanel } from "./deploy-log-panel";
@@ -186,6 +187,7 @@ function DeployDetail({
                 commitId={deploy.commitId}
                 trigger={deploy.trigger}
                 buildAvailable={deploy.buildAvailable}
+                offerRollback={offersDashboardRollback(service?.type)}
               />
             ) : undefined
           }

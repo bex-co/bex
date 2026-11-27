@@ -828,6 +828,37 @@ it("keeps the history search uneditable until hydration (w4/m219)", async () => 
   expect(container).not.toHaveTextContent("dep-live");
 });
 
+// w1/157: Render's cron Deploys rows carry no action, so a cron job's previous
+// deploy has no Rollback, and its row keeps no room for one.
+describe("DeploysListPage on a cron job", () => {
+  it("offers no Rollback on a previous deploy", async () => {
+    serverState.type = "cron_job";
+    deployActions = mockAllowedResourceActions("web").useDeployActions();
+    state.deploys = [
+      row({ id: "dep-current", status: "live" }),
+      row({ id: "dep-previous", status: "deactivated" }),
+    ];
+    renderPage();
+
+    const headline = await screen.findByTitle("dep-previous");
+    expect(screen.queryByRole("button", { name: /^Rollback/ })).toBeNull();
+    const tr = headline.closest("tr")!;
+    expect(tr.lastElementChild).toBeEmptyDOMElement();
+    expect(headline.nextElementSibling!.children[1]).not.toHaveClass(
+      "@max-3xl/deploys:pr-28",
+    );
+  });
+
+  it("still offers it on another type's previous deploy", async () => {
+    deployActions = mockAllowedResourceActions("web").useDeployActions();
+    state.deploys = [row({ id: "dep-previous", status: "deactivated" })];
+    renderPage();
+    expect(
+      await screen.findByRole("button", { name: "Rollback dep-previous" }),
+    ).toBeInTheDocument();
+  });
+});
+
 // w3/m555: Render's Deploys page reads "Search deploys and commits" for every
 // type, and a repo-backed cron job builds from it with Manual Build.
 describe("DeploysListPage search and Manual Build", () => {

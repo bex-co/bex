@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { DeployDetailPage } from "@/features/deploys/components/deploy-detail-page";
 import { DeployRollbackSkeleton } from "@/common/components/route-skeletons";
 import { prefetchRollbackPage } from "@/features/deploys/lib/deploy-page-prefetch";
+import { redirectCronRollback } from "@/features/services/lib/service-root-redirect";
 
 /**
  * A deploy's Confirm Rollback page (w1/m646): Render's
@@ -13,6 +14,9 @@ import { prefetchRollbackPage } from "@/features/deploys/lib/deploy-page-prefetc
 export const Route = createFileRoute(
   "/services/$serviceId/deploys/$deployId_/rollback",
 )({
+  // A cron job has no Confirm Rollback page (w1/157).
+  beforeLoad: ({ context, params }) =>
+    redirectCronRollback(context.client, params.serviceId, params.deployId),
   component: RouteComponent,
   pendingComponent: DeployRollbackSkeleton,
   // The page mounts with the deploy, its Notices (w1/m659) and the rollback

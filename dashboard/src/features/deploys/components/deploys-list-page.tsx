@@ -51,6 +51,7 @@ import {
   deployTriggerLabel,
   isCancelableDeployStatus,
   isTerminalDeployStatus,
+  offersDashboardRollback,
   preDeployStatusKey,
 } from "../lib/deploy-status";
 import {
@@ -138,6 +139,8 @@ export function DeploysListPage({
   // A repo-backed cron job builds from here, as on Render; an image-backed
   // one has nothing to build (w3/m555).
   const manualBuild = Boolean(service && isCron(service) && repo);
+  // Render's cron Deploys rows offer no Rollback (w1/157).
+  const rollbackOffered = offersDashboardRollback(service?.type);
   // The inputs stay local so typing never waits on the router; the URL
   // mirrors them, which is what brings them back after a deploy's detail.
   const [localFilters, setLocalFilters] = useState(urlFilters);
@@ -165,7 +168,7 @@ export function DeploysListPage({
       visibleDeploys.some(
         (deploy) =>
           isCancelableDeployStatus(deploy.status) ||
-          deploy.status === "deactivated",
+          (rollbackOffered && deploy.status === "deactivated"),
       )
       ? serviceId
       : null,
@@ -264,10 +267,13 @@ export function DeploysListPage({
               repo && d.commitId ? repoCommitUrl(repo, d.commitId) : null;
             const triggerLabel = deployTriggerLabel(d.trigger, d.rollbackOf, t);
             // A previous deploy whose build the registry no longer holds
-            // cannot be rolled back to, so it gets no action (w8/m156).
+            // cannot be rolled back to, so it gets no action (w8/m156), nor
+            // does a cron job's (w1/157).
             const hasListAction =
               isCancelableDeployStatus(d.status) ||
-              (d.status === "deactivated" && d.buildAvailable !== false);
+              (rollbackOffered &&
+                d.status === "deactivated" &&
+                d.buildAvailable !== false);
             const isLive = d.status === "live";
             const statusLabel = t(
               deployStatusKey(d.status) as Parameters<typeof t>[0],
