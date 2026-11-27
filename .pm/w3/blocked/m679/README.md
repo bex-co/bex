@@ -1,6 +1,6 @@
 # w3 · m679 — A Blueprint's Settings page is Render's: Blueprint Name, Auto Sync, Branch, Blueprint Path, then Disconnect Blueprint
 
-**Worker:** worker3 **Goal:** a Blueprint's Settings page holds Render's one Settings card in Render's order and words, its Branch can be changed there as on Render, and Disconnect Blueprint asks with Render's modal. **Status:** todo (t001–t004 and t006–t008 done; t005 walked locally, its production walk waits for a pin carrying the milestone)
+**Worker:** worker3 **Goal:** a Blueprint's Settings page holds Render's one Settings card in Render's order and words, its Branch can be changed there as on Render, and Disconnect Blueprint asks with Render's modal. **Status:** blocked (t001–t004 and t006–t008 done; t005 walked locally, its production walk waits for a pin carrying `122bf94989`)
 
 ## Tasks (in order)
 
@@ -27,7 +27,7 @@ Total: **9 tasks, about 4h35m**.
   3. **Sync Hook**, only when the Blueprint has a `syncKey`: a private URL and "Your private URL to trigger a sync for this Blueprint. Remember to keep this a secret." Render's docs do not mention it; out of scope.
   4. **Branch**, the repository's branch picker. A branch without the file reads `Blueprint file "<path>" not found on "<branch>" branch. Please check that the file exists on this branch.`
   5. **Blueprint Path**, a file picker over the repository at the branch, placeholder `render.yaml`, help "The path to the Blueprint file in your repo (e.g., `infra/render.yaml`). Defaults to `render.yaml` at the root of your repository."; the same not-found sentence; any other failure "Failed to update Blueprint. Please try again."
-  6. **Git Credentials** (whose Git access syncs use, Use My Credentials): a signed-off divergence ([`DO_NOT_DO.md` #GIT-WORKSPACE-OWNED](../../DO_NOT_DO.md)); not built.
+  6. **Git Credentials** (whose Git access syncs use, Use My Credentials): a signed-off divergence ([`DO_NOT_DO.md` #GIT-WORKSPACE-OWNED](../../../DO_NOT_DO.md)); not built.
   - A save of Auto Sync, Branch or Path whose mutation returns a sync goes to that sync's page.
 - **Disconnect Blueprint**, a critical button under the card, opens a modal titled "Disconnect Blueprint": "Resources will no longer sync automatically from your Blueprint file." / "This will not delete the file itself. This will not delete the managed resources. You can always connect your file later from the Blueprint page." / "Are you sure you want to disconnect your Blueprint spec **<name>**?", with Cancel and a critical Disconnect Blueprint; an error shows in the modal; success goes to `/blueprints`.
 - **REST:** `PATCH /blueprints/{blueprintId}` accepts `branch`: "The branch must contain a Blueprint file at the configured path. Updating this field does not plan a sync." (pinned `lego/backend/internal/api/openapi/render-public-api-1.json`).
@@ -39,7 +39,7 @@ Verified 2026-11-25 on main `c196617a8b`.
 
 - After w3/m677, Settings holds today's metadata card from `routes/blueprints.$blueprintId.tsx`: `InlineEdit` name and path (path checked by `validBlueprintPath`), repository, a read-only branch (`blueprints.metaBranch`, read-only since w8/m21 as "the identity key"), an auto-sync `Switch`, created and updated, and Disconnect with bex's own dialog (`blueprints.disconnect*` strings).
 - bex-api already changes a branch: REST `PATCH /v1/blueprints/{id}` and GraphQL `updateBlueprint(branch:)` check the file exists on the new branch (`lego/backend/internal/apps/blueprint.go` `UpdateBlueprint`, `discoverBlueprintFile`) and refuse a taken name (`errBlueprintNameTaken`, w8/250). No plan is opened, as Render's REST says.
-- A Blueprint is its id since w8/m153 ([ADR049 § A Blueprint is its id](../../../docs/ADR049-render-yaml-parity.md#a-blueprint-is-its-id-several-may-track-one-file-w8m153-2026-11-11)), so the branch is no longer an identity key.
+- A Blueprint is its id since w8/m153 ([ADR049 § A Blueprint is its id](../../../../docs/ADR049-render-yaml-parity.md#a-blueprint-is-its-id-several-may-track-one-file-w8m153-2026-11-11)), so the branch is no longer an identity key.
 - The branch picker exists: `features/services/hooks/use-repo-branches.ts` (GraphQL `repoBranches`), used by `features/blueprints/pages/new-blueprint-page.tsx` and `features/services/components/service-source-card.tsx`. `EditableFieldRow` (`features/services/components/editable-field-row.tsx`) is bex's `RowInput`.
 
 ## Definition of done
@@ -55,7 +55,7 @@ Verified 2026-11-25 on main `c196617a8b`.
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm one aspect of render parity to w3` (2026-11-25), item 3, verified the same day against Render's bundle and its pinned OpenAPI.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)). Render documents Settings as where Auto Sync is turned off, and lets a Blueprint follow another branch there.
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). Render documents Settings as where Auto Sync is turned off, and lets a Blueprint follow another branch there.
 - **Expected outcome:** someone who knows Render finds the same Settings card, can move a Blueprint to another branch without the API, and reads Render's words when something is wrong.
 - **Why now:** the API has changed branches since w8/m153 made a Blueprint its id, but the dashboard still withholds it for a reason that no longer holds; w3/m677 creates the Settings page this fills. It runs after w3/m678 so a save that opens a sync can go to its page.
 - **Render parity task:** included (t006): the dashboard changes; REST, GraphQL and MCP already accept `branch` and are checked, not changed.
@@ -72,3 +72,6 @@ Walked in headless Chrome against `yarn local-bex` behind a throwaway proxy that
 - Disconnect Blueprint opened Render's modal with the name in bold; Cancel kept the page; the busy fixture's refusal stayed in the modal; a disconnect opened `/blueprints` without that Blueprint.
 - At 390 a refusal wraps under its row, and an edited path field narrows beside Cancel and Save changes, as every bex edit-in-place row does.
 
+## Parked (2026-11-27)
+
+Shipped in `122bf94989`. Parked until production's pin carries it: then t005 step 2 walks Settings as the QA user in `bex-canary` with a Blueprint created for the walk (disposable) from a public repository whose second branch holds the file, at 1440 and 390 (each row's save and refusal, a branch change and a Manual sync afterwards, a path without the file, Disconnect's Cancel and confirm), records the pin and the result here, and t009 closes the milestone.
