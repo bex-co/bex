@@ -1,6 +1,6 @@
 # w4 · m696 — Saving the Autoscaling section behaves as Render's: enabling confirms the billing, and both toggles off turns autoscaling off
 
-**Worker:** worker4 **Goal:** on a service's Scaling page, turning autoscaling on asks for confirmation with Render's billing note, and saving with both the CPU and memory toggles off turns autoscaling off, as Render documents, instead of refusing the save. **Status:** blocked (pin must carry `68dd65d9e3`: t003's production walk, then t007; t001, t002 and t004–t006 done, t003's strings and tests done)
+**Worker:** worker4 **Goal:** on a service's Scaling page, turning autoscaling on asks for confirmation with Render's billing note, and saving with both the CPU and memory toggles off turns autoscaling off, as Render documents, instead of refusing the save. **Status:** done 2026-11-27 (both paths walked on production pin `486e3f4afbf6` as the QA user in `bex-canary`)
 
 ## Tasks (in order)
 
@@ -8,11 +8,11 @@
 | --- | --- | --- | --- |
 | [t001](done/t001.md) | Record Render's enable dialog and its both-toggles-off flow from Render's public dashboard bundle — **DONE** | 30m | — |
 | [t002](done/t002.md) | The Autoscaling section confirms an enable, and a save with both toggles off turns autoscaling off — **DONE** | 1h | t001 |
-| [t003](t003.md) | All 8 languages, tests, and a walk of both paths on a fixture service | 45m | t002 |
+| [t003](done/t003.md) | All 8 languages, tests, and a walk of both paths on a fixture service — **DONE** | 45m | t002 |
 | [t004](done/t004.md) | Render parity — **DONE** | 25m | t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 30m | t004, t005 |
-| [t007](t007.md) | Closeout | 10m | t006 |
+| [t007](done/t007.md) | Closeout — **DONE** | 10m | t006 |
 
 Total: **7 tasks, about 3h35m**.
 
@@ -46,3 +46,23 @@ Total: **7 tasks, about 3h35m**.
 - **Next (t003 step 2):** once production carries the change, sign in as the QA user, enable autoscaling on a fixture service through the dialog (Cancel first, then Enable), turn off the last target and confirm Disable, restore the service's original scaling, and record the walk here.
 
 **2026-11-26, parked.** The change shipped as `68dd65d9e3` (and the drift filing as `d9e817067d`). The DoD's last line needs both paths walked on production, which waits for a deploy carrying `68dd65d9e3`.
+
+**2026-11-27, unblocked (verified finding).** The gate held: the newest `chore(deploy): pin platform images to 486e3f4afbf6` on `origin/main` (`a6f9307d74`) carries `68dd65d9e3` (`git merge-base --is-ancestor 68dd65d9e3 486e3f4afbf6` exits 0). No decision was involved and no scope changed. Next: t003 step 2 on production as the QA user, on a paid fixture service in a Pro-or-higher first-party workspace (Cancel on "Enable Autoscaling?" saves nothing, Enable turns autoscaling on, turning off the last target then confirming "Disable Autoscaling?" turns it off), restore the service's original scaling, record the walk here, then t007.
+
+## Production walk (t003 step 2, 2026-11-27, pin `486e3f4afbf6`): PASS
+
+Signed in as the QA user (`scripts/qa-login.sh`) in `bex-canary` (`tea-daif693dqjvc73e7as3g`, Scale) and read the Compute page with a headless Chromium at 1440 px, recording every GraphQL mutation the page sent and reading `autoscalingConfig` back after each step. **Fixture:** `qa-20261127-m696-sc` (disposable), a Starter image web service (`traefik/whoami:v1.10.1`) created for the walk, Running with 1 instance and no stored autoscaling (`enabled: false`, range 0–0, no targets).
+
+| Step | Page | Mutation sent | Server afterwards |
+| --- | --- | --- | --- |
+| Switch on | "Enable Autoscaling?", "When your service scales up, each running instance uses the same compute plan and is billed accordingly.", Cancel and Enable | — | — |
+| Cancel | switch off, no settings form | none | unchanged (`enabled: false`, 0–0) |
+| Switch on, Enable | "Autoscaling on", the form with 1–2 instances and both targets on at 60% | `SetAutoscaling` (min 1, max 2, CPU 60, memory 60): Render's first-enable defaults from the instance count | `enabled: true`, 1–2, CPU 60, memory 60; 1 instance |
+| Memory off (CPU still on) | a plain edit, no dialog, Cancel and Save Changes shown | none | unchanged |
+| CPU off (the last target) | "Disable Autoscaling?", "Disabling CPU-driven autoscaling will disable autoscaling entirely for this service. Are you sure?", Cancel and Disable | — | — |
+| Cancel | the CPU toggle back on | none | unchanged (`enabled: true`) |
+| CPU off again, Disable | "Autoscaling off", the form gone, Manual Scaling back | `DisableAutoscaling` | `enabled: false`, the range and targets kept (w4/597); 1 instance |
+| Reload | "Autoscaling off" | none | the same |
+
+"At least one utilization target" appeared at no step. At 390 px the enable dialog fits the viewport (340 px wide, no horizontal scroll), Enable above Cancel, and its Cancel sent nothing. **Restore and cleanup:** the walk's own Disable returned the fixture to autoscaling off on 1 instance, its original scaling, and the fixture was then deleted (`deleteService` true; `bex-canary` lists only the services it had before). This run's Kratos session was logged out (`qa-login.sh --logout`) and its session files removed. The walk's screenshots stayed in a scratch directory, out of the repository.
+
