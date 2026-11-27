@@ -732,6 +732,15 @@ func NewInsufficientScopeError(required string) *CodedError {
 	}
 }
 
+// IsInsufficientScope reports whether err is the shared insufficient-scope
+// refusal (NewInsufficientScopeError), which wraps ErrForbidden like every
+// other denial. Forbidden-to-not-found mappings must let it through: a
+// narrowed token reads insufficient_scope, never an existence answer.
+func IsInsufficientScope(err error) bool {
+	var coded *CodedError
+	return errors.As(err, &coded) && coded.Code == InsufficientScopeCode
+}
+
 // NotFound is ErrNotFound naming the missing resource ("deploy not found"), so
 // the message points at what is actually absent while status mapping, GraphQL
 // and MCP still see errors.Is(err, ErrNotFound) and its code.

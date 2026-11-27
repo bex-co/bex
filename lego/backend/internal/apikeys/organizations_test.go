@@ -196,6 +196,23 @@ func TestOrganizationKeyRefusals(t *testing.T) {
 	if _, err := s.ListOrganizationAPITokens(readOnly, "org-missing"); !errors.As(err, &coded) || coded.Code != core.InsufficientScopeCode {
 		t.Errorf("read-only OAuth token on unknown org = %v, want %s", err, core.InsufficientScopeCode)
 	}
+	// A write-only human OAuth token holds can_manage but lacks can_view: the
+	// view gate's capability failure is insufficient_scope too, never an
+	// existence answer — the uncovered cell of the same table.
+	writeOnly := core.WithIdentity(context.Background(), core.Identity{
+		Subject:         "owner",
+		Method:          core.MethodOAuth2,
+		Human:           true,
+		CanonicalScopes: core.ScopeWrite,
+	})
+	for _, org := range []string{"org-a", "org-missing"} {
+		if _, err := s.ListOrganizationAPITokens(writeOnly, org); !errors.As(err, &coded) || coded.Code != core.InsufficientScopeCode {
+			t.Errorf("write-only OAuth token listing %s = %v, want %s", org, err, core.InsufficientScopeCode)
+		}
+		if err := s.RevokeOrganizationAPIToken(writeOnly, org, "key-1"); !errors.As(err, &coded) || coded.Code != core.InsufficientScopeCode {
+			t.Errorf("write-only OAuth token revoking in %s = %v, want %s", org, err, core.InsufficientScopeCode)
+		}
+	}
 	if _, err := s.ProvisionOrganizationAuditLogToken(session("owner"), "org-a", "   "); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("a blank label = %v", err)
 	}

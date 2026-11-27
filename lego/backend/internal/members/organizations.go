@@ -132,6 +132,9 @@ func organizationNotFound(orgID string, err error) error {
 	if core.IsLoginRefusal(err) {
 		return err // a member the org's login setting refuses is told why (w7/m466)
 	}
+	if core.IsInsufficientScope(err) {
+		return err // a narrowed token is told its scope is short, never an existence answer
+	}
 	if err == nil || errors.Is(err, core.ErrForbidden) || errors.Is(err, store.ErrNotFound) {
 		return core.NewOrganizationNotFoundError(orgID)
 	}
