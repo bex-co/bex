@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
-# Unit tests for render-dashboard-ops.sh (w1/m645). Network-free: the dashboard
-# page is a file:// URL to a synthetic bundle shaped like Render's
+# Unit tests for render-dashboard-ops.sh (w1/m645, w3/m704). Network-free: the
+# dashboard page is a file:// URL to a synthetic bundle shaped like Render's
 # (scripts/fixtures/render-dashboard-ops/), so what is under test is the
-# script's own logic: the crawl, the operation and flag parsers, the ledger's
-# rules, and that a bundle it cannot read fails with a message instead of
-# passing. The last check runs the committed ledger through the same rules.
+# script's own logic: the crawl, the operation, flag and URL parsers, the
+# ledgers' rules, and that a bundle it cannot read fails with a message instead
+# of passing. The last checks run the committed ledgers through the same rules.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 script="$repo_root/scripts/render-dashboard-ops.sh"
 fixtures="$repo_root/scripts/fixtures/render-dashboard-ops"
 committed_ledger="$repo_root/docs/render-artifacts/dashboard-operations.md"
+committed_routes="$repo_root/docs/render-artifacts/dashboard-routes.md"
 
 failures=0
 check() { # check <name> <expected exit> <expected text> <command...>
@@ -52,15 +53,22 @@ ledger_with() {
   echo "$sandbox/$1.md"
 }
 
-run() { # run <page> <ledger> [mode]
-  RENDER_DASHBOARD_URL="file://$1" RENDER_DASHBOARD_OPS_LEDGER="$2" "$script" "${3:-check}"
+# routes_with <name> <sed expression>: the fixture URL ledger with one edit.
+routes_with() {
+  sed -e "$2" "$fixtures/routes-ledger.md" >"$sandbox/$1.md"
+  echo "$sandbox/$1.md"
+}
+
+run() { # run <page> <ledger> [mode] [URL ledger]
+  RENDER_DASHBOARD_URL="file://$1" RENDER_DASHBOARD_OPS_LEDGER="$2" \
+    RENDER_DASHBOARD_ROUTES_LEDGER="${4:-$fixtures/routes-ledger.md}" "$script" "${3:-check}"
 }
 
 page="$fixtures/index.html"
 ledger="$fixtures/ledger.md"
 
-check "the fixture bundle matches its ledger" 0 "8 operations and 6 flags in 7 chunks (entry index-Ent1y-_A.js)" \
-  run "$page" "$ledger"
+check "the fixture bundle matches its ledgers" 0 \
+  "8 operations, 6 flags and 16 URLs in 9 chunks (entry index-Ent1y-_A.js)" run "$page" "$ledger"
 
 # The crawl: a chunk reached only through two dynamic imports (entry ->
 # Settings -> Rollback) and one named only in a preload list (Billing).
@@ -109,9 +117,9 @@ check "a removed frontend flag gate fails and names the item to reopen" 1 \
   run "$(bundle_with removed-frontend-flag assets/index-Ent1y-_A.js 's#Co(`sandbox_shell`)#null#')" "$ledger"
 
 # Flag calls are found under whatever local name the caller imports a hook as.
-check "a flag call under another local import name is found" 0 "every operation and flag has a row" \
+check "a flag call under another local import name is found" 0 "every operation, flag and URL has a row" \
   run "$(bundle_with renamed-local assets/Settings-SeTT1ngs.js 's#Zq9#$q_0#g')" "$ledger"
-check "a flag call through a namespace import is found" 0 "every operation and flag has a row" \
+check "a flag call through a namespace import is found" 0 "every operation, flag and URL has a row" \
   run "$(bundle_with namespace assets/Settings-SeTT1ngs.js 's#import{r as Zq9}from#import*as FF from#; s#Zq9(#FF.r(#')" "$ledger"
 
 # What the parser no longer recognizes fails with a message naming it.
@@ -147,11 +155,11 @@ check "an anonymous operation with directives fails" 1 "anonymous query in Billi
   run "$(bundle_with anonymous-dir assets/Billing-B1ll-ng0.js 's#^export{A};#var B=new Qe(V`query @client { anonDir }`);export{A,B};#')" "$ledger"
 check "a nested subscription field is not an anonymous operation" 1 "no row: query nestedOp" \
   run "$(bundle_with nested-sub assets/Billing-B1ll-ng0.js 's#^export{A};#var B=new Qe(V`query nestedOp { subscription { x } }`);export{A,B};#')" "$ledger"
-check "a fragment holding a subscription field is not an anonymous operation" 0 "every operation and flag has a row" \
+check "a fragment holding a subscription field is not an anonymous operation" 0 "every operation, flag and URL has a row" \
   run "$(bundle_with frag-sub assets/Billing-B1ll-ng0.js 's#^export{A};#var F=V`fragment AccountSub on Account { subscription { id } }`;export{A};#')" "$ledger"
-check "a JS call shaped like an operation is not one" 0 "every operation and flag has a row" \
+check "a JS call shaped like an operation is not one" 0 "every operation, flag and URL has a row" \
   run "$(bundle_with js-call assets/Billing-B1ll-ng0.js 's#^export{A};#var q=query({a:1});export{A};#')" "$ledger"
-check "a JS method named query or mutation is not an anonymous operation" 0 "every operation and flag has a row" \
+check "a JS method named query or mutation is not an anonymous operation" 0 "every operation, flag and URL has a row" \
   run "$(bundle_with js-method assets/Billing-B1ll-ng0.js 's#^export{A};#class X{query(){return}mutation(x){foo}}export{A};#')" "$ledger"
 check "an operation whose selection set does not parse fails" 1 "query server in index: no selection set" \
   run "$(bundle_with bad-op assets/index-Ent1y-_A.js 's#query server($id: String!) {#query server($id: String!) [#')" "$ledger"
@@ -186,25 +194,106 @@ check "a ledger with no Flag table fails" 1 "found no Operation or no Flag rows"
   run "$page" "$(grep -v '^| `[a-z0-9_-]*` | `' "$ledger" >"$sandbox/no-flags.md"; echo "$sandbox/no-flags.md")"
 RENDER_DASHBOARD_OPS_LEDGER="$sandbox/absent.md" check "a missing ledger fails" 1 "does not exist" "$script"
 
-# The committed ledger itself, offline: every row is well formed, and a bundle
-# built from its rows (each operation in the entry chunk, each flag called
-# there through both flag chunks' hooks) reads back as all dispositioned. The
-# live comparison is the weekly job's; this catches a bad row on the push that
-# adds it.
+# Dashboard URLs (w3/m704). Each source: the urls chunk's builders (a
+# constant, an arrow, a builder calling a builder, an enum imported from another
+# chunk), the route tables (a child joined to its parent, children named by a
+# constant, a path that is an imported or a local constant), a create menu's
+# path, and side navigation's hrefPatterns in a function body.
+url() { python3 -I -c 'import json,sys; print([(u["sources"], u["query"]) for u in json.load(sys.stdin)["urls"] if u["pattern"]==sys.argv[1]])' "$1" <<<"$inventory"; }
+urls_matching() { python3 -I -c 'import json,re,sys; print([u["pattern"] for u in json.load(sys.stdin)["urls"] if re.search(sys.argv[1], u["pattern"])])' "$1" <<<"$inventory"; }
+check "a builder calling a builder keeps the hash in the pattern" 0 "[(['builder'], [])]" url '/w/:param/settings#team-members'
+check "an enum imported from another chunk fills a segment" 0 "[(['builder', 'route'], [])]" url '/web/:param/*'
+check "a query is split off and its names kept" 0 "[(['builder'], ['plan'])]" url /billing/update-plan
+check "segments known only at run time become :param" 0 "[(['builder'], [])]" url '/:param/:param/deploys/:param'
+check "a router's :name becomes :param and a child joins its parent without the splat" 0 "[(['route'], [])]" \
+  url '/web/:param/metrics/:param'
+check "route children named by a constant are read" 0 "[(['route'], [])]" url '/web/:param/events'
+check "a create menu's path is a link" 0 "[(['link'], [])]" url /web/new
+check "hrefPatterns in a function body are read" 0 "[(['nav'], [])]" url '/w/:param/settings/*'
+check "one URL from two chunks is one pattern" 0 "[(['builder', 'nav'], [])]" url '/w/:param/settings'
+check "an asset, an API path, an external URL and a bare segment are not URLs" 0 "[]" \
+  urls_matching 'assets|graphql|render\.com|rollback|^[^/]'
+unread() { python3 -I -c 'import json,sys; print([(u["source"], u["expression"], u["missing"]) for u in json.load(sys.stdin)["unresolved_urls"]])' <<<"$inventory"; }
+check "a local route path is reported by name, never dropped" 0 "[('route', 't', 'the local variable t')]" unread
+check "an unread route path is a notice that does not fail the check" 0 \
+  "::notice title=Render dashboard URL not read::route in index: t (the local variable t)" run "$page" "$ledger"
+
+# The URL drift the job exists for.
+check "a new URL fails and is named" 1 "no row: URL /brand-new-page (from builder in urls)" \
+  run "$(bundle_with new-url assets/urls-Ur1s_bCd.js 's#,j=`/env-groups`;#,j=`/env-groups`,z=`/brand-new-page`;#; s#p as O}#p as O,z as P}#')" "$ledger"
+check "a removed URL fails and is named" 1 \
+  "URL /w/:param/billing/update-plan-preview is no longer in Render's dashboard bundle (pointer: \`w3/m708\`)" \
+  run "$(bundle_with removed-url assets/index-Ent1y-_A.js 's#{path:`/w/:ownerId/billing/update-plan-preview`,Component:Ap},##')" "$ledger"
+check "a route path that is a local constant is resolved" 1 "no row: URL /env-groups-v2 (from route in index)" \
+  run "$(bundle_with local-constant assets/index-Ent1y-_A.js 's#Kr=`/env-groups`#Kr=`/env-groups-v2`#')" "$ledger"
+check "a route path that is a constant imported from the urls chunk is resolved" 1 \
+  "no row: URL /billing-v2 (from builder, route in index, urls)" \
+  run "$(bundle_with imported-constant assets/urls-Ur1s_bCd.js 's#o=`/billing`#o=`/billing-v2`#')" "$ledger"
+
+# What the URL parser no longer recognizes fails with a message naming it.
+check "a bundle with no urls chunk fails closed" 1 "want one urls-*.js chunk in the import graph, found none" \
+  run "$(cp -R "$fixtures" "$sandbox/no-urls" && cd "$sandbox/no-urls/assets" &&
+    mv urls-Ur1s_bCd.js links-Ur1s_bCd.js && sed -i.bak 's#urls-Ur1s_bCd#links-Ur1s_bCd#g' ./*.js &&
+    echo "$sandbox/no-urls/index.html")" "$ledger"
+check "a urls chunk with no export clause fails closed" 1 "urls has no export{…} clause" \
+  run "$(bundle_with no-url-exports assets/urls-Ur1s_bCd.js 's#^export{.*};$#window.urls={};#')" "$ledger"
+check "a bundle with no route object fails closed" 1 "found no route object" \
+  run "$(bundle_with no-routes assets/index-Ent1y-_A.js 's#Component:#Comp:#g; s#element:#elem:#g; s#loader:#load:#g; s#children:#kids:#g')" "$ledger"
+check "a chunk whose brackets do not balance fails closed" 1 "index: an unmatched } at offset" \
+  run "$(bundle_with unbalanced assets/index-Ent1y-_A.js 's#^function Inner#}function Inner#')" "$ledger"
+
+# The URL ledger's rules.
+check "a URL row with a query is malformed" 1 "\`/billing/update-plan?plan=professional\` is not a \`/path\` pattern" \
+  run "$page" "$ledger" check "$(routes_with query 's#| `/billing/update-plan` |#| `/billing/update-plan?plan=professional` |#')"
+check "a URL row with a router's :name is malformed" 1 "\`/env-group/:id\` is not a \`/path\` pattern" \
+  run "$page" "$ledger" check "$(routes_with param-name 's#| `/env-group/:param` |#| `/env-group/:id` |#')"
+check "a URL row without backticks is malformed" 1 "/env-groups is not a \`/path\` pattern" \
+  run "$page" "$ledger" check "$(routes_with no-ticks 's#| `/env-groups` |#| /env-groups |#')"
+check "a second row for a URL fails" 1 "second row for URL /env-groups" \
+  run "$page" "$ledger" check "$(routes_with duplicate-url 's#^| `/env-groups` |\(.*\)$#| `/env-groups` |\1\
+| `/env-groups` |\1#')"
+check "a URL gap row with no board item fails" 1 "gap row names no board item" \
+  run "$page" "$ledger" check "$(routes_with url-gap 's#| gap | `w3/m705` |#| gap | later |#')"
+check "a matched URL row must name the bex route" 1 "matched row for URL /env-groups names no bex route" \
+  run "$page" "$ledger" check "$(routes_with no-route 's#| `/env-groups` | `/env-groups` | matched |#| `/env-groups` | — | matched |#')"
+check "a flagged URL row must name a flag from the Flag table" 1 "flagged row names no flag from the Flag table" \
+  run "$page" "$ledger" check "$(routes_with url-flag 's#| flagged | `sandbox_shell` |#| flagged | a flag |#')"
+check "a URL row with a missing cell fails" 1 "3 cells, want 4" \
+  run "$page" "$ledger" check "$(routes_with url-short 's#| `/env-groups` | `/env-groups` |#| `/env-groups` |#')"
+check "a URL table whose header drifts is not read, so its URLs have no row" 1 "found no Render URL rows" \
+  run "$page" "$ledger" check "$(routes_with url-header 's#^| Render URL | bex | Disposition | Pointer |$#| Render URL | bex | Disposition | Note |#')"
+check "a file with no URL table fails" 1 "found no Render URL rows" run "$page" "$ledger" check "$ledger"
+RENDER_DASHBOARD_ROUTES_LEDGER="$sandbox/absent-routes.md" check "a missing URL ledger fails" 1 "absent-routes.md does not exist" "$script"
+
+# The committed ledgers themselves, offline: every row is well formed, and a
+# bundle built from their rows (each operation in the entry chunk, each flag
+# called there through both flag chunks' hooks, each URL a builder of the urls
+# chunk) reads back as all dispositioned. The live comparison is the weekly
+# job's; this catches a bad row on the push that adds it.
 committed="$sandbox/committed"
 mkdir -p "$committed/assets"
 cp "$fixtures/index.html" "$committed/index.html"
 cp "$fixtures/assets/hooks-HooK5x9Q.js" "$fixtures/assets/featureflags-F1agsAbC.js" "$fixtures/assets/frontendFlag-Fr0ntF1g.js" \
   "$committed/assets/"
+# The URL table's patterns, each a builder of the urls chunk, and the first one
+# also a route.
+awk '/^\| Render URL \| bex \| Disposition \| Pointer \|$/ { table = 1; next } !/^\|/ { table = 0 }
+  table && /^\| `\// { split($0, cell, "|"); gsub(/[` ]/, "", cell[2]); print cell[2] }' "$committed_routes" >"$sandbox/committed-urls.txt"
 {
-  echo 'import{n as Qe,y as V}from"./hooks-HooK5x9Q.js";import{t as Mx}from"./featureflags-F1agsAbC.js";import{o as So}from"./frontendFlag-Fr0ntF1g.js";'
+  awk '{ printf "%su%d=`%s`", (NR > 1 ? "," : "var "), NR, $0 } END { print ";" }' "$sandbox/committed-urls.txt"
+  awk '{ printf "%su%d", (NR > 1 ? "," : "export{"), NR } END { print "};" }' "$sandbox/committed-urls.txt"
+} >"$committed/assets/urls-Ur1s_bCd.js"
+{
+  echo 'import{n as Qe,y as V}from"./hooks-HooK5x9Q.js";import{t as Mx}from"./featureflags-F1agsAbC.js";import{o as So}from"./frontendFlag-Fr0ntF1g.js";import{u1 as Ux}from"./urls-Ur1s_bCd.js";'
+  echo "var Rt0={app:Ux,routes:[{path:\`$(head -1 "$sandbox/committed-urls.txt")\`,Component:Ux}]};"
   awk -F'|' '/^\| `[A-Za-z_][A-Za-z0-9_]*` \| (query|mutation|subscription) \|/ {
     gsub(/[` ]/, "", $2); gsub(/ /, "", $3)
     printf "new Qe(V`\n  %s %s {\n    x\n  }\n`);\n", $3, $2
   }' "$committed_ledger"
   awk -F'|' '/^\| `[a-z0-9_-]+` \| `/ { gsub(/[` ]/, "", $2); printf "Mx(`%s`,e);So(`%s`);\n", $2, $2 }' "$committed_ledger"
 } >"$committed/assets/index-Ent1y-_A.js"
-check "the committed ledger is well formed" 0 "every operation and flag has a row" run "$committed/index.html" "$committed_ledger"
+check "the committed ledgers are well formed" 0 "every operation, flag and URL has a row" \
+  run "$committed/index.html" "$committed_ledger" check "$committed_routes"
 
 if [[ "$failures" -gt 0 ]]; then
   echo "$failures render-dashboard-ops test(s) failed" >&2

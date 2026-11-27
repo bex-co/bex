@@ -70,7 +70,10 @@ jobs:
   # dashboard, or keeps behind a per-workspace flag, moves neither the API pins
   # above nor the changelog: every GraphQL operation and flag gate in the public
   # bundle needs a row in docs/render-artifacts/dashboard-operations.md, and a
-  # flag gate that leaves the bundle names the item to reopen.
+  # flag gate that leaves the bundle names the item to reopen. Every URL the
+  # bundle builds or routes needs a row in the URL table of
+  # docs/render-artifacts/dashboard-routes.md (w3/m704), so a page Render adds
+  # is found here within a week instead of by a user's 404.
   render-dashboard-ops:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 10
@@ -83,7 +86,7 @@ jobs:
           sparse-checkout: |
             /*
             !/.pm/
-      - name: Every Render dashboard operation and flag gate has a disposition
+      - name: Every Render dashboard operation, flag gate and URL has a disposition
         run: scripts/render-dashboard-ops.sh
 
   # Render's docs pages (w4/m688). Render states its limits, defaults and

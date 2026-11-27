@@ -2,7 +2,7 @@
 
 Every GraphQL operation and every feature-flag gate in [Render's dashboard](https://dashboard.render.com/) bundle, with what bex does about each (w1/m645). The API pins see only Render's public contracts, and [render-changelog.md](render-changelog.md) sees only what Render announces. A feature Render ships in its dashboard alone, or keeps behind a per-workspace experiment flag, moves neither. The dashboard's JavaScript is public and readable without signing in, and every operation it can send is a literal in it, so this file gives each one an owner. The first pass found three features no other ledger had seen: the rollback comparison (`w1/m646`), the 2FA reminders (`w1/m647`) and avatars (`w1/m648`). It also found that Render's Postgres parameter overrides editor is a flagged experiment, which a brainstorm had nearly taken as a reason to reverse `w2/066`.
 
-`scripts/render-dashboard-ops.sh` starts at the dashboard page's module script (`assets/index-*.js`) and follows every static import, dynamic import and preload reference, recursively. It lists each operation (`query`, `mutation` or `subscription` and its name) and each flag gate: a call, with a flag name, to a hook one of Render's two flag chunks exports ([Flag gates](#flag-gates)). The `render-dashboard-ops` job in [`render-schema-drift.yml`](../../.github/workflows/render-schema-drift.yml) runs it every Monday. It fails when an operation or flag has no row, when a row's operation or flag has left the bundle, or when a row breaks the rules below. It never writes this file: a person reads the new operation in the bundle and adds its row. `scripts/render-dashboard-ops.sh list` prints the inventory as JSON, with each operation's root fields and the chunk families that hold it. `scripts/render-dashboard-ops.test.sh` checks the script against a small synthetic bundle, and this file's rows on every push.
+`scripts/render-dashboard-ops.sh` starts at the dashboard page's module script (`assets/index-*.js`) and follows every static import, dynamic import and preload reference, recursively. It lists each operation (`query`, `mutation` or `subscription` and its name) and each flag gate: a call, with a flag name, to a hook one of Render's two flag chunks exports ([Flag gates](#flag-gates)). The `render-dashboard-ops` job in [`render-schema-drift.yml`](../../.github/workflows/render-schema-drift.yml) runs it every Monday. It fails when an operation or flag has no row, when a row's operation or flag has left the bundle, or when a row breaks the rules below. It never writes this file: a person reads the new operation in the bundle and adds its row. `scripts/render-dashboard-ops.sh list` prints the inventory as JSON, with each operation's root fields and the chunk families that hold it. `scripts/render-dashboard-ops.test.sh` checks the script against a small synthetic bundle, and this file's rows on every push. The same run checks every URL the bundle builds or routes against [dashboard-routes.md § Render's URL inventory](dashboard-routes.md#renders-url-inventory) (w3/m704).
 
 Chunk file names carry content hashes that change with each Render deploy (the entry was `index-BPMVVQol.js` on the morning of 2026-11-25 and `index-D5V4ZgbE.js` by evening), so rows name operations and flags, never chunk files.
 
@@ -19,7 +19,7 @@ Each row has one disposition, and its pointer says why:
 - `n/a`: there is nothing for bex to match: Render's own staff tools, support vendors, legal paperwork or growth experiments, or a feature Render retired whose code is still in the bundle but which no customer can start any more. The pointer gives the reason.
 - `flagged`: the operation serves a feature behind a flag gate. The pointer names the flag from a table below.
 
-A disposition is about the capability an operation serves, as in the changelog ledger. Many operations are one feature's reads and writes, so they share one pointer.
+A disposition is about the capability an operation serves, as in the changelog ledger. Many operations are one feature's reads and writes, so they share one pointer. The `resourceTypeBy…Id` queries serve no resource's page. Only Render's `/resource/<id>` redirector reads them, to learn what kind of resource an id is and open its page, so their rows point at that redirector, which bex lacks, and not at the resources' CRUD rows (w3/m704).
 
 ## Flag gates
 
@@ -113,7 +113,7 @@ Grouped by product area, then sorted by name.
 | `redirectRules` | query | matched | ADR018 § Deployment sources & IaC: Header rules · redirects / rewrites |
 | `regenerateDeployKey` | mutation | matched | ADR018 § Deploys: Secret deploy hook (`regenerateDeployHook`) |
 | `rescheduleMaintenance` | mutation | non-goal | ADR018 § Platform events & integrations: Maintenance runs (—); DO_NOT_DO: Enterprise/managed-infra surfaces |
-| `resourceTypeByServiceId` | query | matched | ADR018 § Services & lifecycle: Get service; List services |
+| `resourceTypeByServiceId` | query | gap | Render's `/resource/<id>` redirector (`ResourceRedirector`): `w3/m705` |
 | `restartServer` | mutation | matched | ADR018 § Services & lifecycle: Restart |
 | `restoreDiskSnapshot` | mutation | matched | ADR018 § Other datastores & storage: Persistent disks |
 | `resumeService` | mutation | matched | ADR018 § Services & lifecycle: Suspend / Resume |
@@ -299,7 +299,7 @@ Grouped by product area, then sorted by name.
 | `minimalEnvGroup` | query | matched | ADR018 § Environment & config: Environment groups (+ link / unlink) |
 | `minimalEnvGroupsForOwner` | query | matched | ADR018 § Environment & config: Environment groups (+ link / unlink) |
 | `removeEnvGroupFromService` | mutation | matched | ADR018 § Environment & config: Environment groups (+ link / unlink) |
-| `resourceTypeByEnvGroupId` | query | matched | ADR018 § Environment & config: Environment groups (+ link / unlink) |
+| `resourceTypeByEnvGroupId` | query | gap | Render's `/resource/<id>` redirector (`ResourceRedirector`): `w3/m705` |
 | `serviceEnvFileKeys` | query | matched | ADR018 § Environment & config: Secret files (mounted at `/etc/secrets`) |
 | `serviceEnvFiles` | query | matched | ADR018 § Environment & config: Secret files (mounted at `/etc/secrets`) |
 | `serviceEnvVarKeys` | query | matched | ADR018 § Environment & config: Env vars (list · get · replace · set · delete) |
@@ -379,7 +379,7 @@ Grouped by product area, then sorted by name.
 | `minimalDatabase` | query | matched | ADR018 § Managed Postgres: Postgres CRUD + connection-info |
 | `minimalDatabaseSideNav` | query | matched | ADR018 § Managed Postgres: Postgres CRUD + connection-info |
 | `postgresConfigParameters` | query | flagged | `postgres-parameter-overrides`: the PostgreSQL Configuration Overrides card; bex retired overrides (`w2/066` D2=A) |
-| `resourceTypeByDatabaseId` | query | matched | ADR018 § Managed Postgres: Postgres CRUD + connection-info |
+| `resourceTypeByDatabaseId` | query | gap | Render's `/resource/<id>` redirector (`ResourceRedirector`): `w3/m705` |
 | `restartDatabase` | mutation | matched | ADR018 § Managed Postgres: Lifecycle (suspend / resume / restart) |
 | `restoreNewDatabase` | mutation | matched | ADR018 § Managed Postgres: Backups · PITR / recovery; [postgres-recovery-window.md](postgres-recovery-window.md) |
 | `resumeDatabase` | mutation | matched | ADR018 § Managed Postgres: Lifecycle (suspend / resume / restart) |
@@ -407,7 +407,7 @@ Grouped by product area, then sorted by name.
 | `redisIdsForOwner` | query | matched | ADR018 § Other datastores & storage: Key Value (Valkey / Redis) |
 | `redisIpAllowList` | query | matched | ADR018 § Other datastores & storage: Key Value (Valkey / Redis) |
 | `redisPlans` | query | matched | ADR018 § Other datastores & storage: Key Value (Valkey / Redis) |
-| `resourceTypeByRedisId` | query | matched | ADR018 § Other datastores & storage: Key Value (Valkey / Redis) |
+| `resourceTypeByRedisId` | query | gap | Render's `/resource/<id>` redirector (`ResourceRedirector`): `w3/m705` |
 | `resumeRedis` | mutation | matched | ADR018 § Other datastores & storage: Key Value (Valkey / Redis) |
 | `suspendRedis` | mutation | matched | ADR018 § Other datastores & storage: Key Value (Valkey / Redis) |
 | `updateRedisIpAllowList` | mutation | matched | ADR018 § Other datastores & storage: Key Value (Valkey / Redis) |
@@ -470,7 +470,7 @@ Grouped by product area, then sorted by name.
 | `planNewSource` | mutation | matched | ADR018 § Deployment sources & IaC: Blueprint / `render.yaml` IaC |
 | `planSync` | mutation | matched | ADR018 § Deployment sources & IaC: Blueprint / `render.yaml` IaC |
 | `resourcesForBlueprintExport` | query | matched | ADR018 § Deployment sources & IaC: Blueprint / `render.yaml` IaC (Generate Blueprint, GraphQL `generateBlueprint`) |
-| `resourceTypeByBlueprintId` | query | matched | ADR018 § Deployment sources & IaC: Blueprint / `render.yaml` IaC |
+| `resourceTypeByBlueprintId` | query | gap | Render's `/resource/<id>` redirector (`ResourceRedirector`): `w3/m705` |
 | `setIACAutoSync` | mutation | matched | ADR018 § Deployment sources & IaC: Blueprint / `render.yaml` IaC |
 | `source` | query | matched | ADR018 § Deployment sources & IaC: Blueprint / `render.yaml` IaC |
 | `updateIacSourceBranch` | mutation | matched | ADR018 § Deployment sources & IaC: Blueprint / `render.yaml` IaC |
@@ -554,7 +554,7 @@ Grouped by product area, then sorted by name.
 | `notificationSettings` | query | matched | ADR018 § Platform events & integrations: Notifications (deploy/failure alerts); [notify-on-fail.md](notify-on-fail.md) |
 | `removeSlackAuth` | mutation | non-goal | DO_NOT_DO: Slack deploy-notification delivery |
 | `rerunWebhook` | mutation | matched | ADR018 § Platform events & integrations: Outbound event webhooks; [webhooks-ui.md](webhooks-ui.md) |
-| `resourceTypeByWebhookId` | query | matched | ADR018 § Platform events & integrations: Outbound event webhooks; [webhooks-ui.md](webhooks-ui.md) |
+| `resourceTypeByWebhookId` | query | gap | Render's `/resource/<id>` redirector (`ResourceRedirector`): `w3/m705` |
 | `slackAuth` | mutation | non-goal | DO_NOT_DO: Slack deploy-notification delivery |
 | `updateNotificationOverride` | mutation | matched | ADR018 § Platform events & integrations: Notifications (deploy/failure alerts); [notify-on-fail.md](notify-on-fail.md) |
 | `updateNotificationSettings` | mutation | matched | ADR018 § Platform events & integrations: Notifications (deploy/failure alerts); [notify-on-fail.md](notify-on-fail.md) |
@@ -576,9 +576,9 @@ Grouped by product area, then sorted by name.
 | `DeleteSandboxSnapshot` | mutation | matched | [sandbox-groups.md § The dashboard](sandbox-groups.md#the-dashboard) (w1/m658) |
 | `minimalSandboxGroup` | query | matched | ADR018 § Render operation omissions: Render sandbox groups and snapshots (✅); [ADR104](../ADR104-sandbox-render-parity.md) |
 | `minimalSandboxGroupsForOwner` | query | matched | ADR018 § Render operation omissions: Render sandbox groups and snapshots (✅); [ADR104](../ADR104-sandbox-render-parity.md) |
-| `resourceTypeBySandboxGroupId` | query | matched | ADR018 § Render operation omissions: Render sandbox groups and snapshots (✅); [ADR104](../ADR104-sandbox-render-parity.md) |
-| `resourceTypeBySandboxId` | query | matched | [sandbox-groups.md § The dashboard](sandbox-groups.md#the-dashboard) (w1/m658) |
-| `resourceTypeBySandboxSnapshotId` | query | matched | [sandbox-groups.md § The dashboard](sandbox-groups.md#the-dashboard) (w1/m658) |
+| `resourceTypeBySandboxGroupId` | query | gap | Render's `/resource/<id>` redirector (`ResourceRedirector`): `w3/m705` |
+| `resourceTypeBySandboxId` | query | gap | Render's `/resource/<id>` redirector (`ResourceRedirector`): `w3/m705` |
+| `resourceTypeBySandboxSnapshotId` | query | gap | Render's `/resource/<id>` redirector (`ResourceRedirector`): `w3/m705` |
 | `SandboxBuilds` | query | matched | [sandbox-groups.md § The dashboard](sandbox-groups.md#the-dashboard) (w1/m658) |
 | `SandboxBuildsForGroupUpdated` | subscription | matched | [sandbox-groups.md § The dashboard](sandbox-groups.md#the-dashboard) (w1/m658) (bex polls: no GraphQL subscriptions) |
 | `SandboxBuildSources` | query | matched | [sandbox-groups.md § The dashboard](sandbox-groups.md#the-dashboard) (w1/m658) |

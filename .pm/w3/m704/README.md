@@ -1,17 +1,17 @@
 # w3 · m704 — Every URL Render's dashboard builds has a row in `dashboard-routes.md`, and a weekly job finds new ones
 
-**Worker:** worker3 **Goal:** `docs/render-artifacts/dashboard-routes.md` lists every path Render's dashboard bundle builds or routes, each with what bex does about it, and the weekly `render-dashboard-ops` job fails when Render adds a URL with no row or drops one a row names; the two rows known to be wrong today are corrected. **Status:** todo
+**Worker:** worker3 **Goal:** `docs/render-artifacts/dashboard-routes.md` lists every path Render's dashboard bundle builds or routes, each with what bex does about it, and the weekly `render-dashboard-ops` job fails when Render adds a URL with no row or drops one a row names; the two rows known to be wrong today are corrected. **Status:** todo (t001–t006 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | The crawler lists every dashboard URL pattern in Render's bundle: the `urls` chunk's builders and every route table's `path:` | 1h30m | — |
-| [t002](t002.md) | `dashboard-routes.md` gets one row per pattern with its disposition and pointer, and the env-group row is corrected | 1h | t001 |
-| [t003](t003.md) | `render-dashboard-ops.sh check` also checks the URL ledger, and its synthetic-bundle test covers it | 1h | t002 |
-| [t004](t004.md) | `dashboard-operations.md`'s `resourceTypeBy*` rows name Render's `/resource/<id>` redirector, not Get service | 20m | t002 |
-| [t005](t005.md) | Simplify | 15m | t003, t004 |
-| [t006](t006.md) | Test coverage | 30m | t003, t004 |
+| [t001](done/t001.md) | The crawler lists every dashboard URL pattern in Render's bundle: the `urls` chunk's builders and every route table's `path:` — **DONE** | 1h30m | — |
+| [t002](done/t002.md) | `dashboard-routes.md` gets one row per pattern with its disposition and pointer, and the env-group row is corrected — **DONE** | 1h | t001 |
+| [t003](done/t003.md) | `render-dashboard-ops.sh check` also checks the URL ledger, and its synthetic-bundle test covers it — **DONE** | 1h | t002 |
+| [t004](done/t004.md) | `dashboard-operations.md`'s `resourceTypeBy*` rows name Render's `/resource/<id>` redirector, not Get service — **DONE** | 20m | t002 |
+| [t005](done/t005.md) | Simplify — **DONE** | 15m | t003, t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 30m | t003, t004 |
 | [t007](t007.md) | Closeout | 10m | t005, t006 |
 
 Total: **7 tasks, about 4h45m**.
