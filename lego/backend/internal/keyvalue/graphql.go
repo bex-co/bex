@@ -58,9 +58,14 @@ var keyValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"ipAllowListEntries":     gqlutil.Typed(graphql.NewList(gqlutil.IPAllowEntryType), func(v KeyValueView) any { return v.IPAllowList }),
 		"maxmemoryPolicy":        gqlutil.StrField(func(v KeyValueView) any { return v.MaxmemoryPolicy }),
 		"persistenceMode":        gqlutil.StrField(func(v KeyValueView) any { return v.PersistenceMode }),
-		"ownerId":                gqlutil.StrField(func(v KeyValueView) any { return v.OwnerID }),
-		"projectId":              gqlutil.OptionalStrField(func(v KeyValueView) any { return v.ProjectID }),
-		"environmentId":          gqlutil.OptionalStrField(func(v KeyValueView) any { return v.EnvironmentID }),
+		// The store's logical, billed/provisioned disk size in GB — the
+		// dashboard's plan review prices the Storage line from it, taking
+		// the larger of this and the new plan's floor (the Database
+		// sibling's diskSizeGB, w3/m674).
+		"storageGB":     gqlutil.IntField(func(v KeyValueView) any { return v.StorageGB }),
+		"ownerId":       gqlutil.StrField(func(v KeyValueView) any { return v.OwnerID }),
+		"projectId":     gqlutil.OptionalStrField(func(v KeyValueView) any { return v.ProjectID }),
+		"environmentId": gqlutil.OptionalStrField(func(v KeyValueView) any { return v.EnvironmentID }),
 		// blueprintId: the Blueprint managing this instance, null when nothing
 		// does (w4/m125, bex extension).
 		"blueprintId": gqlutil.OptionalStrField(func(v KeyValueView) any { return v.BlueprintID }),
@@ -80,6 +85,10 @@ var keyValueInstanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"memory":     gqlutil.StrField(func(t KeyValueInstanceType) any { return t.Memory }),
 		"storageGB":  gqlutil.IntField(func(t KeyValueInstanceType) any { return t.StorageGB }),
 		"monthlyUsd": gqlutil.StrField(func(t KeyValueInstanceType) any { return t.MonthlyUSD }),
+		// One GB of the store's storage a month on this plan, from bex-api's
+		// one price sheet — the dashboard's plan review prices the Storage
+		// line with it (the DatabaseInstanceType sibling's field, w3/m674).
+		"storageMonthlyUsdPerGB": gqlutil.StrField(func(t KeyValueInstanceType) any { return t.StorageMonthlyUSDPerGB }),
 		// The plan's connection limit, shown beside its RAM as on Render's plan
 		// cards (w6/m459).
 		"connectionLimit": gqlutil.Typed(graphql.NewNonNull(graphql.Int), func(t KeyValueInstanceType) any { return t.ConnectionLimit }),

@@ -17,6 +17,7 @@ const catalog = vi.hoisted(() => {
       memory: "256Mi",
       storageGB: 1,
       monthlyUsd: "0.00",
+      storageMonthlyUsdPerGB: "0.00",
       connectionLimit: 50,
     },
     {
@@ -26,6 +27,7 @@ const catalog = vi.hoisted(() => {
       memory: "1Gi",
       storageGB: 10,
       monthlyUsd: "7.00",
+      storageMonthlyUsdPerGB: "0.21",
       connectionLimit: 250,
     },
   ];
@@ -181,9 +183,10 @@ describe("KeyValuePlanSection", () => {
   });
 
   // w4/156: a free store became a paid one in two clicks with no cost shown.
-  // w3/m674: Render's review lists the plan with its figures and price, then
-  // the total.
-  it("prices every plan card and reviews the plan and total before the change", async () => {
+  // bex's review lists the plan with its figures and price, the Storage line
+  // bex bills the store (used volume bytes at the sheet's rate), then the
+  // total — the Postgres review's shape for one instance.
+  it("prices every plan card and reviews the plan, storage and total before the change", async () => {
     const user = userEvent.setup();
     render(<KeyValuePlanSection keyValue={KEY_VALUE} onChanged={vi.fn()} />);
 
@@ -194,17 +197,69 @@ describe("KeyValuePlanSection", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog).toHaveAccessibleName("Apply changes?");
-    expect(dialog).toHaveTextContent("Review your compute selection.");
+    expect(dialog).toHaveTextContent(
+      "Review your compute and storage selections.",
+    );
     const lines = [...dialog.querySelectorAll('[data-slot="review-line"]')].map(
       (row) => [...row.children].map((cell) => cell.textContent),
     );
     expect(lines).toEqual([
       ["Compute plan", "0.5 CPU1 GB RAM250 connections", "$7.00/month"],
+      // The new plan's 10 GB floor over the free store's 1 GB, at $0.21.
+      ["Storage", "10 GB", "$2.10/month"],
     ]);
-    expect(dialog).toHaveTextContent("Total$7.00/month");
+    expect(dialog).toHaveTextContent("Total$9.10/month");
     expect(dialog).toHaveTextContent(
       "Your Key Value instance will be unavailable while updating.",
     );
+  });
+
+  // The review prices the storage the change leaves: a store grown past the
+  // new plan's floor reads its own size, not the floor.
+  it("reviews the store's size when it is past the new plan's floor", async () => {
+    const user = userEvent.setup();
+    render(
+      <KeyValuePlanSection
+        keyValue={{ ...KEY_VALUE, storageGB: 25 }}
+        onChanged={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("radio", { name: /Starter/ }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const dialog = await screen.findByRole("alertdialog");
+    const lines = [...dialog.querySelectorAll('[data-slot="review-line"]')].map(
+      (row) => [...row.children].map((cell) => cell.textContent),
+    );
+    expect(lines).toEqual([
+      ["Compute plan", "0.5 CPU1 GB RAM250 connections", "$7.00/month"],
+      ["Storage", "25 GB", "$5.25/month"],
+    ]);
+    expect(dialog).toHaveTextContent("Total$12.25/month");
+  });
+
+  // A plan the sheet does not price reads "—" on every line and the total,
+  // the Postgres review's fail-unknown shape.
+  it("reviews dashes when the sheet lists no price for the plan", async () => {
+    catalog.instanceTypes = catalog.defaultTiers.map((tier) => ({
+      ...tier,
+      monthlyUsd: "",
+      storageMonthlyUsdPerGB: "",
+    }));
+    const user = userEvent.setup();
+    render(<KeyValuePlanSection keyValue={KEY_VALUE} onChanged={vi.fn()} />);
+
+    await user.click(screen.getByRole("radio", { name: /Starter/ }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const dialog = await screen.findByRole("alertdialog");
+    const lines = [...dialog.querySelectorAll('[data-slot="review-line"]')].map(
+      (row) => [...row.children].map((cell) => cell.textContent),
+    );
+    expect(lines).toEqual([
+      ["Compute plan", "0.5 CPU1 GB RAM250 connections", "—"],
+      ["Storage", "10 GB", "—"],
+    ]);
+    expect(dialog).toHaveTextContent("Total—");
   });
 
   it("returns to the picker with the choice kept from the plan's Edit", async () => {

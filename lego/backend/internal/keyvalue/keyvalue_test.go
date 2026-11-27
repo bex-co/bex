@@ -1406,10 +1406,46 @@ func TestKVInstanceTypesArePricedFromTheSheet(t *testing.T) {
 		if it.MonthlyUSD != want {
 			t.Errorf("%s monthlyUsd = %q, want the sheet's %q", it.ID, it.MonthlyUSD, want)
 		}
+		// The plan review's Storage line rate (the DatabaseInstanceType
+		// sibling's field, w3/m674): the sheet's, with Free's included
+		// storage at $0 — bex meters used Key Value volume bytes at this
+		// rate, so a review that omitted it would understate the bill.
+		wantStorage := "0.21"
+		if it.ID == "free" {
+			wantStorage = "0.00"
+		}
+		if it.StorageMonthlyUSDPerGB != wantStorage || it.StorageMonthlyUSDPerGB != pricing.Default.StorageMonthlyUSDPerGB(it.ID, store.ResourceKindKeyValue) {
+			t.Errorf("%s storageMonthlyUsdPerGB = %q, want the sheet's %q", it.ID, it.StorageMonthlyUSDPerGB, wantStorage)
+		}
 		byID[it.ID] = it.MonthlyUSD
 	}
 	if byID["free"] != "0.00" || byID["starter"] != "7.00" || byID["standard"] != "14.00" || byID["pro"] != "70.00" {
 		t.Errorf("free/starter/standard/pro = %q/%q/%q/%q, want 0.00/7.00/14.00/70.00 (bex.co/pricing)", byID["free"], byID["starter"], byID["standard"], byID["pro"])
+	}
+}
+
+// The plan review prices the storage the change leaves, so the view reports
+// the store's effective size — the largest of the plan's floor, the requested
+// size and the allocated high-water (the Postgres DiskSizeGB sibling).
+func TestKeyValueViewReportsEffectiveStorage(t *testing.T) {
+	for _, tc := range []struct {
+		name                string
+		plan                string
+		specGB, allocatedGB int32
+		want                int32
+	}{
+		{"plan floor wins", "standard", 0, 0, 5},
+		{"requested size wins", "standard", 10, 0, 10},
+		{"allocated high-water wins", "standard", 0, 12, 12},
+		{"free floor", "free", 0, 0, 1},
+	} {
+		kv := &appv1alpha1.KeyValue{
+			Spec:   appv1alpha1.KeyValueSpec{Plan: tc.plan, StorageGB: tc.specGB},
+			Status: appv1alpha1.KeyValueStatus{AllocatedStorageGB: tc.allocatedGB},
+		}
+		if got := kvView(kv).StorageGB; got != tc.want {
+			t.Errorf("%s: StorageGB = %d, want %d", tc.name, got, tc.want)
+		}
 	}
 }
 

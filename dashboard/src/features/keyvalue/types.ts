@@ -13,6 +13,11 @@ export interface KeyValueView {
   name: string;
   /** The owning workspace (`tea-…`); detail query only (w4/641). */
   ownerId?: string | null;
+  /** The store's logical, billed/provisioned disk size in GB (bex-api's
+   * effective storage); detail query only. The plan review prices the
+   * Storage line from it, taking the larger of this and the new plan's
+   * floor (the databases' DatabaseDetailView.diskSizeGB sibling). */
+  storageGB?: number | null;
   /** Render's keyValueStatus enum, verbatim (available/creating/unavailable). */
   status: string;
   /** Plan spelling from the tiers catalog (e.g. "free"), or null. */
@@ -64,6 +69,10 @@ export interface KeyValueInstanceTypeView {
   storageGB: number;
   /** Always-on monthly price ("7.00"), "" when the sheet lists none (w4/156). */
   monthlyUsd: string;
+  /** One GB of the store's storage a month on the plan ("0.21"), "" when
+   * the sheet lists none. "0.00" for Free's included storage, which the plan
+   * review then lists no Storage line for (the databases sibling, w3/m674). */
+  storageMonthlyUsdPerGB: string;
   /**
    * The plan's client connection limit (Render's figure, w6/m456); undefined
    * when the catalog sends none, and then no card or row shows a number.

@@ -1867,6 +1867,7 @@ type KeyValue {
   status: String
   statusReason: String
   statusReasonCode: String
+  storageGB: Int
   suspended: String
   updatedAt: String
   version: String
@@ -1889,6 +1890,7 @@ type KeyValueInstanceType {
   monthlyUsd: String
   name: String
   storageGB: Int
+  storageMonthlyUsdPerGB: String
   unavailableReason: String!
 }
 

@@ -56,6 +56,10 @@ query KeyValue($id: String!) {
     # Whether the external endpoint is open yet: a public store waits for its
     # publicly trusted certificate (w4/m357).
     externalCertificate
+    # The store's logical, billed/provisioned disk size in GB — the plan
+    # review prices the Storage line from it (the database diskSizeGB
+    # sibling, w3/m674).
+    storageGB
   }
 }
 
@@ -85,6 +89,10 @@ query KeyValueInstanceTypes {
     storageGB
     # The price from bex-api's one price sheet (w4/156).
     monthlyUsd
+    # One GB of the store's storage a month on the plan, from the same sheet
+    # ("0.21"; "0.00" for Free's included storage) — the plan review prices
+    # the Storage line with it (the databaseInstanceTypes sibling, w3/m674).
+    storageMonthlyUsdPerGB
     # The plan's connection limit, shown beside its RAM as on Render (w6/m459).
     connectionLimit
     # A paused tier is listed but not selectable (w5/m266).

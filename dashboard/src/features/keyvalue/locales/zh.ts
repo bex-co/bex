@@ -575,9 +575,9 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value plan-picker cancel / reset button",
   },
   "keyvalue.reviewComputeLead": {
-    message: "检查你选择的计算。",
+    message: "检查你选择的计算和存储。",
     description:
-      "Key Value plan review: the lead of a compute plan change's review (Render's copy)",
+      "Key Value plan review: the lead of a compute plan change's review (compute and storage, as the review lists both)",
   },
   "keyvalue.reviewUnavailable": {
     message: "更新期间，你的 Key Value 实例将不可用。",
@@ -588,6 +588,16 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "升级计算",
     description:
       "Key Value plan review: the button that applies a plan change (Render's copy; Key Value plans only go up)",
+  },
+  "keyvalue.storageTitle": {
+    message: "存储",
+    description:
+      "Key Value plan review: the Storage line's label (the store's billed storage)",
+  },
+  "keyvalue.storageSize": {
+    message: "{size} GB",
+    description:
+      "Key Value plan review: the Storage line's figure, the billed size in GB",
   },
   "keyvalue.restartConfirmDataLoss": {
     message: "持久化为“关闭”，重启会删除 {name} 中的所有键，且无法撤销。",

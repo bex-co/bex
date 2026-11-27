@@ -574,9 +574,9 @@ const koKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value plan-picker cancel / reset button",
   },
   "keyvalue.reviewComputeLead": {
-    message: "컴퓨팅 선택 사항을 검토하세요.",
+    message: "컴퓨팅 및 스토리지 선택 사항을 검토하세요.",
     description:
-      "Key Value plan review: the lead of a compute plan change's review (Render's copy)",
+      "Key Value plan review: the lead of a compute plan change's review (compute and storage, as the review lists both)",
   },
   "keyvalue.reviewUnavailable": {
     message: "업데이트하는 동안 Key Value 인스턴스를 사용할 수 없습니다.",
@@ -587,6 +587,16 @@ const koKeyValue: Record<string, TranslationEntry> = {
     message: "컴퓨팅 업그레이드",
     description:
       "Key Value plan review: the button that applies a plan change (Render's copy; Key Value plans only go up)",
+  },
+  "keyvalue.storageTitle": {
+    message: "스토리지",
+    description:
+      "Key Value plan review: the Storage line's label (the store's billed storage)",
+  },
+  "keyvalue.storageSize": {
+    message: "{size} GB",
+    description:
+      "Key Value plan review: the Storage line's figure, the billed size in GB",
   },
   "keyvalue.restartConfirmDataLoss": {
     message:

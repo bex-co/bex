@@ -580,9 +580,9 @@ const ruKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value plan-picker cancel / reset button",
   },
   "keyvalue.reviewComputeLead": {
-    message: "Проверьте выбранные параметры вычислений.",
+    message: "Проверьте выбранные параметры вычислений и хранилища.",
     description:
-      "Key Value plan review: the lead of a compute plan change's review (Render's copy)",
+      "Key Value plan review: the lead of a compute plan change's review (compute and storage, as the review lists both)",
   },
   "keyvalue.reviewUnavailable": {
     message: "Во время обновления инстанс Key Value будет недоступен.",
@@ -593,6 +593,16 @@ const ruKeyValue: Record<string, TranslationEntry> = {
     message: "Повысить тариф вычислений",
     description:
       "Key Value plan review: the button that applies a plan change (Render's copy; Key Value plans only go up)",
+  },
+  "keyvalue.storageTitle": {
+    message: "Хранилище",
+    description:
+      "Key Value plan review: the Storage line's label (the store's billed storage)",
+  },
+  "keyvalue.storageSize": {
+    message: "{size} ГБ",
+    description:
+      "Key Value plan review: the Storage line's figure, the billed size in GB",
   },
   "keyvalue.restartConfirmDataLoss": {
     message:

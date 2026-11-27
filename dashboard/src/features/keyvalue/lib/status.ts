@@ -50,6 +50,7 @@ export function toKeyValueView(
     internalAuth: "internalAuth" in d ? (d.internalAuth ?? false) : undefined,
     externalCertificate:
       "externalCertificate" in d ? d.externalCertificate || null : undefined,
+    storageGB: "storageGB" in d ? (d.storageGB ?? null) : undefined,
   };
 }
 

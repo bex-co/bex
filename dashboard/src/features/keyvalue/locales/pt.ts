@@ -583,9 +583,9 @@ const ptKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value plan-picker cancel / reset button",
   },
   "keyvalue.reviewComputeLead": {
-    message: "Revise sua seleção de computação.",
+    message: "Revise suas seleções de computação e armazenamento.",
     description:
-      "Key Value plan review: the lead of a compute plan change's review (Render's copy)",
+      "Key Value plan review: the lead of a compute plan change's review (compute and storage, as the review lists both)",
   },
   "keyvalue.reviewUnavailable": {
     message:
@@ -597,6 +597,16 @@ const ptKeyValue: Record<string, TranslationEntry> = {
     message: "Fazer upgrade da computação",
     description:
       "Key Value plan review: the button that applies a plan change (Render's copy; Key Value plans only go up)",
+  },
+  "keyvalue.storageTitle": {
+    message: "Armazenamento",
+    description:
+      "Key Value plan review: the Storage line's label (the store's billed storage)",
+  },
+  "keyvalue.storageSize": {
+    message: "{size} GB",
+    description:
+      "Key Value plan review: the Storage line's figure, the billed size in GB",
   },
   "keyvalue.restartConfirmDataLoss": {
     message:

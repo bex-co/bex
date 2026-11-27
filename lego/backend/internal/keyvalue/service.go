@@ -84,10 +84,16 @@ type Service struct {
 // KeyValue CR fields (w5/011); the object stays a safe superset a Render client
 // can read (docs/ADR018/other-datastores-storage.md, Key Value row).
 type KeyValueView struct {
-	ID        string `json:"id"` // the immutable red- id (metadata.name); stable across rename
-	Name      string `json:"name"`
-	Plan      string `json:"plan"`
-	Version   string `json:"version,omitempty"`
+	ID      string `json:"id"` // the immutable red- id (metadata.name); stable across rename
+	Name    string `json:"name"`
+	Plan    string `json:"plan"`
+	Version string `json:"version,omitempty"`
+	// StorageGB is the store's logical, billed/provisioned disk size in GB:
+	// the largest of the plan's included floor, the requested size, and the
+	// operator-allocated high-water (tiers.Valkey.EffectiveStorageGB, the
+	// Postgres DiskSizeGB sibling). The dashboard's plan review prices the
+	// Storage line from it.
+	StorageGB int32  `json:"storageGB,omitempty"`
 	Status    string `json:"status"`    // Render keyValueStatus enum
 	Suspended string `json:"suspended"` // Render string enum (like services/postgres)
 	// StatusReason says why an unavailable Key Value is unavailable (bex extra,
@@ -353,6 +359,7 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 		Name:                      kv.Spec.Name,
 		Plan:                      kv.Spec.Plan,
 		Version:                   kv.Spec.EffectiveVersion(),
+		StorageGB:                 tiers.Valkey.EffectiveStorageGB(kv.Spec.Plan, kv.Spec.StorageGB, kv.Status.AllocatedStorageGB),
 		Status:                    status,
 		StatusReason:              reason,
 		StatusReasonCode:          reasonCode,

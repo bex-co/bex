@@ -586,9 +586,9 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value plan-picker cancel / reset button",
   },
   "keyvalue.reviewComputeLead": {
-    message: "Review your compute selection.",
+    message: "Review your compute and storage selections.",
     description:
-      "Key Value plan review: the lead of a compute plan change's review (Render's copy)",
+      "Key Value plan review: the lead of a compute plan change's review (compute and storage, as the review lists both)",
   },
   "keyvalue.reviewUnavailable": {
     message: "Your Key Value instance will be unavailable while updating.",
@@ -599,6 +599,16 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Upgrade compute",
     description:
       "Key Value plan review: the button that applies a plan change (Render's copy; Key Value plans only go up)",
+  },
+  "keyvalue.storageTitle": {
+    message: "Storage",
+    description:
+      "Key Value plan review: the Storage line's label (the store's billed storage)",
+  },
+  "keyvalue.storageSize": {
+    message: "{size} GB",
+    description:
+      "Key Value plan review: the Storage line's figure, the billed size in GB",
   },
   "keyvalue.restartConfirmDataLoss": {
     message:

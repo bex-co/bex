@@ -17,7 +17,12 @@ import { useKeyValueInstanceTypes } from "@/features/keyvalue/hooks/use-key-valu
 import { useSetKeyValuePersistenceMode } from "@/features/keyvalue/hooks/use-set-key-value-persistence-mode";
 import { useUpdateKeyValuePlan } from "@/features/keyvalue/hooks/use-update-key-value-plan";
 import { ComputePlanList } from "@/common/components/compute-plan-list";
-import { planPriceLabel } from "@/common/lib/plan-list";
+import type { ReviewLineItem } from "@/common/components/review-changes-dialog";
+import {
+  centsToUsd,
+  databaseReviewPricing,
+  usdToCents,
+} from "@/features/databases/lib/plan-review";
 import {
   KEY_VALUE_PLAN_SLOTS,
   PlanTierSlots,
@@ -92,9 +97,64 @@ export function KeyValuePlanSection({
     }
   }
 
-  // Render's Key Value review lists the plan alone, as the plan list prices
-  // it: Render bills no Key Value storage line.
-  const price = (selectedType && planPriceLabel(selectedType, false, t)) ?? "—";
+  // bex's Key Value review (the w3/m674 review's Key Value half): the plan,
+  // then the Storage line bex bills the store — Render lists the plan alone
+  // because Render bills no Key Value storage line, but bex meters a store's
+  // used volume bytes at the sheet's rate (pricing.yaml) — then the Total,
+  // the Postgres review's shape for one instance. A plan the sheet does not
+  // price reads "—", and Free's included storage has no line.
+  const reviewStorageGB =
+    selectedType == null ||
+    usdToCents(selectedType.storageMonthlyUsdPerGB) === 0
+      ? null
+      : Math.max(
+          keyValue.storageGB ?? currentType?.storageGB ?? 0,
+          selectedType.storageGB,
+        );
+  const reviewPricing =
+    selectedType == null
+      ? null
+      : databaseReviewPricing({
+          planMonthlyUsd: selectedType.monthlyUsd,
+          storageMonthlyUsdPerGB: selectedType.storageMonthlyUsdPerGB,
+          highAvailability: false,
+          readReplicas: 0,
+          storageGB: reviewStorageGB,
+        });
+  const reviewPrice = (cents: number | null) =>
+    cents == null
+      ? "—"
+      : t("common.pricePerMonth", { price: centsToUsd(cents) });
+  const reviewLines: ReviewLineItem[] =
+    selectedType == null || reviewPricing == null
+      ? []
+      : [
+          {
+            id: "compute-plan",
+            label: t("keyvalue.planTitle"),
+            values: figures(selectedType),
+            price: reviewPrice(reviewPricing.planCents),
+            // Edit returns to the picker with the choice kept.
+            onEdit: () => setReviewing(false),
+            editLabel: t("common.reviewEditComputePlan"),
+          },
+          ...(reviewStorageGB == null
+            ? []
+            : [
+                {
+                  id: "storage",
+                  label: t("keyvalue.storageTitle"),
+                  values: [
+                    t("keyvalue.storageSize", { size: reviewStorageGB }),
+                  ],
+                  price: reviewPrice(reviewPricing.storageCents),
+                },
+              ]),
+        ];
+  const reviewTotal =
+    selectedType == null || reviewPricing == null
+      ? "—"
+      : reviewPrice(reviewPricing.totalCents);
 
   return (
     <Card>
@@ -153,18 +213,8 @@ export function KeyValuePlanSection({
         <ReviewChangesDialog
           open={reviewing && !createDenied}
           description={t("keyvalue.reviewComputeLead")}
-          lineItems={[
-            {
-              id: "compute-plan",
-              label: t("keyvalue.planTitle"),
-              values: figures(selectedType),
-              price,
-              // Edit returns to the picker with the choice kept.
-              onEdit: () => setReviewing(false),
-              editLabel: t("common.reviewEditComputePlan"),
-            },
-          ]}
-          total={price}
+          lineItems={reviewLines}
+          total={reviewTotal}
           confirmLabel={t("keyvalue.reviewUpgradeCompute")}
           // Render's warning, and bex's data-loss sentence whenever the
           // restart empties the store: Render's Free instances have no

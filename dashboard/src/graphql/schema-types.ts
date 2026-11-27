@@ -2232,6 +2232,7 @@ export type KeyValue = {
   status: Maybe<Scalars['String']['output']>;
   statusReason: Maybe<Scalars['String']['output']>;
   statusReasonCode: Maybe<Scalars['String']['output']>;
+  storageGB: Maybe<Scalars['Int']['output']>;
   suspended: Maybe<Scalars['String']['output']>;
   updatedAt: Maybe<Scalars['String']['output']>;
   version: Maybe<Scalars['String']['output']>;
@@ -2256,6 +2257,7 @@ export type KeyValueInstanceType = {
   monthlyUsd: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
   storageGB: Maybe<Scalars['Int']['output']>;
+  storageMonthlyUsdPerGB: Maybe<Scalars['String']['output']>;
   unavailableReason: Scalars['String']['output'];
 };
 
