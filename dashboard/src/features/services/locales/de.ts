@@ -2002,9 +2002,9 @@ const deServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsApexFallback": {
     message:
-      "Kein ALIAS/ANAME oder CNAME-Flattening? Erstelle stattdessen einen A-Eintrag für @ mit einer der unten aufgeführten aktuellen Edge-Adressen. Diese Adressen können sich ändern — ein ALIAS/ANAME-Eintrag funktioniert auch dann weiter.",
+      "Kein ALIAS/ANAME oder CNAME-Flattening? Erstelle stattdessen diesen A-Eintrag für @. Er verweist deine Root-Domain auf die IP des bex-Load-Balancers.",
     description:
-      "A-record fallback under an apex domain's DNS instructions, shown with the resolved edge addresses (w4/378)",
+      "A-record fallback under an apex domain's DNS instructions, shown with the one committed edge address, bex's load balancer IP, as Render's DNS pages name 216.24.57.1 (w4/740)",
   },
   "services.domainDnsCaaHint": {
     message:
@@ -2014,7 +2014,7 @@ const deServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsApexGuidance": {
     message:
-      "Apex-Domains können keinen einfachen CNAME verwenden — erstelle diesen ALIAS/ANAME-Eintrag (oder CNAME-Flattening-Eintrag) in der Zone {zone} (@ steht für den Zone-Apex). Wenn dein Anbieter keines von beidem unterstützt, erstelle einen A-Eintrag für @ mit den IP-Adressen, in die das Ziel aufgelöst wird. Verifizierung und TLS erfolgen automatisch, sobald er aufgelöst wird, und bex richtet die Weiterleitung www ↔ Apex für dich ein.",
+      "Apex-Domains können keinen einfachen CNAME verwenden — erstelle diesen ALIAS/ANAME-Eintrag (oder CNAME-Flattening-Eintrag) in der Zone {zone} (@ steht für den Zone-Apex). Verifizierung und TLS erfolgen automatisch, sobald er aufgelöst wird, und bex richtet die Weiterleitung www ↔ Apex für dich ein.",
     description:
       "Guidance line above the DNS record for an apex domain — names the zone Host is relative to (w4/092)",
   },

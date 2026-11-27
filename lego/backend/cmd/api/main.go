@@ -314,6 +314,7 @@ func main() {
 		BaseDomain:         cfg.BaseDomain,
 		ReservedDomains:    cfg.ReservedDomains,
 		ACMEDelegationZone: cfg.ACMEDelegationZone,
+		EdgeIPv4:           cfg.EdgeIPv4,
 		// One shared detector (and DNS cache) for the allowlist's
 		// Cloudflare-proxied-domain warning on services and environments.
 		ProxiedHosts: core.NewProxiedHostDetector(),

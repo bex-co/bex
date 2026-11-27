@@ -1930,9 +1930,9 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsApexFallback": {
     message:
-      "不支持 ALIAS/ANAME 或 CNAME flattening？可改用下面的任一当前边缘地址为 @ 创建 A 记录。这些地址可能会变化——ALIAS/ANAME 记录在地址变化时仍可继续工作。",
+      "不支持 ALIAS/ANAME 或 CNAME flattening？可改为 @ 创建这条 A 记录，它将根域名指向 bex 的负载均衡器 IP。",
     description:
-      "A-record fallback under an apex domain's DNS instructions, shown with the resolved edge addresses (w4/378)",
+      "A-record fallback under an apex domain's DNS instructions, shown with the one committed edge address, bex's load balancer IP, as Render's DNS pages name 216.24.57.1 (w4/740)",
   },
   "services.domainDnsCaaHint": {
     message:
@@ -1942,7 +1942,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsApexGuidance": {
     message:
-      "顶级域名无法使用普通 CNAME —— 请在 {zone} 区域创建此 ALIAS/ANAME（或 CNAME flattening）记录（@ 表示区域 apex）。若服务商都不支持，可为 @ 创建 A 记录，填入「目标」当前解析到的 IP 地址。记录生效后，验证与 TLS 证书会自动完成，bex 也会为你配置 www ↔ 顶级域名之间的重定向。",
+      "顶级域名无法使用普通 CNAME —— 请在 {zone} 区域创建此 ALIAS/ANAME（或 CNAME flattening）记录（@ 表示区域 apex）。记录生效后，验证与 TLS 证书会自动完成，bex 也会为你配置 www ↔ 顶级域名之间的重定向。",
     description: "顶级域名 DNS 记录上方的说明——点名 Host 相对的区域（w4/092）",
   },
   "services.domainRecordType": {

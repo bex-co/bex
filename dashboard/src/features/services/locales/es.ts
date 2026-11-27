@@ -1992,9 +1992,9 @@ const esServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsApexFallback": {
     message:
-      "¿Sin ALIAS/ANAME ni aplanamiento de CNAME? Crea en su lugar un registro A para @ con una de las direcciones de borde actuales de abajo. Estas direcciones pueden cambiar; un registro ALIAS/ANAME sigue funcionando cuando lo hacen.",
+      "¿Sin ALIAS/ANAME ni aplanamiento de CNAME? Crea en su lugar este registro A para @. Apunta tu dominio raíz a la IP del balanceador de carga de bex.",
     description:
-      "A-record fallback under an apex domain's DNS instructions, shown with the resolved edge addresses (w4/378)",
+      "A-record fallback under an apex domain's DNS instructions, shown with the one committed edge address, bex's load balancer IP, as Render's DNS pages name 216.24.57.1 (w4/740)",
   },
   "services.domainDnsCaaHint": {
     message:
@@ -2004,7 +2004,7 @@ const esServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsApexGuidance": {
     message:
-      "Los dominios raíz no pueden usar un CNAME simple: crea este registro ALIAS/ANAME (o de aplanamiento de CNAME) en la zona {zone} (@ significa la raíz de la zona). Si tu proveedor no admite ninguno, crea un registro A para @ con las direcciones IP a las que resuelve el destino. La verificación y TLS se hacen automáticamente cuando resuelva, y bex configura por ti la redirección www ↔ dominio raíz.",
+      "Los dominios raíz no pueden usar un CNAME simple: crea este registro ALIAS/ANAME (o de aplanamiento de CNAME) en la zona {zone} (@ significa la raíz de la zona). La verificación y TLS se hacen automáticamente cuando resuelva, y bex configura por ti la redirección www ↔ dominio raíz.",
     description:
       "Guidance line above the DNS record for an apex domain — names the zone Host is relative to (w4/092)",
   },

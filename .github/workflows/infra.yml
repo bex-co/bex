@@ -340,3 +340,19 @@ jobs:
           done
           echo "bex-traefik has listeners without a healthy selector-resolved backend" >&2
           exit 1
+
+      # w4/740: the address an apex custom domain's A-record fallback names,
+      # BEX_EDGE_IPV4 in the prod overlay, is a committed one, as Render's
+      # 216.24.57.1 is (docs/ADR005-custom-domain.md). It must stay this load
+      # balancer's IPv4; a tenant's A record breaks the day they part. Runs on
+      # every event, so the daily schedule catches drift in either file.
+      - name: verify the committed apex address is the edge's
+        run: |
+          lb_ipv4="$(terraform output -raw traefik_load_balancer_ipv4)"
+          declared="$(awk '/name: BEX_EDGE_IPV4/ { getline; sub(/^[[:space:]]*value:[[:space:]]*/, ""); gsub(/"/, ""); print; exit }' \
+            ../../lego/operator/config/prod/kustomization.yaml)"
+          if [ -z "${lb_ipv4}" ] || [ "${declared}" != "${lb_ipv4}" ]; then
+            echo "BEX_EDGE_IPV4 in lego/operator/config/prod/kustomization.yaml is '${declared}', but bex-traefik's IPv4 is '${lb_ipv4}'" >&2
+            exit 1
+          fi
+          echo "BEX_EDGE_IPV4 ${declared} is bex-traefik's IPv4"

@@ -393,7 +393,7 @@ describe("CustomDomainsSection", () => {
     expect(document.body.textContent).not.toContain("_bex-challenge");
   });
 
-  it("shows each resolved edge address as an A record for an apex domain (w4/378)", () => {
+  it("shows the committed edge address as the apex's A record, with no change warning (w4/740)", () => {
     mockUseCustomDomains.mockReturnValue(
       domainsResult([
         {
@@ -405,34 +405,50 @@ describe("CustomDomainsSection", () => {
           redirectForName: null,
           certificateReason: null,
           dnsRecord: { type: "ALIAS", name: "@", value: "web.onbex.co" },
-          edgeAddresses: ["203.0.113.10", "203.0.113.11"],
+          edgeAddresses: ["203.0.113.10"],
         },
       ]),
     );
     render(<CustomDomainsSection serviceId="web" />);
     expect(
-      screen.getByText(/No ALIAS\/ANAME or CNAME flattening/),
+      screen.getByText(
+        "No ALIAS/ANAME or CNAME flattening? Create this A record for @ instead. It points your root domain to bex's load balancer IP.",
+      ),
     ).toBeInTheDocument();
     expect(screen.getByText("203.0.113.10")).toBeInTheDocument();
-    expect(screen.getByText("203.0.113.11")).toBeInTheDocument();
-    expect(screen.getAllByText("A")).toHaveLength(2);
+    expect(screen.getAllByText("A")).toHaveLength(1);
+    // Render's 216.24.57.1 is a committed address, and so is bex's: nothing
+    // tells the tenant it can change or to resolve the target themselves.
+    expect(document.body.textContent).not.toMatch(/can change|resolves to/);
+  });
+
+  it("shows no A record for an apex when no edge address is committed (w4/740)", () => {
+    mockUseCustomDomains.mockReturnValue(
+      domainsResult([{ ...apexDomain, edgeAddresses: [] }]),
+    );
+    render(<CustomDomainsSection serviceId="web" />);
+    expect(screen.getByText("ALIAS")).toBeInTheDocument();
+    expect(screen.queryByText("A")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/No ALIAS\/ANAME or CNAME flattening/),
+    ).not.toBeInTheDocument();
   });
 
   it("names every DNS copy button by its domain and edge address (w4/482)", () => {
     mockUseCustomDomains.mockReturnValue(
       domainsResult([
         pendingDomain,
-        { ...apexDomain, edgeAddresses: ["203.0.113.10", "203.0.113.11"] },
+        { ...apexDomain, edgeAddresses: ["203.0.113.10"] },
       ]),
     );
     render(<CustomDomainsSection serviceId="web" />);
     const names = screen
       .getAllByRole("button", { name: /^Copy .* (host|target) for / })
       .map((b) => b.getAttribute("aria-label") ?? b.textContent ?? "");
-    // CNAME + ALIAS + two A rows, each with a host and a target button.
-    expect(names).toHaveLength(8);
+    // CNAME + ALIAS + the A row, each with a host and a target button.
+    expect(names).toHaveLength(6);
     expect(new Set(names).size).toBe(names.length);
-    expect(names).toContain("Copy A target for foo.com (203.0.113.11)");
+    expect(names).toContain("Copy A target for foo.com (203.0.113.10)");
     expect(names).toContain("Copy ALIAS host for foo.com");
   });
 

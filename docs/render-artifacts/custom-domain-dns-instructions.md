@@ -19,14 +19,14 @@
 - The traffic predicate (`lego/backend/internal/apps/domains.go`, `PointsAtService`): the host's CNAME chain reaches the service's platform host, or its resolved addresses intersect the platform host's — the ALIAS/ANAME/flattening and direct-A apex forms. A proxied (Cloudflare anycast) record satisfies neither branch.
 - REST returns Render's `201` array from add (requested + auto-paired sibling) and `202` with no body from verify; `verificationStatus` is `unverified | verified` meaning DNS verification, and the list filter takes the same spellings (`pending` remains an accepted alias). GraphQL/MCP return the fresh domain view from the same check.
 - Cross-service writes still 409; an unverified claim older than 48h is reclaimed when a conflicting add arrives (invisible anti-squatting bound).
+- An apex's A-record fallback is one committed address, as Render's `216.24.57.1` is (w4/740, rechecked 2026-11-27 against Render's [configure-other-dns](https://render.com/docs/configure-other-dns) and [configure-namecheap-dns](https://render.com/docs/configure-namecheap-dns)): `BEX_EDGE_IPV4`, the delete-protected edge load balancer's IPv4, carried as `edgeAddresses` on REST, GraphQL and MCP and shown as an `A @` row in the dashboard, with no warning that it can change.
 
 ## Remaining divergences (all named in ADR005)
 
-1. **Additive read fields**: `dnsRecord`, `certificateStatus`, `serverStatus`, and `certificateReason` — safe supersets; no Render field is changed and none imposes a tenant step. (The former `ownershipStatus`/`ownershipDnsRecord` and the synchronous named pending conflicts are deleted.)
-2. **Apex `A` value**: guidance leads with ALIAS/ANAME as Render's does; the `A` fallback names the platform host's currently resolved edge addresses where Render prints its committed-stable `216.24.57.1`.
-3. **Wildcards**: bex rejects tenant wildcards; Render supports them behind extra TXT machinery. Revisit only as its own decision.
-4. **Invisible refusals**: reserved platform hosts and bare public suffixes are refused; Render documents no such rule, and neither can trigger for a servable domain.
-5. **Pair deletion cascade**: Render's public references do not specify it; bex's rule is in [the pairing evidence](custom-domain-pairing.md).
-6. **Storeless mode** (no Render counterpart): the same traffic predicate runs synchronously before a host enters the App spec.
+1. **Additive read fields**: `dnsRecord`, `certificateStatus`, `serverStatus`, `certificateReason` and an apex's `edgeAddresses` — safe supersets; no Render field is changed and none imposes a tenant step. (The former `ownershipStatus`/`ownershipDnsRecord` and the synchronous named pending conflicts are deleted.)
+2. **Wildcards**: bex rejects tenant wildcards; Render supports them behind extra TXT machinery. Revisit only as its own decision.
+3. **Invisible refusals**: reserved platform hosts and bare public suffixes are refused; Render documents no such rule, and neither can trigger for a servable domain.
+4. **Pair deletion cascade**: Render's public references do not specify it; bex's rule is in [the pairing evidence](custom-domain-pairing.md).
+5. **Storeless mode** (no Render counterpart): the same traffic predicate runs synchronously before a host enters the App spec.
 
 The protection the withdrawn TXT bought, and why it was traded away, is recorded as accepted residuals in [ADR005](../ADR005-custom-domain.md).

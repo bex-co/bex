@@ -528,10 +528,11 @@ export interface CustomDomainView {
    */
   challengeRecord?: DnsRecordView | null;
   /**
-   * An apex domain's A-record fallback: the platform host's current edge
-   * addresses, resolved by bex-api at read time (ADR005, w4/378). Empty for
-   * subdomains and whenever resolution failed — the setup guidance then
-   * renders without addresses. Optional here; the hook always sets it.
+   * An apex domain's A-record fallback: the one committed edge address,
+   * bex's load balancer IP, as Render's is 216.24.57.1 (ADR005, w4/740).
+   * Empty for subdomains and when the installation commits no address; the
+   * setup guidance then names only the ALIAS record. Optional here; the hook
+   * always sets it.
    */
   edgeAddresses?: string[];
 }

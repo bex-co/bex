@@ -1034,7 +1034,7 @@ func (s *Service) registerAutoscalingTools(srv *mcp.Server) {
 func (s *Service) registerCustomDomainTools(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_custom_domains",
-		Description: "List custom domains configured for a service. Each carries its DNS verification status (unverified until its traffic record points at the service), certificate status, and the exact traffic DNS record to create (dnsRecord). Optional verificationStatus (unverified|pending|verified; pending is a bex alias) and domainType (apex|subdomain) filters narrow the result; cursor/limit page it (default 20 per page).",
+		Description: "List custom domains configured for a service. Each carries its DNS verification status (unverified until its traffic record points at the service), certificate status, and the exact traffic DNS record to create (dnsRecord); an apex also carries edgeAddresses, the IP an A record at @ points to when the DNS provider has no ALIAS, ANAME or CNAME flattening. Optional verificationStatus (unverified|pending|verified; pending is a bex alias) and domainType (apex|subdomain) filters narrow the result; cursor/limit page it (default 20 per page).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listCustomDomainsArgs) (*mcp.CallToolResult, domainListResult, error) {
 		domains, err := s.ListDomains(ctx, in.ServiceID)
 		if err != nil {
@@ -1067,7 +1067,7 @@ func (s *Service) registerCustomDomainTools(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "add_custom_domain",
-		Description: "Add a custom domain (adding an apex also adds www redirecting to it, and vice versa). The result is unverified and includes the exact traffic DNS record to create (dnsRecord: CNAME for a subdomain, ALIAS for an apex); once that record points at the service, verification completes automatically and the domain routes. A wildcard (*.example.com) serves every name one label below it; it needs both its CNAME at * and the _acme-challenge CNAME in challengeRecord, which its certificate is issued through.",
+		Description: "Add a custom domain (adding an apex also adds www redirecting to it, and vice versa). The result is unverified and includes the exact traffic DNS record to create (dnsRecord: CNAME for a subdomain, ALIAS for an apex, with edgeAddresses naming the IP for an A record at @ when the DNS provider has no ALIAS, ANAME or CNAME flattening); once that record points at the service, verification completes automatically and the domain routes. A wildcard (*.example.com) serves every name one label below it; it needs both its CNAME at * and the _acme-challenge CNAME in challengeRecord, which its certificate is issued through.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, renderCustomDomain, error) {
 		return customDomainResult(s.AddDomain(ctx, in.ServiceID, in.Name))
 	})

@@ -1991,9 +1991,9 @@ const ptServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsApexFallback": {
     message:
-      "Sem ALIAS/ANAME nem CNAME flattening? Crie um registro A para @ com um dos endereços de borda atuais abaixo. Esses endereços podem mudar — um registro ALIAS/ANAME continua funcionando quando isso acontece.",
+      "Sem ALIAS/ANAME nem CNAME flattening? Crie este registro A para @. Ele aponta seu domínio raiz para o IP do balanceador de carga da bex.",
     description:
-      "A-record fallback under an apex domain's DNS instructions, shown with the resolved edge addresses (w4/378)",
+      "A-record fallback under an apex domain's DNS instructions, shown with the one committed edge address, bex's load balancer IP, as Render's DNS pages name 216.24.57.1 (w4/740)",
   },
   "services.domainDnsCaaHint": {
     message:
@@ -2003,7 +2003,7 @@ const ptServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsApexGuidance": {
     message:
-      "Domínios apex não podem usar um CNAME simples — crie este registro ALIAS/ANAME (ou de CNAME flattening) na zona {zone} (@ significa o apex da zona). Se o seu provedor não oferecer nenhum dos dois, crie um registro A para @ usando os endereços IP para os quais o Destino é resolvido. A verificação e o TLS acontecem automaticamente assim que ele for resolvido, e o bex configura o redirecionamento www ↔ apex para você.",
+      "Domínios apex não podem usar um CNAME simples — crie este registro ALIAS/ANAME (ou de CNAME flattening) na zona {zone} (@ significa o apex da zona). A verificação e o TLS acontecem automaticamente assim que ele for resolvido, e o bex configura o redirecionamento www ↔ apex para você.",
     description:
       "Guidance line above the DNS record for an apex domain — names the zone Host is relative to (w4/092)",
   },

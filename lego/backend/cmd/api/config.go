@@ -86,6 +86,13 @@ type Config struct {
 	// answers its DNS-01 challenge (w4/m326, docs/ADR005-custom-domain.md). It
 	// must host nothing else. Unset: wildcard custom domains are refused.
 	ACMEDelegationZone string
+	// BEX_EDGE_IPV4 is the committed public IPv4 of the tenant edge: an apex
+	// custom domain's A-record fallback names it for a registrar without
+	// ALIAS, ANAME or CNAME flattening, as Render names `216.24.57.1`
+	// (docs/ADR005-custom-domain.md, w4/740). Production sets the Terraform
+	// load balancer's address (output traefik_load_balancer_ipv4). Unset: no
+	// A-record fallback is shown. Not a public IPv4: startup is refused.
+	EdgeIPv4 string
 	// BEX_PUBLIC_IMAGE_REGISTRIES ("true" unless "false") accepts images from
 	// any public registry, as on Render (w5/171). A cluster whose nodes do not
 	// all carry the containerd link-local deny yet pins it false.
@@ -438,6 +445,7 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 			cfg.ACMEDelegationZone = canonical
 		}
 	}
+	cfg.EdgeIPv4 = p.edgeIPv4("BEX_EDGE_IPV4")
 	cfg.PublicImageRegistries = getenv("BEX_PUBLIC_IMAGE_REGISTRIES") != "false"
 	if platform, err := registryread.ParsePlatform(getenv("BEX_IMAGE_PLATFORM")); err != nil {
 		p.errorf("invalid BEX_IMAGE_PLATFORM: %v", err)
@@ -1000,6 +1008,22 @@ func (p *parser) outboundIPs(name string) []string {
 	}
 	slices.Sort(set)
 	return set
+}
+
+// edgeIPv4 — policy "fail": an apex domain's A-record fallback is a record
+// the tenant keeps, so a value that is not one public IPv4 refuses startup
+// rather than hand out an address nothing serves on (w4/740).
+func (p *parser) edgeIPv4(name string) string {
+	v := strings.TrimSpace(p.getenv(name))
+	if v == "" {
+		return ""
+	}
+	addr, err := netip.ParseAddr(v)
+	if err != nil || !addr.Is4() || !addr.IsGlobalUnicast() || addr.IsPrivate() {
+		p.errorf("%s: %q is not a public IPv4 address", name, v)
+		return ""
+	}
+	return addr.String()
 }
 
 // platformModelRoute — policy "fail" for the route and its catalog (an

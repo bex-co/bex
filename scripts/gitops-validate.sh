@@ -914,6 +914,29 @@ if [ -z "$prod_base_domain" ]; then
   fail=1
 fi
 
+# w4/740: an apex custom domain's A-record fallback is the one committed edge
+# address, BEX_EDGE_IPV4, as Render's is 216.24.57.1. Production must declare it
+# on bex-api as a single dotted IPv4 (bex-api refuses startup on anything else,
+# so a typo here is a crash loop, not a quiet wrong record), and a local render
+# must not, since a mock cluster would hand tenants production's address.
+# infra.yml compares the prod value with the load balancer's Terraform output.
+echo "==> prod bex-api declares the committed edge address BEX_EDGE_IPV4"
+edge_ipv4_of() {
+  yq -N '
+    select(.kind == "Deployment" and .metadata.name == "bex-api") |
+    [.spec.template.spec.containers[].env[]? | select(.name == "BEX_EDGE_IPV4") | .value] | join(" ")' \
+    - <<<"$1" | sed '/^$/d'
+}
+prod_edge_ipv4="$(edge_ipv4_of "$prod_operator_render")"
+if ! grep -Eqx '([0-9]{1,3}\.){3}[0-9]{1,3}' <<<"$prod_edge_ipv4"; then
+  echo "FAIL: prod bex-api must declare BEX_EDGE_IPV4 once as one IPv4 address (the bex-traefik load balancer's), got: '$prod_edge_ipv4'" >&2
+  fail=1
+fi
+if [ -n "$(edge_ipv4_of "$default_operator_render")" ]; then
+  echo "FAIL: config/default must not set BEX_EDGE_IPV4: a local cluster would show tenants production's edge address" >&2
+  fail=1
+fi
+
 # w7/m58: universal platform-pod hardening. bex-system is deliberately
 # privileged-PSS (egress-meter needs BPF/NET_ADMIN caps + hostNetwork), so there
 # is NO namespace PodSecurity backstop — the per-pod securityContext is the only

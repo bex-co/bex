@@ -185,39 +185,16 @@ func (c systemDomainTrafficChecker) pointsAt(ctx context.Context, host, platform
 	return slices.ContainsFunc(hostAddrs, func(addr string) bool { return edge[addr] })
 }
 
-// domainHostResolver is the seam edgeAddressesFor resolves through: the
-// injected DomainResolver when set, nil ⇒ the system resolver.
-func (s *Service) domainHostResolver() domainResolver {
-	if s.DomainResolver != nil {
-		return s.DomainResolver
-	}
-	return net.DefaultResolver
-}
-
-// edgeAddressesFor returns the platform host's current edge addresses for an
-// apex domain — the A-record fallback a registrar without ALIAS/ANAME needs
-// (ADR005). Best-effort by contract: subdomains, an empty platform host, and
-// any resolution failure all yield nil, so the setup guidance renders
-// without addresses rather than printing a stale one (w4/378).
-func (s *Service) edgeAddressesFor(ctx context.Context, dtype, platformHost string) []string {
-	if dtype != "apex" || platformHost == "" {
+// edgeAddressesFor returns an apex domain's A-record fallback, the record a
+// registrar without ALIAS, ANAME or CNAME flattening needs: the one committed
+// edge address, BEX_EDGE_IPV4 (ADR005), as Render prints its load balancer IP
+// `216.24.57.1`. Subdomains and an installation that commits no address get
+// nil, and the setup guidance then names only the ALIAS record (w4/740).
+func (s *Service) edgeAddressesFor(dtype string) []string {
+	if dtype != "apex" || s.EdgeIPv4 == "" {
 		return nil
 	}
-	lookupCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	addrs, err := s.domainHostResolver().LookupHost(lookupCtx, normalizeHostname(platformHost))
-	if err != nil || len(addrs) == 0 {
-		return nil
-	}
-	out := make([]string, 0, len(addrs))
-	seen := make(map[string]bool, len(addrs))
-	for _, addr := range addrs {
-		if !seen[addr] {
-			seen[addr] = true
-			out = append(out, addr)
-		}
-	}
-	return out
+	return []string{s.EdgeIPv4}
 }
 
 func (s *Service) domainTrafficChecker() DomainTrafficChecker {
@@ -376,10 +353,10 @@ type DomainView struct {
 	// `_acme-challenge` CNAME its certificate is issued through (w4/m326); nil
 	// for a concrete host.
 	ChallengeRecord *DNSRecordView
-	// EdgeAddresses is an apex domain's A-record fallback: the platform host's
-	// currently resolved edge addresses, resolved at read time (ADR005). Nil
-	// for subdomains and whenever resolution fails — the setup guidance then
-	// renders without addresses rather than showing a stale value (w4/378).
+	// EdgeAddresses is an apex domain's A-record fallback: the one committed
+	// edge address, BEX_EDGE_IPV4 (ADR005, w4/740). Nil for subdomains and
+	// when no address is committed; the setup guidance then names only the
+	// ALIAS record.
 	EdgeAddresses []string
 }
 
@@ -389,8 +366,8 @@ type DomainView struct {
 //   - subdomain → CNAME <label prefix> -> <app>.<base-domain>
 //   - apex      → ALIAS  @             -> <app>.<base-domain>
 //
-// (bex points apex at the platform host via ALIAS/ANAME/CNAME-flattening rather
-// than a bare A-record IP — the edge is Cloudflare-proxied, docs/ADR005-custom-domain.md.)
+// An apex leads with ALIAS/ANAME/CNAME flattening, as Render's guidance does;
+// DomainView.EdgeAddresses carries the A-record fallback (docs/ADR005-custom-domain.md).
 type DNSRecordView struct {
 	Type  string // "CNAME" (subdomain) or "ALIAS" (apex)
 	Name  string // Host relative to the DNS zone: the labels below the registrable domain, or "@" for apex (never an FQDN — w4/092)
@@ -807,7 +784,7 @@ func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host, pl
 		RedirectForName:    app.Spec.HostRedirects[host],
 		DNSRecord:          dnsRecordFor(host, dtype, platformHost),
 		ChallengeRecord:    s.challengeRecordFor(app, host),
-		EdgeAddresses:      s.edgeAddressesFor(ctx, dtype, platformHost),
+		EdgeAddresses:      s.edgeAddressesFor(dtype),
 	}
 	if !app.CreationTimestamp.IsZero() {
 		view.CreatedAt = app.CreationTimestamp.UTC().Format(time.RFC3339Nano)
@@ -840,7 +817,7 @@ func (s *Service) domainClaimView(ctx context.Context, app *appv1alpha1.App, cla
 	}
 	view.DNSRecord = dnsRecordFor(claim.Host, view.DomainType, platformHost)
 	view.ChallengeRecord = s.challengeRecordFor(app, claim.Host)
-	view.EdgeAddresses = s.edgeAddressesFor(ctx, view.DomainType, platformHost)
+	view.EdgeAddresses = s.edgeAddressesFor(view.DomainType)
 	if claim.ClaimState != "verified" {
 		return view
 	}
@@ -2066,6 +2043,11 @@ type renderCustomDomain struct {
 	// ChallengeRecord is a wildcard domain's `_acme-challenge` CNAME (w4/m326),
 	// a bex extension like DNSRecord; absent for a concrete host.
 	ChallengeRecord *renderDNSRecord `json:"challengeRecord,omitempty"`
+	// EdgeAddresses is an apex domain's A-record fallback for a registrar
+	// without ALIAS, ANAME or CNAME flattening: the one committed edge address
+	// (w4/740), a bex extension like DNSRecord where Render prints
+	// `216.24.57.1` in its dashboard and docs. Absent for a subdomain.
+	EdgeAddresses []string `json:"edgeAddresses,omitempty"`
 	// Server is Render's owning-service object {id, name} (w4/389).
 	Server renderServer `json:"server"`
 }
@@ -2104,6 +2086,7 @@ func toRenderCustomDomain(d DomainView) renderCustomDomain {
 		CertificateReason:  d.CertificateReason,
 		DNSRecord:          renderDNSRecord(d.DNSRecord),
 		ChallengeRecord:    (*renderDNSRecord)(d.ChallengeRecord),
+		EdgeAddresses:      d.EdgeAddresses,
 		Server:             renderServer{ID: d.ServiceID, Name: d.ServiceName},
 	}
 }

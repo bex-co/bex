@@ -620,6 +620,27 @@ func TestLoadConfigOutboundIPs(t *testing.T) {
 	}
 }
 
+// BEX_EDGE_IPV4 is the committed address an apex domain's A-record fallback
+// names (w4/740): unset shows none, and a value that is not one public IPv4
+// refuses startup, because a tenant keeps the record it is given.
+func TestLoadConfigEdgeIPv4(t *testing.T) {
+	cfg, _, err := loadFor(t, map[string]string{})
+	if err != nil || cfg.EdgeIPv4 != "" {
+		t.Fatalf("unset: EdgeIPv4=%q err=%v, want empty", cfg.EdgeIPv4, err)
+	}
+	cfg, _, err = loadFor(t, map[string]string{"BEX_EDGE_IPV4": " 203.0.113.10 "})
+	if err != nil || cfg.EdgeIPv4 != "203.0.113.10" {
+		t.Fatalf("EdgeIPv4=%q err=%v, want 203.0.113.10", cfg.EdgeIPv4, err)
+	}
+	for _, bad := range []string{"203.0.113", "203.0.113.10/32", "203.0.113.10,198.51.100.7", "2001:db8::1", "::ffff:203.0.113.10",
+		"10.0.0.5", "192.168.1.1", "127.0.0.1", "169.254.169.254", "0.0.0.0", "255.255.255.255", "edge.onbex.co"} {
+		if _, _, err := loadFor(t, map[string]string{"BEX_EDGE_IPV4": bad}); err == nil ||
+			!strings.Contains(err.Error(), "BEX_EDGE_IPV4") {
+			t.Errorf("%q: err = %v, want a startup refusal", bad, err)
+		}
+	}
+}
+
 func TestLoadConfigImageCompatibilityWorkspaces(t *testing.T) {
 	cfg, _, err := loadFor(t, map[string]string{
 		"BEX_IMAGE_COMPATIBILITY_WORKSPACES": " tea-d98210cbbpdc73dcrkvg , ,tea-daif693dqjvc73e7as3g",

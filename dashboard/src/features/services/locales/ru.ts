@@ -1982,9 +1982,9 @@ const ruServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsApexFallback": {
     message:
-      "Нет ALIAS/ANAME или CNAME flattening? Создайте вместо этого A-запись для @ с одним из текущих адресов edge ниже. Эти адреса могут меняться — запись ALIAS/ANAME продолжит работать, когда это произойдёт.",
+      "Нет ALIAS/ANAME или CNAME flattening? Создайте вместо этого эту A-запись для @. Она направляет корневой домен на IP балансировщика нагрузки bex.",
     description:
-      "A-record fallback under an apex domain's DNS instructions, shown with the resolved edge addresses (w4/378)",
+      "A-record fallback under an apex domain's DNS instructions, shown with the one committed edge address, bex's load balancer IP, as Render's DNS pages name 216.24.57.1 (w4/740)",
   },
   "services.domainDnsCaaHint": {
     message:
@@ -1994,7 +1994,7 @@ const ruServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsApexGuidance": {
     message:
-      "Корневые домены не могут использовать обычный CNAME — создайте эту запись ALIAS/ANAME (или CNAME flattening) в зоне {zone} (@ означает корень зоны). Если ваш провайдер не поддерживает ни то, ни другое, создайте A-запись для @ с IP-адресами, в которые разрешается Target. Проверка и TLS произойдут автоматически, как только запись начнёт разрешаться, а редирект www ↔ корневой домен bex настроит за вас.",
+      "Корневые домены не могут использовать обычный CNAME — создайте эту запись ALIAS/ANAME (или CNAME flattening) в зоне {zone} (@ означает корень зоны). Проверка и TLS произойдут автоматически, как только запись начнёт разрешаться, а редирект www ↔ корневой домен bex настроит за вас.",
     description:
       "Guidance line above the DNS record for an apex domain — names the zone Host is relative to (w4/092)",
   },

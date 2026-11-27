@@ -1971,9 +1971,9 @@ const koServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsApexFallback": {
     message:
-      "ALIAS/ANAME 또는 CNAME 플래트닝을 사용할 수 없나요? 대신 아래의 현재 엣지 주소 중 하나로 @에 대한 A 레코드를 만드세요. 이 주소는 바뀔 수 있지만 ALIAS/ANAME 레코드는 바뀌어도 계속 작동합니다.",
+      "ALIAS/ANAME 또는 CNAME 플래트닝을 사용할 수 없나요? 대신 @에 대해 이 A 레코드를 만드세요. 루트 도메인이 bex 로드 밸런서 IP를 가리키게 됩니다.",
     description:
-      "A-record fallback under an apex domain's DNS instructions, shown with the resolved edge addresses (w4/378)",
+      "A-record fallback under an apex domain's DNS instructions, shown with the one committed edge address, bex's load balancer IP, as Render's DNS pages name 216.24.57.1 (w4/740)",
   },
   "services.domainDnsCaaHint": {
     message:
@@ -1983,7 +1983,7 @@ const koServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsApexGuidance": {
     message:
-      "루트(apex) 도메인에는 일반 CNAME을 사용할 수 없습니다. {zone} 영역에 이 ALIAS/ANAME(또는 CNAME 플래트닝) 레코드를 만드세요(@는 영역의 루트를 의미합니다). 제공업체가 둘 다 지원하지 않으면 대상이 가리키는 IP 주소로 @에 대한 A 레코드를 만드세요. 레코드가 확인되면 도메인 확인과 TLS가 자동으로 진행되며, bex가 www ↔ 루트 리디렉션도 설정해 줍니다.",
+      "루트(apex) 도메인에는 일반 CNAME을 사용할 수 없습니다. {zone} 영역에 이 ALIAS/ANAME(또는 CNAME 플래트닝) 레코드를 만드세요(@는 영역의 루트를 의미합니다). 레코드가 확인되면 도메인 확인과 TLS가 자동으로 진행되며, bex가 www ↔ 루트 리디렉션도 설정해 줍니다.",
     description:
       "Guidance line above the DNS record for an apex domain — names the zone Host is relative to (w4/092)",
   },

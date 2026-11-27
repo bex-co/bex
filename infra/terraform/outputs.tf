@@ -24,7 +24,7 @@ output "traefik_load_balancer_id" {
 }
 
 output "traefik_load_balancer_ipv4" {
-  description = "Stable public IPv4 for the production edge; DNS origins point here."
+  description = "Stable public IPv4 for the production edge; DNS origins and tenants' apex A records point here (BEX_EDGE_IPV4 in lego/operator/config/prod, checked by infra.yml)."
   value       = hcloud_load_balancer.traefik.ipv4
 }
 

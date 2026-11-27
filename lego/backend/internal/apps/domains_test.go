@@ -2761,23 +2761,112 @@ func TestCustomDomainRefusesPlatformHostsIPsAndBareNames(t *testing.T) {
 	}
 }
 
-func TestEdgeAddressesForApexFallback(t *testing.T) {
-	// w4/378: only an apex domain resolves the platform host's edge addresses;
-	// subdomains and any resolution failure yield nil (guidance without
-	// addresses), never a stale value.
-	svc := &Service{DomainResolver: fakeDomainResolver{addrs: map[string][]string{
-		"web.onbex.co": {"203.0.113.10", "203.0.113.11", "203.0.113.10"},
-	}}}
+// TestApexARecordFallbackIsTheCommittedEdgeAddress: an apex domain's A-record
+// fallback is the one committed edge address, BEX_EDGE_IPV4, on REST, GraphQL
+// and MCP alike, as Render names its load balancer IP 216.24.57.1 (w4/740).
+// It is not resolved from the platform host, which can answer more than one
+// address, IPv6 included. A subdomain never carries it, and an installation
+// that commits no address shows none.
+func TestApexARecordFallbackIsTheCommittedEdgeAddress(t *testing.T) {
+	const edge = "203.0.113.10"
+	svc, _ := newService(nil, sampleApp("web"))
+	svc.BaseDomain = "onbex.co"
+	svc.EdgeIPv4 = edge
 	ctx := context.Background()
-	if got := svc.edgeAddressesFor(ctx, "apex", "web.onbex.co"); len(got) != 2 || got[0] != "203.0.113.10" || got[1] != "203.0.113.11" {
-		t.Errorf("apex edge addresses = %v, want deduped [203.0.113.10 203.0.113.11]", got)
+	if _, err := svc.AddDomain(ctx, "web", "foo.com"); err != nil {
+		t.Fatalf("AddDomain: %v", err)
 	}
-	if got := svc.edgeAddressesFor(ctx, "subdomain", "web.onbex.co"); got != nil {
-		t.Errorf("subdomain edge addresses = %v, want nil", got)
+
+	wantEdge := func(surface, name string, got any) {
+		t.Helper()
+		var addrs []string
+		switch v := got.(type) {
+		case []any:
+			for _, a := range v {
+				s, _ := a.(string)
+				addrs = append(addrs, s)
+			}
+		case nil:
+		default:
+			t.Fatalf("%s %s edgeAddresses has type %T", surface, name, got)
+		}
+		want := []string{edge}
+		if name == "www.foo.com" {
+			want = nil
+		}
+		if !slices.Equal(addrs, want) {
+			t.Errorf("%s %s edgeAddresses = %v, want %v", surface, name, addrs, want)
+		}
 	}
-	svc.DomainResolver = fakeDomainResolver{err: errors.New("dns down")}
-	if got := svc.edgeAddressesFor(ctx, "apex", "web.onbex.co"); got != nil {
-		t.Errorf("failed resolution = %v, want nil", got)
+
+	// REST: the list and the single read.
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains", nil))
+	var list []struct {
+		CustomDomain map[string]any `json:"customDomain"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil || len(list) != 2 {
+		t.Fatalf("REST list: %v len=%d (%s)", err, len(list), rec.Body)
+	}
+	for _, item := range list {
+		d := item.CustomDomain
+		name := d["name"].(string)
+		if _, present := d["edgeAddresses"]; name == "www.foo.com" && present {
+			t.Errorf("REST www.foo.com carries edgeAddresses %v, want the key absent", d["edgeAddresses"])
+		}
+		wantEdge("REST list", name, d["edgeAddresses"])
+	}
+	rec = httptest.NewRecorder()
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/foo.com", nil))
+	var one map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &one); err != nil {
+		t.Fatalf("REST get: %v (%s)", err, rec.Body)
+	}
+	wantEdge("REST get", "foo.com", one["edgeAddresses"])
+
+	// GraphQL.
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	res := graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+		RequestString: `{ customDomains(id: "web") { name edgeAddresses } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("customDomains: %v", res.Errors)
+	}
+	for _, d := range res.Data.(map[string]any)["customDomains"].([]any) {
+		m := d.(map[string]any)
+		wantEdge("GraphQL", m["name"].(string), m["edgeAddresses"])
+	}
+
+	// MCP: list and get.
+	call, cleanup := appsMCPClient(t, svc)
+	defer cleanup()
+	mcpList := call("list_custom_domains", map[string]any{"serviceId": "web"})
+	domains, _ := mcpList["customDomains"].([]any)
+	if len(domains) != 2 {
+		t.Fatalf("list_custom_domains: want the pair, got %v", mcpList)
+	}
+	for _, d := range domains {
+		m := d.(map[string]any)
+		wantEdge("MCP list", m["name"].(string), m["edgeAddresses"])
+	}
+	got := call("get_custom_domain", map[string]any{"serviceId": "web", "name": "foo.com"})
+	wantEdge("MCP get", "foo.com", got["edgeAddresses"])
+
+	// No committed address: no A-record fallback anywhere.
+	svc.EdgeIPv4 = ""
+	view, err := svc.GetDomain(ctx, "web", "foo.com")
+	if err != nil {
+		t.Fatalf("GetDomain: %v", err)
+	}
+	if view.EdgeAddresses != nil || toRenderCustomDomain(view).EdgeAddresses != nil {
+		t.Errorf("no BEX_EDGE_IPV4: edgeAddresses = %v, want none", view.EdgeAddresses)
 	}
 }
 

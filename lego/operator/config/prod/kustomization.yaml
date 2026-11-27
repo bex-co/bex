@@ -224,6 +224,17 @@ patches:
         value:
           name: BEX_AGENT_TURN_TIMEOUT
           value: 4h
+      # The committed tenant edge address (w4/740, docs/ADR005-custom-domain.md):
+      # an apex custom domain's A-record fallback names it, as Render names its
+      # load balancer IP 216.24.57.1. It is the delete-protected bex-traefik
+      # Load Balancer's IPv4, Terraform output traefik_load_balancer_ipv4
+      # (infra/terraform/outputs.tf); infra.yml fails when the two part, so
+      # change it only together with the load balancer, never alone.
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_EDGE_IPV4
+          value: 49.12.20.236
       # w2/029: preferred, not required. With 2 replicas + required anti-affinity
       # on 3 platform nodes, every rollout's surge pod (plus the 15s-drain
       # terminating pod it replaces) momentarily needs a 4th node and sat

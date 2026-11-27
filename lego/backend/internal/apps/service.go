@@ -97,10 +97,10 @@ type Service struct {
 	// (ADR005: the traffic record is the verification). nil uses the system
 	// resolver; tests inject a deterministic checker.
 	DomainTraffic DomainTrafficChecker
-	// DomainResolver resolves the platform host's edge addresses for an apex
-	// domain's A-record fallback (ADR005). nil uses the system resolver;
-	// tests inject a deterministic one.
-	DomainResolver domainResolver
+	// EdgeIPv4 is BEX_EDGE_IPV4, the committed edge address an apex domain's
+	// A-record fallback names (ADR005, w4/740), as Render names its load
+	// balancer IP. Empty shows no A-record fallback.
+	EdgeIPv4 string
 	// ProxiedHosts detects custom domains that resolve into Cloudflare's edge,
 	// where an inbound IP allowlist sees Cloudflare instead of the client
 	// (w1/m171). nil detects nothing, so the warning field stays empty.

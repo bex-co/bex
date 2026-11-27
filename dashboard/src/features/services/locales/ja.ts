@@ -1984,9 +1984,9 @@ const jaServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsApexFallback": {
     message:
-      "ALIAS/ANAME や CNAME フラットニングが使えない場合は、代わりに下記の現在のエッジアドレスのいずれかを使って、@ に A レコードを作成してください。これらのアドレスは変更される可能性がありますが、ALIAS/ANAME レコードなら変更後も動作し続けます。",
+      "ALIAS/ANAME や CNAME フラットニングが使えない場合は、代わりにこの A レコードを @ に作成してください。ルートドメインを bex のロードバランサー IP に向けます。",
     description:
-      "A-record fallback under an apex domain's DNS instructions, shown with the resolved edge addresses (w4/378)",
+      "A-record fallback under an apex domain's DNS instructions, shown with the one committed edge address, bex's load balancer IP, as Render's DNS pages name 216.24.57.1 (w4/740)",
   },
   "services.domainDnsCaaHint": {
     message:
@@ -1996,7 +1996,7 @@ const jaServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsApexGuidance": {
     message:
-      "Apex ドメインでは通常の CNAME は使えません。{zone} ゾーンに、この ALIAS/ANAME（または CNAME フラットニング）レコードを作成してください（@ はゾーンの apex を意味します）。プロバイダーがどちらにも対応していない場合は、ターゲットが解決される IP アドレスを使って @ に A レコードを作成してください。名前解決できるようになると、検証と TLS は自動的に行われ、bex が www ↔ apex のリダイレクトも設定します。",
+      "Apex ドメインでは通常の CNAME は使えません。{zone} ゾーンに、この ALIAS/ANAME（または CNAME フラットニング）レコードを作成してください（@ はゾーンの apex を意味します）。名前解決できるようになると、検証と TLS は自動的に行われ、bex が www ↔ apex のリダイレクトも設定します。",
     description:
       "Guidance line above the DNS record for an apex domain — names the zone Host is relative to (w4/092)",
   },

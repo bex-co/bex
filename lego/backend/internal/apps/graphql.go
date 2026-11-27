@@ -927,10 +927,9 @@ var customDomainGQLType = graphql.NewObject(graphql.ObjectConfig{
 			return *d.ChallengeRecord
 		})},
 		"server": gqlutil.Typed(serverGQLType, func(d DomainView) any { return d }),
-		// edgeAddresses is an apex domain's A-record fallback (ADR005): the
-		// platform host's current edge addresses, resolved at read time; empty
-		// for subdomains and whenever resolution fails (w4/378). Additive —
-		// REST/MCP keep Render's shape.
+		// edgeAddresses is an apex domain's A-record fallback (ADR005): the one
+		// committed edge address, BEX_EDGE_IPV4 (w4/740); empty for subdomains
+		// and when no address is committed. REST and MCP carry it too.
 		"edgeAddresses": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(d DomainView) any {
 			if len(d.EdgeAddresses) == 0 {
 				return []string{}
