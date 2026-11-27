@@ -94,7 +94,7 @@ func (s *Service) authorizeOrganizationKeys(ctx context.Context, orgID string) (
 		}
 	}
 	if err := s.AuthorizeOn(ctx, core.RelCanView, core.OrganizationObject(orgID)); err != nil {
-		if core.IsLoginRefusal(err) || !errors.Is(err, core.ErrForbidden) {
+		if core.IsLoginRefusal(err) || core.IsInsufficientScope(err) || !errors.Is(err, core.ErrForbidden) {
 			return nil, err
 		}
 		return nil, core.NewOrganizationNotFoundError(orgID)

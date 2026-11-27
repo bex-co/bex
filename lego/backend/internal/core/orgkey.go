@@ -94,7 +94,7 @@ func (b *Base) authorizeAuditLog(ctx context.Context, object, verb string, resol
 		if target, isOrg := strings.CutPrefix(object, OrganizationObjectPrefix); isOrg && resolveErr == nil {
 			if checkCapability(ctx, RelCanManage) == nil {
 				if verr := b.checkAuthz(ctx, RelCanView, object); verr != nil {
-					if !IsLoginRefusal(verr) && errors.Is(verr, ErrForbidden) {
+					if !IsLoginRefusal(verr) && !IsInsufficientScope(verr) && errors.Is(verr, ErrForbidden) {
 						resolveErr = NewOrganizationNotFoundError(target)
 					} else {
 						resolveErr = verr

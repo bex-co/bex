@@ -179,6 +179,9 @@ func (s *Service) ListOrganizations(ctx context.Context) ([]OrganizationView, er
 func (s *Service) GetOrganization(ctx context.Context, orgID string) (OrganizationView, error) {
 	ctx = core.WithTwoFactorExempt(ctx)
 	if err := s.AuthorizeOn(ctx, core.RelCanView, core.OrganizationObject(orgID)); err != nil {
+		if core.IsInsufficientScope(err) {
+			return OrganizationView{}, err
+		}
 		if errors.Is(err, core.ErrForbidden) {
 			return OrganizationView{}, core.NewOrganizationNotFoundError(orgID)
 		}
