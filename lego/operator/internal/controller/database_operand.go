@@ -55,7 +55,10 @@ var bexOperandImages = map[string]string{
 	"18": "ghcr.io/bex-co/bex-operator:18.7-postgres-6c11b6b0f678b9db48bcba9fc3c2c8891e073c11@sha256:be9029d668214614cbec665c3c5f9de9d526295cdb4b4201a3890787490fd8fc",
 }
 
-const postgresDisabled = "false"
+const (
+	postgresDisabled = "false"
+	postgresEnabled  = "true"
+)
 
 // bexOperandRepository is where pg-operand-image.yml publishes every bex
 // operand, tagged <major>.<minor>-postgres-<commit>. The same repository also
@@ -202,7 +205,7 @@ func pgExtensionPreloadLibraries(version string) []any {
 	// pg_ivm's preload is required for maintenance even in sessions that did
 	// not themselves CREATE EXTENSION. pgextwlist remains a local preload.
 	libraries := []any{"timescaledb", "pg_ivm"}
-	if version == "16" || version == "17" || version == "18" {
+	if carriesPgDuckdb(version) {
 		libraries = append(libraries, "pg_duckdb")
 	}
 	// pgaudit refuses to load from anywhere but shared_preload_libraries. It
@@ -211,6 +214,24 @@ func pgExtensionPreloadLibraries(version string) []any {
 	// (ADR092 D2).
 	return append(libraries, "pgaudit")
 }
+
+// carriesPgDuckdb reports whether a major's operand carries pg_duckdb, which
+// Render offers on 16 and later.
+func carriesPgDuckdb(major string) bool {
+	return major == "16" || major == "17" || major == "18"
+}
+
+// pgUpgradeMixedTransactions lets pg_upgrade restore a database that has
+// pg_duckdb installed (w3/m702). pg_restore re-creates the extension's
+// sequences and views before its table access method, so pg_duckdb 1.1.1
+// takes them for DuckDB tables and refuses the restore's transaction as a
+// mixed write ("Writing to DuckDB and Postgres tables in the same transaction
+// block is not supported", duckdb/pg_duckdb#1074, open). The setting is
+// PGC_USERSET, so any role can already set it for its own session; the
+// Cluster carries it only while an upgrade is pending, which is when the
+// upgrade Job writes the new server's configuration, and drops it with the
+// target's own settings before the target's instance starts.
+const pgUpgradeMixedTransactions = "duckdb.unsafe_allow_mixed_transactions"
 
 func managedExtensionParameter(name string) bool {
 	name = strings.ToLower(strings.TrimSpace(name))
@@ -300,7 +321,7 @@ func pgExtensionParameters(p clusterParams) map[string]any {
 	if !buffers {
 		parameters["shared_buffers"] = strconv.FormatInt(max(16, memoryMB/4), 10) + "MB"
 	}
-	if p.version == "16" || p.version == "17" || p.version == "18" {
+	if carriesPgDuckdb(p.version) {
 		// Execution uses the existing owner directly; no privilege-proxy role
 		// or extra memberships. Other roles need normal owner authorization.
 		if !appv1alpha1.ReservedPostgresRole(p.owner) {

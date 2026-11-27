@@ -512,8 +512,12 @@ func TestPendingMajorUpgradeCarriesTheSourcesOperandSettings(t *testing.T) {
 			if image != operands[target] {
 				t.Errorf("%s → %s pending: imageName %q, want the target's %q", source, target, image, operands[target])
 			}
-			if !equality.Semantic.DeepEqual(pending, settled) {
-				t.Errorf("%s → %s pending: postgresql = %v, want the source's own %v", source, target, pending, settled)
+			// The source's own settings, and on a source that carries
+			// pg_duckdb the one setting pg_upgrade's restore of its
+			// extension needs (pgUpgradeMixedTransactions).
+			wantPending := withUpgradeRestore(settled, carriesPgDuckdb(source))
+			if !equality.Semantic.DeepEqual(pending, wantPending) {
+				t.Errorf("%s → %s pending: postgresql = %v, want the source's own %v", source, target, pending, wantPending)
 			}
 			carried := append([]any{"pg_stat_statements"}, pgExtensionPreloadLibraries(source)...)
 			for _, library := range pending["shared_preload_libraries"].([]any) {
@@ -543,6 +547,9 @@ func TestPendingMajorUpgradeCarriesTheSourcesOperandSettings(t *testing.T) {
 					}
 				}
 			}
+			if _, set := fresh["parameters"].(map[string]any)[pgUpgradeMixedTransactions]; set {
+				t.Errorf("%s → %s: the target's own settings keep %s", source, target, pgUpgradeMixedTransactions)
+			}
 			// pg_upgrade succeeded: the target's own settings, while the
 			// instance is not ready yet and runningVersion still reads source.
 			if _, upgraded := project(target, target, source); !equality.Semantic.DeepEqual(upgraded, fresh) {
@@ -550,8 +557,8 @@ func TestPendingMajorUpgradeCarriesTheSourcesOperandSettings(t *testing.T) {
 			}
 			// A Cluster that has not reported its data directory falls back
 			// to the version the Database recorded.
-			if _, unreported := project(target, "", source); !equality.Semantic.DeepEqual(unreported, settled) {
-				t.Errorf("%s → %s unreported data major: postgresql = %v, want the source's %v", source, target, unreported, settled)
+			if _, unreported := project(target, "", source); !equality.Semantic.DeepEqual(unreported, wantPending) {
+				t.Errorf("%s → %s unreported data major: postgresql = %v, want the source's %v", source, target, unreported, wantPending)
 			}
 		}
 	}
@@ -563,6 +570,17 @@ func TestPendingMajorUpgradeCarriesTheSourcesOperandSettings(t *testing.T) {
 		t.Errorf("upstream 15 → bex 18 pending: image %q preload %v, want the 18 operand and pg_stat_statements alone",
 			image, pending["shared_preload_libraries"])
 	}
+}
+
+// withUpgradeRestore is a projected spec.postgresql with
+// pgUpgradeMixedTransactions set when on is true.
+func withUpgradeRestore(postgresql map[string]any, on bool) map[string]any {
+	if !on {
+		return postgresql
+	}
+	parameters := maps.Clone(postgresql["parameters"].(map[string]any))
+	parameters[pgUpgradeMixedTransactions] = "true"
+	return map[string]any{"parameters": parameters, "shared_preload_libraries": postgresql["shared_preload_libraries"]}
 }
 
 func mustAtoi(t *testing.T, s string) int {
@@ -659,8 +677,8 @@ func TestReconcileKeepsTheSourcesPreloadUntilPgUpgradeSucceeds(t *testing.T) {
 			t.Errorf("pg_upgrade done, instance not ready: phase %q current %q, want Upgrading 15", db.Status.Phase, db.Status.CurrentVersion)
 		}
 		_, preload, parameters = clusterPostgresqlSpec(t, cl, req)
-		if !slices.Contains(preload, "pg_duckdb") || parameters["duckdb.threads"] != "1" {
-			t.Errorf("pg_upgrade done: preload %v duckdb.threads %q, want 18's settings", preload, parameters["duckdb.threads"])
+		if !slices.Contains(preload, "pg_duckdb") || parameters["duckdb.threads"] != "1" || parameters[pgUpgradeMixedTransactions] != "" {
+			t.Errorf("pg_upgrade done: preload %v parameters %v, want 18's own settings", preload, parameters)
 		}
 	}
 }

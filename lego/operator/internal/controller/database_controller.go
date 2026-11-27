@@ -671,6 +671,9 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 		extensionParams := p
 		extensionParams.version = extensionsMajor
 		maps.Copy(pgParams, pgExtensionParameters(extensionParams))
+		if _, pending := pendingUpgradeSource(p); pending && carriesPgDuckdb(extensionsMajor) {
+			pgParams[pgUpgradeMixedTransactions] = postgresEnabled
+		}
 		preload = append(preload, pgExtensionPreloadLibraries(extensionsMajor)...)
 	}
 	spec["postgresql"] = map[string]any{
