@@ -1,6 +1,6 @@
 # w3 · m636 — Services created before bex's default cutoffs build on Render's dated defaults
 
-**Worker:** worker3 **Goal:** a native service with no version signal builds on the default Render's table gives its creation date, for every date since bex's first service, and no line-pin refresh moves it. **Status:** blocked (t001–t006, t008 and t009 done; t007's production check and t010 wait for a production deploy carrying `41ff57632f`)
+**Worker:** worker3 **Goal:** a native service with no version signal builds on the default Render's table gives its creation date, for every date since bex's first service, and no line-pin refresh moves it. **Status:** blocked (t001–t006, t008 and t009 done; production carries `41ff57632f` since pin `410850e80281`, and t007's production check and t010 wait for a pin carrying w3/m672's `01af8d284d`, so the check never runs a first-party service on an unrepaired Node)
 
 ## Tasks (in order)
 
@@ -75,3 +75,15 @@ A backdated App cannot be created (the API server sets `creationTimestamp`), so 
 | Elixir, 2026-08-01 | `==> Using Erlang version 28.0.2 (default)` before the Elixir line | `erlang:28.0.2.0@sha256:bf9213a7…` with hexpm's `1.18.4-erlang-28.0.2` build |
 
 The BuildKit build of those Dockerfiles did not run here: Docker Desktop on this host times out pulling the common base from ghcr.io (`DeadlineExceeded`, and a plain `docker pull` of it never starts) while Docker Hub pulls work. Each exact-image swap is the path an explicit exact version already takes on production, so the real build is the production check that remains (t007 step 2, DoD 4).
+
+## Unblock check — 2026-11-26 (t007 step 2 waits for `01af8d284d`)
+
+- **Affected:** t007 step 2 and t010; w3/m672 t005 shares the same deploy.
+- **Finding (verified evidence):** the newest production pin on origin/main, `918667a83f` ("pin platform images to `410850e80281`", 20:20Z), carries `41ff57632f` (`git merge-base --is-ancestor 41ff57632f 410850e80281` exits 0), so the gate written on 2026-11-26 holds. It does not carry `01af8d284d`, w3/m672's adoption of the Brotli-fixed donors for Node 24.14.1 and 24.21.0. Read through the admin kubeconfig at 00:35Z on 2026-11-27: the fixture, the bex workspace's Node web service created 2026-08-02, last built 2026-11-23 and has not built since the pin; the bex workspace's Go service created 2026-10-19 last built 2026-10-24. Nothing of bex's own has built on an unrepaired dated default yet.
+- **Decision (worker, under w3/m672's security note):** t007 step 2 does not run on this pin. On `410850e80281` a manual deploy of the fixture moves it from Node 24.22.3, whose decoder is fixed, onto the official 24.14.1, whose bundled Brotli decoder fails Node's CVE-2026-111497 regression ([m672](../m672/README.md)'s evidence). It stays there until the next pin. This run would create that exposure on a first-party production service itself.
+- **Why waiting costs nothing:**
+  - Parity is unchanged. The version and the log line are Render's on both pins (`TestNodeDefaultFollowsRendersDatedRows`; m672 DoD 1).
+  - The wait is short. Production pins landed at 00:25Z, 07:02Z, 13:52Z and 20:20Z on 2026-11-26, and `01af8d284d`'s deploy run 45910176679 succeeded.
+  - `01af8d284d` descends from `41ff57632f`. One deploy after a pin carrying it is this check and m672 t005's at once, where deploying now would need a second deploy for m672.
+- **Remaining gate:** ``pin must carry `01af8d284d` ``. It clears by itself and needs nobody.
+- **Next:** deploy the fixture manually. Its build log reads `==> Using Node.js version 24.14.1 (default)` and the service answers 200 (t007, DoD 4). Run m672 t005's probe on the same deploy, then t010 closes this milestone.
