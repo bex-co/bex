@@ -1,6 +1,6 @@
 # w3 · m680 — A Blueprint's Resources page lists what it manages in Render's tables: services and datastores, Build Sources, Environment Groups
 
-**Worker:** worker3 **Goal:** a Blueprint's Resources page draws its services, Postgres and Key Value in the resource table the Overview uses (status, runtime, region, updated, row menus, selection), its build sources and environment groups in their own tables, and Render's empty and file-problem states. **Status:** blocked (t001–t005 and t007–t009 done; t006 walked locally and on production pin `546d61ac7343`, where every point held but the header's frame at 390, fixed in `3b8bebd3cd`; its re-check waits for a pin carrying it)
+**Worker:** worker3 **Goal:** a Blueprint's Resources page draws its services, Postgres and Key Value in the resource table the Overview uses (status, runtime, region, updated, row menus, selection), its build sources and environment groups in their own tables, and Render's empty and file-problem states. **Status:** done (t001–t010; walked locally and on production pins `546d61ac7343` and `7d1dce861173`, where the header's frame at 390 held after `3b8bebd3cd`)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | Build Sources and Environment Groups tables — **DONE** | 45m | t001, w3/m677 t003 |
 | [t004](done/t004.md) | Render's empty state, and the Blueprint file's problems with located errors — **DONE** | 30m | t002 |
 | [t005](done/t005.md) | The pending frame equals the ready page at 1440 and 390 — **DONE** | 30m | t002, t003, t004 |
-| [t006](t006.md) | Verify in a real browser at 1440 and 390, locally and on production | 45m | t005 |
+| [t006](done/t006.md) | Verify in a real browser at 1440 and 390, locally and on production — **DONE** | 45m | t005 |
 | [t007](done/t007.md) | Render parity — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 40m | t007 |
-| [t010](t010.md) | Closeout | 10m | t008, t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t008, t009 |
 
 Total: **10 tasks, about 5h35m**.
 
@@ -86,7 +86,26 @@ No file in the repository declared all four kinds of resource, so `04ee4a1fab` a
 
 **Cleanup.** Both Blueprints were deleted through REST (204, then 404), and their resources `resources-web-gkun`, `resources-db-gkun`, `resources-kv-gkun` and `resources-env-gkun` (disposable) deleted (204, then 404). `bex-canary` holds none of the walk's resources. The run key was revoked and the QA session logged out (`qa-login.sh --logout`).
 
+## Production re-check (2026-11-28, t006 step 2)
+
+Pin `7d1dce861173` (`207a050b22`, carries `3b8bebd3cd`): the `dashboard` pod ran `bex-dashboard@sha256:8ad155ac3cb1…` and both `bex-api` pods `bex-operator@sha256:d2f83bec3be6…`, the pin's digests, read through the admin kubeconfig before the walk. Walked 00:49–00:53Z as the QA user (`scripts/qa-login.sh`) in `bex-canary` (`tea-daif693dqjvc73e7as3g`) with a run-minted API key, in a headless Chromium of its own through `playwright-core`, `en-US`, at 1440×900 and 390×900.
+
+`qa-20261128-m680-recheck` (disposable, `exs-dc52abr7laqs73bafep0`, suffix `-fuk6`), 24 characters, was created through REST `POST /v1/blueprints` from `https://github.com/bex-co/bex`, branch `main`, `examples/blueprint-resources/render.yaml`, auto-sync off, `create_new`; it went through on the first try, and its first sync was approved through REST (`success`). From the Blueprints list, its row was clicked with every GraphQL `Blueprint` read held, the frame measured, the read released and the ready page measured:
+
+| Box (x, y, width × height, px) | Frame at 1440 | Ready at 1440 | Frame at 390 | Ready at 390 |
+| --- | --- | --- | --- | --- |
+| Header row | 256, 48, 1184 × 65 | 256, 48, 1184 × 65 | 0, 48, 390 × 105 | 0, 48, 390 × 105 |
+| Manual sync | 1292, 64, 124 × 32 | 1292, 64, 124 × 32 | 16, 104, 124 × 32 | 16, 104, 124 × 32 |
+| Resources heading | 336, 137 | 336, 137 | 16, 169 | 16, 169 |
+| Selection bar and first table | 336, 189, 1024 × 269 | 336, 189, 1024 × 269 | 16, 221, 358 × 269 | 16, 221, 358 × 269 |
+| First table | 233, 225 tall, 3 rows | 233, 225 tall, 3 rows | 265, 225 tall, 3 rows | 265, 225 tall, 3 rows |
+
+The frame and the ready page share the header class (`flex-col` below `sm`, a row from it): at 390 Manual sync sits under `qa-20261128-m680-rec… -fuk6 Paused`, whose name truncates, and at 1440 beside the full name. The ready page then adds the Env Groups table under the first (490 at 1440, 522 at 390), which the frame cannot know before the Blueprint is read, as § Production walk recorded. Nothing moved: the header's frame at 390 holds. No sideways scroll at either width, and no page or console error.
+
+**Cleanup.** The Blueprint was deleted through REST (204, then 404), and its resources `resources-web-fuk6`, `resources-db-fuk6`, `resources-kv-fuk6` and `resources-env-fuk6` (disposable) deleted (204 each, then 404); `bex-canary` lists no Blueprint. The run key was revoked (it then answered 401) and the QA session logged out (`qa-login.sh --logout`).
+
 ## Unblock record
 
 - **2026-11-27, `/loopx w3` (verified evidence, no user decision):** the gate, pin must carry `f5341407a5`, holds. The newest pin on `origin/main` is `d465649ee4` `chore(deploy): pin platform images to 546d61ac7343`, `git merge-base --is-ancestor f5341407a5 546d61ac7343` exits 0, and production's `dashboard` and `bex-api` run that pin's digests. Affects t006 step 2.
 - **2026-11-27, `/loopx w3`, parked again:** t006 step 2 held every point of the definition of done but the header's frame at 390 (§ Production walk), which `3b8bebd3cd` fixes. Remaining gate: pin must carry `3b8bebd3cd`. Then, as the QA user in `bex-canary`, a Blueprint created for the walk (disposable) from `examples/blueprint-resources/render.yaml`, with a name past ten characters and its first sync approved, is opened from the Blueprints list with its `Blueprint` read held, at 1440 and 390; its frame's header (105 px at 390, 65 at 1440) and its first table stand where the ready page's do. Then delete it and its resources, and t010 closes the milestone.
+- **2026-11-28, `/loopx w3` (verified evidence, no user decision):** the gate, pin must carry `3b8bebd3cd`, holds. The newest pin on `origin/main` is `207a050b22` `chore(deploy): pin platform images to 7d1dce861173`, `git merge-base --is-ancestor 3b8bebd3cd 7d1dce861173` exits 0, and production's `dashboard` and `bex-api` run that pin's digests. Affects t006 step 2, which then held at 1440 and 390 (§ Production re-check), so t010 closed the milestone.
