@@ -24,10 +24,10 @@ const SQLConsole = lazy(() =>
  * A Postgres database's Info page, at its bare URL and at `/info`, as on
  * Render (w3/m641, docs/render-artifacts/postgres-dashboard.md). Render's Info
  * holds General, Connections, Credentials, Networking and the delete card
- * (with Restart and Suspend), in that order; bex's Details, Connections,
- * Access control (credentials and the IP allow list) and danger zone follow
- * it, and its SQL console, which Render has no counterpart for, sits before
- * the danger zone. Each card keeps the id the old Overview gave it, so its
+ * (with Restart and Suspend), in that order; bex's Details (its read
+ * replicas last, as General lists them, w3/116), Connections, Access control
+ * (credentials and the IP allow list) and danger zone follow it, and its SQL
+ * console, which Render has no counterpart for, sits before the danger zone. Each card keeps the id the old Overview gave it, so its
  * anchor still lands on it.
  */
 export function DatabaseInfoPage() {

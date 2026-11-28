@@ -29,6 +29,11 @@ vi.mock("@/features/databases/components/database-name-row", () => ({
 vi.mock("@/features/databases/components/database-upgrade-notices", () => ({
   DatabaseVersionValue: () => <div data-testid="version-control" />,
 }));
+// The read-replica field owns its mutation and its own tests
+// (database-read-replicas.test.tsx).
+vi.mock("@/features/databases/components/database-read-replicas", () => ({
+  DatabaseReadReplicas: () => <div data-testid="read-replicas" />,
+}));
 
 import { DatabaseMetadataCard } from "@/features/databases/components/database-metadata-card";
 
@@ -174,6 +179,21 @@ describe("DatabaseMetadataCard", () => {
     renderCard(db());
 
     expect(screen.getByText("Available")).toBeInTheDocument();
+  });
+
+  // w3/116: Render's General card ends its facts with Read Replicas, so the
+  // Details card ends with them, inside the card and after the facts grid.
+  it("ends with the read replicas, after the facts", () => {
+    renderCard(db());
+    const replicas = screen.getByTestId("read-replicas");
+    const card = replicas.closest('[data-slot="card"]');
+    expect(card).toHaveTextContent("Details");
+    const facts = card!.querySelector("dl")!;
+    expect(
+      facts.compareDocumentPosition(replicas) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(facts.contains(replicas)).toBe(false);
   });
 
   // w4/693: the region is Render's slug on the API; the card names the place,

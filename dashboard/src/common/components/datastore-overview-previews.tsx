@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { MetadataListFooter } from "@/common/components/metadata-list";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { EditableFieldRowPreview } from "@/features/services/components/editable-field-row";
 import { LogicalReplicationNote } from "@/features/databases/components/logical-replication-note";
@@ -69,7 +70,8 @@ type DatastoreKind = keyof typeof METADATA_COPY;
 /**
  * The Details card (`MetadataList` with a name-row lead): the Name field's
  * label, hint, disabled input and pencil above a divider, then the facts grid
- * with real labels and 20px value placeholders in the ready `dl` spacing.
+ * with real labels and 20px value placeholders in the ready `dl` spacing. A
+ * Postgres database's card ends with its read replicas (w3/116).
  */
 export function DatastoreMetadataPreview({ kind }: { kind: DatastoreKind }) {
   const { t } = useTranslations();
@@ -99,8 +101,37 @@ export function DatastoreMetadataPreview({ kind }: { kind: DatastoreKind }) {
             </div>
           ))}
         </dl>
+        {kind === "postgres" ? (
+          <MetadataListFooter>
+            <DatabaseReadReplicasPreview />
+          </MetadataListFooter>
+        ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * The Details card's read-replica field (DatabaseReadReplicas, w3/116): the
+ * "Read replicas" label with the disabled Add button, over one line where the
+ * list goes. The replicas are data, so the line stays a skeleton; it holds
+ * the empty-state line's 20 px.
+ */
+function DatabaseReadReplicasPreview() {
+  const { t } = useTranslations();
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-sm font-medium">{t("databases.haReadReplicas")}</p>
+        <Button variant="outline" size="sm" disabled>
+          <Plus />
+          {t("databases.haAddReplica")}
+        </Button>
+      </div>
+      <div className="flex h-5 items-center">
+        <Skeleton className="h-3.5 w-48" />
+      </div>
+    </div>
   );
 }
 
@@ -280,10 +311,9 @@ export function KeyValueNetworkingPreview() {
 /**
  * Mirrors the database HA panel (features/databases/components/ha-panel.tsx,
  * w5/m138): its static title and description, the status row with the HA
- * switch (w2/m171), the plan line, and the Read replicas header with its Add
- * action over one list line. The status badge, the switch position, the plan
- * line and the replicas are data, so they stay skeletons; the plan line keeps
- * two lines below xl, where its copy wraps.
+ * switch (w2/m171) and the plan line. The status badge, the switch position
+ * and the plan line are data, so they stay skeletons; the plan line keeps two
+ * lines below xl, where its copy wraps.
  */
 export function DatabaseHighAvailabilityPreview() {
   const { t } = useTranslations();
@@ -313,20 +343,6 @@ export function DatabaseHighAvailabilityPreview() {
           </div>
           <div className="flex h-5 items-center xl:hidden">
             <Skeleton className="h-3.5 w-1/2" />
-          </div>
-        </div>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-sm font-medium">
-              {t("databases.haReadReplicas")}
-            </p>
-            <Button variant="outline" size="sm" disabled>
-              <Plus />
-              {t("databases.haAddReplica")}
-            </Button>
-          </div>
-          <div className="flex h-5 items-center">
-            <Skeleton className="h-3.5 w-48" />
           </div>
         </div>
       </CardContent>

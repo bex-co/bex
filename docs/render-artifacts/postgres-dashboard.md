@@ -69,7 +69,8 @@ Each card of bex's former single Postgres page goes to the page whose Render cou
 | Insights (`#insights`): sizes, processes, top queries, table scans, parameters | Metrics | sizes, processes, top queries |
 | Plan (`#plan`) with its Storage row | Plan | Compute, Storage |
 | Disk autoscaling (was in the Metrics card's disk header) | Plan, a row under Storage | Storage Autoscaling |
-| High availability (`#high-availability`) with its read replicas | Plan | High Availability (Render's Read Replicas are on Info) |
+| High availability (`#high-availability`): the switch and failover | Plan | High Availability |
+| Read replicas (in High availability until [w3/116](../../.pm/w3/done/116.md)) | Info, the Details card's last field | General's Read Replicas |
 | Apps (`#apps`) | Apps | Apps |
 | Recovery (`#recovery`) | Recovery | Point-in-Time Recovery, Export |
 
@@ -79,10 +80,10 @@ Each card of bex's former single Postgres page goes to the page whose Render cou
 - `/databases/<id>` and `/databases/<id>/info` show Info; `/logs`, `/metrics`, `/plan`, `/apps` and `/recovery` show their pages, each with its sidebar label as its heading and a document title led by it ("Recovery ・ orders ・ Database ・ bex Dashboard"). Render's `/d/<id>/<page>` reaches them through the `/d/` alias, query and hash kept.
 - `/upgrade` lands on `/plan`, `/high-availability-upgrade` on `/plan#high-availability`, `/metrics/<period>` on `/metrics`, and `/version-upgrade`, `/sharing` and any other sub-path on Info.
 - The old single page's links land on their page: `?tab=logs` on `/logs` with its range and filter keys, and each anchor of a card that left Info on that card's page, the hash kept.
+- A database's read replicas, with Add read replica and each replica's Remove, are the Details card's last field on Info, under its facts, as Render's General card ends with Read Replicas ([w3/116](../../.pm/w3/done/116.md), 2026-11-27). Plan's High Availability card holds only the switch and failover.
 
 ## Still apart
 
-- Render shows Read Replicas on Info; bex keeps them in the High Availability card on Plan ([w3/116](../../.pm/w3/116.md)).
 - Render's Logs and Metrics pages hide the resource header ([w3/117](../../.pm/w3/117.md)). A signed-in, read-only walk on 2026-11-25 confirmed it: a Postgres database's Info page draws the header, and its Logs page (at 1440 and 390) and Metrics page (at 1440) do not. [w3/106](../../.pm/w3/done/106.md) did the same for a service's.
 - A Key Value instance keeps its single page ([w3/115](../../.pm/w3/done/115.md), promoted to w3/m649).
 - Render's document title has no page name; bex's names the page first, as its service tabs do.

@@ -21,6 +21,12 @@ export interface MetadataListProps {
    * editable Name atop the read-only facts).
    */
   lead?: ReactNode;
+  /**
+   * Optional content under the facts grid, ruled off like one more row: a
+   * Postgres database's read replicas, the field Render's General card lists
+   * them in (w3/116).
+   */
+  footer?: ReactNode;
 }
 
 /**
@@ -28,9 +34,10 @@ export interface MetadataListProps {
  * shared by every resource detail page (databases, Key Value, …): a
  * `dl`/`dt`/`dd` grid, two columns on wider screens, a divider between rows.
  * Presentation only; callers build their own `rows` from their own view type.
- * An optional `lead` slot holds edit-in-place fields above the read-only grid.
+ * An optional `lead` slot holds edit-in-place fields above the read-only grid,
+ * and an optional `footer` a field too large for a grid cell below it.
  */
-export function MetadataList({ title, rows, lead }: MetadataListProps) {
+export function MetadataList({ title, rows, lead, footer }: MetadataListProps) {
   return (
     <Card>
       <CardHeader>
@@ -54,7 +61,22 @@ export function MetadataList({ title, rows, lead }: MetadataListProps) {
             </div>
           ))}
         </dl>
+        {footer != null && <MetadataListFooter>{footer}</MetadataListFooter>}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * The footer's frame. Below `sm` the grid's last row has no rule, so the
+ * footer draws one where that row's would be; from `sm` every row keeps its
+ * rule, so the footer only takes the grid's row gap. Shared with the
+ * route-pending preview so both draw the same rule and spacing.
+ */
+export function MetadataListFooter({ children }: { children: ReactNode }) {
+  return (
+    <div className="border-t pt-3 sm:mt-3 sm:border-t-0 sm:pt-0">
+      {children}
+    </div>
   );
 }

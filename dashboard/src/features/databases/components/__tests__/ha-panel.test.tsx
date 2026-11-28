@@ -115,126 +115,32 @@ describe("HAPanel plan requirement (w8/m43)", () => {
   });
 });
 
-async function openAddWith(name: string) {
-  await userEvent.click(
-    screen.getByRole("button", { name: "Add read replica" }),
-  );
-  await userEvent.type(screen.getByLabelText("Name"), name);
-}
-
-describe("HAPanel read replicas (w5/m138)", () => {
-  it("adds a replica by sending the whole set, without a racing refetch", async () => {
-    const refetch = vi.fn();
-    render(<HAPanel database={WITH_REPLICA} refetch={refetch} />);
-    await openAddWith("r2");
-    await userEvent.click(screen.getByRole("button", { name: "Add replica" }));
-
-    expect(mutate).toHaveBeenCalledWith({
-      variables: {
-        id: "dpg-shop",
-        readReplicas: [{ name: "r1" }, { name: "r2" }],
-      },
-    });
-    // The mutation answers the new set into the cache; a refetch would
-    // race the operator and could bring back the old set.
-    expect(refetch).not.toHaveBeenCalled();
-  });
-
-  it("refuses a name bex-api would refuse before calling it", async () => {
-    render(<HAPanel database={WITH_REPLICA} refetch={vi.fn()} />);
-    await openAddWith("Reader_2");
-    expect(
-      screen.getByText(
-        "Use 1–35 lowercase letters, digits or hyphens, starting and ending with a letter or digit.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add replica" })).toBeDisabled();
-
-    await userEvent.clear(screen.getByLabelText("Name"));
-    await userEvent.type(screen.getByLabelText("Name"), "r1");
-    expect(
-      screen.getByText("This database already has a read replica named r1."),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add replica" })).toBeDisabled();
-    expect(mutate).not.toHaveBeenCalled();
-  });
-
-  it("keeps the dialog open with the name when the API refuses", async () => {
-    mutate.mockRejectedValue(new Error("read replicas require more storage"));
-    render(<HAPanel database={WITH_REPLICA} refetch={vi.fn()} />);
-    await openAddWith("r2");
-    await userEvent.click(screen.getByRole("button", { name: "Add replica" }));
-    expect(screen.getByLabelText("Name")).toHaveValue("r2");
-  });
-
-  it("removes a replica only after confirmation", async () => {
-    render(<HAPanel database={WITH_REPLICA} refetch={vi.fn()} />);
-    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
-    expect(mutate).not.toHaveBeenCalled();
-    expect(screen.getByText("Remove read replica r1?")).toBeInTheDocument();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Remove replica" }),
-    );
-    expect(mutate).toHaveBeenCalledWith({
-      variables: { id: "dpg-shop", readReplicas: [] },
-    });
-  });
-
-  it("disables adding on a plan without replicas, at the limit, and below the storage minimum", () => {
-    const { rerender } = render(
-      <HAPanel database={DATABASE} refetch={vi.fn()} />,
-    );
-    const add = () => screen.getByRole("button", { name: "Add read replica" });
-    expect(add()).toBeDisabled();
-
-    rerender(
+// w3/116: the read replicas are a field of the Info page's Details card, as
+// Render's General card lists them; its High Availability card has none.
+describe("HAPanel without read replicas (w3/116)", () => {
+  it("keeps only HA and failover, even for a database with replicas", () => {
+    render(
       <HAPanel
         database={{
           ...WITH_REPLICA,
-          readReplicas: [
-            ...WITH_REPLICA.readReplicas,
-            { name: "r2", connectionInfo: null },
-          ],
+          plan: "pro",
+          highAvailabilityRequested: true,
+          highAvailabilityEnabled: true,
         }}
         refetch={vi.fn()}
       />,
     );
-    expect(add()).toBeDisabled();
-
-    rerender(
-      <HAPanel
-        database={{ ...WITH_REPLICA, diskSizeGB: 5 }}
-        refetch={vi.fn()}
-      />,
-    );
-    expect(add()).toBeDisabled();
-
-    rerender(<HAPanel database={WITH_REPLICA} refetch={vi.fn()} />);
-    expect(add()).toBeEnabled();
-  });
-
-  // Read replicas are a setting PATCH /v1/postgres changes: can_create, so a
-  // Contributor, who keeps can_operate, is held (w9/m619).
-  it("disables add and remove for a contributor, and keeps them for a developer", () => {
-    vi.mocked(useCapabilities).mockReturnValue(
-      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
-    );
-    const { rerender } = render(
-      <HAPanel database={WITH_REPLICA} refetch={vi.fn()} />,
-    );
     expect(
-      screen.getByRole("button", { name: "Add read replica" }),
-    ).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Remove" })).toBeDisabled();
-
-    vi.mocked(useCapabilities).mockReturnValue(
-      mockCapabilities({ role: "DEVELOPER", canManage: false }),
-    );
-    rerender(<HAPanel database={WITH_REPLICA} refetch={vi.fn()} />);
+      screen.getByRole("switch", { name: "High availability" }),
+    ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Add read replica" }),
-    ).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Remove" })).toBeEnabled();
+      screen.getByRole("button", { name: "Trigger failover" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Read replicas")).toBeNull();
+    expect(screen.queryByText("r1")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Add read replica" }),
+    ).toBeNull();
   });
 });
 
@@ -406,7 +312,7 @@ describe("HAPanel high availability switch (w2/m171)", () => {
 
   // Fail-closed: no answer yet is no grant, so every control is held, and
   // none claims a role reason it has not been given.
-  it("holds the switch, failover and replicas while capabilities are still checking", () => {
+  it("holds the switch and failover while capabilities are still checking", () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({
         canOperate: false,
@@ -431,10 +337,6 @@ describe("HAPanel high availability switch (w2/m171)", () => {
     expect(
       screen.getByRole("button", { name: "Trigger failover" }),
     ).toBeDisabled();
-    expect(
-      screen.getByRole("button", { name: "Add read replica" }),
-    ).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Remove" })).toBeDisabled();
   });
 
   // Render bills the standby like the primary, so the confirmation names
@@ -492,15 +394,9 @@ describe("HAPanel high availability switch (w2/m171)", () => {
 });
 
 describe("HAPanel pending preview (w5/m138)", () => {
-  function replicasHeader(card: Element): Element {
-    const label = [...card.querySelectorAll("p")].find(
-      (p) => p.textContent === "Read replicas",
-    );
-    expect(label).toBeDefined();
-    return label!.parentElement!;
-  }
-
-  it("has the ready card's header and Read replicas row, inert and with Add disabled", () => {
+  // The card's header and content box, inert, and no read-replica row in
+  // either state (w3/116): the replicas left the card for the Details card.
+  it("has the ready card's header, inert and without read replicas", () => {
     const pending = render(<DatabaseHighAvailabilityPreview />).container
       .firstElementChild!;
     const ready = render(<HAPanel database={WITH_REPLICA} refetch={vi.fn()} />)
@@ -509,14 +405,17 @@ describe("HAPanel pending preview (w5/m138)", () => {
     const header = (card: Element) =>
       card.querySelector('[data-slot="card-header"]')!;
     expect(shape(header(pending))).toBe(shape(header(ready)));
-    expect(shape(replicasHeader(pending))).toBe(shape(replicasHeader(ready)));
+    const content = (card: Element) =>
+      card.querySelector('[data-slot="card-content"]')!;
+    expect(content(pending).className).toBe(content(ready).className);
+    // The status row and the plan line, in both.
+    expect(content(pending).children).toHaveLength(
+      content(ready).children.length,
+    );
 
     expect(pending.hasAttribute("inert")).toBe(true);
-    expect(
-      replicasHeader(pending).querySelector("button")!.hasAttribute("disabled"),
-    ).toBe(true);
-    // No replica data before it exists.
-    expect(pending.textContent).not.toContain("r1");
+    expect(pending.textContent).not.toContain("Read replicas");
+    expect(ready.textContent).not.toContain("Read replicas");
   });
 
   // w2/m171: the status row carries the HA switch on the right in both

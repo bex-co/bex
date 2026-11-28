@@ -14,7 +14,12 @@ import type { KeyValueView } from "@/features/keyvalue/types";
 import { shape } from "@/test/card-shape";
 
 // The ready cards render for real (EditableFieldRow, MetadataList, the masked
-// Connections panel); only their data and mutation hooks are stubbed.
+// Connections panel, the read-replica field); only their data and mutation
+// hooks are stubbed.
+vi.mock("@apollo/client/react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@apollo/client/react")>()),
+  useMutation: () => [vi.fn(), { loading: false }],
+}));
 vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
   useDatabaseInstanceTypes: () => ({ instanceTypes: [], loading: false }),
 }));
@@ -107,6 +112,27 @@ const keyValue: KeyValueView = {
   region: "oregon",
 };
 
+/**
+ * A Postgres Details card's read-replica field (w3/116): the "Read replicas"
+ * header row's parent, or null on a card without one.
+ */
+function replicaField(card: Element): Element | null {
+  const label = [...card.querySelectorAll("p")].find(
+    (p) => p.textContent === "Read replicas",
+  );
+  return label?.parentElement?.parentElement ?? null;
+}
+
+/**
+ * The card without the replica list, which is data: the ready card lists the
+ * replicas (or says there are none) where the preview holds one line.
+ */
+function withoutReplicaList(card: Element): Element {
+  const clone = card.cloneNode(true) as Element;
+  replicaField(clone)?.lastElementChild?.remove();
+  return clone;
+}
+
 function card(ui: ReactElement, region?: string): Element {
   const { container } = render(ui);
   const root = region
@@ -148,10 +174,35 @@ describe("datastore Details and Connections previews (w4/298)", () => {
       />,
     ],
   ] as const) {
+    it(`${name} Details preview ${name === "Postgres" ? "ends with" : "has no"} the read-replica field`, () => {
+      const pending = replicaField(card(<Skeleton />, "metadata"));
+      const ready = replicaField(card(readyDetails));
+      if (name !== "Postgres") {
+        expect(pending).toBeNull();
+        expect(ready).toBeNull();
+        return;
+      }
+      // The field is the card's last block, after the facts grid, with the
+      // Add button disabled and one 20 px line where the ready card's empty
+      // line ("No named read replicas.", text-sm) sits.
+      expect(pending!.parentElement!.previousElementSibling!.tagName).toBe(
+        "DL",
+      );
+      expect(ready!.parentElement!.previousElementSibling!.tagName).toBe("DL");
+      expect(pending!.querySelector("button")!.disabled).toBe(true);
+      expect(pending!.lastElementChild).toHaveClass("h-5");
+      expect(ready!.lastElementChild).toHaveClass("text-sm");
+      expect(ready!.lastElementChild!.textContent).toBe(
+        "No named read replicas.",
+      );
+    });
+
     it(`${name} Details preview has the ready name lead and facts grid`, () => {
       const pending = card(<Skeleton />, "metadata");
       const ready = card(readyDetails);
-      expect(shape(pending)).toBe(shape(ready));
+      expect(shape(withoutReplicaList(pending))).toBe(
+        shape(withoutReplicaList(ready)),
+      );
 
       // Inert, with no entity value: the name input is empty and disabled.
       expect(pending.hasAttribute("inert")).toBe(true);

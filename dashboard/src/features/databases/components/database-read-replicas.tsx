@@ -1,0 +1,291 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+import { useState } from "react";
+import { Loader2, Plus } from "lucide-react";
+import { useMutation } from "@apollo/client/react";
+import { toast } from "sonner";
+import { Button } from "@/common/components/ui/button";
+import { TextField } from "@/common/components/text-field";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/common/components/ui/dialog";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
+import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { SetDatabaseReadReplicasDocument } from "@/graphql/definitions";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
+import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
+import {
+  READ_REPLICA_NAME_MAX_LENGTH,
+  readReplicaAddBlock,
+  readReplicaNameProblem,
+  type ReadReplicaAddBlock,
+} from "@/features/databases/lib/read-replicas";
+import type { DatabaseDetailView } from "@/features/databases/types";
+
+/**
+ * A database's named read replicas, the Details card's last field (w3/116),
+ * where Render's Info page lists them: a field of its General card, "Read
+ * Replicas" with the list and Add Read Replica
+ * (docs/render-artifacts/postgres-dashboard.md). A member who can change the
+ * database's settings (can_create) may add and remove them (w5/m138,
+ * w9/m619). Each replica shows its internal and external host;
+ * setDatabaseReadReplicas replaces the whole set (REST's PATCH readReplicas).
+ */
+export function DatabaseReadReplicas({
+  database,
+}: {
+  database: DatabaseDetailView;
+}) {
+  const { t } = useTranslations();
+  const { denied: createDenied, reason: createReason } =
+    useCapabilityGate("canCreate");
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [removing, setRemoving] = useState<string | null>(null);
+  const [setReplicas, { loading: savingReplicas }] = useMutation(
+    SetDatabaseReadReplicasDocument,
+  );
+  const { instanceTypes } = useDatabaseInstanceTypes();
+  const plan = instanceTypes.find((it) => it.id === database.plan);
+
+  const names = database.readReplicas.map((r) => r.name);
+  const addBlock = readReplicaAddBlock(database, plan);
+  const addDisabledReason =
+    createReason ?? (addBlock ? addBlockMessage(t, addBlock) : undefined);
+  const nameProblem = readReplicaNameProblem(newName, names);
+  // An empty field shows the hint, not an error; submit stays disabled.
+  const nameError = !newName
+    ? undefined
+    : nameProblem === "duplicate"
+      ? t("databases.haReplicaNameDuplicate", { name: newName })
+      : nameProblem === "invalid"
+        ? t("databases.haReplicaNameInvalid", {
+            max: READ_REPLICA_NAME_MAX_LENGTH,
+          })
+        : undefined;
+
+  // The whole replica set travels on every change (Render's PATCH semantics):
+  // the current names plus the one added, or minus the one removed. The
+  // mutation answers the new set and status into the cache, so no refetch.
+  async function saveReplicas(
+    next: string[],
+    success: string,
+    failure: string,
+  ): Promise<boolean> {
+    try {
+      await setReplicas({
+        variables: {
+          id: database.id,
+          readReplicas: next.map((name) => ({ name })),
+        },
+      });
+      toast.success(success);
+      return true;
+    } catch (err) {
+      toast.error(mutationErrorMessage(err, failure));
+      return false;
+    }
+  }
+
+  async function handleAdd() {
+    if (nameProblem) return;
+    const saved = await saveReplicas(
+      [...names, newName],
+      t("databases.haAddReplicaSuccess", { name: newName }),
+      t("databases.haAddReplicaError", { name: newName }),
+    );
+    if (saved) setAdding(false);
+  }
+
+  async function handleRemove(name: string) {
+    const saved = await saveReplicas(
+      names.filter((n) => n !== name),
+      t("databases.haRemoveReplicaSuccess", { name }),
+      t("databases.haRemoveReplicaError", { name }),
+    );
+    if (saved) setRemoving(null);
+  }
+
+  return (
+    <>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm font-medium">{t("databases.haReadReplicas")}</p>
+          <PermissionTooltip reason={addDisabledReason}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={createDenied || addBlock != null || savingReplicas}
+              onClick={() => {
+                setNewName("");
+                setAdding(true);
+              }}
+            >
+              <Plus />
+              {t("databases.haAddReplica")}
+            </Button>
+          </PermissionTooltip>
+        </div>
+        {database.readReplicas.length > 0 ? (
+          <ul className="space-y-2">
+            {database.readReplicas.map((r) => (
+              <li
+                key={r.name}
+                className="flex items-start justify-between gap-4 rounded-md border p-3 text-sm"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium">{r.name}</p>
+                  {r.connectionInfo ? (
+                    <div className="mt-1 space-y-1 text-xs text-muted-foreground">
+                      {r.connectionInfo.internalHost ? (
+                        <div className="flex gap-2">
+                          <span className="shrink-0 font-medium">
+                            {t("databases.haReplicaInternal")}
+                          </span>
+                          <code className="truncate font-mono">
+                            {r.connectionInfo.internalHost}
+                          </code>
+                        </div>
+                      ) : null}
+                      {r.connectionInfo.externalHost ? (
+                        <div className="flex gap-2">
+                          <span className="shrink-0 font-medium">
+                            {t("databases.haReplicaExternal")}
+                          </span>
+                          <code className="truncate font-mono">
+                            {r.connectionInfo.externalHost}
+                          </code>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+                <PermissionTooltip reason={createReason}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={createDenied || savingReplicas}
+                    onClick={() => setRemoving(r.name)}
+                  >
+                    {t("databases.haRemoveReplica")}
+                  </Button>
+                </PermissionTooltip>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {t("databases.haReadReplicasEmpty")}
+          </p>
+        )}
+      </div>
+
+      {/* Add-replica dialog */}
+      <Dialog
+        open={adding}
+        onOpenChange={(open) => {
+          if (!savingReplicas) setAdding(open);
+        }}
+      >
+        <DialogContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleAdd();
+            }}
+            className="space-y-4"
+          >
+            <DialogHeader>
+              <DialogTitle>{t("databases.haAddReplicaTitle")}</DialogTitle>
+              <DialogDescription>
+                {t("databases.haAddReplicaBody")}
+              </DialogDescription>
+            </DialogHeader>
+            <TextField
+              id="read-replica-name"
+              label={t("databases.haReplicaNameLabel")}
+              value={newName}
+              onChange={setNewName}
+              maxLength={READ_REPLICA_NAME_MAX_LENGTH}
+              hint={t("databases.haReplicaNameHint", {
+                max: READ_REPLICA_NAME_MAX_LENGTH,
+              })}
+              error={nameError}
+            />
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={savingReplicas}
+                onClick={() => setAdding(false)}
+              >
+                {t("common.cancel")}
+              </Button>
+              <Button
+                type="submit"
+                disabled={nameProblem != null || savingReplicas}
+              >
+                {savingReplicas ? <Loader2 className="animate-spin" /> : null}
+                {t("databases.haAddReplicaSubmit")}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove-replica confirmation */}
+      <ConfirmDialog
+        open={removing != null}
+        onOpenChange={(open) => {
+          if (!open && !savingReplicas) setRemoving(null);
+        }}
+        title={t("databases.haRemoveReplicaTitle", { name: removing ?? "" })}
+        description={t("databases.haRemoveReplicaBody")}
+        confirmLabel={t("databases.haRemoveReplicaConfirm")}
+        pending={savingReplicas}
+        closeOnConfirm={false}
+        onConfirm={() => {
+          if (removing) void handleRemove(removing);
+        }}
+      />
+    </>
+  );
+}
+
+function addBlockMessage(
+  t: ReturnType<typeof useTranslations>["t"],
+  block: ReadReplicaAddBlock,
+): string {
+  switch (block.kind) {
+    case "plan":
+      return t("databases.haReplicaPlanUnsupported");
+    case "limit":
+      return t("databases.haReplicaLimitReached", { max: block.max });
+    case "storage":
+      return t("databases.haReplicaStorageTooSmall", {
+        min: block.min,
+        current: block.current,
+      });
+  }
+}

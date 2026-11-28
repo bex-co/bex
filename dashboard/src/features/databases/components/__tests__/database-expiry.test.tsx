@@ -23,6 +23,11 @@ vi.mock("@/features/databases/components/database-name-row", () => ({
 vi.mock("@/features/databases/components/database-upgrade-notices", () => ({
   DatabaseVersionValue: () => <div data-testid="version-control" />,
 }));
+// The read-replica field owns its mutation and its own tests
+// (database-read-replicas.test.tsx).
+vi.mock("@/features/databases/components/database-read-replicas", () => ({
+  DatabaseReadReplicas: () => <div data-testid="read-replicas" />,
+}));
 
 import { DatabaseMetadataCard } from "@/features/databases/components/database-metadata-card";
 import { DatabaseExpiryHint } from "@/features/databases/components/database-expiry";

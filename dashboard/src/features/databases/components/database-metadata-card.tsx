@@ -5,6 +5,7 @@ import { StatusWithReason } from "@/common/components/status-with-reason";
 import { RelativeAge } from "@/common/components/relative-time";
 import { DatabaseExpiryValue } from "@/features/databases/components/database-expiry";
 import { DatabaseNameRow } from "@/features/databases/components/database-name-row";
+import { DatabaseReadReplicas } from "@/features/databases/components/database-read-replicas";
 import { DatabaseVersionValue } from "@/features/databases/components/database-upgrade-notices";
 import {
   FREE_EXPIRED_REASON,
@@ -19,7 +20,9 @@ import type { DatabaseDetailView } from "@/features/databases/types";
  * The detail page's Details card. It lives beside the database's other
  * building blocks (name row, version value, status badge, panels) rather
  * than inline in the route, so it can be rendered on its own in a test —
- * mirrors keyvalue's KeyValueMetadataCard.
+ * mirrors keyvalue's KeyValueMetadataCard. Its last field is the read
+ * replicas, as Render's General card ends its facts with Read Replicas
+ * (w3/116).
  */
 export function DatabaseMetadataCard({
   database,
@@ -51,6 +54,7 @@ export function DatabaseMetadataCard({
     <MetadataList
       title={t("databases.metaTitle")}
       lead={<DatabaseNameRow database={database} onRenamed={onRenamed} />}
+      footer={<DatabaseReadReplicas database={database} />}
       rows={[
         // The same label the header badge shows: a suspended instance still
         // reports status "available", so the raw value contradicted the badge

@@ -20,7 +20,8 @@ const HAPanel = lazy(() =>
 /**
  * A Postgres database's Plan page, Render's `/d/<id>/plan` (w3/m641): the
  * compute plan with Storage and Storage Autoscaling under it, then High
- * Availability, in Render's order. Render's `/upgrade` and
+ * Availability (the switch and failover; the read replicas are on Info, as on
+ * Render, w3/116), in Render's order. Render's `/upgrade` and
  * `/high-availability-upgrade` land here (databases.$databaseId.$.tsx).
  */
 export const Route = createFileRoute("/databases/$databaseId/plan")({
