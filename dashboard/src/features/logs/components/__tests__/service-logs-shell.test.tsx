@@ -61,6 +61,7 @@ vi.mock("@/features/logs/hooks/use-live-logs", () => ({
 }));
 vi.mock("@/features/logs/hooks/use-log-retention", () => ({
   useLogRetentionBound: () => undefined,
+  useRequestLogsLocked: () => false,
 }));
 vi.mock("@/features/logs/hooks/use-log-label-values", () => ({
   useLogLabelDiscovery: () => ({ values: [], resolved: false }),

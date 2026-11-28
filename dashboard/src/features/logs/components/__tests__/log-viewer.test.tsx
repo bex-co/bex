@@ -9,6 +9,7 @@ import {
 } from "vitest";
 import {
   act,
+  cleanup,
   render,
   screen,
   fireEvent,
@@ -83,9 +84,18 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
 }));
 // The plan's log window (w9/m389) is its own query; the reader tests keep the
 // picker unbounded, and the bound test sets one.
-const retention: { bound: RangeBound | undefined } = { bound: undefined };
+// Its plan also says whether request logs are locked (Hobby, w3/122).
+const retention: {
+  bound: RangeBound | undefined;
+  locked: boolean;
+  asked: string[];
+} = { bound: undefined, locked: false, asked: [] };
 vi.mock("../../hooks/use-log-retention", () => ({
   useLogRetentionBound: () => retention.bound,
+  useRequestLogsLocked: (resource: string) => {
+    retention.asked.push(resource);
+    return resource !== "" && retention.locked;
+  },
 }));
 vi.mock("../../hooks/use-log-label-values", () => ({
   useLogLabelDiscovery: () => ({ values: [], resolved: false }),
@@ -127,6 +137,8 @@ beforeEach(() => {
   historyState.loadOlder = () => undefined;
   historyState.retry = () => undefined;
   liveState.lines = [];
+  retention.locked = false;
+  retention.asked = [];
   useHistorySpy.mockReset();
   useLiveLogsSpy.mockReset();
 });
@@ -629,9 +641,9 @@ describe("LogViewer opening log type (w3/101)", () => {
     });
   });
 
-  it("keeps All logs on a service without request logs", () => {
+  it("keeps All logs on a service without request logs, with no type dropdown (w3/122)", () => {
     render(<LogViewer resource="worker" servesRequests={false} />);
-    expect(typePicker()).toHaveTextContent("All logs");
+    expect(screen.queryByRole("combobox", { name: "Log type" })).toBeNull();
     expect(historyFilters()).toEqual(EMPTY_LOG_FILTERS);
   });
 
@@ -669,6 +681,65 @@ describe("LogViewer opening log type (w3/101)", () => {
       expect(typePicker()).toHaveTextContent("All logs");
     },
   );
+});
+
+// w3/122: on a plan without request logs Render lists Request logs disabled
+// and skips it as an opening type, so a web service's view is never on it.
+describe("LogViewer on a plan without request logs (w3/122)", () => {
+  const typePicker = () => screen.getByRole("combobox", { name: "Log type" });
+  const historyTypes = () =>
+    useHistorySpy.mock.calls.map((call) => (call[1] as LogFilters).type);
+
+  it("opens a Request logs link on Application logs, and never reads request lines", () => {
+    retention.locked = true;
+    const onFiltersChange = vi.fn();
+    render(
+      <LogViewer
+        resource="web"
+        urlFilters={{ ...EMPTY_LOG_FILTERS, type: "request" }}
+        onFiltersChange={onFiltersChange}
+      />,
+    );
+    expect(typePicker()).toHaveTextContent("Application logs");
+    expect(historyTypes()).not.toContain("request");
+    expect(useHistorySpy.mock.calls.at(-1)?.[1]).toEqual(WEB_OPENING);
+    // Opening writes no URL (w3/101's rule holds).
+    expect(onFiltersChange).not.toHaveBeenCalled();
+  });
+
+  it("moves a Request logs view to Application logs once the plan's answer arrives", () => {
+    const onFiltersChange = vi.fn();
+    const url = { ...EMPTY_LOG_FILTERS, type: "request" as const };
+    const { rerender } = render(
+      <LogViewer
+        resource="web"
+        urlFilters={url}
+        onFiltersChange={onFiltersChange}
+      />,
+    );
+    expect(typePicker()).toHaveTextContent("Request logs");
+    retention.locked = true;
+    rerender(
+      <LogViewer
+        resource="web"
+        urlFilters={url}
+        onFiltersChange={onFiltersChange}
+      />,
+    );
+    expect(typePicker()).toHaveTextContent("Application logs");
+    expect(useHistorySpy.mock.calls.at(-1)?.[1]).toEqual(WEB_OPENING);
+    // The URL follows what the view now shows.
+    expect(onFiltersChange).toHaveBeenLastCalledWith(WEB_OPENING);
+  });
+
+  it("asks the plan for a web service's resource, and none for a service without request logs", () => {
+    render(<LogViewer resource="web" />);
+    expect(new Set(retention.asked)).toEqual(new Set(["web"]));
+    cleanup();
+    retention.asked = [];
+    render(<LogViewer resource="worker" servesRequests={false} />);
+    expect(new Set(retention.asked)).toEqual(new Set([""]));
+  });
 });
 
 describe("LogViewer populated background failures", () => {
@@ -1340,6 +1411,36 @@ describe("the Logs tab's pending frame holds its explorer buttons (w3/m509)", ()
     expect(slots[3].className).toContain("max-sm:col-span-2");
     // Its fixed desktop width gives way to the grid's columns on a phone.
     expect(slots[3].className).toContain("max-sm:w-auto");
+  });
+
+  // w3/122: a one-type service's bar has no type dropdown, and its search
+  // takes the type's column on a phone, in the frame as in the ready bar.
+  it("holds no type slot for a service with one log type, its search spanning the type's column", async () => {
+    const { ServiceLogsBodySkeleton } =
+      await import("@/common/components/route-skeletons");
+    const ready = render(
+      <LogViewer resource="worker" servesRequests={false} />,
+    ).container;
+    const pending = render(
+      <ServiceLogsBodySkeleton servesRequests={false} />,
+    ).container;
+    const dock = (root: HTMLElement) =>
+      [...root.querySelector("[data-log-dock]")!.children] as HTMLElement[];
+    expect(ready.querySelector('[aria-label="Log type"]')).toBeNull();
+    // Search, range, Filters and the actions, in that order, in both.
+    expect(dock(ready)).toHaveLength(4);
+    expect(dock(pending)).toHaveLength(4);
+    const search = ready.querySelector<HTMLElement>(
+      '[data-log-dock] input[aria-label="Search logs"]',
+    )!.parentElement!;
+    expect(dock(ready)[0]).toBe(search);
+    for (const slot of [dock(ready)[0], dock(pending)[0]]) {
+      expect(slot.className).toContain("max-sm:col-span-2");
+      expect(slot.className).toContain("flex-1");
+    }
+    const withType = render(<ServiceLogsBodySkeleton />).container;
+    expect(dock(withType)).toHaveLength(5);
+    expect(dock(withType)[1].className).not.toContain("max-sm:col-span-2");
   });
 });
 

@@ -7,9 +7,14 @@
 
 /** The filter bar's rows, and on a phone its dock under the top bar: the
  *  page's own background behind it, out to the column's edges. A phone's
- *  grid is [type | search | Options] over [range | Filters]. */
+ *  grid is [type | search | Options] over [range | Filters], or
+ *  [search | Options] for a service with no type dropdown (w3/122). */
 export const LOG_FILTER_BAR_CLASS =
   "flex flex-wrap items-center gap-3 max-sm:sticky max-sm:top-0 max-sm:z-20 max-sm:-mx-4 max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] max-sm:gap-2 max-sm:bg-background max-sm:px-4 max-sm:py-2";
+
+/** The search box of a bar with no type dropdown (w3/122): on a phone it
+ *  spans the type's column too, so its row still ends at Options. */
+export const LOG_SEARCH_ALONE_CLASS = "max-sm:col-span-2";
 
 /** The Filters button: in the bar's flow on a wide screen, the last two
  *  columns of a phone's second row, so its rows share their column edges.

@@ -3,7 +3,10 @@ import { useQuery } from "@apollo/client/react";
 import { useRefetchOnFocus } from "@/common/hooks/use-refetch-on-focus";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { RangeBound } from "@/features/metrics/lib/range";
-import { workspacePlanNameKey } from "@/features/workspaces/types";
+import {
+  proFeaturesPlan,
+  workspacePlanNameKey,
+} from "@/features/workspaces/types";
 import { LogRetentionDocument } from "@/graphql/definitions";
 
 const DAY_SECONDS = 24 * 60 * 60;
@@ -24,16 +27,7 @@ const DAY_SECONDS = 24 * 60 * 60;
  */
 export function useLogRetentionBound(resource: string): RangeBound | undefined {
   const { t } = useTranslations();
-  const { data, refetch } = useQuery(LogRetentionDocument, {
-    variables: { resource },
-    skip: !resource,
-    errorPolicy: "all",
-  });
-  useRefetchOnFocus(
-    useCallback(() => (resource ? refetch() : undefined), [resource, refetch]),
-  );
-
-  const retention = data?.logRetention;
+  const retention = useLogRetention(resource);
   return useMemo(() => {
     if (!retention) return undefined;
     const planName = (plan: string) => {
@@ -59,4 +53,29 @@ export function useLogRetentionBound(resource: string): RangeBound | undefined {
       hint,
     };
   }, [retention, t]);
+}
+
+/**
+ * Whether the resource's workspace plan is known to have no HTTP request logs
+ * (Hobby; Render: Pro and higher), read from the plan `logRetention` reports:
+ * the plan bex-api's request-log gate applies to the same resource (w3/122).
+ * False until the answer arrives and where no plan applies, where the
+ * refusal's own plan notice still answers a request read.
+ */
+export function useRequestLogsLocked(resource: string): boolean {
+  const plan = useLogRetention(resource)?.plan;
+  return plan != null && !proFeaturesPlan(plan);
+}
+
+/** The resource's `logRetention` answer: read once, and again on focus. */
+function useLogRetention(resource: string) {
+  const { data, refetch } = useQuery(LogRetentionDocument, {
+    variables: { resource },
+    skip: !resource,
+    errorPolicy: "all",
+  });
+  useRefetchOnFocus(
+    useCallback(() => (resource ? refetch() : undefined), [resource, refetch]),
+  );
+  return data?.logRetention;
 }

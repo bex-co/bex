@@ -31,6 +31,8 @@ const reads = vi.hoisted(
 const tails = vi.hoisted(() => [] as { enabled: boolean; text: string }[]);
 // The service the Logs tab belongs to: a web service has request logs.
 const served = vi.hoisted(() => ({ type: "web_service" }));
+// Whether its workspace plan has no request logs (Hobby, w3/122).
+const plan = vi.hoisted(() => ({ requestLogsLocked: false }));
 
 vi.mock("@/features/logs/hooks/use-log-history", () => ({
   useLogHistory: (
@@ -74,6 +76,8 @@ vi.mock("@/features/services/hooks/use-service-instances", () => ({
 // ApolloProvider, so the range picker stays unbounded.
 vi.mock("@/features/logs/hooks/use-log-retention", () => ({
   useLogRetentionBound: () => undefined,
+  useRequestLogsLocked: (resource: string) =>
+    resource !== "" && plan.requestLogsLocked,
 }));
 vi.mock("@/features/logs/hooks/use-log-label-values", () => ({
   useLogLabelDiscovery: () => ({ values: [], resolved: false }),
@@ -126,6 +130,7 @@ beforeEach(() => {
   reads.length = 0;
   tails.length = 0;
   served.type = "web_service";
+  plan.requestLogsLocked = false;
 });
 
 describe("service Logs follows navigation it did not write (w4/m204)", () => {
@@ -270,14 +275,60 @@ describe("a web service's Logs opens on Application logs (w3/101)", () => {
     expect(reads.at(-1)).toEqual({ type: "app", text: "", level: "" });
   });
 
+  // w3/122: Render draws no type dropdown for a resource with one type.
   it.each(["background_worker", "private_service", "cron_job"])(
-    "keeps a %s, which has no request logs, on All logs",
+    "keeps a %s, which has no request logs, on All logs, with no type dropdown",
     async (type) => {
       served.type = type;
       renderAt("/services/srv-one/logs");
       await searchBox();
       expect(reads.at(-1)).toEqual({ type: "all", text: "", level: "" });
-      expect(typePicker()).toHaveTextContent("All logs");
+      expect(screen.queryByRole("combobox", { name: "Log type" })).toBeNull();
     },
   );
+});
+
+// w3/122: Render's dropdown disables a type outside its plan's tiers, and its
+// URL parser and opening selection skip a disabled type, so a request link on
+// a plan without request logs opens a web service's Application logs.
+describe("a web service's Logs on a plan without request logs (w3/122)", () => {
+  const typePicker = () => screen.getByRole("combobox", { name: "Log type" });
+
+  it.each([
+    ["names request", "/services/srv-one/logs?type=request"],
+    ["is Render's t=request", "/services/srv-one/logs?t=request"],
+    ["names no type", "/services/srv-one/logs"],
+  ])("opens a link that %s on Application logs", async (_, href) => {
+    plan.requestLogsLocked = true;
+    const router = renderAt(href);
+    await searchBox();
+    const opened = router.state.location.href;
+    expect(reads.map((read) => read.type)).not.toContain("request");
+    expect(reads.at(-1)).toEqual({ type: "app", text: "", level: "" });
+    expect(typePicker()).toHaveTextContent("Application logs");
+    await userEvent.click(typePicker());
+    expect(
+      screen.getByRole("option", { name: "Request logs" }),
+    ).toHaveAttribute("aria-disabled", "true");
+    expect(
+      screen.getByRole("option", { name: "Application logs" }),
+    ).not.toHaveAttribute("aria-disabled");
+    // Opening writes nothing: the link's own URL is left as it came.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 400)));
+    expect(reads.at(-1)).toEqual({ type: "app", text: "", level: "" });
+    expect(router.state.location.href).toBe(opened);
+  });
+
+  it("keeps a picked type out of reach of Request logs: All logs and back", async () => {
+    plan.requestLogsLocked = true;
+    const router = renderAt("/services/srv-one/logs?type=request");
+    await searchBox();
+    await userEvent.click(typePicker());
+    await userEvent.click(screen.getByRole("option", { name: "All logs" }));
+    await waitFor(() =>
+      expect(reads.at(-1)).toEqual({ type: "all", text: "", level: "" }),
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 400)));
+    expect(router.state.location.search).toEqual({});
+  });
 });

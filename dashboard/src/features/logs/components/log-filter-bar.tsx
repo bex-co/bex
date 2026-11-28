@@ -1,4 +1,5 @@
-import { type ReactNode, type Ref, useState } from "react";
+import { type ReactNode, type Ref, useId, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Search, SlidersHorizontal } from "lucide-react";
 import {
   Select,
@@ -22,8 +23,15 @@ import { useIsMobile } from "@/common/hooks/use-mobile";
 import {
   LOG_FILTER_BAR_CLASS,
   LOG_FILTERS_BUTTON_CLASS,
+  LOG_SEARCH_ALONE_CLASS,
   LOG_SELECT_WIDTH_CLASS,
 } from "./log-toolbar-layout";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/common/components/ui/tooltip";
+import { cn } from "@/common/lib/utils/utils";
 import { Badge } from "@/common/components/ui/badge";
 import { RemovableChip } from "@/common/components/removable-chip";
 import {
@@ -139,6 +147,11 @@ interface LogFilterBarProps {
    * filters, as Render generates request logs for web services only (w4/613).
    */
   servesRequests?: boolean;
+  /**
+   * True on a plan without HTTP request logs (Hobby): Request logs is listed
+   * disabled, behind Render's upgrade tooltip (w3/122).
+   */
+  requestLogsLocked?: boolean;
   /** The search box, which the explorer's `/` shortcut focuses (w3/m509). */
   searchRef?: Ref<HTMLInputElement>;
   /** The explorer's Maximize and Options buttons (w3/m509), at the bar's
@@ -155,6 +168,7 @@ export function LogFilterBar({
   range = DEFAULT_LOG_RANGE,
   onRangeChange = () => undefined,
   servesRequests = true,
+  requestLogsLocked = false,
   searchRef,
   actions,
 }: LogFilterBarProps) {
@@ -288,31 +302,44 @@ export function LogFilterBar({
   // the first log line past the middle of the screen. It docks under the top bar
   // as whatever sits above it scrolls away, and the log fills the screen below
   // it (see useLogPanelHeight).
+  // Render's type dropdown (w3/122): a web service lists All logs over its
+  // Application and Request logs, and a private service, worker or cron job,
+  // whose one type is its application logs, has no dropdown. Its search
+  // takes the type's column on a phone.
   return (
     <div data-log-dock="" className={LOG_FILTER_BAR_CLASS}>
-      <Select
-        value={filters.type}
-        onValueChange={(v) => onChange({ type: v as LogTypeFilter })}
-      >
-        <SelectTrigger
-          size="sm"
-          className={LOG_SELECT_WIDTH_CLASS}
-          aria-label={t("logs.typeLabel")}
+      {servesRequests ? (
+        <Select
+          value={filters.type}
+          onValueChange={(v) => onChange({ type: v as LogTypeFilter })}
         >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {LOG_TYPE_FILTERS.filter(
-            (f) => servesRequests || f !== LOG_TYPE_REQUEST,
-          ).map((f) => (
-            <SelectItem key={f} value={f}>
-              {t(TYPE_LABEL_KEYS[f])}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+          <SelectTrigger
+            size="sm"
+            className={LOG_SELECT_WIDTH_CLASS}
+            aria-label={t("logs.typeLabel")}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {LOG_TYPE_FILTERS.map((f) =>
+              f === LOG_TYPE_REQUEST && requestLogsLocked ? (
+                <LockedRequestLogsItem key={f} />
+              ) : (
+                <SelectItem key={f} value={f}>
+                  {t(TYPE_LABEL_KEYS[f])}
+                </SelectItem>
+              ),
+            )}
+          </SelectContent>
+        </Select>
+      ) : null}
 
-      <div className="relative min-w-48 flex-1 max-sm:min-w-0">
+      <div
+        className={cn(
+          "relative min-w-48 flex-1 max-sm:min-w-0",
+          !servesRequests && LOG_SEARCH_ALONE_CLASS,
+        )}
+      >
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           ref={searchRef}
@@ -415,6 +442,62 @@ export function LogFilterBar({
         </div>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Request logs on a plan without them (w3/122), as Render's dropdown lists a
+ * type outside its plan's tiers: disabled, and hovering it shows "Requires a
+ * Pro plan or higher. Upgrade your plan", the link opening the plan page and
+ * coming back here (Render's `/billing/update-plan` with `afterPlanUpdate`).
+ * A disabled item takes no pointer, so the row around it is the tooltip's
+ * trigger, and a tap opens it too, as a touch screen has no hover. The option
+ * is described by the same words for a screen reader.
+ */
+function LockedRequestLogsItem() {
+  const { t } = useTranslations();
+  const [open, setOpen] = useState(false);
+  const reasonId = useId();
+  return (
+    <Tooltip open={open} onOpenChange={setOpen}>
+      <TooltipTrigger asChild>
+        {/* eslint-disable-next-line jsx-a11y-x/click-events-have-key-events,jsx-a11y-x/no-static-element-interactions -- a tap opens the tooltip a touch screen cannot hover; the select moves the keyboard between its options alone, and the option carries the same words as its description */}
+        <div
+          onClick={(event) => {
+            // Opens on a tap; the trigger's own click would close it.
+            event.preventDefault();
+            setOpen(true);
+          }}
+        >
+          <SelectItem
+            value={LOG_TYPE_REQUEST}
+            disabled
+            aria-describedby={reasonId}
+          >
+            {t(TYPE_LABEL_KEYS[LOG_TYPE_REQUEST])}
+          </SelectItem>
+          <span id={reasonId} className="sr-only">
+            {t("logs.typeRequestPlanRequired")}
+          </span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="right" className="max-w-64">
+        {t("logs.typeRequestPlanRequired")}{" "}
+        <Link
+          to="/billing/update-plan"
+          state={(previous) => ({
+            ...previous,
+            afterPlanUpdate:
+              typeof window === "undefined"
+                ? undefined
+                : window.location.pathname,
+          })}
+          className="underline underline-offset-2"
+        >
+          {t("logs.typeRequestUpgrade")}
+        </Link>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 

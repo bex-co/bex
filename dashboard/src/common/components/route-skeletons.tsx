@@ -177,6 +177,7 @@ import {
   LOG_FILTER_BAR_CLASS,
   LOG_FILTERS_BUTTON_CLASS,
   LOG_ICON_BUTTON_CLASS,
+  LOG_SEARCH_ALONE_CLASS,
   LOG_SELECT_WIDTH_CLASS,
 } from "@/features/logs/components/log-toolbar-layout";
 import { useOpenDocked } from "@/features/logs/hooks/use-open-docked";
@@ -3265,10 +3266,15 @@ export function ServiceEventsSkeleton() {
   );
 }
 
-export function ServiceLogsSkeleton() {
+export function ServiceLogsSkeleton({
+  servesRequests = true,
+}: {
+  /** False for a private service, worker or cron job: no type dropdown. */
+  servesRequests?: boolean;
+}) {
   return (
     <PendingFrame route="service-logs">
-      <ServiceLogsBodySkeleton />
+      <ServiceLogsBodySkeleton servesRequests={servesRequests} />
     </PendingFrame>
   );
 }
@@ -3282,9 +3288,15 @@ const LOG_CONTROL = "h-8 max-lg:h-11 pointer-coarse:h-11";
  * Maximize and Options at the end, w3/m509), then the log panel at its
  * screen-filling height. The route's pending frame and the tab's
  * own hold (while it checks the service is not a static site) both show it,
- * so the bar never appears late above a panel that then drops.
+ * so the bar never appears late above a panel that then drops. A service
+ * with one log type has no type dropdown, and its search takes that column
+ * on a phone (w3/122).
  */
-export function ServiceLogsBodySkeleton() {
+export function ServiceLogsBodySkeleton({
+  servesRequests = true,
+}: {
+  servesRequests?: boolean;
+}) {
   const frameRef = useRef<HTMLDivElement>(null);
   useOpenDocked(frameRef);
   return (
@@ -3294,9 +3306,15 @@ export function ServiceLogsBodySkeleton() {
         data-log-dock=""
         className={LOG_FILTER_BAR_CLASS}
       >
-        <Skeleton className={cn(LOG_SELECT_WIDTH_CLASS, LOG_CONTROL)} />
+        {servesRequests ? (
+          <Skeleton className={cn(LOG_SELECT_WIDTH_CLASS, LOG_CONTROL)} />
+        ) : null}
         <Skeleton
-          className={cn("min-w-48 flex-1 max-sm:min-w-0", LOG_CONTROL)}
+          className={cn(
+            "min-w-48 flex-1 max-sm:min-w-0",
+            !servesRequests && LOG_SEARCH_ALONE_CLASS,
+            LOG_CONTROL,
+          )}
         />
         <Skeleton className={cn(LOG_SELECT_WIDTH_CLASS, LOG_CONTROL)} />
         <Skeleton
@@ -4748,7 +4766,11 @@ export function ServiceRouteContentSkeleton({
     case "events":
       return <ServiceEventsSkeleton />;
     case "logs":
-      return <ServiceLogsSkeleton />;
+      return (
+        <ServiceLogsSkeleton
+          servesRequests={serviceType == null || publiclyRoutable(serviceType)}
+        />
+      );
     case "metrics":
       return (
         <ServiceMetricsSkeleton

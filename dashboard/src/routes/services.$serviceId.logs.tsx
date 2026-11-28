@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { serviceTabHead } from "@/features/services/lib/service-tab-head";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, getRouteApi } from "@tanstack/react-router";
 import { LogViewer } from "@/features/logs/components/log-viewer";
 import { LogsGate } from "@/features/capabilities/components/logs-gate";
 import { NonStaticRoute } from "@/features/services/components/non-static-route";
@@ -18,6 +18,7 @@ import {
 import { logRangeToSearch, type LogRange } from "@/features/logs/lib/log-range";
 import type { LogFilters, LogLine } from "@/features/logs/types";
 import { useServer } from "@/features/services/hooks/use-server";
+import { useCachedServiceType } from "@/features/services/hooks/use-cached-service-type";
 import { useServiceInstances } from "@/features/services/hooks/use-service-instances";
 import { publiclyRoutable } from "@/features/services/lib/service-type";
 import {
@@ -28,7 +29,7 @@ import {
 export const Route = createFileRoute("/services/$serviceId/logs")({
   head: serviceTabHead("services.navLogs", "/services/$serviceId"),
   component: RouteComponent,
-  pendingComponent: ServiceLogsSkeleton,
+  pendingComponent: ServiceLogsPending,
   validateSearch: parseLogSearch,
   // NOTE: no `search.middlewares` alias-strip here, deliberately — a
   // middleware rewrites the URL during hydration for alias-carrying deep
@@ -36,6 +37,28 @@ export const Route = createFileRoute("/services/$serviceId/logs")({
   // (observed live, w7/m42). The aliases instead leave the URL on the first
   // interaction, via `write`'s CLEARED_LOG_SEARCH spread below.
 });
+
+// The frames take the bar's shape from the service's type: a private
+// service, worker or cron job has no type dropdown (w3/122). The route's
+// frame reads the service the parent loaded, the tab's own hold the cache.
+function ServiceLogsPending() {
+  const parent = getRouteApi("/services/$serviceId").useLoaderData();
+  const type = parent?.state === "ready" ? parent.resource.type : null;
+  return (
+    <ServiceLogsSkeleton
+      servesRequests={type == null || publiclyRoutable(type)}
+    />
+  );
+}
+
+function ServiceLogsLoading({ serviceId }: { serviceId: string }) {
+  const type = useCachedServiceType(serviceId);
+  return (
+    <ServiceLogsBodySkeleton
+      servesRequests={type == null || publiclyRoutable(type)}
+    />
+  );
+}
 
 function RouteComponent() {
   const { serviceId } = Route.useParams();
@@ -68,7 +91,7 @@ function RouteComponent() {
     <NonStaticRoute
       serviceId={serviceId}
       holdWhileLoading
-      loadingFallback={<ServiceLogsBodySkeleton />}
+      loadingFallback={<ServiceLogsLoading serviceId={serviceId} />}
     >
       <ServiceLogsPage
         serviceId={serviceId}

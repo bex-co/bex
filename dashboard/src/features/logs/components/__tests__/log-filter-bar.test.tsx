@@ -38,6 +38,13 @@ vi.mock("../../hooks/use-log-label-values", () => ({
   useLogLabelValues: (_resource: string, label: string) => discovered(label),
 }));
 
+// The locked Request logs tooltip links to the plan page (w3/122); render the
+// router Link as its anchor.
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  Link: (await import("@/test/mocks/router-link")).PlainLink,
+}));
+
 // The plan's log window (w9/m389) is its own query; the bar asks for it.
 const retention: { bound: RangeBound | undefined } = { bound: undefined };
 vi.mock("../../hooks/use-log-retention", () => ({
@@ -49,6 +56,7 @@ function renderBar(
     filters?: Partial<LogFilters>;
     liveTailDisabled?: boolean;
     servesRequests?: boolean;
+    requestLogsLocked?: boolean;
   } = {},
 ) {
   const onChange = vi.fn();
@@ -64,6 +72,7 @@ function renderBar(
         liveTailDisabled={over.liveTailDisabled}
         liveTailReasonId={over.liveTailDisabled ? "why" : undefined}
         servesRequests={over.servesRequests}
+        requestLogsLocked={over.requestLogsLocked}
       />
       <p id="why">the reason</p>
     </>,
@@ -337,11 +346,15 @@ it("keeps the log search uneditable until hydration (w4/m219)", async () => {
 // w4/613: a worker, cron job or private service gets no public requests, so
 // it is offered no request log type and no request-line filters.
 describe("LogFilterBar without request logs", () => {
-  it("offers no Request logs type and no method, status, path or host filter", async () => {
+  it("draws no type dropdown and no method, status, path or host filter (w3/122)", async () => {
     renderBar({ servesRequests: false });
-    await userEvent.click(screen.getByRole("combobox", { name: "Log type" }));
-    expect(screen.queryByRole("option", { name: /request/i })).toBeNull();
-    await userEvent.keyboard("{Escape}");
+    // Render's dropdown is not drawn for a resource with one log type.
+    expect(screen.queryByRole("combobox", { name: "Log type" })).toBeNull();
+    expect(screen.queryByText("Application logs")).toBeNull();
+    // Its search takes the type's column on a phone.
+    expect(
+      screen.getByLabelText("Search logs").parentElement!.className,
+    ).toContain("max-sm:col-span-2");
     await userEvent.click(screen.getByRole("button", { name: /filters/i }));
     expect(screen.getByText("Level")).toBeInTheDocument();
     expect(screen.getByText("Instance")).toBeInTheDocument();
@@ -367,6 +380,62 @@ describe("LogFilterBar without request logs", () => {
         host: "web.onbex.co",
       }),
     ).toEqual({ ...EMPTY_LOG_FILTERS, type: LOG_TYPE_APP, level: "error" });
+  });
+});
+
+// w3/122: Render's dropdown disables a type outside its plan's tiers behind
+// an upgrade tooltip (`Requires a Pro plan or higher.`, Upgrade your plan).
+describe("LogFilterBar on a plan without request logs", () => {
+  const upgradeWords = "Requires a Pro plan or higher.";
+
+  it("lists Request logs disabled, its tooltip linking to the plan page", async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderBar({ requestLogsLocked: true });
+    const picker = screen.getByRole("combobox", { name: "Log type" });
+    expect(
+      screen.getByLabelText("Search logs").parentElement!.className,
+    ).not.toContain("max-sm:col-span-2");
+    await user.click(picker);
+    expect(
+      screen
+        .getAllByRole("option")
+        .map((option) => [
+          option.textContent,
+          option.getAttribute("aria-disabled") === "true",
+        ]),
+    ).toEqual([
+      ["All logs", false],
+      ["Application logs", false],
+      ["Request logs", true],
+    ]);
+    const request = screen.getByRole("option", { name: "Request logs" });
+    expect(request).toHaveAccessibleDescription(upgradeWords);
+    // Hovering its row opens Render's tooltip.
+    await user.hover(request.parentElement!);
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip).toHaveTextContent(`${upgradeWords} Upgrade your plan`);
+    const upgrade = screen.getAllByRole("link", { name: "Upgrade your plan" });
+    expect(upgrade[0]).toHaveAttribute("href", "/billing/update-plan");
+    // Choosing it does nothing.
+    fireEvent.click(request);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("opens the tooltip on a tap, as a touch screen has no hover", async () => {
+    renderBar({ requestLogsLocked: true });
+    await userEvent.click(screen.getByRole("combobox", { name: "Log type" }));
+    const request = screen.getByRole("option", { name: "Request logs" });
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    fireEvent.click(request.parentElement!);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(upgradeWords);
+  });
+
+  it("keeps Request logs enabled where the plan has them or is unknown", async () => {
+    renderBar();
+    await userEvent.click(screen.getByRole("combobox", { name: "Log type" }));
+    expect(
+      screen.getByRole("option", { name: "Request logs" }),
+    ).not.toHaveAttribute("aria-disabled");
   });
 });
 

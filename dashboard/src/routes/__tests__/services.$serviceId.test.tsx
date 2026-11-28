@@ -197,6 +197,7 @@ vi.mock("@/features/services/hooks/use-service-instances", () => ({
 // ApolloProvider, so the range picker stays unbounded.
 vi.mock("@/features/logs/hooks/use-log-retention", () => ({
   useLogRetentionBound: () => undefined,
+  useRequestLogsLocked: () => false,
 }));
 // The filter bar's dropdowns discover values over Apollo — stub so this routing
 // test needs no ApolloProvider.

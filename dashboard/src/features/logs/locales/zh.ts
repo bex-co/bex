@@ -37,6 +37,16 @@ const zhLogs: Record<string, TranslationEntry> = {
     description:
       "Log-type filter option: request logs (Traefik access lines, from the durable store)",
   },
+  "logs.typeRequestPlanRequired": {
+    message: "需要 Pro 或更高套餐。",
+    description:
+      "Tooltip on the disabled Request logs option of a web service's Log type dropdown on a plan without request logs (Hobby), Render's words (w3/122); followed by the logs.typeRequestUpgrade link",
+  },
+  "logs.typeRequestUpgrade": {
+    message: "升级套餐",
+    description:
+      "Link after logs.typeRequestPlanRequired in the disabled Request logs option's tooltip; opens the plan page (Render's words, w3/122)",
+  },
   "logs.levelLabel": {
     message: "级别",
     description: "Accessible label for the log-level filter dropdown",

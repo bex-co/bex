@@ -23,6 +23,7 @@ import { LogEmptyState } from "./log-empty-state";
 import { useOpenDocked } from "../hooks/use-open-docked";
 import { Button } from "@/common/components/ui/button";
 import { useLogHistory } from "../hooks/use-log-history";
+import { useRequestLogsLocked } from "../hooks/use-log-retention";
 import {
   useLiveLogs,
   useNewLogsWatch,
@@ -35,6 +36,8 @@ import {
   EMPTY_LOG_FILTERS,
   LOG_PAGE_SIZE,
   LOG_TEXT_MODE_DISPLAY,
+  LOG_TYPE_APP,
+  LOG_TYPE_REQUEST,
   STRUCTURED_FILTER_KEYS,
   hasActiveLogFilters,
   hasLogSearch,
@@ -141,11 +144,17 @@ export function LogViewer({
   // of this pass: the history query reobserves while rendering, and the range
   // prop changes in the same pass, so one render with the source's filters
   // would query them against the destination's range.
-  let shown = state;
-  if (urlEcho.foreign) {
-    shown = viewFromUrl(urlFilters, servesRequests);
-    setState(shown);
+  // A plan without request logs (Hobby, w3/122) lists Request logs disabled,
+  // and Render's explorer skips a disabled type, so a `type=request` link, or
+  // a view the plan's answer reaches after it opened, shows Application logs.
+  const requestLogsLocked = useRequestLogsLocked(
+    servesRequests ? resource : "",
+  );
+  let shown = urlEcho.foreign ? viewFromUrl(urlFilters, servesRequests) : state;
+  if (requestLogsLocked && shown.filters.type === LOG_TYPE_REQUEST) {
+    shown = { ...shown, filters: { ...shown.filters, type: LOG_TYPE_APP } };
   }
+  if (shown !== state) setState(shown);
   const filters = servesRequests
     ? shown.filters
     : withoutRequestFilters(shown.filters);
@@ -520,6 +529,7 @@ export function LogViewer({
         range={range}
         onRangeChange={onRangeChange}
         servesRequests={servesRequests}
+        requestLogsLocked={requestLogsLocked}
         searchRef={attachSearch}
         actions={
           <LogExplorerActions

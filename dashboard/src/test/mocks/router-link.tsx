@@ -18,6 +18,7 @@ export function PlainLink({
   search: _search,
   preload: _preload,
   replace: _replace,
+  state: _state,
   ...anchor
 }: {
   to: string;
@@ -26,6 +27,7 @@ export function PlainLink({
   search?: unknown;
   preload?: unknown;
   replace?: boolean;
+  state?: unknown;
   children?: ReactNode;
 } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href">) {
   const path = Object.entries(params ?? {}).reduce(

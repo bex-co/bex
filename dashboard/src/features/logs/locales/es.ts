@@ -57,6 +57,16 @@ const esLogs: Record<string, TranslationEntry> = {
     description:
       "Log-type filter option: request logs (Traefik access lines, from the durable store)",
   },
+  "logs.typeRequestPlanRequired": {
+    message: "Requiere el plan Pro o superior.",
+    description:
+      "Tooltip on the disabled Request logs option of a web service's Log type dropdown on a plan without request logs (Hobby), Render's words (w3/122); followed by the logs.typeRequestUpgrade link",
+  },
+  "logs.typeRequestUpgrade": {
+    message: "Mejora tu plan",
+    description:
+      "Link after logs.typeRequestPlanRequired in the disabled Request logs option's tooltip; opens the plan page (Render's words, w3/122)",
+  },
   "logs.levelLabel": {
     message: "Nivel",
     description: "Accessible label for the log-level filter dropdown",
