@@ -19,11 +19,15 @@ const READER_EVENTS = ["wheel", "touchstart", "keydown", "pointerdown"];
  * hash means (a Key Value instance's Render-shaped `#compute` is its `#plan`
  * card).
  *
- * Cards above the target can still change height once their own reads land
- * (a skeleton taller than its card), which a browser corrects for a real
- * fragment but not for an alias (Billing's `#free-usage`, w3/m707), so the
- * card is scrolled to again whenever its ancestors resize, until the reader
- * scrolls, types or taps, or the wait runs out.
+ * Cards above and below the target can still change height once their own
+ * reads land (a skeleton taller than its card, Billing's `#free-usage`,
+ * w3/m707), and a page too short to bring the card up when it is first
+ * scrolled to grows later (a Postgres Info page's Access control and SQL
+ * console, its Metrics charts under `#insights`, w3/120). A browser corrects
+ * neither for a card it did not scroll to itself, so the card is scrolled to
+ * again whenever its ancestors resize, until the wait runs out. Once the
+ * reader scrolls, types or taps, before the card is reached or after, the
+ * scroll position is theirs, as a browser leaves a fragment alone then.
  */
 export function useScrollToHashedCard(
   pathname: string,
@@ -36,17 +40,42 @@ export function useScrollToHashedCard(
   // read refetches); a new hash or leaving the page ends it, and a page
   // effects run on again (React's development double run) scrolls again.
   const holding = useRef<(() => void) | null>(null);
+  // Set by the reader's first scroll, key or tap under this hash.
+  const readerTookOver = useRef(false);
   const id = Object.hasOwn(aliases, hash) ? aliases[hash] : hash;
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    readerTookOver.current = false;
+    if (!hash) return;
+    const takeOver = () => {
+      readerTookOver.current = true;
+      holding.current?.();
+      unlisten();
+    };
+    const unlisten = () => {
+      for (const event of READER_EVENTS) {
+        window.removeEventListener(event, takeOver, true);
+      }
+    };
+    for (const event of READER_EVENTS) {
+      window.addEventListener(event, takeOver, {
+        capture: true,
+        passive: true,
+      });
+    }
+    return () => {
+      unlisten();
       holding.current?.();
       holding.current = null;
-    },
-    [pathname, hash],
-  );
+    };
+  }, [pathname, hash]);
   useEffect(() => {
     const key = `${pathname}#${hash}`;
-    if (!ready || !id || (scrolledFor.current === key && holding.current)) {
+    if (
+      !ready ||
+      !id ||
+      readerTookOver.current ||
+      (scrolledFor.current === key && holding.current)
+    ) {
       return;
     }
     const scrollTo = (card: HTMLElement) => {
@@ -63,7 +92,7 @@ export function useScrollToHashedCard(
       const late = document.getElementById(id);
       if (!late) return;
       observer.disconnect();
-      scrollTo(late);
+      if (!readerTookOver.current) scrollTo(late);
     });
     observer.observe(document.body, { childList: true, subtree: true });
     const giveUp = window.setTimeout(
@@ -77,28 +106,20 @@ export function useScrollToHashedCard(
   }, [pathname, hash, id, ready]);
 }
 
-/** Scroll `card` back into view whenever an ancestor resizes, until the
- *  reader takes over or the wait runs out; returns the stop. */
+/** Scroll `card` into view again whenever an ancestor resizes, until the
+ *  wait runs out; returns the stop. A resize that leaves the card where it
+ *  was still counts: the page may only now be tall enough to bring it up. */
 function keepInView(card: HTMLElement): () => void {
-  const settled = card.getBoundingClientRect().top;
-  const resizes = new ResizeObserver(() => {
-    if (Math.abs(card.getBoundingClientRect().top - settled) > 1) {
-      card.scrollIntoView();
-    }
-  });
+  const resizes = new ResizeObserver(() => card.scrollIntoView());
   for (let el = card.parentElement; el; el = el.parentElement) {
     resizes.observe(el);
   }
-  const stop = () => {
+  const timer = window.setTimeout(
+    () => resizes.disconnect(),
+    LATE_CARD_WAIT_MS,
+  );
+  return () => {
     resizes.disconnect();
     window.clearTimeout(timer);
-    for (const event of READER_EVENTS) {
-      window.removeEventListener(event, stop, true);
-    }
   };
-  const timer = window.setTimeout(stop, LATE_CARD_WAIT_MS);
-  for (const event of READER_EVENTS) {
-    window.addEventListener(event, stop, { capture: true, passive: true });
-  }
-  return stop;
 }

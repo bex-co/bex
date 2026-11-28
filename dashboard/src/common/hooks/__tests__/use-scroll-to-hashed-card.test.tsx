@@ -72,16 +72,44 @@ describe("useScrollToHashedCard", () => {
     expect(scrolled).toEqual([]);
   });
 
+  // w3/120: a reader who scrolls while the card is still loading keeps
+  // their place, as a browser stops chasing a fragment once they scroll.
+  it("leaves the page where the reader scrolled it before the card came", async () => {
+    await renderAt("/#storage");
+
+    window.dispatchEvent(new Event("wheel"));
+    await act(async () => showLate());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(scrolled).toEqual([]);
+  });
+
   // w3/m707: cards above the target change height once their own reads land
   // (Billing's plan and payment cards at 390px moved `#free-usage` 220px up).
-  describe("while the page above it settles", () => {
+  // w3/120: on a Postgres database's Info page, Access control's ready card
+  // outgrows its 240px reserve above `#sql-console` and `#danger-zone`.
+  describe("while the page around it settles", () => {
+    // One scroller in one dimension: the card's offset in the page, how far
+    // the page is scrolled and how far it can be. scrollIntoView brings the
+    // card to the top, or as near as the page's end allows.
+    const page = { card: 0, scrollTop: 0, maxScroll: 0 };
+    const cardTop = () => page.card - page.scrollTop;
     let resized: () => void = () => {};
-    let top = 0;
     const realObserver = global.ResizeObserver;
 
+    /** Cards grow by `above` px over the card and `below` px under it. The
+     *  browser's scroll anchoring holds the card where it is on screen when
+     *  `anchored`, else the content above it, which pushes the card down. */
+    function grow(above: number, below: number, anchored = false) {
+      page.card += above;
+      page.maxScroll += above + below;
+      if (anchored) page.scrollTop += above;
+      resized();
+    }
+
     beforeEach(() => {
+      // The page is too short at first: the card ends 300px down, at its end.
+      Object.assign(page, { card: 1000, scrollTop: 0, maxScroll: 700 });
       resized = () => {};
-      top = 0;
       global.ResizeObserver = class {
         constructor(callback: ResizeObserverCallback) {
           resized = () => callback([], this as unknown as ResizeObserver);
@@ -92,8 +120,12 @@ describe("useScrollToHashedCard", () => {
           resized = () => {};
         }
       } as unknown as typeof ResizeObserver;
+      Element.prototype.scrollIntoView = vi.fn(function (this: Element) {
+        scrolled.push(this.id);
+        page.scrollTop = Math.min(page.card, page.maxScroll);
+      });
       vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
-        () => ({ top }) as DOMRect,
+        () => ({ top: cardTop() }) as DOMRect,
       );
     });
 
@@ -102,30 +134,27 @@ describe("useScrollToHashedCard", () => {
       vi.restoreAllMocks();
     });
 
-    it("scrolls the card back into view when the page moves it", async () => {
+    it("scrolls the card back up when a card above it grows", async () => {
       await renderAt("/#early");
-      scrolled.length = 0;
+      expect(cardTop()).toBe(300);
 
-      top = -220;
-      resized();
-      expect(scrolled).toEqual(["early"]);
+      grow(352, 800);
+      expect(cardTop()).toBe(0);
+    });
+
+    it("brings the card up once the page has grown tall enough", async () => {
+      await renderAt("/#early");
+
+      // Where it was, but the page can now bring it to the top.
+      grow(352, 800, true);
+      expect(cardTop()).toBe(0);
     });
 
     it("keeps holding through React's development double run of effects", async () => {
       await renderAt("/#early", true);
-      scrolled.length = 0;
 
-      top = -220;
-      resized();
-      expect(scrolled).toEqual(["early"]);
-    });
-
-    it("leaves a resize that did not move the card alone", async () => {
-      await renderAt("/#early");
-      scrolled.length = 0;
-
-      resized();
-      expect(scrolled).toEqual([]);
+      grow(352, 800);
+      expect(cardTop()).toBe(0);
     });
 
     it("hands the scroll position back once the reader scrolls", async () => {
@@ -133,9 +162,9 @@ describe("useScrollToHashedCard", () => {
       scrolled.length = 0;
 
       window.dispatchEvent(new Event("wheel"));
-      top = -220;
-      resized();
+      grow(352, 800);
       expect(scrolled).toEqual([]);
+      expect(cardTop()).toBe(652);
     });
   });
 });
