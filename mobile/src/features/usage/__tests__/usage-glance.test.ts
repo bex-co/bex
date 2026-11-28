@@ -177,4 +177,23 @@ describe("mobile usage glance", () => {
       "1 vCPU-h",
     );
   });
+
+  it("reads the billed storage capacity beside the used reading (w4/m713)", () => {
+    // A Postgres's provisioned capacity is the billed storage line from the
+    // switch; its used bytes stay a $0 reading. Both arrive in GB-seconds and
+    // both read in GB-h, adjacent in meter order.
+    expect(formatUsageTotal("storage_capacity_gb_seconds", 36_000)).toBe(
+      "10 GB-h",
+    );
+    expect(
+      aggregateTotals([
+        {
+          rows: [
+            { kind: "storage_capacity_gb_seconds", total: 36_000 },
+            { kind: "storage_gb_seconds", total: 7_200 },
+          ],
+        },
+      ]).map((row) => row.kind),
+    ).toEqual(["storage_gb_seconds", "storage_capacity_gb_seconds"]);
+  });
 });
