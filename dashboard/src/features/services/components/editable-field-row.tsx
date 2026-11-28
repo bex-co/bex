@@ -1,4 +1,11 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { ChevronDown, Loader2, Pencil } from "lucide-react";
 import { Badge } from "@/common/components/ui/badge";
 import { Skeleton } from "@/common/components/ui/skeleton";
@@ -15,6 +22,7 @@ import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { Combobox, type ComboboxOption } from "@/common/components/ui/combobox";
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useUnsavedChangesWarning } from "@/common/providers/unsaved-changes-context";
 
 export interface EditableFieldSelectOption {
   value: string;
@@ -147,8 +155,10 @@ export function EditableFieldRow({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [confirming, setConfirming] = useState(false);
+  const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const comboboxRef = useRef<HTMLDivElement>(null);
   const editButtonRef = useRef<HTMLButtonElement>(null);
   // Set only by an explicit Cancel/Escape so the post-render effect returns
   // focus to the restored pencil — never on mount, a server refresh, or a
@@ -186,6 +196,25 @@ export function EditableFieldRow({
   const isDirty = dirty ? dirty(normalized) : normalized !== value;
   const canSave = isDirty && validationError === null;
 
+  // An open row with a change it has not saved, and is not saving, holds a
+  // navigation to another path with Render's Discard unsaved changes? (w3/118);
+  // Keep editing returns to this control.
+  const variant = options ? "select" : comboboxOptions ? "combobox" : "input";
+  const control = useCallback(
+    (): HTMLElement | null =>
+      variant === "select"
+        ? triggerRef.current
+        : variant === "combobox"
+          ? (comboboxRef.current?.querySelector("input") ?? null)
+          : inputRef.current,
+    [variant],
+  );
+  useUnsavedChangesWarning(
+    editing && isDirty && !busy && !saving,
+    label,
+    control,
+  );
+
   function startEdit() {
     setDraft(value);
     setEditing(true);
@@ -200,7 +229,8 @@ export function EditableFieldRow({
 
   async function persist() {
     setConfirming(false);
-    const ok = await onSave(normalized);
+    setSaving(true);
+    const ok = await onSave(normalized).finally(() => setSaving(false));
     if (ok) setEditing(false);
   }
 
@@ -260,7 +290,7 @@ export function EditableFieldRow({
           </code>
         )}
         {comboboxOptions ? (
-          <div className="flex-1">
+          <div ref={comboboxRef} className="flex-1">
             <Combobox
               options={comboboxOptions}
               value={shown}

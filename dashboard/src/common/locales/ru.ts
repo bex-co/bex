@@ -1142,6 +1142,47 @@ const ruCommon: Record<string, TranslationEntry> = {
     description:
       "Accessible name and tooltip of the retry button on a Connect menu value that failed to load",
   },
+  "common.unsavedChangesTitle": {
+    message: "Сбросить несохранённые изменения?",
+    description:
+      "Title of the dialog that holds a navigation away from an edited, unsaved settings row (Render's Discard unsaved changes?, w3/118)",
+  },
+  "common.unsavedChangesBody": {
+    message:
+      "Вы изменили {fields}, но не сохранили изменения. Если уйти сейчас, изменения будут потеряны.",
+    description:
+      "That dialog's sentence; {fields} is common.unsavedChangesFields, in bold, naming the edited rows",
+  },
+  "common.unsavedChangesFields_one": {
+    message: "поле {list}",
+    description:
+      'The edited rows that dialog names, in bold; {list} is their labels joined as the language joins a list (Render: "the A field", "the A and B fields", "the A, B, and C fields")',
+  },
+  "common.unsavedChangesFields_few": {
+    message: "поля {list}",
+    description:
+      'The edited rows that dialog names, in bold; {list} is their labels joined as the language joins a list (Render: "the A field", "the A and B fields", "the A, B, and C fields")',
+  },
+  "common.unsavedChangesFields_many": {
+    message: "поля {list}",
+    description:
+      'The edited rows that dialog names, in bold; {list} is their labels joined as the language joins a list (Render: "the A field", "the A and B fields", "the A, B, and C fields")',
+  },
+  "common.unsavedChangesFields_other": {
+    message: "поля {list}",
+    description:
+      'The edited rows that dialog names, in bold; {list} is their labels joined as the language joins a list (Render: "the A field", "the A and B fields", "the A, B, and C fields")',
+  },
+  "common.unsavedChangesKeepEditing": {
+    message: "Продолжить редактирование",
+    description:
+      "That dialog's button that stays on the page and focuses the first edited field",
+  },
+  "common.unsavedChangesDiscard": {
+    message: "Сбросить",
+    description:
+      "That dialog's destructive button that leaves the page and drops the edits",
+  },
 };
 
 export default ruCommon;

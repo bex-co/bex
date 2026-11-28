@@ -1,8 +1,17 @@
 import { useContext, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import {
+  Outlet,
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
 import { ThemeProvider } from "@/common/providers/theme-provider";
+import { UnsavedChangesProvider } from "@/common/providers/unsaved-changes-provider";
 import { ThemeProviderContext } from "@/common/providers/theme-provider/context";
 import type { ThemeSettings } from "@/common/providers/theme-provider/settings";
 import { memoryStorage } from "@/test/mocks/storage";
@@ -393,5 +402,123 @@ describe("Account Settings ▸ Appearance (w3/m528, w3/m531)", () => {
     for (const index of [0, 1]) {
       expect(pending[index].parts).toEqual(ready[index].parts);
     }
+  });
+});
+
+// Render's root unsaved-changes warning holds a navigation away from a theme
+// row with an unsaved pick (w3/118).
+describe("Account Settings ▸ Appearance ▸ leaving an unsaved theme (w3/118)", () => {
+  function renderRoutes(settings: ThemeSettings) {
+    const root = createRootRoute({
+      component: () => (
+        <ThemeProvider>
+          <Account settings={settings} />
+          <UnsavedChangesProvider>
+            <Outlet />
+          </UnsavedChangesProvider>
+        </ThemeProvider>
+      ),
+    });
+    const router = createRouter({
+      routeTree: root.addChildren([
+        createRoute({
+          getParentRoute: () => root,
+          path: "/settings",
+          component: AppearanceCard,
+        }),
+        createRoute({
+          getParentRoute: () => root,
+          path: "/services",
+          component: () => <h1>Services</h1>,
+        }),
+      ]),
+      history: createMemoryHistory({ initialEntries: ["/settings"] }),
+    });
+    render(<RouterProvider router={router} />);
+    const leave = () =>
+      act(async () => {
+        router.history.push("/services");
+      });
+    return { router, leave };
+  }
+
+  it("asks before leaving a picked, unsaved Dashboard Theme; Keep editing returns to the select with the preview", async () => {
+    const user = userEvent.setup();
+    const { router, leave } = renderRoutes(LIGHT);
+    await screen.findByTestId("appearance-card");
+    const theme = row("Dashboard Theme");
+    await user.click(theme.edit()!);
+    await pick(user, theme.select, "Dark");
+    await leave();
+
+    const modal = await screen.findByRole("alertdialog");
+    expect(modal).toHaveTextContent(
+      "You've edited the Dashboard Theme field but haven't saved your changes. If you leave now, your changes will be lost.",
+    );
+    await user.click(
+      within(modal).getByRole("button", { name: "Keep editing" }),
+    );
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(router.state.location.pathname).toBe("/settings");
+    expect(html()).toHaveClass("dark");
+    await waitFor(() => expect(theme.select).toHaveFocus());
+    expect(theme.select).toHaveTextContent("Dark");
+  });
+
+  it("Discard leaves and puts the saved theme back, writing nothing", async () => {
+    const user = userEvent.setup();
+    const { router, leave } = renderRoutes(LIGHT);
+    await screen.findByTestId("appearance-card");
+    const theme = row("Dashboard Theme");
+    await user.click(theme.edit()!);
+    await pick(user, theme.select, "Dark");
+    await leave();
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Discard",
+      }),
+    );
+    expect(
+      await screen.findByRole("heading", { name: "Services" }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/services");
+    expect(html()).toHaveClass("light");
+    expect(html()).not.toHaveClass("dark");
+    expect(write).not.toHaveBeenCalled();
+  });
+
+  it("names both theme rows when both are picked and unsaved", async () => {
+    const user = userEvent.setup();
+    const { leave } = renderRoutes(LIGHT);
+    await screen.findByTestId("appearance-card");
+    const theme = row("Dashboard Theme");
+    await user.click(theme.edit()!);
+    await pick(user, theme.select, "Dark");
+    const log = row("Log Explorer Theme");
+    await user.click(log.edit()!);
+    await pick(user, log.select, "Light");
+    await leave();
+    expect(
+      (await screen.findByRole("alertdialog")).querySelector("strong"),
+    ).toHaveTextContent("the Dashboard Theme and Log Explorer Theme fields");
+  });
+
+  it("does not ask while a row is open on its saved theme, or while it saves", async () => {
+    const user = userEvent.setup();
+    write.mockImplementation(() => new Promise(() => {}));
+    const { router, leave } = renderRoutes(LIGHT);
+    await screen.findByTestId("appearance-card");
+    const log = row("Log Explorer Theme");
+    await user.click(log.edit()!);
+    const theme = row("Dashboard Theme");
+    await user.click(theme.edit()!);
+    await pick(user, theme.select, "Dark");
+    await user.click(theme.save()!);
+    await leave();
+    expect(
+      await screen.findByRole("heading", { name: "Services" }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/services");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 });

@@ -1077,6 +1077,32 @@ const jaCommon: Record<string, TranslationEntry> = {
     description:
       "Accessible name and tooltip of the retry button on a Connect menu value that failed to load",
   },
+  "common.unsavedChangesTitle": {
+    message: "保存されていない変更を破棄しますか？",
+    description:
+      "Title of the dialog that holds a navigation away from an edited, unsaved settings row (Render's Discard unsaved changes?, w3/118)",
+  },
+  "common.unsavedChangesBody": {
+    message:
+      "{fields}を編集しましたが、変更はまだ保存されていません。今移動すると、変更は失われます。",
+    description:
+      "That dialog's sentence; {fields} is common.unsavedChangesFields, in bold, naming the edited rows",
+  },
+  "common.unsavedChangesFields_other": {
+    message: "{list} フィールド",
+    description:
+      'The edited rows that dialog names, in bold; {list} is their labels joined as the language joins a list (Render: "the A field", "the A and B fields", "the A, B, and C fields")',
+  },
+  "common.unsavedChangesKeepEditing": {
+    message: "編集を続ける",
+    description:
+      "That dialog's button that stays on the page and focuses the first edited field",
+  },
+  "common.unsavedChangesDiscard": {
+    message: "破棄",
+    description:
+      "That dialog's destructive button that leaves the page and drops the edits",
+  },
 };
 
 export default jaCommon;

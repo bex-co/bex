@@ -12,6 +12,7 @@ Read without signing in, on 2026-11-20, from Render's public dashboard bundle (`
 - `localStorage-CPWZs5nN.js`: the browser copy.
 - `Logs-kRP_JevQ.js`, `Dropdown-D1gIrxMU.js`, `OverflowMenuItem-BCKAanA3.js`: how the log explorer, its dropdowns and its menus take a theme.
 - Re-read on 2026-11-25 for w3/097: `RowInput-vO6wbvrA.js`, `UserSettings-ZjtY3qzf.js` and `useUnsavedChangesWarning-DVhBkOwh.js`, whose provider `index-BPMVVQol.js` mounts at the app's root.
+- Re-read on 2026-11-27 for w3/118 from `index-D5V4ZgbE.js`: `useUnsavedChangesWarning-CWnYFoGn.js` and `RowInput-TR9ESeRp.js`. A `RowInput` registers under its label while `editing && isDirty && !isSubmitting`. The provider holds a client navigation only when the `pathname` changes, names the registered fields `the A field`, `the A and B fields` or `the A, B, and C fields` in bold, and goes on by itself when a held navigation's rows have all unregistered. **Keep editing** and the modal's close reset the blocker and focus the first registered field (`document.getElementById(id)`); **Discard** (`kind: critical`) proceeds. `beforeunload` is prevented while any field is registered.
 
 ## Render's behaviour
 

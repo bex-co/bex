@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Loader2, Pencil } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import { Card } from "@/common/components/ui/card";
@@ -13,6 +13,7 @@ import { Switch } from "@/common/components/ui/switch";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils";
 import { useTheme } from "@/common/providers/theme-provider/hooks";
+import { useUnsavedChangesWarning } from "@/common/providers/unsaved-changes-context";
 import {
   LOG_THEME_SETTINGS,
   THEMES,
@@ -34,7 +35,9 @@ import {
  * saved choice in a select that stays shut until a ghost Edit opens it, with
  * Cancel and Save changes beneath. Only Save changes writes the account, and
  * reads Saving until the account answers; a refused save keeps the row open.
- * `onPreview` hears each pick, and null when Cancel ends the edit.
+ * `onPreview` hears each pick, and null when Cancel ends the edit. An unsaved
+ * pick holds a navigation to another path with Render's Discard unsaved
+ * changes? (w3/118).
  */
 function ThemeChoiceRow<T extends string>({
   label,
@@ -77,6 +80,12 @@ function ThemeChoiceRow<T extends string>({
     setEditing(next);
     onEditingChange?.(next);
   };
+  const control = useCallback(() => triggerRef.current, []);
+  useUnsavedChangesWarning(
+    editing && draft !== value && !saving,
+    label,
+    control,
+  );
   const save = async () => {
     setSaving(true);
     const saved = await onSave(draft);
@@ -170,10 +179,11 @@ function ThemeChoiceRow<T extends string>({
  * on the account, so every browser it signs in to opens in them. The two
  * themes change behind Edit and are written only by Save changes; Dashboard
  * Theme shows each pick on the page while it is edited, and Cancel, or
- * leaving the page unsaved, puts the saved theme back. High Contrast Mode is
- * written as it is switched, keeps Dashboard Theme as it is, and waits while
- * Dashboard Theme is being edited, as Render's does. The account menu's theme
- * submenu changes Dashboard Theme at once.
+ * leaving the page unsaved (after Discard unsaved changes?), puts the saved
+ * theme back. High Contrast Mode is written as it is switched, keeps
+ * Dashboard Theme as it is, and waits while Dashboard Theme is being edited,
+ * as Render's does. The account menu's theme submenu changes Dashboard Theme
+ * at once.
  */
 export function AppearanceCard() {
   const { t } = useTranslations();

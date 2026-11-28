@@ -1,5 +1,6 @@
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { RootProvider } from "@/common/providers/root-provider";
+import { UnsavedChangesProvider } from "@/common/providers/unsaved-changes-provider";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { PaymentSetupGate } from "@/features/onboarding/components/payment-setup-gate";
 import { EmailVerificationGate } from "@/features/onboarding/components/email-verification-gate";
@@ -37,6 +38,8 @@ export const RootComponent = () => {
   // usable. `AccountThemeSync` binds the signed-in account's theme to the
   // theme provider (w3/m531), so the account's stored theme wins over the
   // browser's copy and every change is written to the account.
+  // `UnsavedChangesProvider` is Render's root unsaved-changes warning (w3/118):
+  // a navigation away from an edited, unsaved settings row asks first.
   const chrome = useMatches({
     select: (matches) => matches.some((m) => m.staticData?.chrome),
   });
@@ -59,20 +62,22 @@ export const RootComponent = () => {
       initialWorkspaceId={workspaceId}
       onWorkspaceChange={invalidate}
     >
-      {chrome ? (
-        <EmailVerificationGate>
-          <AccountThemeSync />
-          <DashboardLayout>
-            <WorkspaceLoginGate>
-              <PaymentSetupGate>
-                <Outlet />
-              </PaymentSetupGate>
-            </WorkspaceLoginGate>
-          </DashboardLayout>
-        </EmailVerificationGate>
-      ) : (
-        <Outlet />
-      )}
+      <UnsavedChangesProvider>
+        {chrome ? (
+          <EmailVerificationGate>
+            <AccountThemeSync />
+            <DashboardLayout>
+              <WorkspaceLoginGate>
+                <PaymentSetupGate>
+                  <Outlet />
+                </PaymentSetupGate>
+              </WorkspaceLoginGate>
+            </DashboardLayout>
+          </EmailVerificationGate>
+        ) : (
+          <Outlet />
+        )}
+      </UnsavedChangesProvider>
       {import.meta.env.DEV && (
         <TanStackDevtools
           config={{
