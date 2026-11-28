@@ -48,11 +48,14 @@ export function useCachedServiceType(serviceId: string): string | null {
 
 /**
  * The service's name from the cache, which the header's loading frame lays
- * out invisibly so its first row wraps where the ready one does (w3/m555).
- * Null while no cached read has named it.
+ * out invisibly so its first row wraps where the ready one does (w3/m555),
+ * and the sidebar and breadcrumb show while the read loads (w3/119). It is
+ * the name the ready view shows (`toServiceView`): a renamed service's
+ * display name, else its name. Null while no cached read has named it.
  */
 export function useCachedServiceName(serviceId: string): string | null {
-  return useCachedService(serviceId)?.name ?? null;
+  const service = useCachedService(serviceId);
+  return service?.displayName?.trim() || service?.name || null;
 }
 
 /** The source facts the service header draws beside its Service ID. */

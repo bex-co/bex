@@ -31,6 +31,17 @@ vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: () => serverState,
 }));
 
+// What the cache already holds — the workspace's service list after a click
+// from it — which the header's loading frame reads too (w3/119).
+const cached: { name: string | null; type: string | null } = {
+  name: null,
+  type: null,
+};
+vi.mock("@/features/services/hooks/use-cached-service-type", () => ({
+  useCachedServiceName: () => cached.name,
+  useCachedServiceType: () => cached.type,
+}));
+
 function renderAt(pathname: string) {
   const rootRoute = createRootRoute();
   const serviceRoute = createRoute({
@@ -57,18 +68,20 @@ beforeEach(() => {
     type: "web_service",
   } as ServiceView;
   serverState.loading = false;
+  cached.name = null;
+  cached.type = null;
 });
 
 // w9/m621, w9/145: Render's role table gives the Billing role neither "View
 // service events" nor "View service metrics", and neither a Viewer nor a
 // Billing member "View service logs"; a Contributor has all three.
-describe("ServiceSidebar per role (w9/m621, w9/145)", () => {
-  const linkNames = () =>
-    screen
-      .getAllByRole("link")
-      .map((link) => link.textContent)
-      .filter(Boolean);
+const linkNames = () =>
+  screen
+    .getAllByRole("link")
+    .map((link) => link.textContent)
+    .filter(Boolean);
 
+describe("ServiceSidebar per role (w9/m621, w9/145)", () => {
   it("drops Deploys, Events, Logs and Metrics for a Billing member once the role is confirmed", async () => {
     vi.mocked(useCapabilities).mockReturnValue(billingCapabilities());
     renderAt("/services/srv-1/settings");
@@ -312,5 +325,90 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
       "Redirects/Rewrites",
       "Headers",
     ]);
+  });
+});
+
+// w3/119: a click from the service list paints the header's frame from the
+// list cache while the `Server` read loads; the sidebar beside it must already
+// be the ready page's, not the id over a type-less nav.
+describe("ServiceSidebar while the read loads (w3/119)", () => {
+  // The title is the paragraph between the back link and the nav.
+  const titleText = () =>
+    screen
+      .getByRole("link", { name: "Dashboard" })
+      .parentElement?.querySelector("p")?.textContent;
+
+  async function pendingThenReady(
+    pathname: string,
+    service: { name: string; type: string },
+  ) {
+    serverState.service = null;
+    serverState.loading = true;
+    cached.name = service.name;
+    cached.type = service.type;
+    const view = renderAt(pathname);
+    await screen.findByRole("link", { name: "Settings" });
+    const pending = { title: titleText(), links: linkNames() };
+
+    view.unmount();
+    serverState.service = { id: "srv-1", ...service } as ServiceView;
+    serverState.loading = false;
+    renderAt(pathname);
+    await screen.findByRole("link", { name: "Settings" });
+    return { pending, ready: { title: titleText(), links: linkNames() } };
+  }
+
+  it.each([
+    [
+      "a cron job",
+      { name: "nightly-report", type: "cron_job" },
+      "/services/srv-1/runs",
+    ],
+    [
+      "a web service",
+      { name: "storefront-api", type: "web_service" },
+      "/services/srv-1/settings",
+    ],
+    [
+      "a static site",
+      { name: "docs-site", type: "static_site" },
+      "/services/srv-1/settings",
+    ],
+  ])(
+    "names %s and draws its nav from the cache, as the ready page does",
+    async (_label, service, pathname) => {
+      const { pending, ready } = await pendingThenReady(pathname, service);
+      expect(pending.title).toBe(service.name);
+      expect(pending).toEqual(ready);
+    },
+  );
+
+  it("keeps the type-less nav and the id when nothing is cached", async () => {
+    serverState.service = null;
+    serverState.loading = true;
+    renderAt("/services/srv-1/settings");
+
+    await screen.findByRole("link", { name: "Settings" });
+    expect(titleText()).toBe("srv-1");
+    expect(linkNames()).toEqual([
+      "Dashboard",
+      "Settings",
+      "Events",
+      "Logs",
+      "Metrics",
+      "Environment",
+    ]);
+  });
+
+  it("shows the id and no nav once the read settles on nothing, even with the service still in the list cache", async () => {
+    serverState.service = null;
+    serverState.loading = false;
+    cached.name = "deleted-api";
+    cached.type = "web_service";
+    renderAt("/services/srv-1/settings");
+
+    await screen.findByRole("link", { name: "Dashboard" });
+    expect(titleText()).toBe("srv-1");
+    expect(linkNames()).toEqual(["Dashboard"]);
   });
 });

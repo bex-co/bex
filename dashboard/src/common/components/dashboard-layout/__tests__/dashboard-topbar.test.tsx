@@ -16,6 +16,10 @@ import { HelpMenu } from "../dashboard-header";
 import type { ServiceView } from "@/features/services/types";
 
 const mocks = vi.hoisted(() => ({
+  // The `Server` read still in flight, and what the cache already names the
+  // service meanwhile (the workspace's list, after a click from it, w3/119).
+  serverLoading: false,
+  cachedName: null as string | null,
   service: {
     id: "srv-api",
     name: "storefront-api",
@@ -72,11 +76,15 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: () => ({
-    service: mocks.service as ServiceView,
-    loading: false,
+    service: mocks.serverLoading ? null : (mocks.service as ServiceView),
+    loading: mocks.serverLoading,
     error: undefined,
     refetch: vi.fn(async () => []),
   }),
+}));
+
+vi.mock("@/features/services/hooks/use-cached-service-type", () => ({
+  useCachedServiceName: () => mocks.cachedName,
 }));
 
 vi.mock("@/features/services/hooks/use-services", () => ({
@@ -201,6 +209,8 @@ function buildRouter(pathname: string, component: () => React.ReactNode) {
 beforeEach(() => {
   mocks.service.id = "srv-api";
   mocks.service.name = "storefront-api";
+  mocks.serverLoading = false;
+  mocks.cachedName = null;
 });
 
 describe("dashboard topbar navigation", () => {
@@ -249,6 +259,33 @@ describe("dashboard topbar navigation", () => {
     expect(
       screen.getByRole("menuitem", { name: "All resources" }),
     ).toHaveAttribute("href", "/");
+  });
+
+  // w3/119: the header's frame names the service from the list cache while
+  // its read loads; the service crumb must not read the id beside it.
+  it("names the service from the cache while its read loads, the id with nothing cached", async () => {
+    mocks.serverLoading = true;
+    mocks.cachedName = "storefront-api";
+    const view = render(
+      <RouterProvider
+        router={buildRouter("/services/srv-api/settings", DashboardBreadcrumbs)}
+      />,
+    );
+    expect(
+      await screen.findByRole("button", { name: /storefront-api/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("srv-api")).not.toBeInTheDocument();
+    view.unmount();
+
+    mocks.cachedName = null;
+    render(
+      <RouterProvider
+        router={buildRouter("/services/srv-api/settings", DashboardBreadcrumbs)}
+      />,
+    );
+    expect(
+      await screen.findByRole("button", { name: /srv-api/ }),
+    ).toBeInTheDocument();
   });
 
   it("lets the crumb buttons shrink so long labels truncate instead of overlapping Search (w4/374)", async () => {

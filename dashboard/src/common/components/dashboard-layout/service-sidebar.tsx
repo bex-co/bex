@@ -3,6 +3,10 @@ import { serviceNavGroups } from "@/features/services/components/service-nav";
 import { deriveServiceType } from "@/features/services/lib/service-type";
 import { useServiceBase } from "@/features/services/lib/service-base";
 import { useServer } from "@/features/services/hooks/use-server";
+import {
+  useCachedServiceName,
+  useCachedServiceType,
+} from "@/features/services/hooks/use-cached-service-type";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { isNavItemActive } from "./nav-active";
 import { ResourceSidebar } from "./resource-sidebar";
@@ -34,6 +38,16 @@ export function ServiceSidebar({ serviceId }: ServiceSidebarProps) {
   // not-found state, and a sidebar of dead links would contradict it. While
   // still loading, keep the nav (a legit id must not flash empty→full).
   const showNav = loading || service !== null;
+  // While the read loads, the cache the header's frame reads (the workspace's
+  // service list, after a click from it) already names and types the
+  // service, so the title and the nav are the ready page's from the first
+  // frame (w3/119). With nothing cached the nav stays type-less: a static
+  // site never flashes Deploys.
+  const pending = loading && service === null;
+  const cachedName = useCachedServiceName(serviceId);
+  const cachedType = useCachedServiceType(serviceId);
+  const name = service?.name ?? (pending ? cachedName : null) ?? serviceId;
+  const type = service?.type ?? (pending ? cachedType : null);
   // A Billing member views no service events, deploys or metrics (w9/m621),
   // and neither a Viewer nor a Billing member views logs (w9/145).
   const { denied } = useCapabilities();
@@ -41,11 +55,11 @@ export function ServiceSidebar({ serviceId }: ServiceSidebarProps) {
   const logsDenied = denied("can_view_logs");
 
   return (
-    <ResourceSidebar name={service?.name ?? serviceId}>
+    <ResourceSidebar name={name}>
       {showNav ? (
         <SidebarNavGroups
           groups={serviceNavGroups(
-            service ? deriveServiceType(service.type) : null,
+            type ? deriveServiceType(type) : null,
             base,
             { activityDenied, logsDenied },
           )}

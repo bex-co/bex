@@ -103,6 +103,33 @@ describe("useCachedServiceName (w3/m555)", () => {
     expect(read("srv-a")).toBe("nightly");
     expect(read("srv-other")).toBeNull();
   });
+
+  // w3/119: the sidebar and breadcrumb show it while the read loads, so it is
+  // the name the ready view shows (toServiceView), a rename's display name.
+  it("reads a renamed service's display name, as the ready page shows it", () => {
+    const read = setup(
+      (cache) =>
+        writeServices(cache, [
+          { id: "srv-a", type: "web_service", name: "block-eden-mono" },
+          {
+            id: "srv-b",
+            type: "web_service",
+            name: "block-eden-mono",
+            displayName: "eden-dash-v3",
+          },
+          {
+            id: "srv-c",
+            type: "web_service",
+            name: "plain",
+            displayName: "  ",
+          },
+        ]),
+      useCachedServiceName,
+    );
+    expect(read("srv-a")).toBe("block-eden-mono");
+    expect(read("srv-b")).toBe("eden-dash-v3");
+    expect(read("srv-c")).toBe("plain");
+  });
 });
 
 // w3/094: the header's loading frame draws a repository item only where the

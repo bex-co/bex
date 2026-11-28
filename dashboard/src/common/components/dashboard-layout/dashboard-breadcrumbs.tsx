@@ -39,6 +39,7 @@ import { useEnvironments } from "@/features/environments/hooks/use-environments"
 import { ENVIRONMENT_SETTINGS_ROUTE_ID } from "@/features/environments/lib/settings";
 import { useProjects } from "@/features/projects/hooks/use-projects";
 import { useServer } from "@/features/services/hooks/use-server";
+import { useCachedServiceName } from "@/features/services/hooks/use-cached-service-type";
 import { useServices } from "@/features/services/hooks/use-services";
 import { useDatabase } from "@/features/databases/hooks/use-database";
 import { useKeyValue } from "@/features/keyvalue/hooks/use-key-value";
@@ -122,7 +123,12 @@ export function DashboardBreadcrumbs() {
 
 function ServiceBreadcrumbs({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
-  const { service } = useServer(serviceId, { poll: false });
+  const { service, loading } = useServer(serviceId, { poll: false });
+  // While the read loads, the cached name the sidebar and the header's frame
+  // show, not the id (w3/119).
+  const pending = loading && service === null;
+  const cachedName = useCachedServiceName(serviceId);
+  const name = service?.name ?? (pending ? cachedName : null) ?? serviceId;
   const { services } = useServices({ poll: false });
   const { projects } = useProjects({ poll: false });
   const resolvedServiceId = service?.id ?? serviceId;
@@ -183,7 +189,7 @@ function ServiceBreadcrumbs({ serviceId }: { serviceId: string }) {
             className="min-w-0 max-w-48 shrink gap-1 px-2 font-medium"
           >
             <Globe2 className="shrink-0" />
-            <span className="truncate">{service?.name ?? serviceId}</span>
+            <span className="truncate">{name}</span>
             <ChevronDown className="shrink-0" />
           </Button>
         </DropdownMenuTrigger>
