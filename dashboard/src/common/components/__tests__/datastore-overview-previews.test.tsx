@@ -371,10 +371,12 @@ describe("Key Value Networking preview (w4/303)", () => {
     const readyContent = part(readyCard, "card-content");
     expect(content.className).toBe(readyContent.className);
 
-    // Status line, then the editor section, as in the ready card.
-    const [status, section] = [...content.children];
-    const [readyStatus, readySection] = [...readyContent.children];
+    // Status line, the higher levels of inbound IP rules (w4/m710), then the
+    // editor section, as in the ready card.
+    const [status, levels, section] = [...content.children];
+    const [readyStatus, readyLevels, readySection] = [...readyContent.children];
     expect(content.children).toHaveLength(readyContent.children.length);
+    expect(shape(levels)).toBe(shape(readyLevels));
     expect(readyStatus).toHaveClass("text-xs");
     expect(status).toHaveClass("text-xs");
     const statusLines = status.querySelectorAll('[data-slot="skeleton"]');

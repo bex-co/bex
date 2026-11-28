@@ -1,5 +1,6 @@
 import { Layers, Pencil, Trash2 } from "lucide-react";
 import { RuleRowSkeleton } from "@/common/components/ip-allow-list-editor";
+import { InboundIPLevelsSkeleton } from "@/common/components/inbound-ip-levels";
 import {
   ReservedButton,
   ReservedText,
@@ -149,7 +150,8 @@ function ChoiceCardSkeleton({
  * field and Edit, the two choice cards with both options and Edit (the
  * Connections card's plan gate below Pro), the Environment Groups search over
  * two rows, the Networking editor over the seeded allow-all pair (its reset
- * below Scale), and Delete Environment. Static copy is reserved with its own
+ * below Scale) under the workspace level's skeleton (w4/m710), and Delete
+ * Environment. Static copy is reserved with its own
  * translated text; nothing the environment decides is shown.
  */
 export function EnvironmentSettingsCardsSkeleton({
@@ -239,6 +241,11 @@ export function EnvironmentSettingsCardsSkeleton({
           <DescriptionBar>{t("environments.ipAllowListLabel")}</DescriptionBar>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* The workspace's rules, which also apply (w4/m710). */}
+          <InboundIPLevelsSkeleton
+            environment={false}
+            ownType={t("common.inboundIpLevelEnvironment")}
+          />
           {belowScale ? (
             <div className="space-y-2">
               <p className="relative text-xs">

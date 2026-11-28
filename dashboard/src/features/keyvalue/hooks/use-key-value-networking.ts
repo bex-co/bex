@@ -85,6 +85,8 @@ export function useKeyValueNetworking(id: string) {
   return {
     allowList,
     isPublic: keyValue?.public,
+    // The environment whose inbound IP rules also apply (w4/m710).
+    environmentId: keyValue?.environmentId ?? null,
     // Enabling external access restarts the store (its first enable, w4/m233).
     externalAccessRestarts: keyValue?.externalAccessRestarts === true,
     loading: allowListQuery.loading,

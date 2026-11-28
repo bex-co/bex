@@ -24,6 +24,21 @@ query Environments($projectId: String!) {
   }
 }
 
+# One environment's inbound IP rules, read by every Networking panel of a
+# resource in it (w4/m710): Render's "Affected by:" Environment level, and
+# the projectId its View rules link needs. Normalized by id, so it shares the
+# environments list's cache entry.
+query EnvironmentIpAllowList($id: String!) {
+  environment(id: $id) {
+    id
+    projectId
+    ipAllowListEntries {
+      cidrBlock
+      description
+    }
+  }
+}
+
 mutation CreateEnvironment($name: String!, $projectId: String!) {
   createEnvironment(name: $name, projectId: $projectId) {
     ...EnvironmentFields

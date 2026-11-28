@@ -15,7 +15,14 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { ConnectionField } from "@/common/components/connection-field";
 import { IPAllowListEditor } from "@/common/components/ip-allow-list-editor";
-import { ipAllowListEntryKey } from "@/common/lib/ip-allow-list";
+import {
+  InboundIPLevels,
+  InboundIPLevelsSkeleton,
+} from "@/common/components/inbound-ip-levels";
+import {
+  ipAllowListEntryKey,
+  type IPAllowListEntryDraft,
+} from "@/common/lib/ip-allow-list";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAccessControl } from "@/features/databases/hooks/use-access-control";
 import { isReservedPostgresRole } from "@/features/databases/lib/identifiers";
@@ -97,6 +104,7 @@ function AllowListSection({
   disabledReason: string | undefined;
 }) {
   const { t } = useTranslations();
+  const [draft, setDraft] = useState<IPAllowListEntryDraft[] | null>(null);
   return (
     <section className="space-y-2">
       <h4 className="text-sm font-medium">{t("databases.accessAllowList")}</h4>
@@ -105,8 +113,24 @@ function AllowListSection({
           {t("databases.accessAllowListInternalOnly")}
         </p>
       ) : null}
+      {/* Render's Networking view: the workspace's and the environment's
+          rules also apply, a primary's only (w4/m710). */}
+      {access.allowListPending ? (
+        <InboundIPLevelsSkeleton
+          environment={false}
+          ownType={t("common.inboundIpTypePostgres")}
+        />
+      ) : (
+        <InboundIPLevels
+          environmentId={access.environmentId}
+          saved={access.allowList}
+          draft={draft ?? access.allowList}
+          ownType={t("common.inboundIpTypePostgres")}
+        />
+      )}
       <IPAllowListEditor
         entries={access.allowList}
+        onDraftChange={setDraft}
         // A dashboard-created database is public by default, so its unknown
         // list previews the effective allow-all pair (0.0.0.0/0, ::/0).
         pendingRows={access.allowListPending ? 2 : undefined}

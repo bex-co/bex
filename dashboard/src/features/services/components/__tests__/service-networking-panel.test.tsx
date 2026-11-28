@@ -44,6 +44,7 @@ describe("ServiceNetworkingPanel", () => {
     render(
       <ServiceNetworkingPanel
         serviceId="srv-web"
+        serviceType="web_service"
         currentAllowList={[
           { cidrBlock: "203.0.113.0/24", description: "office" },
         ]}
@@ -62,6 +63,7 @@ describe("ServiceNetworkingPanel", () => {
     render(
       <ServiceNetworkingPanel
         serviceId="srv-web"
+        serviceType="web_service"
         currentAllowList={allowAll}
       />,
     );
@@ -75,7 +77,11 @@ describe("ServiceNetworkingPanel", () => {
     mocks.plan = "hobby";
     const user = userEvent.setup();
     render(
-      <ServiceNetworkingPanel serviceId="srv-web" currentAllowList={[]} />,
+      <ServiceNetworkingPanel
+        serviceId="srv-web"
+        serviceType="web_service"
+        currentAllowList={[]}
+      />,
     );
     expect(screen.getByText(blocked)).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Allow all traffic" }));
@@ -89,6 +95,7 @@ describe("ServiceNetworkingPanel", () => {
     render(
       <ServiceNetworkingPanel
         serviceId="srv-web"
+        serviceType="web_service"
         currentAllowList={allowAll}
       />,
     );
@@ -102,6 +109,7 @@ describe("ServiceNetworkingPanel", () => {
     render(
       <ServiceNetworkingPanel
         serviceId="srv-web"
+        serviceType="web_service"
         currentAllowList={undefined}
       />,
     );
@@ -118,6 +126,7 @@ describe("ServiceNetworkingPanel", () => {
     const { unmount } = render(
       <ServiceNetworkingPanel
         serviceId="srv-web"
+        serviceType="web_service"
         currentAllowList={[{ cidrBlock: "0.0.0.0/0", description: "" }]}
       />,
     );
@@ -126,6 +135,7 @@ describe("ServiceNetworkingPanel", () => {
     render(
       <ServiceNetworkingPanel
         serviceId="srv-web"
+        serviceType="web_service"
         currentAllowList={[{ cidrBlock: "::/0", description: "" }]}
       />,
     );
@@ -137,7 +147,11 @@ describe("ServiceNetworkingPanel", () => {
   it("says a service with no rule is blocked", () => {
     mocks.plan = "scale";
     render(
-      <ServiceNetworkingPanel serviceId="srv-web" currentAllowList={[]} />,
+      <ServiceNetworkingPanel
+        serviceId="srv-web"
+        serviceType="web_service"
+        currentAllowList={[]}
+      />,
     );
     expect(screen.getByText(blocked)).toBeVisible();
     expect(screen.queryByText("Open to all source IPs")).toBeNull();
@@ -146,7 +160,11 @@ describe("ServiceNetworkingPanel", () => {
   it("stays editable on the Scale plan", () => {
     mocks.plan = "scale";
     render(
-      <ServiceNetworkingPanel serviceId="srv-web" currentAllowList={[]} />,
+      <ServiceNetworkingPanel
+        serviceId="srv-web"
+        serviceType="web_service"
+        currentAllowList={[]}
+      />,
     );
     expect(
       screen.getByRole("button", { name: "Add allowlist entry" }),
@@ -158,6 +176,7 @@ describe("ServiceNetworkingPanel", () => {
     render(
       <ServiceNetworkingPanel
         serviceId="srv-web"
+        serviceType="web_service"
         currentAllowList={[
           { cidrBlock: "203.0.113.0/24", description: "office" },
         ]}
@@ -190,6 +209,7 @@ describe("ServiceNetworkingPanel", () => {
     render(
       <ServiceNetworkingPanel
         serviceId="srv-web"
+        serviceType="web_service"
         currentAllowList={[
           { cidrBlock: "203.0.113.0/24", description: "office" },
           { cidrBlock: "10.0.0.0/8", description: "vpn" },
@@ -216,7 +236,11 @@ describe("ServiceNetworkingPanel", () => {
   it("keeps an invalid CIDR visible and does not submit it", async () => {
     const user = userEvent.setup();
     render(
-      <ServiceNetworkingPanel serviceId="srv-web" currentAllowList={[]} />,
+      <ServiceNetworkingPanel
+        serviceId="srv-web"
+        serviceType="web_service"
+        currentAllowList={[]}
+      />,
     );
     const input = screen.getByPlaceholderText("203.0.113.0/24");
     await user.type(input, "not-a-cidr");
@@ -239,6 +263,7 @@ describe("ServiceNetworkingPanel", () => {
     render(
       <ServiceNetworkingPanel
         serviceId="srv-web"
+        serviceType="web_service"
         currentAllowList={[{ cidrBlock: "203.0.113.0/24", description: null }]}
       />,
     );
@@ -256,6 +281,7 @@ describe("ServiceNetworkingPanel", () => {
     render(
       <ServiceNetworkingPanel
         serviceId="srv-web"
+        serviceType="web_service"
         currentAllowList={[{ cidrBlock: "203.0.113.0/24", description: "" }]}
         proxiedDomains={["shop.example.com"]}
       />,
@@ -277,6 +303,7 @@ describe("ServiceNetworkingPanel", () => {
     render(
       <ServiceNetworkingPanel
         serviceId="srv-web"
+        serviceType="web_service"
         currentAllowList={[{ cidrBlock: "203.0.113.0/24", description: "" }]}
         proxiedDomains={null}
       />,
@@ -300,6 +327,7 @@ describe("ServiceNetworkingPanel role gating (w9/m619)", () => {
     const { unmount } = render(
       <ServiceNetworkingPanel
         serviceId="srv-web"
+        serviceType="web_service"
         currentAllowList={allowAll}
       />,
     );
@@ -317,7 +345,11 @@ describe("ServiceNetworkingPanel role gating (w9/m619)", () => {
     mocks.plan = "hobby";
     const user = userEvent.setup();
     render(
-      <ServiceNetworkingPanel serviceId="srv-web" currentAllowList={[]} />,
+      <ServiceNetworkingPanel
+        serviceId="srv-web"
+        serviceType="web_service"
+        currentAllowList={[]}
+      />,
     );
     const open = screen.getByRole("button", { name: "Allow all traffic" });
     expect(open).toBeDisabled();
@@ -333,6 +365,7 @@ describe("ServiceNetworkingPanel role gating (w9/m619)", () => {
     render(
       <ServiceNetworkingPanel
         serviceId="srv-web"
+        serviceType="web_service"
         currentAllowList={allowAll}
       />,
     );

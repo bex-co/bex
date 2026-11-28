@@ -73,6 +73,7 @@ const serviceConsumer = {
   panel: () => (
     <ServiceNetworkingPanel
       serviceId="srv-source"
+      serviceType="web_service"
       currentAllowList={state.entries}
     />
   ),

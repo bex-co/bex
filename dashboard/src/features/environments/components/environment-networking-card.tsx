@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/common/components/ui/button";
 import {
@@ -9,10 +10,12 @@ import {
 } from "@/common/components/ui/card";
 import { IPAllowListEditor } from "@/common/components/ip-allow-list-editor";
 import { IPAllowListProxiedNotice } from "@/common/components/ip-allow-list-proxied-notice";
+import { InboundIPLevels } from "@/common/components/inbound-ip-levels";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   ALLOW_ALL_PAIR_ENTRIES,
   ipAllowListEntryKey,
+  type IPAllowListEntryDraft,
 } from "@/common/lib/ip-allow-list";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import { useUpdateEnvironment } from "@/features/environments/hooks/use-update-environment";
@@ -23,7 +26,9 @@ import { UpgradePlanLink } from "@/features/workspaces/components/upgrade-plan-l
  * Render's Networking card on an environment's settings page (w1/m683): the
  * shared inbound IP rules editor over the environment's list, on Scale and
  * higher (ADR030). Below Scale the rules already set stay listed and
- * enforced, and the only write offered is resetting them to allow all.
+ * enforced, and the only write offered is resetting them to allow all. Above
+ * them it shows the workspace's rules, which also apply to every resource in
+ * the environment, as Render's does (w4/m710).
  */
 export function EnvironmentNetworkingCard({
   environment,
@@ -34,6 +39,7 @@ export function EnvironmentNetworkingCard({
 }) {
   const { t } = useTranslations();
   const { update, saving } = useUpdateEnvironment();
+  const [draft, setDraft] = useState<IPAllowListEntryDraft[] | null>(null);
 
   async function save(entries: EnvironmentView["ipAllowListEntries"]) {
     const result = await update(environment.id, {
@@ -64,10 +70,16 @@ export function EnvironmentNetworkingCard({
         <IPAllowListProxiedNotice
           domains={environment.ipAllowListProxiedDomains}
         />
+        <InboundIPLevels
+          saved={environment.ipAllowListEntries}
+          draft={draft ?? environment.ipAllowListEntries}
+          ownType={t("common.inboundIpLevelEnvironment")}
+        />
         <IPAllowListEditor
           // The saved list remounts the draft: a save, or another Admin's.
           key={ipAllowListEntryKey(environment.ipAllowListEntries)}
           entries={environment.ipAllowListEntries}
+          onDraftChange={setDraft}
           saving={saving}
           onSave={save}
           clearOnly={

@@ -204,6 +204,8 @@ export function useAccessControl(id: string) {
   return {
     allowList,
     isPublic: allowListQuery.data?.database?.public,
+    // The environment whose inbound IP rules also apply (w4/m710).
+    environmentId: allowListQuery.data?.database?.environmentId ?? null,
     // The page's database read settles before this panel's own allowlist
     // read, which is batched with the slower insight queries. Until it lands
     // the list is unknown, not empty (w4/m315).

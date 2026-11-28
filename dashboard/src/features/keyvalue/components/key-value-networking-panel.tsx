@@ -6,6 +6,7 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { IPAllowListEditor } from "@/common/components/ip-allow-list-editor";
+import { InboundIPLevels } from "@/common/components/inbound-ip-levels";
 import { ipAllowListEntryKey } from "@/common/lib/ip-allow-list";
 import { useRef, useState } from "react";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
@@ -39,6 +40,7 @@ export function KeyValueNetworkingPanel({ id }: { id: string }) {
     refusal: RestartRefusal;
   } | null>(null);
   const confirming = useRef(false);
+  const [draft, setDraft] = useState<IPAllowListEntryDraft[] | null>(null);
 
   async function requestSave(entries: IPAllowListEntryDraft[]) {
     const result = await networking.saveAllowList(entries);
@@ -82,11 +84,20 @@ export function KeyValueNetworkingPanel({ id }: { id: string }) {
             {t("keyvalue.networkingInternalOnly")}
           </p>
         ) : null}
+        {/* Render's Networking view: the workspace's and the environment's
+            rules also apply (w4/m710). */}
+        <InboundIPLevels
+          environmentId={networking.environmentId}
+          saved={networking.allowList}
+          draft={draft ?? networking.allowList}
+          ownType={t("keyvalue.resourceType")}
+        />
         {/* key remounts the editable draft from the server list whenever it
             changes (e.g. after a save), avoiding an effect-based state sync. */}
         <IPAllowListEditor
           key={ipAllowListEntryKey(networking.allowList)}
           entries={networking.allowList}
+          onDraftChange={setDraft}
           saving={networking.savingAllowList}
           onSave={requestSave}
           disabledReason={adminOnly("update_ip_allow_list")}

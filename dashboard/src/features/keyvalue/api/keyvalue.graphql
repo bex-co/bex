@@ -103,6 +103,8 @@ query KeyValueIpAllowList($id: String!) {
   keyValue(id: $id) {
     id
     public
+    # The environment whose inbound IP rules also apply (w4/m710).
+    environmentId
     # A first enable restarts the store (w4/m233); the hint says so first.
     externalAccessRestarts
     ipAllowListEntries {

@@ -20,16 +20,21 @@ export interface UseWorkspaceIPAllowListResult {
 
 /**
  * Reads one workspace's inbound IP rules for the Workspace Settings card
- * (w9/m388) through bex-api's `workspace(id)`, Render's owner read. Never
+ * (w9/m388) and every Networking panel's "Affected by:" Workspace level
+ * (w4/m710) through bex-api's `workspace(id)`, Render's owner read. Never
  * polled, and never part of the polled `Workspaces` list: bex-api resolves the
  * field only when selected. `setWorkspaceIPAllowList` answers the same
- * normalized Workspace, so a save re-renders the card without a refetch.
+ * normalized Workspace, so a save re-renders the card without a refetch. An
+ * unknown workspace id (the switcher not yet resolved) reads nothing.
  */
 export function useWorkspaceIPAllowList(
-  workspaceId: string,
+  workspaceId: string | undefined,
+  { fetchPolicy }: { fetchPolicy?: "cache-first" | "cache-and-network" } = {},
 ): UseWorkspaceIPAllowListResult {
   const { data, loading, error } = useQuery(WorkspaceIpAllowListDocument, {
-    variables: { id: workspaceId },
+    variables: { id: workspaceId ?? "" },
+    skip: !workspaceId,
+    fetchPolicy,
     errorPolicy: "all",
   });
   const entries = useMemo(

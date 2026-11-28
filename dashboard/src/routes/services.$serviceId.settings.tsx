@@ -335,6 +335,8 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
         return (
           <ServiceNetworkingPanel
             serviceId={serviceId}
+            serviceType={service?.type ?? ""}
+            environmentId={service?.environmentId}
             currentAllowList={service?.ipAllowListEntries}
             proxiedDomains={service?.ipAllowListProxiedDomains}
             onSaved={refetch}

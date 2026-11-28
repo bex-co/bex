@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
@@ -88,6 +88,7 @@ export function IPAllowListEditor({
   emptyBlocks,
   pendingRows,
   disabledReason,
+  onDraftChange,
 }: {
   entries: IPAllowListEntryDraft[];
   labels: IPAllowListEditorLabels;
@@ -127,6 +128,12 @@ export function IPAllowListEditor({
    * action disabled, and Add, Save and the clear-only action say why.
    */
   disabledReason?: string;
+  /**
+   * Told the unsaved rows whenever they change, and the saved list on mount,
+   * so a caller can judge the draft before it is saved (Render's Validate IP
+   * address field, w4/m710). The add-row inputs are not part of it.
+   */
+  onDraftChange?: (entries: IPAllowListEntryDraft[]) => void;
 }) {
   const off = disabledReason != null;
   // Keep keys independent of editable values and positions so typing, moving
@@ -135,7 +142,10 @@ export function IPAllowListEditor({
   const [draft, setDraft] = useState<IPAllowListRow[]>(() =>
     entries.map((entry, id) => ({ id, entry })),
   );
-  const draftEntries = draft.map((row) => row.entry);
+  const draftEntries = useMemo(() => draft.map((row) => row.entry), [draft]);
+  useEffect(() => {
+    onDraftChange?.(draftEntries);
+  }, [draftEntries, onDraftChange]);
   const [cidr, setCIDR] = useState("");
   const [description, setDescription] = useState("");
   const [invalid, setInvalid] = useState(false);

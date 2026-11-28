@@ -196,6 +196,7 @@ import {
 } from "@/features/team/components/team-panel-skeleton";
 import { BuildPipelineCardSkeleton } from "@/features/usage/components/build-pipeline-card-skeleton";
 import { WorkspaceIPRulesCardSkeleton } from "@/features/workspaces/components/workspace-ip-rules-card-skeleton";
+import { InboundIPLevelsSkeleton } from "@/common/components/inbound-ip-levels";
 import { WorkspaceLoginRequirementCardSkeleton } from "@/features/workspaces/components/workspace-login-requirement-card-skeleton";
 import { WorkspacePrivacyCardSkeleton } from "@/features/workspaces/components/workspace-privacy-card-skeleton";
 import { OverlappingDeployPolicyCardSkeleton } from "@/features/workspaces/components/overlapping-deploy-policy-card-skeleton";
@@ -3535,6 +3536,8 @@ const REPRESENTATIVE_STATIC_SITE: SettingsSkeletonService = {
 /** What the Settings skeleton reads from a service. */
 type SettingsSkeletonService = SettingsSectionsService & {
   region?: string | null;
+  /** Its environment, whose inbound IP rules its Networking card lists. */
+  environmentId?: string | null;
   plan?: string | null;
   suspended?: boolean;
   preDeployCommand?: string | null;
@@ -3547,11 +3550,11 @@ type SettingsSkeletonService = SettingsSectionsService & {
 // empty service with a real-length id (the General hint names it), no custom
 // domain, Render's default allow-all rule in a workspace below Scale, and no
 // stored registry credential. The classes are literal so Tailwind sees them;
-// the skeleton rows inside are clipped to the card.
+// the skeleton rows inside are clipped to the card. Networking is drawn
+// structurally instead (ServiceNetworkingCardSkeleton, w4/m710).
 type PlainSettingsSection =
   | "static-site"
   | "domains"
-  | "networking"
   | "outbound-ips"
   | "registry-credential"
   | "notifications"
@@ -3566,7 +3569,6 @@ const SETTINGS_CARD: Record<
 > = {
   "static-site": { fields: 2, height: "h-[350px] sm:h-[238px]" },
   domains: { fields: 2, height: "h-[637px] sm:h-[473px]" },
-  networking: { fields: 1, height: "h-[198px] sm:h-[162px]" },
   "outbound-ips": { fields: 1, height: "h-[198px] sm:h-[138px]" },
   "registry-credential": { fields: 1, height: "h-[292px] sm:h-[256px]" },
   notifications: { fields: 1, height: "h-[268px] sm:h-[208px]" },
@@ -3575,6 +3577,52 @@ const SETTINGS_CARD: Record<
   maintenance: { fields: 2, height: "h-[354px] sm:h-[286px]" },
   "deploy-hook": { fields: 1, height: "h-[278px] sm:h-[222px]" },
 };
+
+/**
+ * The Networking card (`ServiceNetworkingPanel`) for Render's default
+ * allow-all rule below Scale, structurally: its title and description, the
+ * levels of rules that also apply (the workspace's and, in an environment,
+ * the environment's, w4/m710), then the clear-only hint and the open line.
+ * Static copy is reserved with its translated text, so it wraps as the ready
+ * card's does in every language.
+ */
+function ServiceNetworkingCardSkeleton({
+  service,
+}: {
+  service: SettingsSkeletonService;
+}) {
+  const { t } = useTranslations();
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="relative w-fit">
+          <ReservedText>{t("services.networkingTitle")}</ReservedText>
+        </CardTitle>
+        <CardDescription className="relative w-fit">
+          <ReservedText>{t("services.networkingDescription")}</ReservedText>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <InboundIPLevelsSkeleton
+          environment={Boolean(service.environmentId)}
+          ownType={t(
+            isStaticSiteType(service.type)
+              ? "services.typeStatic"
+              : "services.typeWeb",
+          )}
+        />
+        <section className="space-y-2">
+          <p className="relative w-fit text-xs">
+            <ReservedText>{t("services.networkingScalePlanOnly")}</ReservedText>
+          </p>
+          <span className="relative text-sm">
+            <ReservedText>{t("services.networkingOpen")}</ReservedText>
+          </span>
+        </section>
+      </CardContent>
+    </Card>
+  );
+}
 
 function isPlainSettingsSection(
   section: ServiceSettingsSectionId,
@@ -3729,6 +3777,8 @@ export function SettingsSectionSkeleton({
           className={generalHeight(service)}
         />
       );
+    case "networking":
+      return <ServiceNetworkingCardSkeleton service={service} />;
     case "compute":
       // A cron job's plan: the Compute page's section frame (w3/m554).
       return (

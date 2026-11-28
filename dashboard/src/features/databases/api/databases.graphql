@@ -201,6 +201,8 @@ query DatabaseIpAllowList($id: String!) {
   database(id: $id) {
     id
     public
+    # The environment whose inbound IP rules also apply (w4/m710).
+    environmentId
     ipAllowListEntries {
       cidrBlock
       description

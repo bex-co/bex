@@ -773,6 +773,121 @@ const ruCommon: Record<string, TranslationEntry> = {
     description:
       "How to fix the Cloudflare-proxied allowlist warning: switch the record from proxied (orange cloud) to DNS only (w1/m171)",
   },
+  "common.inboundIpAllowedRanges_one": {
+    message: "диапазон IP разрешён извне вашей частной сети.",
+    description:
+      "Status line of a Networking panel after a count badge (Render's, w4/m710): how many IPv4 ranges every level of inbound IP rules (workspace, environment, the resource's own) allows together",
+  },
+  "common.inboundIpAllowedRanges_few": {
+    message: "диапазона IP разрешены извне вашей частной сети.",
+    description:
+      "Status line of a Networking panel after a count badge (Render's, w4/m710): how many IPv4 ranges every level of inbound IP rules (workspace, environment, the resource's own) allows together",
+  },
+  "common.inboundIpAllowedRanges_many": {
+    message: "диапазонов IP разрешено извне вашей частной сети.",
+    description:
+      "Status line of a Networking panel after a count badge (Render's, w4/m710): how many IPv4 ranges every level of inbound IP rules (workspace, environment, the resource's own) allows together",
+  },
+  "common.inboundIpAllowedRanges_other": {
+    message: "диапазона IP разрешено извне вашей частной сети.",
+    description:
+      "Status line of a Networking panel after a count badge (Render's, w4/m710): how many IPv4 ranges every level of inbound IP rules (workspace, environment, the resource's own) allows together",
+  },
+  "common.inboundIpValidateLabel": {
+    message: "Проверить IP-адрес",
+    description:
+      "Label of the Networking panel's address check field (Render's Validate IP address, w4/m710)",
+  },
+  "common.inboundIpCheckEmpty": {
+    message: "Введите IP-адрес",
+    description:
+      "Validate IP address field, nothing typed yet (Render's tooltip, w4/m710)",
+  },
+  "common.inboundIpCheckInvalid": {
+    message: "Этот IP-адрес недействителен",
+    description:
+      "Validate IP address field: the text is not an IPv4 address (Render's, w4/m710)",
+  },
+  "common.inboundIpCheckAllowed": {
+    message: "Доступ с этого IP-адреса разрешён",
+    description:
+      "Validate IP address field: every level of inbound IP rules admits the address (Render's, w4/m710)",
+  },
+  "common.inboundIpRefusedWorkspace": {
+    message:
+      "Доступ с этого IP-адреса запрещён правилами входящих IP вашего рабочего пространства.",
+    description:
+      "Validate IP address field: the workspace's inbound IP rules refuse the address (Render's, w4/m710)",
+  },
+  "common.inboundIpRefusedEnvironment": {
+    message:
+      "Доступ с этого IP-адреса запрещён правилами входящих IP вашего окружения.",
+    description:
+      "Validate IP address field: the environment's inbound IP rules refuse the address (Render's, w4/m710)",
+  },
+  "common.inboundIpRefusedOwn": {
+    message:
+      "Доступ с этого IP-адреса запрещён правилами входящих IP вашего ресурса {type}.",
+    description:
+      "Validate IP address field: the resource's own (unsaved) inbound IP rules refuse the address; {type} is its type, e.g. Web Service, PostgreSQL, Key Value, Environment (Render's, w4/m710)",
+  },
+  "common.inboundIpAffectedBy": {
+    message: "Также действуют:",
+    description:
+      "Label before the breadcrumb of a higher level of inbound IP rules that also applies to this resource (Render's 'Affected by:', w4/m710)",
+  },
+  "common.inboundIpLevelWorkspace": {
+    message: "Рабочее пространство",
+    description:
+      "Breadcrumb item naming the workspace level of inbound IP rules (Render's, w4/m710)",
+  },
+  "common.inboundIpLevelEnvironment": {
+    message: "Окружение",
+    description:
+      "Breadcrumb item naming the environment level of inbound IP rules, and an environment's type in the own-rules heading and refusal (Render's, w4/m710)",
+  },
+  "common.inboundIpViewRules": {
+    message: "Открыть правила",
+    description:
+      "Link, opening in a new tab, to where a higher level of inbound IP rules is edited (Render's View rules, w4/m710)",
+  },
+  "common.inboundIpSource": {
+    message: "Источник",
+    description:
+      "Column header of a read-only inbound IP rules table: the CIDR range (Render's Source, w4/m710)",
+  },
+  "common.inboundIpDescription": {
+    message: "Описание",
+    description:
+      "Column header of a read-only inbound IP rules table: the rule's description (Render's, w4/m710)",
+  },
+  "common.inboundIpBlockedWorkspace": {
+    message:
+      "Правила входящих IP рабочего пространства блокируют весь интернет-трафик.",
+    description:
+      "Warning in place of the table when the workspace has no inbound IP rule (Render's, w4/m710)",
+  },
+  "common.inboundIpBlockedEnvironment": {
+    message: "Правила входящих IP окружения блокируют весь интернет-трафик.",
+    description:
+      "Warning in place of the table when the environment has no inbound IP rule (Render's, w4/m710)",
+  },
+  "common.inboundIpOwnRules": {
+    message: "Правила входящих IP: {type}",
+    description:
+      "Heading above a resource's own editable inbound IP rules; {type} is its type, e.g. Web Service, PostgreSQL, Key Value, Environment (Render's, w4/m710)",
+  },
+  "common.inboundIpTypePostgres": {
+    message: "PostgreSQL",
+    description:
+      "A Postgres database's type as the inbound IP rules heading and refusal name it (Render's userFacingType, w4/m710)",
+  },
+  "common.inboundIpLoadError": {
+    message:
+      "Не удалось загрузить правила входящих IP рабочего пространства и окружения, которые тоже действуют. Обновите страницу и попробуйте снова.",
+    description:
+      "Shown in place of the workspace and environment inbound IP rules when one of them could not be read (w4/m710)",
+  },
   "common.relativeAgeNow": {
     message: "сейчас",
     description: "Compact relative age under one minute (w4/m188)",

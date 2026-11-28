@@ -5,12 +5,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
+import { useState } from "react";
 import { IPAllowListEditor } from "@/common/components/ip-allow-list-editor";
 import { IPAllowListProxiedNotice } from "@/common/components/ip-allow-list-proxied-notice";
-import { ipAllowListEntryKey } from "@/common/lib/ip-allow-list";
+import { InboundIPLevels } from "@/common/components/inbound-ip-levels";
+import {
+  ipAllowListEntryKey,
+  toIPAllowListDrafts,
+  type IPAllowListEntryDraft,
+} from "@/common/lib/ip-allow-list";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useCapabilityGate } from "@/features/capabilities/hooks/use-capability-gate";
 import { useServiceNetworking } from "@/features/services/hooks/use-service-networking";
+import { isStaticSiteType } from "@/features/services/lib/service-type";
 import { useWorkspace } from "@/features/workspaces/context";
 import { inboundIpRulesPlan } from "@/features/workspaces/types";
 
@@ -21,15 +28,23 @@ import { inboundIpRulesPlan } from "@/features/workspaces/types";
  * detail already fetched by `useServer`; the panel only writes via mutation.
  *
  * As on Render, a service nobody restricted has the allow-all rule, and a
- * service with NO rule refuses every public request (w8/m157).
+ * service with NO rule refuses every public request (w8/m157). Above its own
+ * rules it shows the workspace's and its environment's, which a request must
+ * pass too, with Render's count and Validate IP address check (w4/m710).
  */
 export function ServiceNetworkingPanel({
   serviceId,
+  serviceType,
+  environmentId,
   currentAllowList,
   proxiedDomains,
   onSaved,
 }: {
   serviceId: string;
+  /** `web_service` or `static_site`: the refusal names it as Render does. */
+  serviceType: string;
+  /** The service's environment, whose rules also apply; none when absent. */
+  environmentId?: string | null;
   /** Current description-preserving entries from the service detail query. */
   currentAllowList:
     | Array<{
@@ -59,13 +74,8 @@ export function ServiceNetworkingPanel({
 
   // Not loaded yet is not "no rules": an empty list means the service is
   // blocked, so nothing is claimed until the list is known.
-  const known = currentAllowList != null;
-  const normalized = (currentAllowList ?? [])
-    .filter((entry): entry is NonNullable<typeof entry> => entry != null)
-    .map((entry) => ({
-      cidrBlock: entry.cidrBlock,
-      description: entry.description ?? "",
-    }));
+  const saved = toIPAllowListDrafts(currentAllowList);
+  const [draft, setDraft] = useState<IPAllowListEntryDraft[] | null>(null);
 
   return (
     <Card>
@@ -75,11 +85,24 @@ export function ServiceNetworkingPanel({
       </CardHeader>
       <CardContent className="space-y-2">
         <IPAllowListProxiedNotice domains={proxiedDomains} />
+        {saved ? (
+          <InboundIPLevels
+            environmentId={environmentId}
+            saved={saved}
+            draft={draft ?? saved}
+            ownType={t(
+              isStaticSiteType(serviceType)
+                ? "services.typeStatic"
+                : "services.typeWeb",
+            )}
+          />
+        ) : null}
         {/* key remounts the editable draft whenever the server list changes */}
-        {known ? (
+        {saved ? (
           <IPAllowListEditor
-            key={ipAllowListEntryKey(normalized)}
-            entries={normalized}
+            key={ipAllowListEntryKey(saved)}
+            entries={saved}
+            onDraftChange={setDraft}
             saving={networking.saving}
             disabledReason={disabledReason}
             clearOnly={

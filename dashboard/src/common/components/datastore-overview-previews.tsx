@@ -1,4 +1,5 @@
 import { Eye, Plus, ShieldCheck } from "lucide-react";
+import { InboundIPLevelsSkeleton } from "@/common/components/inbound-ip-levels";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import {
@@ -249,7 +250,8 @@ export function KeyValuePolicyPreview({
  * the one-line empty text, each wrapping to two lines below `sm` as their copy
  * does. A store that has never had external access shows the restart hint, so
  * that is the help previewed (w4/303). A public store drops the status line and a store with rules lists
- * them; neither is assumed or rendered here (w4/303).
+ * them; neither is assumed or rendered here (w4/303). Between the two sits
+ * the workspace level of inbound IP rules at its own skeleton (w4/m710).
  */
 export function KeyValueNetworkingPreview() {
   const { t } = useTranslations();
@@ -268,6 +270,12 @@ export function KeyValueNetworkingPreview() {
             <Skeleton className="h-3 w-1/2" />
           </span>
         </div>
+        {/* The workspace's rules that also apply (w4/m710); a store outside
+            any environment, the common case, shows no environment level. */}
+        <InboundIPLevelsSkeleton
+          environment={false}
+          ownType={t("keyvalue.resourceType")}
+        />
         <section className="space-y-2">
           <p className="text-xs text-muted-foreground">
             {t("keyvalue.networkingHintRestart")}

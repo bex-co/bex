@@ -137,8 +137,25 @@ afterEach(() => {
   }
 });
 
+// The workspace's and the environment's inbound IP rules every Networking
+// panel shows above its own (w4/m710) are read through Apollo's useQuery, so
+// every test that renders a service, Postgres, Key Value or environment
+// Networking panel would otherwise need an ApolloProvider. Default to "still
+// reading", which draws only the levels' skeleton; tests of the levels
+// override per file with vi.mocked(useInboundIPLevels).mockReturnValue, which
+// the reset below undoes after each test, and the hook's own test unmocks it.
+vi.mock("@/common/hooks/use-inbound-ip-levels", () => ({
+  useInboundIPLevels: vi.fn(() => ({ state: "loading" })),
+}));
+afterEach(() => {
+  if (vi.isMockFunction(useInboundIPLevels)) {
+    vi.mocked(useInboundIPLevels).mockReset();
+  }
+});
+
 import i18n from "@/i18n/init";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useInboundIPLevels } from "@/common/hooks/use-inbound-ip-levels";
 import { usePipelineMinutesExceeded } from "@/features/usage/hooks/use-pipeline-minutes-exceeded";
 import zhResources from "@/i18n/resources-zh";
 
