@@ -1069,11 +1069,17 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.applyStackDatastores(ctx, st, assignments, snap, dbRefs, kvCRNames, &res); err != nil {
 		return res, err
 	}
+	// Links to a group the sync moves land after the move: a link judges
+	// the group's environment at link time, so linking before the move
+	// refuses a sync the plan approved for its end state. Services and
+	// build-source carriers collect theirs below; the moves flush them.
+	moving := movingGroupNames(groupMoves)
+	var groupLinks []deferredGroupLink
 	if len(st.buildSources) > 0 || st.linksBuildSources() {
 		if err := s.requireBlueprintExecution(ctx, req); err != nil {
 			return res, err
 		}
-		carriers, err := s.applyStackBuildSources(ctx, st, assignments, snap, dbRefs, kvCRNames, &res)
+		carriers, err := s.applyStackBuildSources(ctx, st, assignments, snap, dbRefs, kvCRNames, moving, &groupLinks, &res)
 		if err != nil {
 			return res, err
 		}
@@ -1106,7 +1112,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.requireBlueprintExecution(ctx, req); err != nil {
 		return res, err
 	}
-	deferred, err := s.applyStackServices(ctx, st, appsByName, assignments, dbRefs, kvCRNames, serviceApps, lookupTarget, &res)
+	deferred, err := s.applyStackServices(ctx, st, appsByName, assignments, dbRefs, kvCRNames, serviceApps, lookupTarget, moving, &groupLinks, &res)
 	if err != nil {
 		return res, err
 	}
@@ -1122,6 +1128,11 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	// The groups move now that every linked service reads in its target
 	// environment (applyStackEnvGroups).
 	if err := s.applyStackEnvGroupMoves(ctx, groupMoves); err != nil {
+		return res, err
+	}
+	// Links the sync held for a moving group land now that the guard reads
+	// the group's target environment: the end state the plan approved.
+	if err := s.applyDeferredGroupLinks(groupLinks); err != nil {
 		return res, err
 	}
 	if err := s.stampServiceRefs(ctx, st, serviceApps, lookupTarget); err != nil {
@@ -1148,6 +1159,57 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 type envGroupMove struct {
 	name          string
 	environmentID string
+}
+
+// deferredGroupLink is a fromGroup link the apply holds until its group
+// finishes moving: the link guard judges the group's environment at link
+// time, so linking before the move refuses a sync the plan approved for its
+// end state. A move the apply refuses still refuses — the held links never
+// run — so the plan keeps refusing exactly what the apply refuses.
+type deferredGroupLink struct {
+	ctx     context.Context // the linked service's workspace-scoped verb ctx
+	group   string          // env group name, as LinkEnvGroup reads it
+	service string          // manifest name, for errors
+	ref     string          // LinkEnvGroup target
+}
+
+// movingGroupNames is the set of groups a sync moves, whose new links wait
+// for applyStackEnvGroupMoves.
+func movingGroupNames(moves []envGroupMove) map[string]bool {
+	moving := make(map[string]bool, len(moves))
+	for _, m := range moves {
+		moving[m.name] = true
+	}
+	return moving
+}
+
+// withoutMovingGroups strips a create's initial links to groups the sync
+// moves: they land through applyDeferredGroupLinks instead, after the move.
+func withoutMovingGroups(refs []string, moving map[string]bool) []string {
+	if len(moving) == 0 {
+		return refs
+	}
+	var out []string
+	for _, ref := range refs {
+		if !moving[ref] {
+			out = append(out, ref)
+		}
+	}
+	return out
+}
+
+// applyDeferredGroupLinks lands the fromGroup links the sync held for a
+// moving group, now that the guard reads the group's target environment.
+func (s *Service) applyDeferredGroupLinks(deferred []deferredGroupLink) error {
+	for _, d := range deferred {
+		if err := requireDeployAuthority(d.ctx, s); err != nil {
+			return err
+		}
+		if err := s.EnvGroups.LinkEnvGroup(d.ctx, d.group, d.ref); err != nil {
+			return fmt.Errorf("linking env group %q to %q: %w", d.group, d.service, err)
+		}
+	}
+	return nil
 }
 
 // applyStackEnvGroups applies the stack's env groups, appending each applied
@@ -1327,7 +1389,7 @@ type deferredService struct {
 // with every already-resolvable reference on its env and its applied view
 // appended onto res; the services whose host refs were forward references are
 // returned for the post-create patch pass.
-func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsByName map[string]*appv1alpha1.App, assignments map[string]core.EnvironmentAssignment, dbRefs map[string]databaseRef, kvCRNames map[string]string, serviceApps map[string]*appv1alpha1.App, lookupTarget func(string) *appv1alpha1.App, res *StackResult) ([]deferredService, error) {
+func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsByName map[string]*appv1alpha1.App, assignments map[string]core.EnvironmentAssignment, dbRefs map[string]databaseRef, kvCRNames map[string]string, serviceApps map[string]*appv1alpha1.App, lookupTarget func(string) *appv1alpha1.App, moving map[string]bool, groupLinks *[]deferredGroupLink, res *StackResult) ([]deferredService, error) {
 	var deferred []deferredService
 	type appliedTarget struct {
 		ctx context.Context
@@ -1359,7 +1421,7 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 		} else if svc.ungrouped {
 			svc.req.EnvironmentSpecified = true
 		}
-		svc.req.initialEnvGroups = svc.groupLinks
+		svc.req.initialEnvGroups = withoutMovingGroups(svc.groupLinks, moving)
 		created := appsByName[svc.req.Name] == nil
 		svc.req.initialSeedEnv = firstEnv[svc.req.Name]
 		seededAtCreate := created && s.CreateSecrets != nil
@@ -1386,9 +1448,21 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 		}
 		// A service the apply created linked its fromGroup groups as it was
 		// written (initialEnvGroups); one that existed links them here, which is
-		// idempotent (w5/143).
+		// idempotent (w5/143). Either holds the links to a group the sync
+		// moves until after the move: the link guard judges the group's
+		// environment at link time, so linking before the move refuses a
+		// sync the plan approved for its end state.
+		for _, g := range svc.groupLinks {
+			if !moving[g] {
+				continue
+			}
+			*groupLinks = append(*groupLinks, deferredGroupLink{ctx: verbCtx, group: g, service: svc.req.Name, ref: ref})
+		}
 		if !created {
 			for _, g := range svc.groupLinks {
+				if moving[g] {
+					continue
+				}
 				if err := requireDeployAuthority(ctx, s); err != nil {
 					return nil, err
 				}
