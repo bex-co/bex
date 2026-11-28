@@ -1,6 +1,6 @@
 # w3 · m707 — A service's Render sub-page links open the same page and state
 
-**Worker:** worker3 **Goal:** every sub-path and deep-link query Render's dashboard builds for a service, a webhook and the account and billing pages opens the same bex page in the same state (the disk, the metrics window, the instance's shell, a webhook's activity, filtered logs, a billing card), where today `redirectRenderAlias` copies the sub-path verbatim onto `/services/<id>/…` and several reach `routes/$.tsx`. **Status:** blocked (pin must carry `7d1dce8611`; t001–t005 and t007–t009 done, t006 walked locally, its production walk and t010 left)
+**Worker:** worker3 **Goal:** every sub-path and deep-link query Render's dashboard builds for a service, a webhook and the account and billing pages opens the same bex page in the same state (the disk, the metrics window, the instance's shell, a webhook's activity, filtered logs, a billing card), where today `redirectRenderAlias` copies the sub-path verbatim onto `/services/<id>/…` and several reach `routes/$.tsx`. **Status:** done (2026-11-28: walked on dev-3 and on production pin `7d1dce861173`)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | Render's deep-link queries on Logs, Metrics and Events open the same filters — **DONE** | 1h15m | — |
 | [t004](done/t004.md) | `/settings#account-security`, `/billing#free-usage` and `/billing#unbilled-charges` land on their cards — **DONE** | 20m | — |
 | [t005](done/t005.md) | The URL ledger records every service sub-path, with Render's non-goal pages marked — **DONE** | 15m | t001 |
-| [t006](t006.md) | Walk every sub-path and query in a real browser at 1440 and 390, locally and on production | 30m | t001, t002, t003, t004 |
+| [t006](done/t006.md) | Walk every sub-path and query in a real browser at 1440 and 390, locally and on production — **DONE** | 30m | t001, t002, t003, t004 |
 | [t007](done/t007.md) | Render parity — **DONE** | 20m | t005, t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 40m | t007 |
-| [t010](t010.md) | Closeout | 10m | t008, t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t008, t009 |
 
 Total: **10 tasks, about 4h45m**.
 
@@ -54,7 +54,24 @@ Recorded 2026-11-27 (t001–t005, t007–t009). Rows: [dashboard-routes.md § Se
 
 **Locally, 2026-11-27** (t006 step 1): dev-3 (`bash scripts/dev-env.sh 3 status` all green), the dashboard from the tree on `:50030`, headless Chromium at 1440×900 and 390×844, signed in as a dev-3 user created for the walk, on a Pro workspace with a web service with a disk and a webhook created for the walk (all disposable, deleted afterwards). Every URL opened its view with no horizontal scroll at both widths: `/web/<srv>/disks`, `/worker/<srv>/disks?x=1#top` (query and hash kept) and `/static/<srv>/disks` (another type under `/static`) on the Disk page; `/web/<srv>/metrics/1w` on Last 7 days, `/pserv/<srv>/metrics/5m` on Last 30 minutes, `/metrics/forever` on Last 12 hours; `/pserv/<srv>/shell/<suffix>` on `shell?instance=<srv>-<suffix>` (dev-3's Shell says Shell access isn't available, so the picker was not drawn); `/web/<srv>/deploys/<dead id>/logs` on that deploy's Deploy not found; `/web/<srv>/jobs` and `/previews` on Deploys; Render's Instance failed Logs link on Logs with the Instance chip and the custom window, its lines filtered to the instance; `?q=hello&l=[["LEVEL","error"]]` with the search text and level; `?t=1h` and `?t=<ms>,<ms>` on Last hour and the custom window; `/events?et=DeployEnded` showing 1 of 2 with Event types: 1; `/webhook/<whk>/activity` and the bare URL on Recent deliveries with Activity selected; `/settings#account-security` and `/u/settings#account-security` with the Account section at the top; `/billing#free-usage` with Included usage at the top and `/billing#unbilled-charges` with Charges in view where bex's own `#charges` lands (the page ends below it). A static site's own pages are covered by the router tests: dev-3 builds no static site without a repository.
 
-**Production:** waits for a pin carrying `7d1dce8611` (t006 step 2). Parked 2026-11-27: then a worker signs in as the QA user in `bex-canary` (`bash scripts/qa-login.sh`), creates a web service with a disk (disposable), opens the URLs above on `dashboard.bex.co` at 1440 and 390, records the pin and the results here, deletes what it created, and runs t010.
+**Production, 2026-11-28** (t006 step 2). Pin `7d1dce861173` (`207a050b22`, carries `7d1dce8611`): the `dashboard` pod ran `bex-dashboard@sha256:8ad155ac3cb1…` and both `bex-api` pods `bex-operator@sha256:d2f83bec3be6…`, the pin's digests, read through the admin kubeconfig before the walk. Walked 02:11–02:24Z as the QA user (`scripts/qa-login.sh`) in `bex-canary` (`tea-daif693dqjvc73e7as3g`) with a run-minted API key, in a headless Chromium of its own through `playwright-core`, `en-US`, UTC, at 1440×900 and 390×844, each URL a full page load. Created for the walk through REST (disposable): Starter web service `qa-20261128-m707-web` (`srv-dc53fer7laqs73bafj10`, `busybox:1.36.1` planting three log lines, one instance `…-eimng9h5knv8qai2t7b3`) with a 1 GB disk at `/var/data` (`dsk-dc53fer7laqs73bafj20`), and webhook `qa-20261128-m707-whk` (`whk-dc53ffr7laqs73bafj30`). Every URL landed the same at both widths, with no sideways scroll, no page error, no 429, and no console error but the analytics beacon the CSP refuses:
+
+- **Disk:** `/web/<srv>/disks`, `/pserv/…`, `/cron/…`, `/static/…` (another type under `/static`) and `/services/<srv>/disks` on `/services/<srv>/disk`, the Disk page with its usage chart; `/worker/<srv>/disks?x=1#top` on `/disk?x=1#top`.
+- **Metrics window:** `/web/<srv>/metrics/1w` on `metrics?range=7d` (Last 7 days), `/pserv/<srv>/metrics/5m` on `?range=30m` (Last 30 minutes), `/metrics/24h?x=1#h` on `?x=1&range=24h#h` (Last 24 hours), `/metrics/forever` on `metrics` (Last 12 hours); `?t=1h` on Last hour, `?t=<ms>,<ms>` on the custom window it names, `?t=bogus` on Last 12 hours.
+- **Shell:** `/web/<srv>/shell/<suffix>` on `shell?instance=<srv>-<suffix>` and `/shell/<srv>-<suffix>?x=1` on `shell?x=1&instance=<srv>-<suffix>`, each with the picker on Instance `eimng9h5knv8qai2t7b3` and the web shell Connected (the service had one instance).
+- **Deploys and the rest:** `/web/<srv>/deploys/<live deploy>/logs?x=1` on that deploy's page with its logs, `/deploys/dep-d0000000000000000000/logs` on that deploy's Deploy not found; `/jobs`, `/previews`, `/pulls`, `/sharing` and `/nope/deeper?x=1#h` on Deploys (the last as `deploys#h`: the root landing keeps the hash, not the query).
+- **Logs:** Render's Instance failed link, `?l=[["INSTANCE","<srv>-<suffix>"]]&r=2026-11-28@02:00:00~2026-11-28@02:40:00`, on `?range=custom&rangeStart=…T02:00:00.000Z&rangeEnd=…T02:40:00.000Z&instance=<srv>-<suffix>` with the window, the Instance chip and only that instance's three lines; `?q=hello&l=[["LEVEL","error"]]` on `?level=error&text=hello` with the search text, the Level: error chip and the one error line; `?l=notjson&r=2026-02-30@00:00:00~x` on bare Logs, Last hour, no chip.
+- **Events:** `/events?et=DeployEnded` on Showing 1 of 2 with Event types: 1 and the Deploy ended row; `?et=Nope` on all 2 events, unfiltered.
+- **Webhook:** `/webhook/<whk>/activity` and `/webhook/<whk>` on Recent deliveries with Activity selected.
+- **Anchors:** `/settings#account-security` and `/u/settings#account-security` (on `/settings#account-security`) with the Account section at the top of the content, 72 px down at 1440 and 121 px at 390; `/billing#free-usage` with Included usage there, as bex's own `#included-usage`; `/billing#unbilled-charges` with Charges there, as bex's own `#charges`.
+
+The deploy row and the webhook header name the API key's client id as their actor, filed already as w31/142 and w31/095.
+
+**Cleanup.** The webhook and the service with its disk were deleted through REST (204 each, then 404 for all three); the run key was revoked and the QA session logged out (`qa-login.sh --logout`).
+
+## Unblock record
+
+- **2026-11-28, `/loopx w3` (verified evidence, no user decision):** the gate, pin must carry `7d1dce8611`, holds. The newest pin on `origin/main` is `207a050b22` `chore(deploy): pin platform images to 7d1dce861173`, `git merge-base --is-ancestor 7d1dce8611 207a050b22` exits 0, and production's `dashboard` and `bex-api` run that pin's digests. Affects t006 step 2, which then held at 1440 and 390 (§ Walk), so t010 closed the milestone. w3/m706's later fix `bc89ee1158` (a bare dead `/services/<id>` stays put) is not on this pin and was not judged here.
 
 ## Definition of done
 
