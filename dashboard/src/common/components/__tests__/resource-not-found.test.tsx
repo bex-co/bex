@@ -147,6 +147,65 @@ describe("ResourceNotFound", () => {
     unmount();
     expect(document.title).toBe("orders-api ・ Web Service ・ bex Dashboard");
   });
+
+  describe("beside the router's own <title>", () => {
+    // The router renders the head's <title> as an element of its own and
+    // swaps it whenever the route's head changes.
+    function routerHeadTitle(text: string) {
+      document.head.querySelectorAll("title").forEach((el) => el.remove());
+      const el = document.createElement("title");
+      el.textContent = text;
+      document.head.append(el);
+    }
+
+    beforeEach(() => {
+      window.history.pushState({}, "", "/services/srv-gone/deploys");
+    });
+    afterEach(() => {
+      window.history.pushState({}, "", "/");
+    });
+
+    it("leaves the next page's title alone once the URL has moved on", () => {
+      // Production 2026-11-28: Return home opened the home page with "Page
+      // not found" in its tab, the title this state had replaced.
+      routerHeadTitle("Page not found ・ bex Dashboard");
+      const { unmount } = render(<MissingService />);
+      expect(document.title).toBe("Service not found ・ bex Dashboard");
+
+      window.history.pushState({}, "", "/");
+      routerHeadTitle("Overview ・ bex Dashboard");
+      unmount();
+
+      expect(document.title).toBe("Overview ・ bex Dashboard");
+    });
+
+    it("takes the title back when the route's head commits after it on this page", async () => {
+      // A return to a resource deleted elsewhere draws "deleted" from the
+      // cache, then the loader's background re-read commits its own head.
+      routerHeadTitle("orders-api ・ Web Service ・ bex Dashboard");
+      render(<MissingService name="orders-api" />);
+      expect(document.title).toBe("Service deleted ・ bex Dashboard");
+
+      routerHeadTitle("Page not found ・ bex Dashboard");
+
+      await vi.waitFor(() =>
+        expect(document.title).toBe("Service deleted ・ bex Dashboard"),
+      );
+    });
+
+    it("stops claiming the title once the URL has moved on", async () => {
+      routerHeadTitle("Page not found ・ bex Dashboard");
+      render(<MissingService />);
+
+      window.history.pushState({}, "", "/");
+      routerHeadTitle("Overview ・ bex Dashboard");
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(document.title).toBe("Overview ・ bex Dashboard");
+    });
+  });
 });
 
 describe("the other states", () => {

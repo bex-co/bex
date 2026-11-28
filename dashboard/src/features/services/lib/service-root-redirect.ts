@@ -219,10 +219,15 @@ export async function redirectServiceSubpath(
  * layout's ServerDocument fetch, Apollo dedupes) then redirect to the canonical
  * base + primary tab. Keeping one resolver means the two bare URLs can never
  * drift apart.
+ *
+ * An id the read finds nothing for (dead, refused, or a failed read) keeps its
+ * URL: the layout draws Render's state in place, as Render does at
+ * `/web/<id>`, and has no tab to land on (w3/m706).
  */
 export async function redirectServiceRootByType(
   client: RouterContext["client"],
   serviceId: string,
-): Promise<never> {
-  return redirectServiceRoot(serviceId, await serviceType(client, serviceId));
+): Promise<void> {
+  const type = await serviceType(client, serviceId);
+  if (type !== null) redirectServiceRoot(serviceId, type);
 }

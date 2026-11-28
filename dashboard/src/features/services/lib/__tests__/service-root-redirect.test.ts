@@ -7,6 +7,7 @@ import {
   redirectPlanByType,
   redirectRunsByType,
   redirectServiceRoot,
+  redirectServiceRootByType,
   redirectServiceSubpath,
 } from "../service-root-redirect";
 import type { RouterContext } from "@/common/types/router-context";
@@ -77,6 +78,25 @@ async function thrown(load: Promise<unknown>): Promise<unknown> {
     return error;
   }
 }
+
+describe("the bare service URL (w3/m706)", () => {
+  it("lands a live service on its type's primary tab", async () => {
+    expect(
+      await thrown(redirectServiceRootByType(clientFor("web_service"), "srv-1")),
+    ).toMatchObject({ options: { to: "/services/$serviceId/deploys" } });
+    expect(
+      await thrown(redirectServiceRootByType(clientFor("static_site"), "srv-1")),
+    ).toMatchObject({ options: { to: "/static/$serviceId/events" } });
+  });
+
+  it("keeps the URL of an id the read finds nothing for, where the layout draws its state", async () => {
+    // Render draws "Service not found" at /web/<dead id> itself; landing on
+    // /deploys changed the URL of the link Render's API hands out.
+    expect(
+      await thrown(redirectServiceRootByType(clientFor(null), "srv-gone")),
+    ).toBeNull();
+  });
+});
 
 describe("a cron job's Runs, Deploys and Compute URLs (w3/m554)", () => {
   it("lands a cron job's root on Runs, the page Render shows at /cron/<id>", () => {

@@ -33,13 +33,42 @@ import type { ResourceReadState } from "@/common/lib/resource-read-state";
  * The tab's title while the state is drawn, the drawn title itself. The route
  * head's title is the loader's, which a resource deleted while its page was
  * open never re-runs, so the page sets it and gives back the one it replaced.
+ *
+ * The router owns the `<title>` element and may rewrite it after this state
+ * mounts: a return to a resource deleted elsewhere draws "Sandbox group
+ * deleted" from the cache, then the loader's background re-read commits its
+ * "Page not found" head over it. While the URL is still this page's, the
+ * state takes the title back. Once the URL moves on, the next page's head
+ * owns the tab: giving back the old title then would leave "Page not found"
+ * on the page Return home opened (w3/m706, production walk 2026-11-28).
+ * Only the state mounted last claims, so two can never trade the title.
  */
+let titleOwner: symbol | null = null;
+
 function useStateDocumentTitle(title: string) {
   useEffect(() => {
+    const owner = Symbol(title);
+    titleOwner = owner;
+    const wanted = formatDashboardTitle(title);
     const previous = document.title;
-    document.title = formatDashboardTitle(title);
+    const pathname = window.location.pathname;
+    const onThisPage = () => window.location.pathname === pathname;
+    const claim = () => {
+      if (titleOwner === owner && onThisPage() && document.title !== wanted) {
+        document.title = wanted;
+      }
+    };
+    claim();
+    const observer = new MutationObserver(claim);
+    observer.observe(document.head, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
     return () => {
-      document.title = previous;
+      observer.disconnect();
+      if (titleOwner === owner) titleOwner = null;
+      if (onThisPage() && document.title === wanted) document.title = previous;
     };
   }, [title]);
 }
