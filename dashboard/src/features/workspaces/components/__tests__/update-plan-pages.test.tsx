@@ -356,6 +356,19 @@ describe("/billing/update-plan", () => {
       "/billing",
     ],
     ["home", "/billing/update-plan", undefined, "/"],
+    // Production's walk: the raw next reached Cancel (w3/m708).
+    [
+      "home from another site's next",
+      "/billing/update-plan?next=https://evil.example/",
+      undefined,
+      "/",
+    ],
+    [
+      "home from a protocol-relative next",
+      "/billing/update-plan?next=//evil.example",
+      undefined,
+      "/",
+    ],
   ])("cancels back to %s", async (_, href, state, landing) => {
     const user = userEvent.setup();
     const router = await renderAt(href, state as HistoryState | undefined);

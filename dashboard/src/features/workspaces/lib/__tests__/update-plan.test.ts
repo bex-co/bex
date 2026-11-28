@@ -45,10 +45,14 @@ describe("Render's ?plan= aliases", () => {
     expect(
       validateUpdatePlanSearch({ plan: "team", next: "/webhooks?x=1" }),
     ).toEqual({ plan: "professional", next: "/webhooks?x=1" });
-    expect(validateUpdatePlanSearch({ plan: "gold", next: 7 })).toEqual({
-      plan: undefined,
-      next: undefined,
-    });
+    // Each key is there even when rejected: the router merges this over the
+    // raw search, so an omitted key would reach the pages raw.
+    for (const next of [7, "//evil.example", "https://evil.example/"]) {
+      expect(validateUpdatePlanSearch({ plan: "gold", next })).toStrictEqual({
+        plan: undefined,
+        next: undefined,
+      });
+    }
   });
 });
 

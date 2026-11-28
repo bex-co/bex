@@ -89,11 +89,20 @@ export function readNext(value: unknown): string | undefined {
   return path === "/" && value !== "/" ? undefined : path;
 }
 
-/** Reads the plan pages' search, keeping only values they can use. */
+/**
+ * Reads the plan pages' search, keeping only values they can use. Both keys
+ * come back, undefined when absent or rejected: the router merges this over
+ * the raw search, so an omitted `?next=https://…` reached Cancel and success
+ * raw, an open redirect (w3/m708's production walk, w5/078's rule).
+ */
 export function validateUpdatePlanSearch(
   search: Record<string, unknown>,
 ): UpdatePlanSearch {
-  return updatePlanSearch(planFromSearch(search.plan), search.next);
+  const plan = planFromSearch(search.plan);
+  return {
+    plan: plan && planSearchValue(plan),
+    next: readNext(search.next),
+  };
 }
 
 /** The search a link into the plan pages writes, naming only what it has. */
