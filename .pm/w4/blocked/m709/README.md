@@ -1,6 +1,6 @@
 # w4 · m709 — Bandwidth served to a DDoS attack is not billed, as on Render: an attack window a bex operator declares takes its hours off the invoice
 
-**Worker:** worker4 **Goal:** a workspace whose service was flooded pays nothing for the bandwidth the flood drew, as Render promises: "As part of Render's DDoS protection, Render does not bill for bandwidth usage incurred from a DDoS attack" ([faq](https://render.com/docs/faq), "What does Render bill for?" › Outbound bandwidth, read 2026-11-27). **Status:** in progress (t001–t004, t006–t008 done; t005 has its dev-4 half, its production half waits for the pin)
+**Worker:** worker4 **Goal:** a workspace whose service was flooded pays nothing for the bandwidth the flood drew, as Render promises: "As part of Render's DDoS protection, Render does not bill for bandwidth usage incurred from a DDoS attack" ([faq](https://render.com/docs/faq), "What does Render bill for?" › Outbound bandwidth, read 2026-11-27). **Status:** blocked (pin must carry `6e59881e00`; t001–t004, t006–t008 done; t005 has its dev-4 half, its production half and t009 wait for the pin)
 
 ## Tasks (in order)
 
