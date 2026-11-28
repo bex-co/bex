@@ -224,6 +224,9 @@ export function ResourceStatusScreen({
         egress_bytes: t("usageGlance.meters.egress_bytes"),
         build_seconds: t("usageGlance.meters.build_seconds"),
         storage_gb_seconds: t("usageGlance.meters.storage_gb_seconds"),
+        storage_capacity_gb_seconds: t(
+          "usageGlance.meters.storage_capacity_gb_seconds",
+        ),
         sandbox_compute_seconds: t(
           "usageGlance.meters.sandbox_compute_seconds",
         ),

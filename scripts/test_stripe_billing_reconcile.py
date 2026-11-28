@@ -64,6 +64,27 @@ class ReconcileTest(TestCase):
             str(RECONCILE.normalized_value(row("storage_gb_seconds", 1, "storage_gb_hours"))),
         )
 
+    def test_capacity_rows_rebase_like_used_bytes(self):
+        # w4/m713: a Postgres's provisioned capacity exports on storage_gb_hours
+        # rebased as GB-seconds/3600, exactly like the used bytes it replaces.
+        # A full hour of 10 GB held is 36,000 GB-seconds and must reconcile as
+        # the 10 GB-hours Stripe aggregates, not as 36,000 of them.
+        self.assertEqual(
+            RECONCILE.Decimal("10"),
+            RECONCILE.normalized_value(row("storage_capacity_gb_seconds", 36000, "storage_gb_hours")),
+        )
+        local = {
+            "workspaceId": "tea-test",
+            "livemode": False,
+            "rows": [row("storage_capacity_gb_seconds", 36000, "storage_gb_hours")],
+        }
+        result = RECONCILE.compare(
+            local,
+            {"storage_gb_hours": "10"},
+            [{"lookupKey": "storage_gb_hours", "quantity": 10, "amount": 21, "currency": "usd", "unitAmountDecimal": "2.1"}],
+        )
+        self.assertTrue(result["ok"], result)
+
     def test_invoice_preview_fetches_every_paginated_line(self):
         first = [{"id": f"il_{index}"} for index in range(100)]
         second = [{"id": f"il_{index}"} for index in range(100, 113)]

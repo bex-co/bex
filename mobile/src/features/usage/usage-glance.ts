@@ -46,6 +46,10 @@ const METER_ORDER: readonly string[] = [
   "egress_bytes",
   "build_seconds",
   "storage_gb_seconds",
+  // A Postgres's provisioned storage capacity bills from
+  // storageCapacity.billedFrom; its used bytes stay a reading beside it, so
+  // the two lines sort adjacent (w4/m713).
+  "storage_capacity_gb_seconds",
   "sandbox_compute_seconds",
 ];
 
@@ -137,6 +141,10 @@ export function formatUsageTotal(kind: string, total: number): string {
     case "build_seconds":
       return formatHours(total / 3_600);
     case "storage_gb_seconds":
+    case "storage_capacity_gb_seconds":
+      // Both datastore storage kinds arrive in GB-seconds: used bytes, and a
+      // Postgres's provisioned capacity from storageCapacity.billedFrom
+      // (w4/m713). The billed line and its $0 reading share the unit.
       return formatHours(total / 3_600, "GB-h");
     case "sandbox_compute_seconds":
       return formatHours(total / 3_600_000, "vCPU-h");
