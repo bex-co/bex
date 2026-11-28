@@ -1,6 +1,6 @@
 # w4 · m712 — Services and datastores in different regions don't reach each other over the private network, as on Render
 
-**Worker:** worker4 **Goal:** a workspace's private network is split by the region each resource reads back, as Render's is. A service, a cron run or a pre-deploy command reaches another service's internal address, or a Postgres or Key Value internal URL, only when both read back the same region. Everything else stays as it is: same-region traffic, environment isolation, public URLs, external datastore URLs and SSH. Nothing restarts to apply it, and ADR041's unsigned "No region axis" goes. **Status:** blocked (t001–t004 and t006–t009 done; t005 waits for production to carry `c92ab66019`, then t010)
+**Worker:** worker4 **Goal:** a workspace's private network is split by the region each resource reads back, as Render's is. A service, a cron run or a pre-deploy command reaches another service's internal address, or a Postgres or Key Value internal URL, only when both read back the same region. Everything else stays as it is: same-region traffic, environment isolation, public URLs, external datastore URLs and SSH. Nothing restarts to apply it, and ADR041's unsigned "No region axis" goes. **Status:** done
 
 ## Tasks (in order)
 
@@ -10,12 +10,12 @@
 | [t002](done/t002.md) | App pods (services, cron runs, pre-deploy) carry their region label, relabelled in place — **DONE** | 1h30m | t001 |
 | [t003](done/t003.md) | Postgres and Key Value pods carry their region label, relabelled in place — **DONE** | 1h30m | t001 |
 | [t004](done/t004.md) | The workspace's private-network policies split by region × environment — **DONE** | 2h | t002, t003 |
-| [t005](t005.md) | envtest, and a production check with disposable resources in two regions | 1h15m | t004 |
+| [t005](done/t005.md) | envtest, and a production check with disposable resources in two regions — **DONE** | 1h15m | t004 |
 | [t006](done/t006.md) | Connect → Internal says the private network is per region, ADR041 D5 is struck, and ADR018 records the rule — **DONE** | 45m | t005 |
 | [t007](done/t007.md) | Render parity — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007, t008 |
-| [t010](t010.md) | Closeout | 10m | t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t009 |
 
 Total: **10 tasks, about 9h15m**.
 
@@ -54,6 +54,40 @@ Pod UIDs of first-party workloads, to compare once production runs this mileston
 - Key Value `red-d9p49kdrtmes73c34ovg-0` `5e84c5b5-629b-438b-bd70-9d351973dde2` and its proxy `red-d9p49kdrtmes73c34ovg-internal-5bf6648486-2pm5p` `b6211ff1-ca76-441b-8f67-90b501820bc2`
 
 `bex-canary` (`tea-daif693dqjvc73e7as3g`): `tea-daif693dqjvc73e7as3g-hello-go-7875965c6b-29whc` `b8dc0067-2fe2-44a7-8ce0-5813cd00f25a`, Key Value `red-dbpf5q5me2kc73f2l0og-0` `9cb16254-3a90-46c7-a2a6-b859bcf7a35e`.
+
+## Unblock (2026-11-28, `/loopx w4` worker)
+
+- **Affected:** t005 (steps 2–5), t010.
+- **Source:** verified evidence. Production's pin is `45b1e8ec4f09` (`8da265c1e0 chore(deploy): pin platform images to 45b1e8ec4f09`, the newest pin on `origin/main` `8a1950f767`), and `git merge-base --is-ancestor c92ab66019 45b1e8ec4f09` holds. Every `bex-system` Deployment runs the pinned digest (`sha256:e5ff553ab838…`, `deploy/gitops/base/bex.yaml:40`), and the controller manager restarted on it at 05:30Z. The pin gate on `c92ab66019` has cleared; nothing else gates the work.
+- **Next:** t005 steps 2–5 on production (below), then t010.
+
+## Production check (t005, 2026-11-28, 07:18–07:27Z, pin `45b1e8ec4f09`)
+
+- **First party.** `https://beancount.io/` and `https://bex.co/` answered 200 before and after the fixtures. All 84 hosting namespaces hold `allow-same-namespace` with `app.bex.co/region NotIn [ohio, oregon, singapore, virginia]` and the four `allow-same-region-<region>` policies (each `In [<region>]` as its pod selector, ingress peer and egress peer); none is missing one. No `isolate-*` policy exists (no isolated environment). `bex-operator-pod-labels` lists `app.bex.co/region` among the in-place labels.
+- **Unchanged UIDs.** All seven baseline pods above kept their UIDs and run, before and after the fixtures: `beancount-forum`, `twenty-crm`, the Postgres instance, the Key Value and its proxy in bex's workspace, and `hello-go` and its Key Value in `bex-canary`.
+- **Fixtures in `bex-canary` (disposable),** created through `POST /v1/services` and `POST /v1/key-value` with a run-minted key (`qa-20261128-w4-m712-region`), image `docker.io/library/busybox:1.37`, Starter private services serving `httpd -p 10000` and looping `nc -z -w 3`:
+  - Key Value `w4-m712-kv` (`red-dc582831er7c73bs1ekg`, `region: frankfurt`, free);
+  - `w4-m712-fra-a` (`srv-dc582nb1er7c73bs1em0`), created **without** a region, read back `frankfurt`;
+  - `w4-m712-ore` (`srv-dc582p31er7c73bs1eo0`), `region: oregon`;
+  - `w4-m712-fra-b` (`srv-dc582qgtfgsc73eubuf0`), `region: frankfurt`.
+  - Their pods carried `app.bex.co/region` `oregon` and `frankfurt`, none for `fra-a`, and `frankfurt` on the Key Value's server and internal proxy.
+- **Reachability,** read back through `GET /v1/logs` for each service: `w4-m712-ore`'s rounds at 07:23:44Z and 07:24:13Z and `w4-m712-fra-b`'s at 07:23:45Z and 07:24:11Z. Each round starts with the prober's own loopback, so each refusal is the policy and not a closed port. The first round of each, run before its targets were Ready, is not counted, and in `fra-b`'s 07:23:45Z round one lookup of `w4-m712-fra-a-discovery` returned no address; it resolved and connected at 07:24:11Z.
+
+  | from | target | result |
+  | --- | --- | --- |
+  | `w4-m712-ore` (oregon) | its own loopback `:10000` | open |
+  | `w4-m712-ore` | `w4-m712-fra-a:10000` (internal address) | refused (3 s timeout) |
+  | `w4-m712-ore` | `fra-a`'s pod IP, from `w4-m712-fra-a-discovery` | refused |
+  | `w4-m712-ore` | `red-dc582831er7c73bs1ekg:6379` (Key Value internal URL) | refused |
+  | `w4-m712-fra-b` (frankfurt) | its own loopback `:10000` | open |
+  | `w4-m712-fra-b` | `w4-m712-fra-a:10000` and `fra-a`'s pod IP | open |
+  | `w4-m712-fra-b` | `red-dc582831er7c73bs1ekg:6379` | open |
+  | `w4-m712-fra-b` | `w4-m712-ore:10000` and `ore`'s pod IP, from `w4-m712-ore-discovery` | refused |
+  | `w4-m712-fra-a` | its own loopback `:10000` | open |
+
+  Every pod reached Ready, so the platform's probes still reach each region.
+
+- **Cleanup.** `DELETE` 204 on the three services and the Key Value, then `GET` 404 on each; no fixture CR, pod, Service or PVC remained in the namespace. The key was revoked, the QA session logged out, and the scratch kubeconfig deleted.
 
 ## Design (t001)
 
