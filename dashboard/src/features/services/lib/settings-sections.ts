@@ -18,7 +18,6 @@ export type ServiceSettingsSectionId =
   | "static-site"
   | "domains"
   | "networking"
-  | "outbound-ips"
   | "registry-credential"
   | "notifications"
   | "port"
@@ -28,12 +27,6 @@ export type ServiceSettingsSectionId =
   | "deploy-hook"
   | "suspend"
   | "danger-zone";
-
-/** A section the page's navigation links: all but Outbound IPs, a reference card. */
-export type NavigableSettingsSectionId = Exclude<
-  ServiceSettingsSectionId,
-  "outbound-ips"
->;
 
 /** What the section list reads from a service. */
 export interface SettingsSectionsService {
@@ -83,9 +76,9 @@ export function serviceSettingsSections(
     if (staticSite) sections.push("static-site");
     // Custom domains, the platform subdomain and the inbound IP allowlist exist
     // only for a type served at a public host (w6/m46, w7/m32): bex-api refuses
-    // them on any other.
+    // them on any other. Render keeps no outbound IP card on any Settings
+    // page: they are in the header's Connect menu (w4/m711).
     if (publiclyRoutable(type)) sections.push("domains", "networking");
-    sections.push("outbound-ips");
   }
   if (
     !staticSite &&
@@ -109,14 +102,4 @@ export function serviceSettingsSections(
   // Suspend (or Resume) and delete, at the bottom as on Render.
   sections.push("suspend", "danger-zone");
   return sections;
-}
-
-/** The sections the page's navigation links. */
-export function navigableSettingsSections(
-  sections: ServiceSettingsSectionId[],
-): NavigableSettingsSectionId[] {
-  return sections.filter(
-    (section): section is NavigableSettingsSectionId =>
-      section !== "outbound-ips",
-  );
 }

@@ -5801,31 +5801,34 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Toast on failed setServiceIpAllowList mutation (w7/m32)",
   },
   "services.outboundIpsTitle": {
-    message: "出站 IP",
-    description: "Settings card title for service egress IPs (w8/010)",
+    message: "出站 IP 地址",
+    description:
+      "Title of the Connect menu's Outbound section, Render's Connect → Outbound tab (w4/m711)",
+  },
+  "services.outboundIpsLead": {
+    message: "你的服务发往公网的网络请求将来自以下 IP 地址或地址段之一。",
+    description:
+      "First line of the Connect menu's Outbound section, Render's words (w4/m711)",
   },
   "services.outboundIpsDescription": {
     message:
       "此服务的共享出站地址。它们是租户节点池当前的公网 IP，会随自动扩缩容增减节点而变化。",
     description:
-      "Outbound IPs card helper — truthful shared-pool semantics (w8/010)",
-  },
-  "services.outboundIpsEmpty": {
-    message: "尚未报告出站 IP（本地集群没有节点 ExternalIP 时很常见）。",
-    description: "Honest empty state when outboundIps.ips is empty (w8/010)",
+      "Second line of the Connect menu's Outbound section: where bex's shared egress addresses come from (w8/010, w4/m711)",
   },
   "services.outboundIpsCopy": {
-    message: "复制 {ip}",
+    message: "复制出站 IP 地址",
     description:
-      "Accessible label on the copy button for one outbound IP (w8/010)",
+      "Accessible label on the copy button for the whole outbound IP list in the Connect menu (w4/m711)",
   },
   "services.outboundIpsCopied": {
     message: "已复制",
-    description: "Toast after copying an outbound IP (w8/010)",
+    description: "Toast after copying the outbound IP addresses (w8/010)",
   },
   "services.outboundIpsCopyError": {
     message: "无法复制",
-    description: "Toast when clipboard write fails for an outbound IP (w8/010)",
+    description:
+      "Toast when clipboard write fails for the outbound IP addresses (w8/010)",
   },
   "services.environmentPageDescription": {
     message: "此服务运行时读取的全部内容。在你显示之前，值一直保持隐藏。",

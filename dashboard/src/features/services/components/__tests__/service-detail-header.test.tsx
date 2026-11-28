@@ -554,6 +554,7 @@ describe("ServiceDetailHeader", () => {
       svc({
         internalAddress: "web-x1y2:3000",
         sshAddress: "srv-example@ssh.bex.co",
+        outboundIps: { type: "shared", ips: ["203.0.113.7"] },
       }),
     );
 
@@ -568,7 +569,11 @@ describe("ServiceDetailHeader", () => {
     // order, so assert the stops themselves.
     expect(panel).toContainElement(document.activeElement as HTMLElement);
     expect(screen.queryByRole("menu")).toBeNull();
-    for (const name of ["Copy internal address", "Copy SSH command"]) {
+    for (const name of [
+      "Copy internal address",
+      "Copy SSH command",
+      "Copy outbound IP addresses",
+    ]) {
       const copy = within(panel).getByRole("button", { name });
       expect(copy).not.toHaveAttribute("tabindex", "-1");
       copy.focus();
@@ -578,6 +583,105 @@ describe("ServiceDetailHeader", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(connect).toHaveFocus();
+  });
+
+  // w4/m711: Render lists a service's outbound IPs in Connect → Outbound, after
+  // SSH, only while the list has an address, and never for a static site.
+  describe("Connect → Outbound", () => {
+    const ips = ["203.0.113.7", "198.51.100.24"];
+    const lead =
+      "Network requests from your service to the public internet will come from one of the following IP addresses or ranges.";
+
+    it.each([
+      ["web_service", {}],
+      ["private_service", { url: null, internalAddress: "app-x1y2:8080" }],
+      ["background_worker", { url: null }],
+    ])(
+      "lists a %s's outbound IPs under Render's title and words",
+      async (type, overrides) => {
+        const user = userEvent.setup();
+        renderHeader(
+          svc({
+            type,
+            sshAddress: "srv-example@ssh.bex.co",
+            outboundIps: { type: "shared", ips },
+            ...overrides,
+          } as Partial<ServiceView>),
+        );
+        await user.click(
+          await screen.findByRole("button", { name: "Connect" }),
+        );
+        const panel = screen.getByRole("dialog", { name: "Connect" });
+
+        const list = within(panel).getByRole("list", {
+          name: "Outbound IP Addresses",
+        });
+        expect(
+          within(list)
+            .getAllByRole("listitem")
+            .map((item) => item.textContent),
+        ).toEqual(ips);
+        expect(within(panel).getByText(lead)).toBeInTheDocument();
+        // bex's own line on where the addresses come from, under the key
+        // w21/m616 rewrites when they become a fixed set.
+        expect(
+          within(panel).getByText(/tenant pool's current node public IPs/),
+        ).toBeInTheDocument();
+        // After SSH, as Render orders the tabs.
+        const ssh = within(panel).getByText("ssh srv-example@ssh.bex.co");
+        expect(
+          ssh.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      },
+    );
+
+    it("copies the whole list, one address per line", async () => {
+      const user = userEvent.setup();
+      renderHeader(svc({ outboundIps: { type: "shared", ips } }));
+      await user.click(await screen.findByRole("button", { name: "Connect" }));
+
+      await user.click(
+        screen.getByRole("button", { name: "Copy outbound IP addresses" }),
+      );
+
+      expect(await navigator.clipboard.readText()).toBe(
+        "203.0.113.7\n198.51.100.24",
+      );
+    });
+
+    it.each([
+      ["an empty list", { type: "shared", ips: [] }],
+      ["a list the read did not select", null],
+    ])("shows no Outbound section for %s", async (_name, outboundIps) => {
+      const user = userEvent.setup();
+      renderHeader(svc({ sshAddress: "srv-example@ssh.bex.co", outboundIps }));
+      await user.click(await screen.findByRole("button", { name: "Connect" }));
+
+      const panel = screen.getByRole("dialog", { name: "Connect" });
+      expect(
+        within(panel).getByText("ssh srv-example@ssh.bex.co"),
+      ).toBeInTheDocument();
+      expect(within(panel).queryByText("Outbound IP Addresses")).toBeNull();
+      expect(within(panel).queryByText(lead)).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: "Copy outbound IP addresses" }),
+      ).toBeNull();
+    });
+
+    it("gives a static site no Connect menu, so no outbound IPs", async () => {
+      renderHeader(
+        svc({
+          type: "static_site",
+          plan: null,
+          outboundIps: { type: "shared", ips },
+        }),
+      );
+      expect(
+        await screen.findByRole("button", { name: "Manual Deploy" }),
+      ).toBeVisible();
+      expect(screen.queryByRole("button", { name: "Connect" })).toBeNull();
+      expect(screen.queryByText("203.0.113.7")).toBeNull();
+    });
   });
 
   it("keeps the general explanation, visibly, when the user holds no remedy", async () => {

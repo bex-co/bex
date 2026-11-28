@@ -40,7 +40,6 @@ import { EditableFieldRow } from "@/features/services/components/editable-field-
 import { DeployHookSection } from "@/features/services/components/deploy-hook-section";
 import { MaxShutdownDelayRow } from "@/features/services/components/max-shutdown-delay-row";
 import { ServiceNetworkingPanel } from "@/features/services/components/service-networking-panel";
-import { ServiceOutboundIpsPanel } from "@/features/services/components/service-outbound-ips-panel";
 import { MaintenanceModeSection } from "@/features/services/components/maintenance-mode-section";
 import { EdgeCachingSection } from "@/features/services/components/edge-caching-section";
 import { RuntimeSection } from "@/features/services/components/runtime-section";
@@ -342,9 +341,6 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
             onSaved={refetch}
           />
         );
-      case "outbound-ips":
-        if (!service) return null;
-        return <ServiceOutboundIpsPanel ips={service.outboundIps?.ips} />;
       case "registry-credential":
         if (!service) return null;
         return (

@@ -5923,32 +5923,35 @@ const koServices: Record<string, TranslationEntry> = {
     description: "Toast on failed setServiceIpAllowList mutation (w7/m32)",
   },
   "services.outboundIpsTitle": {
-    message: "아웃바운드 IP",
-    description: "Settings card title for service egress IPs (w8/010)",
+    message: "아웃바운드 IP 주소",
+    description:
+      "Title of the Connect menu's Outbound section, Render's Connect → Outbound tab (w4/m711)",
+  },
+  "services.outboundIpsLead": {
+    message:
+      "서비스에서 공용 인터넷으로 보내는 네트워크 요청은 다음 IP 주소 또는 범위 중 하나에서 나갑니다.",
+    description:
+      "First line of the Connect menu's Outbound section, Render's words (w4/m711)",
   },
   "services.outboundIpsDescription": {
     message:
       "이 서비스의 공유 송신 주소입니다. 테넌트 풀 노드의 현재 공개 IP이며, 오토스케일러가 노드를 추가하거나 제거하면 바뀔 수 있습니다.",
     description:
-      "Outbound IPs card helper — truthful shared-pool semantics (w8/010)",
-  },
-  "services.outboundIpsEmpty": {
-    message:
-      "아직 보고된 아웃바운드 IP가 없습니다(노드 ExternalIP가 없는 로컬 클러스터에서 흔히 나타납니다).",
-    description: "Honest empty state when outboundIps.ips is empty (w8/010)",
+      "Second line of the Connect menu's Outbound section: where bex's shared egress addresses come from (w8/010, w4/m711)",
   },
   "services.outboundIpsCopy": {
-    message: "{ip} 복사",
+    message: "아웃바운드 IP 주소 복사",
     description:
-      "Accessible label on the copy button for one outbound IP (w8/010)",
+      "Accessible label on the copy button for the whole outbound IP list in the Connect menu (w4/m711)",
   },
   "services.outboundIpsCopied": {
     message: "복사됨",
-    description: "Toast after copying an outbound IP (w8/010)",
+    description: "Toast after copying the outbound IP addresses (w8/010)",
   },
   "services.outboundIpsCopyError": {
     message: "복사할 수 없습니다",
-    description: "Toast when clipboard write fails for an outbound IP (w8/010)",
+    description:
+      "Toast when clipboard write fails for the outbound IP addresses (w8/010)",
   },
   "services.environmentPageDescription": {
     message:

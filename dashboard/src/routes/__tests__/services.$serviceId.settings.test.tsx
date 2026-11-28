@@ -42,9 +42,8 @@ vi.mock("@/features/services/hooks/use-server", () => ({
 }));
 
 vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
-  const { mockAllowedResourceActions } = await import(
-    "@/test/mocks/resource-actions"
-  );
+  const { mockAllowedResourceActions } =
+    await import("@/test/mocks/resource-actions");
   return mockAllowedResourceActions("app");
 });
 
@@ -493,7 +492,6 @@ describe("settings skeleton parity", () => {
         "build",
         "domains",
         "networking",
-        "outbound-ips",
         "notifications",
         "port",
         "health-checks",
@@ -510,7 +508,6 @@ describe("settings skeleton parity", () => {
         "deploy",
         "domains",
         "networking",
-        "outbound-ips",
         "registry-credential",
         "notifications",
         "port",
@@ -523,45 +520,22 @@ describe("settings skeleton parity", () => {
     [
       "private_service",
       "repo",
-      [
-        ...W,
-        "runtime",
-        "build",
-        "outbound-ips",
-        "notifications",
-        "port",
-        ...END,
-      ],
+      [...W, "runtime", "build", "notifications", "port", ...END],
     ],
     [
       "private_service",
       "image",
-      [
-        ...W,
-        "deploy",
-        "outbound-ips",
-        "registry-credential",
-        "notifications",
-        "port",
-        ...END,
-      ],
+      [...W, "deploy", "registry-credential", "notifications", "port", ...END],
     ],
     [
       "background_worker",
       "repo",
-      [...W, "runtime", "build", "outbound-ips", "notifications", ...END],
+      [...W, "runtime", "build", "notifications", ...END],
     ],
     [
       "background_worker",
       "image",
-      [
-        ...W,
-        "deploy",
-        "outbound-ips",
-        "registry-credential",
-        "notifications",
-        ...END,
-      ],
+      [...W, "deploy", "registry-credential", "notifications", ...END],
     ],
     [
       "cron_job",
@@ -602,7 +576,6 @@ describe("settings skeleton parity", () => {
         "static-site",
         "domains",
         "networking",
-        "outbound-ips",
         "notifications",
         ...END,
       ],
@@ -620,6 +593,9 @@ describe("settings skeleton parity", () => {
             ? "https://app.onbex.co"
             : null,
         schedule: type === "cron_job" ? "*/15 * * * *" : null,
+        // Render lists these only in the header's Connect menu, so no
+        // Settings page shows them, whatever the type (w4/m711).
+        outboundIps: { type: "shared", ips: ["203.0.113.7"] },
       });
       serverState.service = service;
       const page = renderSettings();
@@ -629,6 +605,7 @@ describe("settings skeleton parity", () => {
           ".service-settings-layout > div > section[id]",
         ),
       ].map((section) => section.id);
+      expect(screen.queryByText(/203\.0\.113\.7/)).toBeNull();
       page.unmount();
 
       const { container } = render(
@@ -652,10 +629,8 @@ describe("settings skeleton parity", () => {
 
       expect(sections).toEqual(expected);
       expect(regions).toEqual(sections);
-      // Outbound IPs is the one section the navigation does not link.
-      expect(links).toEqual(
-        sections.filter((id) => id !== "outbound-ips").map((id) => `#${id}`),
-      );
+      // The navigation links every section.
+      expect(links).toEqual(sections.map((id) => `#${id}`));
       expect(
         navigation?.querySelectorAll('[data-slot="skeleton"]'),
       ).toHaveLength(links.length);

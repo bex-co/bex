@@ -271,7 +271,6 @@ import {
   supportsScalingType,
 } from "@/features/services/lib/service-type";
 import {
-  navigableSettingsSections,
   serviceSettingsSections,
   type ServiceSettingsSectionId,
   type SettingsSectionsService,
@@ -3555,7 +3554,6 @@ type SettingsSkeletonService = SettingsSectionsService & {
 type PlainSettingsSection =
   | "static-site"
   | "domains"
-  | "outbound-ips"
   | "registry-credential"
   | "notifications"
   | "port"
@@ -3569,7 +3567,6 @@ const SETTINGS_CARD: Record<
 > = {
   "static-site": { fields: 2, height: "h-[350px] sm:h-[238px]" },
   domains: { fields: 2, height: "h-[637px] sm:h-[473px]" },
-  "outbound-ips": { fields: 1, height: "h-[198px] sm:h-[138px]" },
   "registry-credential": { fields: 1, height: "h-[292px] sm:h-[256px]" },
   notifications: { fields: 1, height: "h-[268px] sm:h-[208px]" },
   port: { fields: 1, height: "h-[294px] sm:h-[226px]" },
@@ -3912,9 +3909,7 @@ export function ServiceSettingsSkeleton({
       }
       className={cn("service-settings-layout", SECTIONED_GRID_CLASS)}
     >
-      <ResponsiveSectionNavigationSkeleton
-        count={navigableSettingsSections(sections).length}
-      />
+      <ResponsiveSectionNavigationSkeleton count={sections.length} />
       <div className={SECTIONED_BODY_CLASS}>
         {sections.map((section) => (
           <Region

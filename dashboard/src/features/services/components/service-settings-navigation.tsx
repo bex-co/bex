@@ -22,11 +22,7 @@ import {
 } from "lucide-react";
 import { SectionNavigation } from "@/common/components/section-navigation";
 import { useTranslations } from "@/common/hooks/use-translations";
-import {
-  navigableSettingsSections,
-  type NavigableSettingsSectionId,
-  type ServiceSettingsSectionId,
-} from "@/features/services/lib/settings-sections";
+import type { ServiceSettingsSectionId } from "@/features/services/lib/settings-sections";
 import type { en } from "@/i18n";
 
 interface SectionItem {
@@ -34,7 +30,7 @@ interface SectionItem {
   icon: LucideIcon;
 }
 
-const SECTION_ITEMS: Record<NavigableSettingsSectionId, SectionItem> = {
+const SECTION_ITEMS: Record<ServiceSettingsSectionId, SectionItem> = {
   general: {
     labelKey: "services.generalTitle",
     icon: Settings2,
@@ -128,7 +124,7 @@ export function ServiceSettingsNavigation({
   className?: string;
 }) {
   const { t } = useTranslations();
-  const items = navigableSettingsSections(sections).map((section) => {
+  const items = sections.map((section) => {
     const item =
       section === "suspend" && suspended ? RESUME_ITEM : SECTION_ITEMS[section];
     return { href: `#${section}`, label: t(item.labelKey), icon: item.icon };

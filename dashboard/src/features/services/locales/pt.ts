@@ -6017,32 +6017,35 @@ const ptServices: Record<string, TranslationEntry> = {
     description: "Toast on failed setServiceIpAllowList mutation (w7/m32)",
   },
   "services.outboundIpsTitle": {
-    message: "IPs de saída",
-    description: "Settings card title for service egress IPs (w8/010)",
+    message: "Endereços IP de saída",
+    description:
+      "Title of the Connect menu's Outbound section, Render's Connect → Outbound tab (w4/m711)",
+  },
+  "services.outboundIpsLead": {
+    message:
+      "As solicitações de rede do seu serviço para a internet pública sairão de um dos seguintes endereços IP ou intervalos.",
+    description:
+      "First line of the Connect menu's Outbound section, Render's words (w4/m711)",
   },
   "services.outboundIpsDescription": {
     message:
       "Endereços de saída compartilhados deste serviço. São os IPs públicos atuais dos nós do pool do tenant e podem mudar conforme o autoscaler adiciona ou remove nós.",
     description:
-      "Outbound IPs card helper — truthful shared-pool semantics (w8/010)",
-  },
-  "services.outboundIpsEmpty": {
-    message:
-      "Nenhum IP de saída informado ainda (comum em clusters locais sem ExternalIPs nos nós).",
-    description: "Honest empty state when outboundIps.ips is empty (w8/010)",
+      "Second line of the Connect menu's Outbound section: where bex's shared egress addresses come from (w8/010, w4/m711)",
   },
   "services.outboundIpsCopy": {
-    message: "Copiar {ip}",
+    message: "Copiar endereços IP de saída",
     description:
-      "Accessible label on the copy button for one outbound IP (w8/010)",
+      "Accessible label on the copy button for the whole outbound IP list in the Connect menu (w4/m711)",
   },
   "services.outboundIpsCopied": {
     message: "Copiado",
-    description: "Toast after copying an outbound IP (w8/010)",
+    description: "Toast after copying the outbound IP addresses (w8/010)",
   },
   "services.outboundIpsCopyError": {
     message: "Não foi possível copiar",
-    description: "Toast when clipboard write fails for an outbound IP (w8/010)",
+    description:
+      "Toast when clipboard write fails for the outbound IP addresses (w8/010)",
   },
   "services.environmentPageDescription": {
     message:

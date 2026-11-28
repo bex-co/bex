@@ -3,10 +3,12 @@ import { Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
   ChevronDown,
+  Globe,
   KeyRound,
   Network,
   SquareTerminal,
   Terminal,
+  type LucideIcon,
 } from "lucide-react";
 import { GithubIcon } from "@/common/components/github-icon";
 import { Badge } from "@/common/components/ui/badge.tsx";
@@ -119,12 +121,12 @@ export interface ServiceDetailHeaderProps {
  * where the identity facts live: it also carries the bex-native ones the retired
  * Overview panel showed — instances, revision, age.
  *
- * The action controls are Connect (SSH) and Manual Deploy (deploy/restart); the
- * header carries no "•••" lifecycle menu — restart lives in the Manual Deploy
- * dropdown (w2/m30) and Suspend/Resume moved to the Settings page. As on
- * Render, a header has actions only while the service runs: a suspended one
- * of any type has none, and Render's notice under its facts offers Resume
- * service instead (w3/m555, w3/107).
+ * The action controls are Connect (internal address, SSH and outbound IPs) and
+ * Manual Deploy (deploy/restart); the header carries no "•••" lifecycle menu —
+ * restart lives in the Manual Deploy dropdown (w2/m30) and Suspend/Resume
+ * moved to the Settings page. As on Render, a header has actions only while
+ * the service runs: a suspended one of any type has none, and Render's notice
+ * under its facts offers Resume service instead (w3/m555, w3/107).
  */
 export function ServiceDetailHeader({
   service,
@@ -699,10 +701,9 @@ function ServiceConnectButton({
           // `<slug>:<port>` sibling services dial (ADR041 D4, w9/m58), plus
           // an image-port service's other open ports (w6/m148).
           <>
-            <div className="flex items-center gap-2 pb-1.5 text-sm font-medium">
-              <Network className="size-4" />
+            <ConnectSectionTitle icon={Network}>
               {t("services.connectInternal")}
-            </div>
+            </ConnectSectionTitle>
             <ConnectCodeRow
               className="mb-2"
               value={service.internalAddress}
@@ -722,17 +723,76 @@ function ServiceConnectButton({
             ) : null}
           </>
         ) : null}
-        <div className="flex items-center gap-2 pb-1.5 text-sm font-medium">
-          <Terminal className="size-4" />
+        <ConnectSectionTitle icon={Terminal}>
           {t("services.connectSSH")}
-        </div>
+        </ConnectSectionTitle>
         {command ? (
           <ConnectSshCommand serviceId={service.id} command={command} />
         ) : (
           <SshUnavailable service={service} />
         )}
+        {service.outboundIps?.ips.length ? (
+          <ConnectOutboundIps ips={service.outboundIps.ips} />
+        ) : null}
       </PopoverContent>
     </Popover>
+  );
+}
+
+/** One section's title in the Connect menu: its icon and its name. */
+function ConnectSectionTitle({
+  icon: Icon,
+  id,
+  children,
+}: {
+  icon: LucideIcon;
+  id?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div id={id} className="flex items-center gap-2 pb-1.5 text-sm font-medium">
+      <Icon className="size-4" />
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Render's Connect → Outbound tab (render.com/docs/outbound-ip-addresses),
+ * shown only while the list has an address, as Render's is. Render's title and
+ * first line, then bex's own line on where the addresses come from, over one
+ * block with a copy for the whole list, as Render's multi-line block has. No
+ * Settings card repeats it, as Render has none (w4/m711).
+ */
+function ConnectOutboundIps({ ips }: { ips: string[] }) {
+  const { t } = useTranslations();
+  const titleId = useId();
+  return (
+    <div className="mt-3">
+      <ConnectSectionTitle icon={Globe} id={titleId}>
+        {t("services.outboundIpsTitle")}
+      </ConnectSectionTitle>
+      <div className="text-muted-foreground mb-2 space-y-1 text-xs">
+        <p>{t("services.outboundIpsLead")}</p>
+        <p>{t("services.outboundIpsDescription")}</p>
+      </div>
+      <div className="bg-muted flex min-w-0 items-start gap-1 rounded-md py-1 pr-1 pl-2">
+        <ul
+          aria-labelledby={titleId}
+          className="min-w-0 flex-1 py-1.5 font-mono text-xs leading-5 break-all"
+        >
+          {ips.map((ip) => (
+            <li key={ip}>{ip}</li>
+          ))}
+        </ul>
+        <CopyButton
+          value={ips.join("\n")}
+          label={t("services.outboundIpsCopy")}
+          successText={t("services.outboundIpsCopied")}
+          errorText={t("services.outboundIpsCopyError")}
+        />
+      </div>
+    </div>
   );
 }
 
