@@ -33,7 +33,10 @@ def normalized_value(row: dict) -> Decimal:
     value = decimal(row["quantity"] if billed is None else billed)
     if row["kind"] == "egress_bytes":
         return (value / BYTES_PER_GIB).quantize(STRIPE_METER_PRECISION, rounding=ROUND_HALF_UP)
-    if row["kind"] == "storage_gb_seconds":
+    if row["kind"] in ("storage_gb_seconds", "storage_capacity_gb_seconds"):
+        # Both storage kinds export on storage_gb_hours rebased as
+        # GB-seconds/3600: used bytes billed before
+        # storageCapacity.billedFrom, provisioned capacity from it (w4/m713).
         return (value / SECONDS_PER_HOUR).quantize(STRIPE_METER_PRECISION, rounding=ROUND_HALF_UP)
     return value
 
