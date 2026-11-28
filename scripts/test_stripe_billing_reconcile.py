@@ -85,6 +85,47 @@ class ReconcileTest(TestCase):
         )
         self.assertTrue(result["ok"], result)
 
+    def test_disk_rows_rebase_like_storage(self):
+        # A service disk's provisioned capacity exports on disk_gb_hours
+        # rebased as GB-seconds/3600, exactly like the storage kinds (ADR082
+        # D8/D9). A full hour of 10 GB held is 36,000 GB-seconds and must
+        # reconcile as the 10 disk_gb_hours Stripe aggregates, not 36,000 of
+        # them — otherwise every workspace with a disk fails `report` with a
+        # quantity, invoice quantity and invoice amount mismatch.
+        self.assertEqual(
+            RECONCILE.Decimal("10"),
+            RECONCILE.normalized_value(row("disk_gb_seconds", 36000, "disk_gb_hours")),
+        )
+        local = {
+            "workspaceId": "tea-test",
+            "livemode": False,
+            "rows": [row("disk_gb_seconds", 36000, "disk_gb_hours")],
+        }
+        result = RECONCILE.compare(
+            local,
+            {"disk_gb_hours": "10"},
+            [{"lookupKey": "disk_gb_hours", "quantity": 10, "amount": 21, "currency": "usd", "unitAmountDecimal": "2.1"}],
+        )
+        self.assertTrue(result["ok"], result)
+
+    def test_every_rebased_kind_matches_its_meter(self):
+        # The exporter rebases every per-second kind onto its hourly meter
+        # (stripeMeterEvent's scaleDown(..., secondsPerHour)); the script must
+        # rebase the same set, or a clean hour reads 3,600x. Each row below is
+        # one hour at one unit and must normalize to exactly one meter unit.
+        for kind, event in [
+            ("storage_gb_seconds", "storage_gb_hours"),
+            ("storage_capacity_gb_seconds", "storage_gb_hours"),
+            ("disk_gb_seconds", "disk_gb_hours"),
+            ("custom_domain_seconds", "custom_domain_hours"),
+            ("sandbox_snapshot_gb_seconds", "sandbox_snapshot_gb_hours"),
+        ]:
+            with self.subTest(kind=kind):
+                self.assertEqual(
+                    RECONCILE.Decimal("1"),
+                    RECONCILE.normalized_value(row(kind, 3600, event)),
+                )
+
     def test_invoice_preview_fetches_every_paginated_line(self):
         first = [{"id": f"il_{index}"} for index in range(100)]
         second = [{"id": f"il_{index}"} for index in range(100, 113)]

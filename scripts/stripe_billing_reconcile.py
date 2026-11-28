@@ -33,10 +33,21 @@ def normalized_value(row: dict) -> Decimal:
     value = decimal(row["quantity"] if billed is None else billed)
     if row["kind"] == "egress_bytes":
         return (value / BYTES_PER_GIB).quantize(STRIPE_METER_PRECISION, rounding=ROUND_HALF_UP)
-    if row["kind"] in ("storage_gb_seconds", "storage_capacity_gb_seconds"):
-        # Both storage kinds export on storage_gb_hours rebased as
-        # GB-seconds/3600: used bytes billed before
-        # storageCapacity.billedFrom, provisioned capacity from it (w4/m713).
+    if row["kind"] in (
+        "storage_gb_seconds",
+        "storage_capacity_gb_seconds",
+        "disk_gb_seconds",
+        "custom_domain_seconds",
+        "sandbox_snapshot_gb_seconds",
+    ):
+        # Every per-second kind exports on its hourly meter rebased as
+        # quantity/3600, exactly as stripeMeterEvent scales it: the storage
+        # kinds on storage_gb_hours (used bytes billed before
+        # storageCapacity.billedFrom, provisioned capacity from it, w4/m713),
+        # a disk's provisioned capacity on disk_gb_hours (ADR082 D8/D9), the
+        # extra custom domains on custom_domain_hours (docs/ADR030 §16), and
+        # a suspended sandbox's image on sandbox_snapshot_gb_hours. Without
+        # the rebase a clean hour compares as 3,600x the Stripe summary.
         return (value / SECONDS_PER_HOUR).quantize(STRIPE_METER_PRECISION, rounding=ROUND_HALF_UP)
     return value
 
