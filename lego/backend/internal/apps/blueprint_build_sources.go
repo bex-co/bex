@@ -303,7 +303,7 @@ func buildSourceProjectID(project string, groupings []parsedGrouping, assignment
 // applyStackBuildSources creates or synchronizes each declared build source
 // before the services that link it, returning every carrier a service may
 // link (declared ones as applied, then the workspace's others).
-func (s *Service) applyStackBuildSources(ctx context.Context, st parsedStack, assignments map[string]core.EnvironmentAssignment, snap *workspaceSnapshot, dbRefs map[string]databaseRef, kvCRNames map[string]string, res *StackResult) (map[string]*appv1alpha1.App, error) {
+func (s *Service) applyStackBuildSources(ctx context.Context, st parsedStack, assignments map[string]core.EnvironmentAssignment, snap *workspaceSnapshot, dbRefs map[string]databaseRef, kvCRNames map[string]string, moving map[string]bool, groupLinks *[]deferredGroupLink, res *StackResult) (map[string]*appv1alpha1.App, error) {
 	if len(st.buildSources) == 0 && !st.linksBuildSources() {
 		return nil, nil
 	}
@@ -325,7 +325,7 @@ func (s *Service) applyStackBuildSources(ctx context.Context, st parsedStack, as
 		if _, err := resolveServiceRefs(&b.svc, dbRefs, kvCRNames, func(string) *appv1alpha1.App { return nil }, s.BaseDomain); err != nil {
 			return nil, err
 		}
-		carrier, err := s.applyStackBuildSource(ctx, b, projectID, existing[b.name])
+		carrier, err := s.applyStackBuildSource(ctx, b, projectID, existing[b.name], moving, groupLinks)
 		if err != nil {
 			return nil, fmt.Errorf("build source %q: %w", b.name, err)
 		}
@@ -339,14 +339,16 @@ func (s *Service) applyStackBuildSources(ctx context.Context, st parsedStack, as
 // as CreateBuildSource does (and it builds once it exists); an existing one
 // takes the declared fields through the service update, so a change rebuilds
 // it and an unchanged re-apply writes nothing.
-func (s *Service) applyStackBuildSource(ctx context.Context, b parsedBuildSource, projectID string, current *appv1alpha1.App) (*appv1alpha1.App, error) {
+func (s *Service) applyStackBuildSource(ctx context.Context, b parsedBuildSource, projectID string, current *appv1alpha1.App, moving map[string]bool, groupLinks *[]deferredGroupLink) (*appv1alpha1.App, error) {
 	if err := s.claimBlueprintResourceName(ctx, store.BlueprintClaimBuildSource, b.name); err != nil {
 		return nil, err
 	}
 	req := b.svc.req
 	// A new carrier links its groups as it is written, so its first build
 	// has them; an existing one links them before the update rebuilds it.
-	req.initialEnvGroups = b.svc.groupLinks
+	// Either holds the links to a group the sync moves until after the
+	// move, like a service's do.
+	req.initialEnvGroups = withoutMovingGroups(b.svc.groupLinks, moving)
 	if current == nil {
 		id, err := s.createBuildSourceCarrier(ctx, req, b.name, projectID)
 		if err != nil {
@@ -355,6 +357,12 @@ func (s *Service) applyStackBuildSource(ctx context.Context, b parsedBuildSource
 		_, carrier, err := s.buildSourceApp(ctx, core.RelCanView, id)
 		if err != nil {
 			return nil, err
+		}
+		verbCtx, ref := stackServiceTarget(core.WithBuildSources(ctx), carrier)
+		for _, g := range b.svc.groupLinks {
+			if moving[g] {
+				*groupLinks = append(*groupLinks, deferredGroupLink{ctx: verbCtx, group: g, service: b.name, ref: ref})
+			}
 		}
 		return carrier, s.seedBuildSourceEnv(ctx, b, carrier)
 	}
@@ -379,6 +387,10 @@ func (s *Service) applyStackBuildSource(ctx context.Context, b parsedBuildSource
 	ctx = core.WithBuildSources(ctx)
 	verbCtx, ref := stackServiceTarget(ctx, current)
 	for _, g := range b.svc.groupLinks {
+		if moving[g] {
+			*groupLinks = append(*groupLinks, deferredGroupLink{ctx: verbCtx, group: g, service: b.name, ref: ref})
+			continue
+		}
 		if err := s.EnvGroups.LinkEnvGroup(verbCtx, g, ref); err != nil {
 			return nil, fmt.Errorf("linking env group %q: %w", g, err)
 		}

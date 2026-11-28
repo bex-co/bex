@@ -762,6 +762,25 @@ func (r *blueprintActionResolver) refuseStrandedEnvGroupMove(ctx context.Context
 		}
 		addStranded(svc.req.Name, envMoveToken(svc.grouping, svc.ungrouped, placements.targets, current))
 	}
+	// A build source's new fromGroup links strand the same way: its carrier
+	// never has an environment, so any link it declares to a group moving
+	// into an environment strands the move. A carrier the file leaves alone
+	// is judged by its current (absent) environment, as the stored scan does.
+	if carriers, err := r.carrierApps(ctx); err == nil {
+		for _, b := range r.parsed.buildSources {
+			if !slices.Contains(b.svc.groupLinks, name) {
+				continue
+			}
+			var current string
+			if live := carriers[b.name]; live != nil {
+				var err error
+				if current, err = currentEnvOf(live); err != nil {
+					return err
+				}
+			}
+			addStranded(b.name, envMoveToken("", false, placements.targets, current))
+		}
+	}
 	// The stored links, each judged on the environment the file leaves it in.
 	gid := r.envGroups[r.liveEnvGroupName(name)]
 	if gid != "" {
