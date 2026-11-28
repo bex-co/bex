@@ -76,6 +76,22 @@ func TestRegionComesFromTheAnnotationAlone(t *testing.T) {
 	}
 }
 
+// BEX_REGION arrives in its placement spelling; the private network selects
+// by Render regions. The mapping is resourcemeta.RenderRegion's twin: Render
+// regions pass through, "fsn1" reads back "frankfurt", and anything else
+// reads back nothing (bex-api with BEX_REGION unset).
+func TestPlatformRenderRegionNormalization(t *testing.T) {
+	for raw, want := range map[string]string{
+		"frankfurt": "frankfurt", "ohio": "ohio", "oregon": "oregon", "singapore": "singapore", "virginia": "virginia",
+		"fsn1": "frankfurt", "  fsn1  ": "frankfurt",
+		"": "", "fra1": "", "mars": "",
+	} {
+		if got := PlatformRenderRegion(raw); got != want {
+			t.Errorf("PlatformRenderRegion(%q) = %q, want %q", raw, got, want)
+		}
+	}
+}
+
 func TestServicePodTemplatesCarryTheRegion(t *testing.T) {
 	stamped := projectionApp(func(a *appv1alpha1.App) { regionAnnotated(a, "oregon") })
 	dep := project(stamped, deploymentParams{})

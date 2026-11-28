@@ -18,6 +18,8 @@ package controller
 
 import (
 	"maps"
+	"slices"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -70,4 +72,56 @@ func withRegion(labels map[string]string, obj metav1.Object) map[string]string {
 	}
 	labels[labelRegion] = region
 	return labels
+}
+
+// renderRegions is Render's region enum, the same five bex-api validates and
+// reads back (resourcemeta.RenderRegions, w9/105). The build plane keeps its
+// own copy because lego/backend/internal does not cross into the operator;
+// keep the two lists identical.
+var renderRegions = []string{"frankfurt", "ohio", "oregon", "singapore", "virginia"}
+
+// PlatformRenderRegion normalizes raw (BEX_REGION) to the Render spelling the
+// private network selects by: a Render region passes through, BEX_REGION's
+// own "fsn1" reads back "frankfurt", and anything else reads back nothing —
+// the same mapping as resourcemeta.RenderRegion, whose twin this is. Empty
+// behaves exactly like bex-api with BEX_REGION unset: every stamped region
+// keeps its own scope, and unlabeled pods share none with a Render region.
+func PlatformRenderRegion(raw string) string {
+	switch region := strings.TrimSpace(raw); region {
+	case "fsn1":
+		return "frankfurt"
+	default:
+		if slices.Contains(renderRegions, region) {
+			return region
+		}
+		return ""
+	}
+}
+
+// buildRegionRequirements scopes a build's workspace targets to the App's
+// private-network region (w4/m712): a stamped App reaches only pods carrying
+// its region; an App of the platform region — stamped with it or not —
+// reaches the pods without a region label and the pods carrying the platform
+// region. It admits exactly the pods bex-api's per-region allows admit
+// beside the App's own (regionScopes there), so the build and the runtime
+// refuse the same remotes.
+func buildRegionRequirements(appRegion, platformRegion string) []metav1.LabelSelectorRequirement {
+	// Only a Render region stamps its own scope: a hand-written annotation no
+	// region list carries (regionOf passes it through as a label value) reads
+	// back the platform region, so it shares the platform branch — the same
+	// way bex-api's NotIn scopes take a pod whose label is no Render region.
+	if appRegion != "" && appRegion != platformRegion && slices.Contains(renderRegions, appRegion) {
+		return []metav1.LabelSelectorRequirement{{
+			Key: labelRegion, Operator: metav1.LabelSelectorOpIn, Values: []string{appRegion},
+		}}
+	}
+	others := make([]string, 0, len(renderRegions))
+	for _, r := range renderRegions {
+		if r != platformRegion {
+			others = append(others, r)
+		}
+	}
+	return []metav1.LabelSelectorRequirement{{
+		Key: labelRegion, Operator: metav1.LabelSelectorOpNotIn, Values: others,
+	}}
 }
