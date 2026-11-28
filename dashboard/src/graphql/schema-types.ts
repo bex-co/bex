@@ -2298,6 +2298,7 @@ export type KeyValueInstanceType = {
   monthlyUsd: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
   storageGB: Maybe<Scalars['Int']['output']>;
+  storageMonthlyUsdPerGB: Maybe<Scalars['String']['output']>;
   unavailableReason: Scalars['String']['output'];
 };
 

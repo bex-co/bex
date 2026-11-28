@@ -48,6 +48,12 @@ type KeyValueInstanceType struct {
 	// MonthlyUSD is the always-on monthly price from pricing.yaml, "" for an
 	// unlisted tier (w4/156, the postgres sibling's rule).
 	MonthlyUSD string
+	// StorageMonthlyUSDPerGB is one GB of one instance's storage a month on
+	// this plan, from the same sheet ("0.21"; "0.00" for Free's included
+	// storage). The dashboard's plan review prices the Storage line with it:
+	// bex bills Key Value storage on storage_gb_hours (ADR023), unlike
+	// Render, so the review names it — the postgres sibling's rule (w3/m674).
+	StorageMonthlyUSDPerGB string
 	// Available is false for a paused tier, which UnavailableReason explains
 	// (compute's InstanceType precedent).
 	Available         bool
@@ -134,12 +140,15 @@ func (s *Service) InstanceTypes(ctx context.Context) ([]KeyValueInstanceType, er
 			Available:         reason == "",
 			UnavailableReason: reason,
 			MonthlyUSD:        monthlyUSD,
-			ID:                t.ID,
-			Name:              TierDisplayName(id),
-			CPU:               t.CPU,
-			Memory:            t.Memory,
-			StorageGB:         t.StorageGB,
-			ConnectionLimit:   t.ConnectionLimit,
+			StorageMonthlyUSDPerGB: pricing.Default.StorageMonthlyUSDPerGB(
+				id, store.ResourceKindKeyValue,
+			),
+			ID:              t.ID,
+			Name:            TierDisplayName(id),
+			CPU:             t.CPU,
+			Memory:          t.Memory,
+			StorageGB:       t.StorageGB,
+			ConnectionLimit: t.ConnectionLimit,
 		}
 	}
 	return out, nil

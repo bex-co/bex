@@ -64,6 +64,8 @@ export interface KeyValueInstanceTypeView {
   storageGB: number;
   /** Always-on monthly price ("7.00"), "" when the sheet lists none (w4/156). */
   monthlyUsd: string;
+  /** One GB of one instance's storage a month ("0.21"; "0.00" for Free). */
+  storageMonthlyUsdPerGB: string;
   /**
    * The plan's client connection limit (Render's figure, w6/m456); undefined
    * when the catalog sends none, and then no card or row shows a number.

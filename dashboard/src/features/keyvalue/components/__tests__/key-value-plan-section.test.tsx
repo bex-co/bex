@@ -17,6 +17,7 @@ const catalog = vi.hoisted(() => {
       memory: "256Mi",
       storageGB: 1,
       monthlyUsd: "0.00",
+      storageMonthlyUsdPerGB: "0.00",
       connectionLimit: 50,
     },
     {
@@ -26,6 +27,7 @@ const catalog = vi.hoisted(() => {
       memory: "1Gi",
       storageGB: 10,
       monthlyUsd: "7.00",
+      storageMonthlyUsdPerGB: "0.21",
       connectionLimit: 250,
     },
   ];
@@ -181,9 +183,11 @@ describe("KeyValuePlanSection", () => {
   });
 
   // w4/156: a free store became a paid one in two clicks with no cost shown.
-  // w3/m674: Render's review lists the plan with its figures and price, then
-  // the total.
-  it("prices every plan card and reviews the plan and total before the change", async () => {
+  // w3/m674: the review lists the plan with its figures and price, then the
+  // total. bex bills Key Value storage (ADR023), so unlike Render's review
+  // the lines name Storage (the new plan's size at the sheet rate) and the
+  // Total is plan plus storage — the Postgres review's rule.
+  it("prices every plan card and reviews the plan, storage and total before the change", async () => {
     const user = userEvent.setup();
     render(<KeyValuePlanSection keyValue={KEY_VALUE} onChanged={vi.fn()} />);
 
@@ -200,8 +204,10 @@ describe("KeyValuePlanSection", () => {
     );
     expect(lines).toEqual([
       ["Compute plan", "0.5 CPU1 GB RAM250 connections", "$7.00/month"],
+      ["Storage", "10 GB", "$2.10/month"],
     ]);
-    expect(dialog).toHaveTextContent("Total$7.00/month");
+    // 10 GB at $0.21 on the one instance the store bills.
+    expect(dialog).toHaveTextContent("Total$9.10/month");
     expect(dialog).toHaveTextContent(
       "Your Key Value instance will be unavailable while updating.",
     );

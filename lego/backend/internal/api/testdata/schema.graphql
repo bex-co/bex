@@ -1927,6 +1927,7 @@ type KeyValueInstanceType {
   monthlyUsd: String
   name: String
   storageGB: Int
+  storageMonthlyUsdPerGB: String
   unavailableReason: String!
 }
 

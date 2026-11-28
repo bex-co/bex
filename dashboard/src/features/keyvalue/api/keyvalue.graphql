@@ -85,6 +85,9 @@ query KeyValueInstanceTypes {
     storageGB
     # The price from bex-api's one price sheet (w4/156).
     monthlyUsd
+    # One GB of one instance's storage a month: the plan review's Storage
+    # line (w3/m674) — bex bills Key Value storage (ADR023), unlike Render.
+    storageMonthlyUsdPerGB
     # The plan's connection limit, shown beside its RAM as on Render (w6/m459).
     connectionLimit
     # A paused tier is listed but not selectable (w5/m266).

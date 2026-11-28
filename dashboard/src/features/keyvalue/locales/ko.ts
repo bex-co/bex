@@ -580,6 +580,15 @@ const koKeyValue: Record<string, TranslationEntry> = {
     description:
       "Key Value plan review: the button that applies a plan change (Render's copy; Key Value plans only go up)",
   },
+  "keyvalue.reviewStorage": {
+    message: "스토리지",
+    description:
+      "Key Value plan review: the Storage line's label — bex bills Key Value storage (ADR023), unlike Render",
+  },
+  "keyvalue.reviewStorageSize": {
+    message: "{size} GB",
+    description: "Key Value plan review: the Storage line's figure",
+  },
   "keyvalue.restartConfirmDataLoss": {
     message:
       "영속성이 끔이므로 다시 시작하면 {name}의 모든 키가 삭제됩니다. 이 작업은 되돌릴 수 없습니다.",

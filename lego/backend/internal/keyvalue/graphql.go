@@ -80,6 +80,11 @@ var keyValueInstanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"memory":     gqlutil.StrField(func(t KeyValueInstanceType) any { return t.Memory }),
 		"storageGB":  gqlutil.IntField(func(t KeyValueInstanceType) any { return t.StorageGB }),
 		"monthlyUsd": gqlutil.StrField(func(t KeyValueInstanceType) any { return t.MonthlyUSD }),
+		// One GB of one instance's storage a month on this plan, which the
+		// plan review's Storage line multiplies by the plan's storage size
+		// (w3/m674): bex bills Key Value storage on storage_gb_hours
+		// (ADR023), unlike Render, so the review names it.
+		"storageMonthlyUsdPerGB": gqlutil.StrField(func(t KeyValueInstanceType) any { return t.StorageMonthlyUSDPerGB }),
 		// The plan's connection limit, shown beside its RAM as on Render's plan
 		// cards (w6/m459).
 		"connectionLimit": gqlutil.Typed(graphql.NewNonNull(graphql.Int), func(t KeyValueInstanceType) any { return t.ConnectionLimit }),

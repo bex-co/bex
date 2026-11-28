@@ -17,6 +17,7 @@ function tier(id: string, name: string, available: boolean) {
     memory: "1Gi",
     storageGB: 1,
     monthlyUsd: "10.00",
+    storageMonthlyUsdPerGB: "0.21",
     available,
     unavailableReason: available ? "" : "english only",
   };
@@ -55,6 +56,37 @@ describe("useKeyValueInstanceTypes paused-plan reason", () => {
     const [starter, , ultra] = result.current.instanceTypes;
     expect(ultra.unavailableReason).toBe(want);
     expect(starter.unavailableReason).toBe("");
+  });
+});
+
+// The review's Storage line rate comes from the catalog too (w3/m674): bex
+// bills Key Value storage, so the hook passes the sheet rate through, and a
+// catalog from an older API that sends none reads "" (unknown, never $0).
+describe("useKeyValueInstanceTypes storage rate", () => {
+  it("passes the rate through and defaults a missing one to unknown", () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        keyValueInstanceTypes: [
+          tier("starter", "Starter", true),
+          {
+            ...tier("legacy", "Legacy", true),
+            storageMonthlyUsdPerGB: undefined,
+          },
+        ],
+      },
+      loading: false,
+      error: undefined,
+    });
+    const { result } = renderHook(() => useKeyValueInstanceTypes());
+    expect(
+      result.current.instanceTypes.map((it) => [
+        it.id,
+        it.storageMonthlyUsdPerGB,
+      ]),
+    ).toEqual([
+      ["starter", "0.21"],
+      ["legacy", ""],
+    ]);
   });
 });
 

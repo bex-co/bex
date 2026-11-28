@@ -76,6 +76,7 @@ const FREE: KeyValueInstanceTypeView = {
   memory: "128Mi",
   storageGB: 1,
   monthlyUsd: "0.00",
+  storageMonthlyUsdPerGB: "0.00",
   connectionLimit: 50,
 };
 const STARTER: KeyValueInstanceTypeView = {
@@ -85,6 +86,7 @@ const STARTER: KeyValueInstanceTypeView = {
   memory: "256Mi",
   storageGB: 1,
   monthlyUsd: "7.00",
+  storageMonthlyUsdPerGB: "0.21",
   connectionLimit: 250,
 };
 

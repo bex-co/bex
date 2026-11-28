@@ -592,6 +592,15 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description:
       "Key Value plan review: the button that applies a plan change (Render's copy; Key Value plans only go up)",
   },
+  "keyvalue.reviewStorage": {
+    message: "Storage",
+    description:
+      "Key Value plan review: the Storage line's label — bex bills Key Value storage (ADR023), unlike Render",
+  },
+  "keyvalue.reviewStorageSize": {
+    message: "{size} GB",
+    description: "Key Value plan review: the Storage line's figure",
+  },
   "keyvalue.restartConfirmDataLoss": {
     message:
       "Persistence is Off, so the restart deletes every key in {name}. This cannot be undone.",

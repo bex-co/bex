@@ -1406,6 +1406,14 @@ func TestKVInstanceTypesArePricedFromTheSheet(t *testing.T) {
 		if it.MonthlyUSD != want {
 			t.Errorf("%s monthlyUsd = %q, want the sheet's %q", it.ID, it.MonthlyUSD, want)
 		}
+		// The plan review's Storage line rate: the sheet's, with Free's
+		// included storage at $0 — the postgres sibling's rule (w3/m674).
+		// bex bills Key Value storage on storage_gb_hours (ADR023), so the
+		// review must price it; Render's review lists none.
+		wantStorage := pricing.Default.StorageMonthlyUSDPerGB(it.ID, store.ResourceKindKeyValue)
+		if it.StorageMonthlyUSDPerGB != wantStorage {
+			t.Errorf("%s storageMonthlyUsdPerGB = %q, want the sheet's %q", it.ID, it.StorageMonthlyUSDPerGB, wantStorage)
+		}
 		byID[it.ID] = it.MonthlyUSD
 	}
 	if byID["free"] != "0.00" || byID["starter"] != "7.00" || byID["standard"] != "14.00" || byID["pro"] != "70.00" {
