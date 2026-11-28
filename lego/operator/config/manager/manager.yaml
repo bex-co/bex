@@ -171,6 +171,14 @@ spec:
           # through the tenant same-namespace allow.)
           - name: BEX_BUILD_NAMESPACE
             value: bex-build
+          # The platform's own region (BEX_REGION; its public alias is the
+          # region a resource created without one reads back, whose network
+          # takes pods without a region label). The operator scopes each
+          # build's workspace reach to its App's region (w4/m712); keep
+          # aligned with bex-api's BEX_REGION so the build and the runtime
+          # refuse the same remotes.
+          - name: BEX_REGION
+            value: fsn1
           # Build-plane concurrency baseline, checked in rather than ambient
           # (docs/ADR060 D7). All three are set explicitly here so the ADR034
           # baseline is auditable in git instead of living in whoever last set

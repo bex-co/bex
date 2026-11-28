@@ -418,11 +418,18 @@ type AppReconciler struct {
 	// defines the canonical set the reconciler will act on — see canonicalNamespace
 	// and the codex #4 guard in Reconcile.
 	AppsNamespace  string
-	Mode           string                  // ModeOpenSandbox | ModeKubernetes
-	Registry       string                  // in-cluster registry, e.g. zot.bex-registry.svc:5000
-	KpackRegistry  string                  // optional kpack alias for Registry (e.g. zot.local:5000 for plain HTTP)
-	CNBBuilder     string                  // e.g. paketobuildpacks/builder-jammy-base
-	BuildNamespace string                  // namespace in-cluster build Jobs run in; empty => the App's namespace
+	Mode           string // ModeOpenSandbox | ModeKubernetes
+	Registry       string // in-cluster registry, e.g. zot.bex-registry.svc:5000
+	KpackRegistry  string // optional kpack alias for Registry (e.g. zot.local:5000 for plain HTTP)
+	CNBBuilder     string // e.g. paketobuildpacks/builder-jammy-base
+	BuildNamespace string // namespace in-cluster build Jobs run in; empty => the App's namespace
+	// PlatformRegion is the Render spelling of the platform's own region
+	// (BEX_REGION through RenderRegion: "frankfurt" on production), the
+	// region a resource created without one reads back and whose network
+	// takes pods without a region label (w4/m712). It scopes a build's
+	// workspace reach to the App's own region; empty scopes by the App's
+	// stamp alone, exactly like bex-api with BEX_REGION unset.
+	PlatformRegion string
 	Runtime        *bexruntime.OpenSandbox // OpenSandbox client (ModeOpenSandbox)
 	BaseDomain     string                  // optional: "<name>.<BaseDomain>" when Expose && Host=="" (e.g. bex.co)
 	ClusterIssuer  string                  // cert-manager ClusterIssuer for App Ingresses (letsencrypt-staging|-prod)

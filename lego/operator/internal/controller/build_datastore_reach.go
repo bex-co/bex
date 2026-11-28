@@ -177,8 +177,8 @@ func (r *AppReconciler) buildReachServices(ctx context.Context, app *appv1alpha1
 // services: labelApp names the App, and labelAppID marks a runtime pod, as the
 // stable Services select them (privateServiceProjection) — Job pods
 // (pre-deploy, build, disk backup) carry labelApp alone.
-func buildServiceTargets(app *appv1alpha1.App, services []string) metav1.LabelSelector {
-	targets := buildReachTargets(app)
+func buildServiceTargets(app *appv1alpha1.App, services []string, platformRegion string) metav1.LabelSelector {
+	targets := buildReachTargets(app, platformRegion)
 	targets.MatchExpressions = append(targets.MatchExpressions,
 		metav1.LabelSelectorRequirement{Key: labelApp, Operator: metav1.LabelSelectorOpIn, Values: services},
 		metav1.LabelSelectorRequirement{Key: labelAppID, Operator: metav1.LabelSelectorOpExists})
@@ -189,14 +189,22 @@ func buildServiceTargets(app *appv1alpha1.App, services []string) metav1.LabelSe
 // protected environment exactly as allow-same-namespace does: an ordinary
 // App's build reaches only pods outside every isolated environment, and an
 // isolated App's build only pods of its own environment, by the environment-id
-// every datastore pod of it carries (w4/m342).
-func buildReachTargets(app *appv1alpha1.App) metav1.LabelSelector {
+// every datastore pod of it carries (w4/m342). It also honors the App's
+// private-network region (w4/m712): a build runs on the private network — its
+// migrations dial the internal DATABASE_URL — so a pod of another region,
+// which the runtime's per-region allows refuse, refuses the build too.
+// platformRegion is the reconciler's PlatformRegion.
+func buildReachTargets(app *appv1alpha1.App, platformRegion string) metav1.LabelSelector {
+	requirements := buildRegionRequirements(regionOf(app), platformRegion)
 	if env := app.Labels[labelNetworkIsolation]; env != "" {
-		return metav1.LabelSelector{MatchLabels: map[string]string{labelEnvironment: env}}
+		return metav1.LabelSelector{
+			MatchLabels:      map[string]string{labelEnvironment: env},
+			MatchExpressions: requirements,
+		}
 	}
-	return metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{{
+	return metav1.LabelSelector{MatchExpressions: append([]metav1.LabelSelectorRequirement{{
 		Key: labelNetworkIsolation, Operator: metav1.LabelSelectorOpDoesNotExist,
-	}}}
+	}}, requirements...)}
 }
 
 // buildEgressPolicyName is the bex-build half: this App's build pods may leave
@@ -262,10 +270,10 @@ func (r *AppReconciler) reconcileBuildReach(ctx context.Context, app *appv1alpha
 		return err
 	}
 	sources := build.AppBuildPodLabels(app.Name, string(app.UID), app.Labels[labelWorkspace])
-	grants := []buildReachGrant{{ingress: buildIngressPolicyName(app.Name), targets: buildReachTargets(app), ports: buildReachPorts()}}
+	grants := []buildReachGrant{{ingress: buildIngressPolicyName(app.Name), targets: buildReachTargets(app, r.PlatformRegion), ports: buildReachPorts()}}
 	if len(services) > 0 {
 		grants = append(grants, buildReachGrant{ingress: buildServiceIngressPolicyName(app.Name),
-			targets: buildServiceTargets(app, services), ports: buildServicePorts()})
+			targets: buildServiceTargets(app, services, r.PlatformRegion), ports: buildServicePorts()})
 	}
 
 	egress := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: buildEgressPolicyName(app.Name), Namespace: buildNs}}

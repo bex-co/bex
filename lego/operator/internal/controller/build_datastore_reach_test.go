@@ -664,6 +664,84 @@ func TestBuildDatastoreReachRevocationAndEligibility(t *testing.T) {
 	}
 }
 
+// w4/m712: the private network is split by region — "services in different
+// regions can't communicate directly over a private network" — and a build
+// runs its migrations on it, against the internal DATABASE_URL. So a build
+// reaches only pods of its App's own region: the region the App was created
+// with, or, for an App created without one, the platform region's network
+// (unlabeled pods, and pods carrying the platform region itself). The table
+// drives the real reconcileBuildReach and evaluates the real policies with
+// policyAllows, on the datastore ports and on the service ports alike: every
+// cross-region pairing must be denied by construction, exactly where the
+// runtime's own per-region allows deny it.
+func TestBuildReachHonorsTheRegionSplit(t *testing.T) {
+	pgPod := func(region string) endpoint {
+		podLabels := map[string]string{"app.bex.co/component": "database", labelWorkspace: wsA}
+		if region != "" {
+			podLabels[labelRegion] = region
+		}
+		return endpoint{ns: wsA, labels: podLabels}
+	}
+	for _, platformRegion := range []string{"frankfurt", ""} {
+		t.Run("platform="+platformRegion, func(t *testing.T) {
+			ctx := context.Background()
+			orApp, ffApp, plainApp := reachApp("web-or", wsA), reachApp("web-ff", wsA), reachApp("web-plain", wsA)
+			regionAnnotated(orApp, "oregon")
+			regionAnnotated(ffApp, "frankfurt")
+			svcOr, svcFf, svcPlain := reachService("svc-or", wsA, appv1alpha1.TypePrivateService, "starter"),
+				reachService("svc-ff", wsA, appv1alpha1.TypePrivateService, "starter"),
+				reachService("svc-plain", wsA, appv1alpha1.TypePrivateService, "starter")
+			regionAnnotated(svcOr, "oregon")
+			regionAnnotated(svcFf, "frankfurt")
+			cl := fake.NewClientBuilder().WithScheme(reachScheme(t)).WithObjects(
+				orApp, ffApp, plainApp, svcOr, svcFf, svcPlain).Build()
+			r := &AppReconciler{Client: cl, BuildClient: cl, Scheme: cl.Scheme(),
+				BuildNamespace: reachBuildNs, PlatformRegion: platformRegion}
+			for _, app := range []*appv1alpha1.App{orApp, ffApp, plainApp} {
+				if err := r.reconcileBuildReach(ctx, app, reachBuildNs, true); err != nil {
+					t.Fatal(err)
+				}
+			}
+			policies := listPolicies(t, cl)
+			pgOregon, pgFrankfurt, pgPlain := pgPod("oregon"), pgPod("frankfurt"), pgPod("")
+			orBuild, ffBuild, plainBuild := buildPod(orApp), buildPod(ffApp), buildPod(plainApp)
+			svcOregon, svcFrankfurt, svcPlainPod := servingPod(svcOr), servingPod(svcFf), servingPod(svcPlain)
+			frankfurtIsPlatform := platformRegion == "frankfurt"
+			for _, tc := range []struct {
+				name      string
+				src, dst  endpoint
+				port      int
+				wantAllow bool
+			}{
+				// The datastore ports.
+				{"oregon build → oregon Postgres", orBuild, pgOregon, pgPort, true},
+				{"oregon build → frankfurt Postgres", orBuild, pgFrankfurt, pgPort, false},
+				{"oregon build → unstamped Postgres", orBuild, pgPlain, pgPort, false},
+				{"frankfurt build → oregon Postgres", ffBuild, pgOregon, pgPort, false},
+				{"frankfurt build → frankfurt Postgres", ffBuild, pgFrankfurt, pgPort, true},
+				{"frankfurt build → unstamped Postgres", ffBuild, pgPlain, pgPort, frankfurtIsPlatform},
+				{"unstamped build → oregon Postgres", plainBuild, pgOregon, pgPort, false},
+				{"unstamped build → frankfurt Postgres", plainBuild, pgFrankfurt, pgPort, frankfurtIsPlatform},
+				{"unstamped build → unstamped Postgres", plainBuild, pgPlain, pgPort, true},
+				// The service ports follow the same region.
+				{"oregon build → oregon service", orBuild, svcOregon, appv1alpha1.DefaultPort, true},
+				{"oregon build → frankfurt service", orBuild, svcFrankfurt, appv1alpha1.DefaultPort, false},
+				{"oregon build → unstamped service", orBuild, svcPlainPod, appv1alpha1.DefaultPort, false},
+				{"frankfurt build → oregon service", ffBuild, svcOregon, appv1alpha1.DefaultPort, false},
+				{"frankfurt build → frankfurt service", ffBuild, svcFrankfurt, appv1alpha1.DefaultPort, true},
+				{"frankfurt build → unstamped service", ffBuild, svcPlainPod, appv1alpha1.DefaultPort, frankfurtIsPlatform},
+				{"unstamped build → oregon service", plainBuild, svcOregon, appv1alpha1.DefaultPort, false},
+				{"unstamped build → frankfurt service", plainBuild, svcFrankfurt, appv1alpha1.DefaultPort, frankfurtIsPlatform},
+				{"unstamped build → unstamped service", plainBuild, svcPlainPod, appv1alpha1.DefaultPort, true},
+			} {
+				if got := policyAllows(t, policies, tc.src, tc.dst, tc.port); got != tc.wantAllow {
+					t.Errorf("%s: allowed=%v, want %v", tc.name, got, tc.wantAllow)
+				}
+			}
+		})
+	}
+}
+
 // w4/699: the build learns each secret file's size from the bytes it projects,
 // so a native build can carry a file over BuildKit's 500 KiB secret limit in
 // parts and a Dockerfile build can leave it out of its build secrets.
