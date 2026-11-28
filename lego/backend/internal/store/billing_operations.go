@@ -46,6 +46,9 @@ type BillingExportRow struct {
 	TransactionID  string     `json:"transactionId,omitempty"`
 	EventName      string     `json:"eventName,omitempty"`
 	ErrorCode      string     `json:"errorCode,omitempty"`
+	// AttackHour says a live attack window covers this egress hour (w4/m709):
+	// a pending row ships as 0, an emitted one is in the credit's reach.
+	AttackHour bool `json:"attackHour,omitempty"`
 }
 
 type BillingExportReport struct {
@@ -101,8 +104,8 @@ func (s *PGStore) BillingExportReport(ctx context.Context, workspaceID string, s
 		SELECT workspace_id, resource_kind, service_id, kind, tier, window_start, quantity, billing_export_quantity,
 		       billing_export_state, billing_export_attempted_at, emitted_at,
 		       COALESCE(billing_export_transaction_id,''), COALESCE(billing_export_event_name,''),
-		       billing_export_error_code
-		FROM usage_hourly
+		       billing_export_error_code, `+egressAttackHour("u")+`
+		FROM usage_hourly u
 		WHERE workspace_id=$1 AND window_start >= $2 AND window_start < $3
 		ORDER BY window_start, resource_kind, service_id, kind, tier`, workspaceID, start.UTC(), end.UTC())
 	if err != nil {
@@ -113,7 +116,7 @@ func (s *PGStore) BillingExportReport(ctx context.Context, workspaceID string, s
 		var r BillingExportRow
 		if err := rows.Scan(&r.WorkspaceID, &r.ResourceKind, &r.ServiceID, &r.Kind, &r.Tier,
 			&r.WindowStart, &r.Quantity, &r.BilledQuantity, &r.State, &r.AttemptedAt, &r.EmittedAt,
-			&r.TransactionID, &r.EventName, &r.ErrorCode); err != nil {
+			&r.TransactionID, &r.EventName, &r.ErrorCode, &r.AttackHour); err != nil {
 			return BillingExportReport{}, err
 		}
 		report.Rows = append(report.Rows, r)

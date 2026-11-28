@@ -404,7 +404,11 @@ type Deps struct {
 	// nil => core.ErrLogStoreUnavailable (503).
 	PathFilterSuggestions metrics.PathFilterSuggestionsSource
 	MonthToDateBandwidth  metrics.MonthToDateBandwidthSource
-	MetricsFilterValues   metrics.MetricsFilterValuesSource
+	// EgressAttackWindows, when set (BEX_CP_DB_URI), takes the hours of a
+	// DDoS attack window out of the Outbound Bandwidth footer, as they are
+	// out of the bill (w4/m709).
+	EgressAttackWindows metrics.AttackWindowReader
+	MetricsFilterValues metrics.MetricsFilterValuesSource
 	// InstanceFilterValues, when set (BEX_PROM_URL), discovers historical pod
 	// names from Prometheus cAdvisor series over [start, end] (w34/m588).
 	InstanceFilterValues metrics.InstanceFilterValuesSource
@@ -1429,6 +1433,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			RequestLogMetrics:           d.RequestLogMetrics,
 			PathFilterSuggestionsSource: d.PathFilterSuggestions,
 			MonthToDateBandwidthSource:  d.MonthToDateBandwidth,
+			AttackWindows:               d.EgressAttackWindows,
 			MetricsFilterValuesSource:   d.MetricsFilterValues,
 			InstanceFilterValuesSource:  d.InstanceFilterValues,
 			HTTPFilterValuesSource:      d.HTTPFilterValues,

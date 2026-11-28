@@ -165,6 +165,9 @@ type HourlyRow struct {
 	// shown and never charged, such as an agent session's sandbox's CPU and
 	// memory (w6/m566). The export stamps it emitted without sending it.
 	Unbilled bool
+	// AttackHour, which the outbox read returns, says a live attack window
+	// covers this egress_bytes hour (w4/m709): it bills 0.
+	AttackHour bool
 }
 
 // UsageSourceObservation is one source's accounting health for an hourly
@@ -747,7 +750,9 @@ func (s *PGStore) LatestUsageWindow(ctx context.Context, resourceKind, serviceID
 // Sandbox CPU and memory recorded before SandboxUsageBilledFrom, and rows the
 // meter marked unbilled, come back as rows of their own with Unbilled set.
 // usage_monthly holds none of them: CompactUsage drops them instead of folding
-// them in.
+// them in. An egress hour a live attack window covers is left out altogether
+// (w4/m709): the read reports the bandwidth that bills, and Render's bill
+// carries no attack line either.
 func (s *PGStore) UsageMonthToDate(ctx context.Context, workspaceID string, now time.Time) ([]UsageSummaryRow, error) {
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	rows, err := s.Pool.Query(ctx, `
@@ -755,10 +760,11 @@ func (s *PGStore) UsageMonthToDate(ctx context.Context, workspaceID string, now 
 		FROM (
 			SELECT service_id, kind, tier, resource_kind, quantity,
 			       (unbilled OR (kind = ANY($4::text[]) AND ($5::timestamptz IS NULL OR window_start < $5))) AS unbilled
-			FROM usage_hourly
+			FROM usage_hourly h
 			WHERE workspace_id = $1
 			  AND window_start >= $2
 			  AND window_start < $3
+			  AND NOT `+egressAttackHour("h")+`
 			UNION ALL
 			SELECT service_id, kind, tier, resource_kind, quantity,
 			       (kind = ANY($4::text[]) AND $5::timestamptz IS NULL) AS unbilled
@@ -812,9 +818,9 @@ const AgentModelEventRetentionMonths = 13
 // aggregate are atomic and a re-run is a no-op; the additive ON CONFLICT means
 // a straggler row compacted on a later pass adds to its month rather than
 // overwriting it. Sandbox CPU and memory recorded before
-// SandboxUsageBilledFrom, and every row marked unbilled, were never billed and
-// are purged without being folded in, so a compacted month holds billed usage
-// only.
+// SandboxUsageBilledFrom, every row marked unbilled, and every egress hour a
+// live attack window covers (w4/m709) were never billed and are purged without
+// being folded in, so a compacted month holds billed usage only.
 func (s *PGStore) CompactUsage(ctx context.Context, before time.Time) (UsageCompaction, error) {
 	var res UsageCompaction
 	err := s.Pool.QueryRow(ctx, `
@@ -841,8 +847,9 @@ func (s *PGStore) CompactUsage(ctx context.Context, before time.Time) (UsageComp
 			SELECT workspace_id, service_id, kind, tier, resource_kind,
 			       date_trunc('month', window_start AT TIME ZONE 'UTC')::date,
 			       SUM(quantity)
-			FROM purged
+			FROM purged p
 			WHERE NOT unbilled AND NOT (kind = ANY($3::text[]) AND ($4::timestamptz IS NULL OR window_start < $4))
+			  AND NOT `+egressAttackHour("p")+`
 			GROUP BY workspace_id, service_id, kind, tier, resource_kind,
 			         date_trunc('month', window_start AT TIME ZONE 'UTC')
 			ON CONFLICT (resource_kind, service_id, kind, tier, month)
@@ -916,14 +923,17 @@ func (s *PGStore) EgressBytesByWorkspace(ctx context.Context, monthStart, now ti
 
 // monthUsageByWorkspace sums each billable workspace's kind in [monthStart,
 // now), with whether it can pay for more. A workspace excluded from billing is
-// never stopped and is left out.
+// never stopped and is left out. An egress hour a live attack window covers is
+// not counted (w4/m709), so those bytes spin nothing down and a workspace
+// spun down by them alone resumes on the next sweep.
 func (s *PGStore) monthUsageByWorkspace(ctx context.Context, kind string, monthStart, now time.Time) ([]MonthUsage, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT u.workspace_id, SUM(u.quantity)::bigint,
 		       (t.billing_comped OR m.payment_method_bound_at IS NOT NULL), t.pipeline_spend_limit_cents
 		FROM (
-			SELECT workspace_id, quantity FROM usage_hourly
+			SELECT workspace_id, quantity FROM usage_hourly h
 			WHERE kind = $3 AND window_start >= $1 AND window_start < $2
+			  AND NOT `+egressAttackHour("h")+`
 			UNION ALL
 			SELECT workspace_id, quantity FROM usage_monthly
 			WHERE kind = $3 AND month = ($1::timestamptz AT TIME ZONE 'UTC')::date

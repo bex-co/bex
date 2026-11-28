@@ -199,7 +199,8 @@ func (s *PGStore) SelectWorkspaceUnemittedUsage(ctx context.Context, workspaceID
 // workspace.
 func (s *PGStore) selectPendingUsage(ctx context.Context, workspaceID string, floor time.Time, seal UsageSeal, limit int, requirePaymentMethod bool) ([]HourlyRow, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT u.workspace_id, u.service_id, u.kind, u.tier, u.resource_kind, u.window_start, u.quantity, u.billing_export_quantity, u.unbilled
+		SELECT u.workspace_id, u.service_id, u.kind, u.tier, u.resource_kind, u.window_start, u.quantity, u.billing_export_quantity, u.unbilled,
+		       `+egressAttackHour("u")+`
 		FROM usage_hourly u
 		JOIN tenants t ON t.id = u.workspace_id
 		LEFT JOIN billing_provider_mappings m ON m.workspace_id = u.workspace_id
@@ -217,7 +218,7 @@ func (s *PGStore) selectPendingUsage(ctx context.Context, workspaceID string, fl
 	var out []HourlyRow
 	for rows.Next() {
 		var r HourlyRow
-		if err := rows.Scan(&r.WorkspaceID, &r.ServiceID, &r.Kind, &r.Tier, &r.ResourceKind, &r.WindowStart, &r.Quantity, &r.BilledQuantity, &r.Unbilled); err != nil {
+		if err := rows.Scan(&r.WorkspaceID, &r.ServiceID, &r.Kind, &r.Tier, &r.ResourceKind, &r.WindowStart, &r.Quantity, &r.BilledQuantity, &r.Unbilled, &r.AttackHour); err != nil {
 			return nil, err
 		}
 		out = append(out, r)
@@ -345,7 +346,9 @@ func (s *PGStore) MarkUsageAttempted(ctx context.Context, attempts []UsageExport
 // service_id): what was already counted against the plan's allowance of that
 // meter when row is exported (build_seconds, w6/m308; egress_bytes, w6/m319).
 // The order is fixed by the rows themselves, not by when they were exported,
-// so two replicas exporting the same row send the same quantity.
+// so two replicas exporting the same row send the same quantity. An egress
+// hour a live attack window covers counts against none of the allowance
+// (w4/m709), so the hours after an attack bill as if it never happened.
 func (s *PGStore) UsageBefore(ctx context.Context, row HourlyRow) (int64, error) {
 	query, ok := usageBeforeQueries[row.Kind]
 	if !ok {
@@ -366,12 +369,16 @@ var usageBeforeQueries = map[string]string{
 }
 
 func usageBeforeQuery(kind string) string {
+	attack := ""
+	if kind == UsageKindEgressBytes {
+		attack = ` AND NOT ` + egressAttackHour("u")
+	}
 	return `
-		SELECT COALESCE(sum(quantity), 0)::bigint
-		FROM usage_hourly
-		WHERE workspace_id = $1 AND kind = '` + kind + `' AND quantity > 0
-		  AND window_start >= $2
-		  AND (window_start, resource_kind, service_id) < ($3, $4, $5)`
+		SELECT COALESCE(sum(u.quantity), 0)::bigint
+		FROM usage_hourly u
+		WHERE u.workspace_id = $1 AND u.kind = '` + kind + `' AND u.quantity > 0
+		  AND u.window_start >= $2
+		  AND (u.window_start, u.resource_kind, u.service_id) < ($3, $4, $5)` + attack
 }
 
 // RecordUsageExportResult atomically stamps accepted rows and moves permanent

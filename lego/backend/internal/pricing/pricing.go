@@ -522,6 +522,13 @@ func (s *Sheet) BuildCentsAbove(seconds, includedSeconds int64) int64 {
 	return int64(math.Floor(float64(seconds-includedSeconds)*s.build*100 + 1e-6))
 }
 
+// BandwidthCents is what bytes of outbound bandwidth bill at the bandwidth
+// rate, to the nearest cent: the amount an attack window's credit gives back
+// for hours Stripe already billed (w4/m709).
+func (s *Sheet) BandwidthCents(bytes int64) int64 {
+	return int64(math.Round(float64(bytes) * s.bandwidth * 100))
+}
+
 // BytesPerGiB is the gigabyte bandwidth is billed, shown and included in: the
 // unit of the Stripe egress_gib meter and of the estimate's "GB" line. Render
 // quotes its allowance in GB (render.com/docs/outbound-bandwidth); reading

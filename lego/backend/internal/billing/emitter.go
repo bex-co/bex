@@ -314,7 +314,7 @@ func (e *Emitter) emitRows(ctx context.Context, rows []store.HourlyRow, now time
 		}
 		event := toEvent(r)
 		attempt := store.UsageExportAttempt{Row: r, TransactionID: event.TransactionID}
-		if pricing.HasAllowance(r.Kind) && e.Plans != nil {
+		if r.AttackHour || pricing.HasAllowance(r.Kind) && e.Plans != nil {
 			billed, ok := e.billedAboveAllowance(ctx, r, allowances)
 			if !ok {
 				continue // retried next cycle; never sent whole by mistake
@@ -418,12 +418,14 @@ func newAllowanceBatch() *allowanceBatch {
 // that meter that sorts before r. Both inputs are fixed once r is sealed, and
 // a value an earlier attempt sent is reused, so every replica and every retry
 // sends the same value. ok is false when a read failed; the row then waits
-// for the next cycle.
+// for the next cycle. An egress hour a live attack window covers owes nothing
+// (w4/m709, ADR023 § Bandwidth served to a DDoS attack is not billed), and
+// UsageBefore leaves such hours out of the rows after it.
 func (e *Emitter) billedAboveAllowance(ctx context.Context, r store.HourlyRow, batch *allowanceBatch) (int64, bool) {
 	if r.BilledQuantity != nil {
 		return *r.BilledQuantity, true
 	}
-	if r.Quantity == 0 {
+	if r.Quantity == 0 || r.AttackHour {
 		return 0, true
 	}
 	reader, has := e.Store.(usageBeforeReader)

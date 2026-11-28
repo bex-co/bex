@@ -57,6 +57,9 @@ type API struct {
 	Grant             MembershipGranter
 	Billing           BillingAdmin
 	BillingOperations BillingOperations
+	// AttackWindows declares, extends, withdraws and lists DDoS attack
+	// windows, whose bandwidth hours are not billed (w4/m709). Nil => 503.
+	AttackWindows EgressAttackWindowAdmin
 	// SandboxTenants resolves an OpenSandbox per-workspace key to its workspace
 	// id for the GET /v1/sandbox-tenants tenant-lookup endpoint (w3/m32 t006).
 	// Nil => the endpoint returns 503 (sandbox multi-tenancy not configured).
@@ -78,6 +81,15 @@ type BillingOperations interface {
 	BillingExportReport(context.Context, string, time.Time, time.Time) (BillingExportReport, error)
 	ListBillingExportIssues(context.Context, bool, int) ([]BillingExportIssue, error)
 	ResolveBillingExportIssue(context.Context, string, string, string, string, time.Time) (BillingExportIssue, error)
+}
+
+// EgressAttackWindowAdmin is the operator verb over attack windows;
+// *PGStore satisfies it.
+type EgressAttackWindowAdmin interface {
+	DeclareEgressAttackWindow(ctx context.Context, d EgressAttackWindowDeclaration, now time.Time) (EgressAttackWindow, error)
+	ExtendEgressAttackWindow(ctx context.Context, workspaceID, windowID string, startsAt, endsAt time.Time, actor, reason string, now time.Time) (EgressAttackWindow, error)
+	WithdrawEgressAttackWindow(ctx context.Context, workspaceID, windowID, actor, reason string, now time.Time) (EgressAttackWindow, bool, error)
+	ListEgressAttackWindows(ctx context.Context, workspaceID string) ([]EgressAttackWindow, error)
 }
 
 // MembershipGranter writes/removes a subject's workspace membership in OpenFGA
@@ -124,6 +136,10 @@ func (a *API) Handler() http.Handler {
 	v1.HandleFunc("PATCH /v1/tenants/{id}/billing-excluded", a.setBillingExcluded)
 	v1.HandleFunc("POST /v1/tenants/{id}/billing-override", a.billingOverride)
 	v1.HandleFunc("GET /v1/tenants/{id}/billing-export", a.billingExportReport)
+	v1.HandleFunc("POST /v1/tenants/{id}/egress-attack-windows", a.declareEgressAttackWindow)
+	v1.HandleFunc("GET /v1/tenants/{id}/egress-attack-windows", a.listEgressAttackWindows)
+	v1.HandleFunc("PATCH /v1/tenants/{id}/egress-attack-windows/{windowId}", a.extendEgressAttackWindow)
+	v1.HandleFunc("DELETE /v1/tenants/{id}/egress-attack-windows/{windowId}", a.withdrawEgressAttackWindow)
 	v1.HandleFunc("GET /v1/billing/export-issues", a.listBillingExportIssues)
 	v1.HandleFunc("POST /v1/billing/export-issues/{id}/resolve", a.resolveBillingExportIssue)
 	v1.HandleFunc("POST /v1/apps", a.createApp)
@@ -198,6 +214,121 @@ func (a *API) billingExportReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	core.WriteJSON(w, http.StatusOK, report)
+}
+
+// EgressAttackWindowRequest is the body that declares (POST), extends (PATCH)
+// or withdraws (DELETE) an attack window. Times are RFC3339. An extension may
+// leave either end empty to keep it; a withdrawal reads actor and reason only.
+type EgressAttackWindowRequest struct {
+	StartsAt   string   `json:"startsAt,omitempty"`
+	EndsAt     string   `json:"endsAt,omitempty"`
+	ServiceIDs []string `json:"serviceIds,omitempty"`
+	Actor      string   `json:"actor"`
+	Reason     string   `json:"reason"`
+}
+
+// decodeEgressAttackWindowRequest reads the body and its times. An empty time
+// is the zero value; required is checked by the store.
+func decodeEgressAttackWindowRequest(r *http.Request) (EgressAttackWindowRequest, time.Time, time.Time, error) {
+	var req EgressAttackWindowRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return req, time.Time{}, time.Time{}, fmt.Errorf("%w: bad request body", ErrInvalid)
+	}
+	parse := func(field, value string) (time.Time, error) {
+		if value == "" {
+			return time.Time{}, nil
+		}
+		t, err := time.Parse(time.RFC3339, value)
+		if err != nil {
+			return time.Time{}, fmt.Errorf("%w: egress attack window: %s must be RFC3339", ErrInvalid, field)
+		}
+		return t, nil
+	}
+	start, err := parse("startsAt", req.StartsAt)
+	if err != nil {
+		return req, time.Time{}, time.Time{}, err
+	}
+	end, err := parse("endsAt", req.EndsAt)
+	return req, start, end, err
+}
+
+func (a *API) declareEgressAttackWindow(w http.ResponseWriter, r *http.Request) {
+	if a.AttackWindows == nil {
+		writeErr(w, fmt.Errorf("egress attack windows unavailable"))
+		return
+	}
+	req, start, end, err := decodeEgressAttackWindowRequest(r)
+	if err != nil {
+		writeErr(w, err)
+		return
+	}
+	window, err := a.AttackWindows.DeclareEgressAttackWindow(r.Context(), EgressAttackWindowDeclaration{
+		WorkspaceID: r.PathValue("id"), ServiceIDs: req.ServiceIDs, StartsAt: start, EndsAt: end,
+		Actor: req.Actor, Reason: req.Reason,
+	}, time.Now().UTC())
+	if err != nil {
+		writeErr(w, err)
+		return
+	}
+	core.WriteJSON(w, http.StatusCreated, window)
+}
+
+func (a *API) listEgressAttackWindows(w http.ResponseWriter, r *http.Request) {
+	if a.AttackWindows == nil {
+		writeErr(w, fmt.Errorf("egress attack windows unavailable"))
+		return
+	}
+	windows, err := a.AttackWindows.ListEgressAttackWindows(r.Context(), r.PathValue("id"))
+	if err != nil {
+		writeErr(w, err)
+		return
+	}
+	if windows == nil {
+		windows = []EgressAttackWindow{}
+	}
+	core.WriteJSON(w, http.StatusOK, map[string]any{"windows": windows})
+}
+
+func (a *API) extendEgressAttackWindow(w http.ResponseWriter, r *http.Request) {
+	if a.AttackWindows == nil {
+		writeErr(w, fmt.Errorf("egress attack windows unavailable"))
+		return
+	}
+	req, start, end, err := decodeEgressAttackWindowRequest(r)
+	if err != nil {
+		writeErr(w, err)
+		return
+	}
+	if len(req.ServiceIDs) > 0 {
+		writeErr(w, fmt.Errorf("%w: egress attack window: an extension cannot change serviceIds; withdraw the window and declare a new one", ErrInvalid))
+		return
+	}
+	window, err := a.AttackWindows.ExtendEgressAttackWindow(r.Context(), r.PathValue("id"), r.PathValue("windowId"),
+		start, end, req.Actor, req.Reason, time.Now().UTC())
+	if err != nil {
+		writeErr(w, err)
+		return
+	}
+	core.WriteJSON(w, http.StatusOK, window)
+}
+
+func (a *API) withdrawEgressAttackWindow(w http.ResponseWriter, r *http.Request) {
+	if a.AttackWindows == nil {
+		writeErr(w, fmt.Errorf("egress attack windows unavailable"))
+		return
+	}
+	req, _, _, err := decodeEgressAttackWindowRequest(r)
+	if err != nil {
+		writeErr(w, err)
+		return
+	}
+	window, _, err := a.AttackWindows.WithdrawEgressAttackWindow(r.Context(), r.PathValue("id"), r.PathValue("windowId"),
+		req.Actor, req.Reason, time.Now().UTC())
+	if err != nil {
+		writeErr(w, err)
+		return
+	}
+	core.WriteJSON(w, http.StatusOK, window)
 }
 
 func (a *API) listBillingExportIssues(w http.ResponseWriter, r *http.Request) {

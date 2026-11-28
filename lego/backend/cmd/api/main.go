@@ -1029,6 +1029,9 @@ func wireTwoFactor(deps *api.Deps, base *core.Base, st *store.PGStore, registere
 func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *store.PGStore, rec *store.Reconciler, authzChecker core.Checker) store.MembershipGranter {
 	deps.AppPlacements = st
 	deps.Store = st // single writer of intent: suspend/resume write the row first
+	// w4/m709: the Outbound Bandwidth footer leaves DDoS attack windows' hours
+	// out, as the bill does.
+	deps.EgressAttackWindows = st
 	deps.OAuthRevocations = st
 	// A member's OAuth consent approvals and Connected agents revocations,
 	// audited in each of their workspaces (w4/m454). Hydra is the evidence of
@@ -1371,6 +1374,9 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 		}
 		log.Printf("bex-api Stripe Billing enabled (seal horizon %s, epoch %s, webhook %t)", emitter.SealHours, billingEpoch.Format(time.RFC3339), deps.StripeWebhook != nil)
 		go emitter.Run(ctx)
+		// w4/m709: hours Stripe already rated when an operator declared the
+		// attack window over them are credited on the next invoice.
+		go (&billing.AttackCredits{Store: st, Stripe: stripeClient, Plans: base}).Run(ctx)
 	}
 	return stripeLifecycleWorker, stripeLifecycleReconciler, stripeBillingAdmin, thresholdCharges
 }
@@ -1406,7 +1412,7 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 	// BEX_CP_TOKEN (without the loud BEX_CP_INSECURE=1 local-dev override)
 	// never reaches this point.
 	cpToken := cfg.CPToken
-	internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: cpToken, Grant: granter, Billing: stripeBillingAdmin, BillingOperations: st, SandboxTenants: st}
+	internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: cpToken, Grant: granter, Billing: stripeBillingAdmin, BillingOperations: st, AttackWindows: st, SandboxTenants: st}
 	internalRoot := http.NewServeMux()
 	internalRoot.Handle("GET /metrics", promhttp.HandlerFor(metricRegistry, promhttp.HandlerOpts{}))
 	// ADR047 D2: a gateway-authenticated, internal-only mint verb. The same

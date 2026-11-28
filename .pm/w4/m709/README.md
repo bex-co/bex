@@ -1,19 +1,19 @@
 # w4 · m709 — Bandwidth served to a DDoS attack is not billed, as on Render: an attack window a bex operator declares takes its hours off the invoice
 
-**Worker:** worker4 **Goal:** a workspace whose service was flooded pays nothing for the bandwidth the flood drew, as Render promises: "As part of Render's DDoS protection, Render does not bill for bandwidth usage incurred from a DDoS attack" ([faq](https://render.com/docs/faq), "What does Render bill for?" › Outbound bandwidth, read 2026-11-27). **Status:** todo
+**Worker:** worker4 **Goal:** a workspace whose service was flooded pays nothing for the bandwidth the flood drew, as Render promises: "As part of Render's DDoS protection, Render does not bill for bandwidth usage incurred from a DDoS attack" ([faq](https://render.com/docs/faq), "What does Render bill for?" › Outbound bandwidth, read 2026-11-27). **Status:** in progress (t001–t004, t006–t008 done; t005 has its dev-4 half, its production half waits for the pin)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | ADR023 states the rule; the ADR018 DDoS row and an operator runbook point at it | 25m | — |
-| [t002](t002.md) | Attack windows: table, store and the control-plane verb that declares, extends and lists them | 50m | t001 |
-| [t003](t003.md) | Every bandwidth read that bills or counts against the allowance leaves a window's hours out | 1h15m | t002 |
-| [t004](t004.md) | Hours already sent to Stripe come back as a credit on the invoice | 45m | t003 |
+| [t001](done/t001.md) | ADR023 states the rule; the ADR018 DDoS row and an operator runbook point at it — **DONE** | 25m | — |
+| [t002](done/t002.md) | Attack windows: table, store and the control-plane verb that declares, extends and lists them — **DONE** | 50m | t001 |
+| [t003](done/t003.md) | Every bandwidth read that bills or counts against the allowance leaves a window's hours out — **DONE** | 1h15m | t002 |
+| [t004](done/t004.md) | Hours already sent to Stripe come back as a credit on the invoice — **DONE** | 45m | t003 |
 | [t005](t005.md) | Live: a flooded service's hours leave the bill on dev-4, and the verb answers on production | 40m | t004 |
-| [t006](t006.md) | Render parity | 20m | t005 |
-| [t007](t007.md) | Simplify | 15m | t006 |
-| [t008](t008.md) | Test coverage | 30m | t006, t007 |
+| [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 30m | t006, t007 |
 | [t009](t009.md) | Closeout | 10m | t008 |
 
 Total: **9 tasks, about 5h10m**.

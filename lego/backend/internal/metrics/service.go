@@ -40,6 +40,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/podmetrics"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -300,6 +301,12 @@ type BandwidthBytes struct {
 	HTTP, NAT, WebSocket float64
 }
 
+// AttackWindowReader reads the live attack windows that take a service's
+// bandwidth hours off the bill; *store.PGStore satisfies it.
+type AttackWindowReader interface {
+	EgressAttackWindowsOverlapping(ctx context.Context, workspaceID, serviceID string, from, to time.Time) ([]store.EgressAttackWindow, error)
+}
+
 // MonthToDateBandwidthSource returns all applicable App egress categories in
 // bytes since the given time, plus the names of sources whose health product
 // failed inside the window (best-effort — ADR023 § Observability reads vs
@@ -437,6 +444,10 @@ type Service struct {
 	PathFilterSuggestionsSource PathFilterSuggestionsSource
 	// MonthToDateBandwidthSource reads cumulative composed egress since a given time.
 	MonthToDateBandwidthSource MonthToDateBandwidthSource
+	// AttackWindows reads the live DDoS attack windows whose hours are not
+	// billed (w4/m709), which the Outbound Bandwidth footer leaves out as the
+	// bill does. nil reads every hour as billed.
+	AttackWindows AttackWindowReader
 	// MetricsFilterValuesSource discovers a Prometheus label's observed values.
 	MetricsFilterValuesSource MetricsFilterValuesSource
 	// InstanceFilterValuesSource discovers historical pod names observed in
@@ -1442,11 +1453,12 @@ func (s *Service) MonthToDateBandwidth(ctx context.Context, app string) (MonthTo
 	if created := core.AppNotBefore(resolved).UTC(); monthStart.Before(created) && created.Before(now) {
 		monthStart = created
 	}
-	bytesByCategory, degraded, err := s.MonthToDateBandwidthSource(
-		ctx, appResourceID(resolved, app), routers,
-		resolved.Spec.Type != appv1alpha1.TypeStaticSite, monthStart, now,
-	)
+	resourceID, direct := appResourceID(resolved, app), resolved.Spec.Type != appv1alpha1.TypeStaticSite
+	bytesByCategory, degraded, err := s.MonthToDateBandwidthSource(ctx, resourceID, routers, direct, monthStart, now)
 	if err != nil {
+		return MonthToDateBandwidth{}, err
+	}
+	if bytesByCategory, err = s.withoutAttackHours(ctx, resolved, resourceID, routers, direct, monthStart, now, bytesByCategory); err != nil {
 		return MonthToDateBandwidth{}, err
 	}
 	const bytesPerMiB = 1 << 20
@@ -1460,6 +1472,33 @@ func (s *Service) MonthToDateBandwidth(ctx context.Context, app string) (MonthTo
 		WebsocketEgressBandwidthMB: wsMB,
 		DegradedSources:            degraded,
 	}, nil
+}
+
+// withoutAttackHours takes the hours of [since, now) a live attack window
+// covers out of served, so the footer reports the bandwidth that bills
+// (w4/m709, ADR023 § Bandwidth served to a DDoS attack is not billed). Each
+// span of whole hours is read with the same source, so what comes off is
+// exactly what those hours added. The bandwidth chart is not touched: it
+// keeps showing the traffic as served.
+func (s *Service) withoutAttackHours(ctx context.Context, app *appv1alpha1.App, resourceID string, routers []string, direct bool, since, now time.Time, served BandwidthBytes) (BandwidthBytes, error) {
+	workspaceID := app.Labels[core.LabelTenant]
+	if s.AttackWindows == nil || workspaceID == "" {
+		return served, nil
+	}
+	windows, err := s.AttackWindows.EgressAttackWindowsOverlapping(ctx, workspaceID, resourceID, since, now)
+	if err != nil {
+		return BandwidthBytes{}, fmt.Errorf("attack windows: %w", err)
+	}
+	for _, span := range store.EgressAttackHourSpans(windows, since, now) {
+		attack, _, err := s.MonthToDateBandwidthSource(ctx, resourceID, routers, direct, span.Start, span.End)
+		if err != nil {
+			return BandwidthBytes{}, err
+		}
+		served.HTTP = max(served.HTTP-attack.HTTP, 0)
+		served.NAT = max(served.NAT-attack.NAT, 0)
+		served.WebSocket = max(served.WebSocket-attack.WebSocket, 0)
+	}
+	return served, nil
 }
 
 func appResourceID(app *appv1alpha1.App, fallback string) string {

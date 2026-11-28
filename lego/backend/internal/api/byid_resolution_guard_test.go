@@ -285,6 +285,7 @@ var idKindRouting = map[string]struct{ family, why string }{
 	ids.ObjectMultipartUpload.Prefix():     {"object-storage", "an upload id is only ever sent with the bucket and key of the S3 request that signs it; bex-s3 looks it up inside the key's own workspace, and no REST or GraphQL route takes one (ADR112 D3)"},
 	ids.ObjectBucket.Prefix():              {"", "a bucket is addressed by workspace and name on every route; its id is only the second segment of its objects' Wasabi keys and the pub- host, which objectgw resolves through its own lookup (ADR112)"},
 	ids.PostgresUpgradeRun.Prefix():        {"", "an upgrade run is addressed under its database (acknowledgeDatabaseUpgrade(id, runId)), authorized on the database (w3/m676)"},
+	ids.EgressAttackWindow.Prefix():        {"", "an attack window is operator-only: the control-plane API on :8091 addresses it under its workspace (/v1/tenants/{id}/egress-attack-windows/{windowId}) behind the CP bearer, and no public route takes one (w4/m709)"},
 }
 
 // TestEveryIDKindIsClassifiedForByIDRouting closes the gap the route walk
