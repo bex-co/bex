@@ -470,6 +470,7 @@ func setupAppReconciler(
 		KpackRegistry:         os.Getenv("BEX_KPACK_REGISTRY"),
 		CNBBuilder:            env.Or("BEX_CNB_BUILDER", defaultCNBBuilder),
 		BuildNamespace:        os.Getenv("BEX_BUILD_NAMESPACE"),
+		Region:                controller.PlatformRegionAlias(os.Getenv("BEX_REGION")),
 		Runtime:               bexruntime.New(env.Or("BEX_OPENSANDBOX_URL", "http://127.0.0.1:8077")),
 		BaseDomain:            baseDomain,
 		ClusterIssuer:         env.Or("BEX_CLUSTER_ISSUER", "letsencrypt-staging"),

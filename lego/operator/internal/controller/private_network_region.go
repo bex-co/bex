@@ -18,6 +18,7 @@ package controller
 
 import (
 	"maps"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -47,6 +48,20 @@ func regionOf(obj metav1.Object) string {
 		return ""
 	}
 	return region
+}
+
+// PlatformRegionAlias maps BEX_REGION to the public Render region an
+// unstamped resource reads back (resourcemeta.RenderRegion in bex-api, user
+// decision D7, w8/218): internal placement stays fsn1, whose public alias is
+// frankfurt. Whitespace-only configuration reads as unavailable, like
+// bex-api's PlatformRegion.
+func PlatformRegionAlias(raw string) string {
+	switch region := strings.TrimSpace(raw); region {
+	case "fsn1":
+		return "frankfurt"
+	default:
+		return region
+	}
 }
 
 // inPlaceLabelsOf is what obj's running pods carry in place

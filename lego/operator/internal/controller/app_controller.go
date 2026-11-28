@@ -423,6 +423,7 @@ type AppReconciler struct {
 	KpackRegistry  string                  // optional kpack alias for Registry (e.g. zot.local:5000 for plain HTTP)
 	CNBBuilder     string                  // e.g. paketobuildpacks/builder-jammy-base
 	BuildNamespace string                  // namespace in-cluster build Jobs run in; empty => the App's namespace
+	Region         string                  // platform's public Render region alias (BEX_REGION through PlatformRegionAlias); empty => unknown
 	Runtime        *bexruntime.OpenSandbox // OpenSandbox client (ModeOpenSandbox)
 	BaseDomain     string                  // optional: "<name>.<BaseDomain>" when Expose && Host=="" (e.g. bex.co)
 	ClusterIssuer  string                  // cert-manager ClusterIssuer for App Ingresses (letsencrypt-staging|-prod)

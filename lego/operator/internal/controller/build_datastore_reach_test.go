@@ -421,6 +421,79 @@ func servingPod(app *appv1alpha1.App) endpoint {
 	return endpoint{ns: app.Namespace, labels: pod}
 }
 
+// w4/m712: a build's private-network reach is its App's region network — the
+// pods its runtime pods can reach (same region, same isolation scope), which
+// bex-api's per-region policies already enforce at runtime. A build that could
+// dial another region's datastores would run migrations the deployed service
+// cannot repeat, and Render refuses the traffic outright.
+func TestBuildReachIsOwnRegionOnly(t *testing.T) {
+	ctx := context.Background()
+	stamped := func(name, region string) *appv1alpha1.App {
+		app := reachApp(name, wsA)
+		app.Annotations = map[string]string{appv1alpha1.AnnotationRegion: region}
+		return app
+	}
+	oregonApp, plainApp, frankfurtApp := stamped("oregon-app", "oregon"), reachApp("plain-app", wsA), stamped("frankfurt-app", "frankfurt")
+	oregonSvc, frankfurtSvc := reachService("cms-oregon", wsA, appv1alpha1.TypePrivateService, "starter"), reachService("cms-frankfurt", wsA, appv1alpha1.TypePrivateService, "starter")
+	oregonSvc.Annotations = map[string]string{appv1alpha1.AnnotationRegion: "oregon"}
+	frankfurtSvc.Annotations = map[string]string{appv1alpha1.AnnotationRegion: "frankfurt"}
+
+	r, cl := reachReconciler(t, oregonApp, plainApp, frankfurtApp, oregonSvc, frankfurtSvc)
+	r.Region = "frankfurt" // the platform's public region alias (BEX_REGION)
+	for _, app := range []*appv1alpha1.App{oregonApp, plainApp, frankfurtApp} {
+		if err := r.reconcileBuildReach(ctx, app, reachBuildNs, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	policies := listPolicies(t, cl)
+
+	pg := func(region string) endpoint {
+		podLabels := map[string]string{"app.bex.co/component": "database", labelWorkspace: wsA}
+		if region != "" {
+			podLabels[appv1alpha1.LabelRegion] = region
+		}
+		return endpoint{ns: wsA, labels: podLabels}
+	}
+	for _, tc := range []struct {
+		name      string
+		src, dst  endpoint
+		port      int
+		wantAllow bool
+	}{
+		{"oregon build → oregon Postgres", buildPod(oregonApp), pg("oregon"), pgPort, true},
+		{"oregon build → frankfurt Postgres", buildPod(oregonApp), pg("frankfurt"), pgPort, false},
+		{"oregon build → unstamped Postgres", buildPod(oregonApp), pg(""), pgPort, false},
+		{"plain build → frankfurt Postgres", buildPod(plainApp), pg("frankfurt"), pgPort, true},
+		{"plain build → unstamped Postgres", buildPod(plainApp), pg(""), pgPort, true},
+		{"plain build → oregon Postgres", buildPod(plainApp), pg("oregon"), pgPort, false},
+		{"frankfurt build → frankfurt Postgres", buildPod(frankfurtApp), pg("frankfurt"), pgPort, true},
+		{"frankfurt build → unstamped Postgres", buildPod(frankfurtApp), pg(""), pgPort, true},
+		{"frankfurt build → oregon Postgres", buildPod(frankfurtApp), pg("oregon"), pgPort, false},
+		{"oregon build → oregon private service", buildPod(oregonApp), servingPod(oregonSvc), appv1alpha1.DefaultPort, true},
+		{"oregon build → frankfurt private service", buildPod(oregonApp), servingPod(frankfurtSvc), appv1alpha1.DefaultPort, false},
+		{"plain build → frankfurt private service", buildPod(plainApp), servingPod(frankfurtSvc), appv1alpha1.DefaultPort, true},
+		{"plain build → oregon private service", buildPod(plainApp), servingPod(oregonSvc), appv1alpha1.DefaultPort, false},
+	} {
+		if got := policyAllows(t, policies, tc.src, tc.dst, tc.port); got != tc.wantAllow {
+			t.Errorf("%s: allowed=%v, want %v", tc.name, got, tc.wantAllow)
+		}
+	}
+
+	// Without a platform region (BEX_REGION unset) an unstamped build reaches
+	// only unstamped pods — the fail-closed dev shape, never another region.
+	r, cl = reachReconciler(t, plainApp)
+	if err := r.reconcileBuildReach(ctx, plainApp, reachBuildNs, true); err != nil {
+		t.Fatal(err)
+	}
+	dev := listPolicies(t, cl)
+	if got := policyAllows(t, dev, buildPod(plainApp), pg(""), pgPort); !got {
+		t.Error("unstamped build → unstamped Postgres: allowed=false, want true")
+	}
+	if got := policyAllows(t, dev, buildPod(plainApp), pg("oregon"), pgPort); got {
+		t.Error("unstamped build → oregon Postgres with no platform region: allowed=true, want false")
+	}
+}
+
 // w9/m495: fromService host/hostport work in the build as at runtime. A build
 // reaches its own workspace's paid web and private services on any TCP port,
 // within its isolation scope, and nothing a Render build could not: not

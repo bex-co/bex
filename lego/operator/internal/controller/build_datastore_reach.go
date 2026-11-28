@@ -185,6 +185,39 @@ func buildServiceTargets(app *appv1alpha1.App, services []string) metav1.LabelSe
 	return targets
 }
 
+// buildRegionScope is one region share of the building App's own private
+// network (w4/m712): the ingress-policy name suffix carrying it ("" keeps the
+// historic policy name, so the converge to the split updates it in place
+// instead of orphaning a hole) and the extra pod-selector requirement its
+// targets carry.
+type buildRegionScope struct {
+	suffix      string
+	requirement metav1.LabelSelectorRequirement
+}
+
+// buildRegionScopes lists the region shares of the building App's own private
+// network — the region its runtime pods live in: its stamped region, else the
+// platform's (r.Region). The platform's own network holds both its labelled
+// pods and the unstamped ones, which no single selector expresses, so it
+// takes two variants; any other region takes only its labelled pods. With no
+// platform region an unstamped App's network is its unstamped pods alone, the
+// fail-closed shape bex-api converges to there.
+func (r *AppReconciler) buildRegionScopes(app *appv1alpha1.App) []buildRegionScope {
+	region := regionOf(app)
+	if region == "" {
+		region = r.Region
+	}
+	if region == "" {
+		return []buildRegionScope{{requirement: metav1.LabelSelectorRequirement{Key: labelRegion, Operator: metav1.LabelSelectorOpDoesNotExist}}}
+	}
+	inRegion := metav1.LabelSelectorRequirement{Key: labelRegion, Operator: metav1.LabelSelectorOpIn, Values: []string{region}}
+	if region != r.Region {
+		return []buildRegionScope{{requirement: inRegion}}
+	}
+	return []buildRegionScope{{requirement: inRegion},
+		{suffix: "-unstamped", requirement: metav1.LabelSelectorRequirement{Key: labelRegion, Operator: metav1.LabelSelectorOpDoesNotExist}}}
+}
+
 // buildReachTargets selects the workspace pods a build may reach, honoring a
 // protected environment exactly as allow-same-namespace does: an ordinary
 // App's build reaches only pods outside every isolated environment, and an
@@ -204,14 +237,24 @@ func buildReachTargets(app *appv1alpha1.App) metav1.LabelSelector {
 // so a running build's grant is revoked across an upgrade).
 // buildIngressPolicyName is the workspace half for datastore ports, and
 // buildServiceIngressPolicyName for the workspace's services: each admits
-// exactly those pods.
+// exactly those pods. The -unstamped twins admit the same classes among the
+// pods that carry no region label (buildRegionScopes): a second policy, since
+// no single selector expresses "labelled with the platform's region or not
+// labelled at all".
 func buildEgressPolicyName(app string) string         { return build.JobName(app, "datastore-egress") }
 func buildIngressPolicyName(app string) string        { return app + "-build-ingress" }
 func buildServiceIngressPolicyName(app string) string { return app + "-build-service-ingress" }
+func buildUnstampedIngressPolicyName(app string) string {
+	return app + "-build-ingress-unstyled"
+}
+func buildServiceUnstampedIngressPolicyName(app string) string {
+	return app + "-build-service-ingress-unstyled"
+}
 
 // buildIngressPolicyNames are every workspace-side half an App's builds may hold.
 func buildIngressPolicyNames(app string) []string {
-	return []string{buildIngressPolicyName(app), buildServiceIngressPolicyName(app)}
+	return []string{buildIngressPolicyName(app), buildUnstampedIngressPolicyName(app),
+		buildServiceIngressPolicyName(app), buildServiceUnstampedIngressPolicyName(app)}
 }
 
 // buildReachEligible reports whether app may receive build reach. The
@@ -262,10 +305,18 @@ func (r *AppReconciler) reconcileBuildReach(ctx context.Context, app *appv1alpha
 		return err
 	}
 	sources := build.AppBuildPodLabels(app.Name, string(app.UID), app.Labels[labelWorkspace])
-	grants := []buildReachGrant{{ingress: buildIngressPolicyName(app.Name), targets: buildReachTargets(app), ports: buildReachPorts()}}
+	scopes := r.buildRegionScopes(app)
+	var grants []buildReachGrant
+	addGrant := func(ingress string, targets metav1.LabelSelector, ports []networkingv1.NetworkPolicyPort) {
+		for _, scope := range scopes {
+			targets := targets.DeepCopy()
+			targets.MatchExpressions = append(targets.MatchExpressions, scope.requirement)
+			grants = append(grants, buildReachGrant{ingress: ingress + scope.suffix, targets: *targets, ports: ports})
+		}
+	}
+	addGrant(buildIngressPolicyName(app.Name), buildReachTargets(app), buildReachPorts())
 	if len(services) > 0 {
-		grants = append(grants, buildReachGrant{ingress: buildServiceIngressPolicyName(app.Name),
-			targets: buildServiceTargets(app, services), ports: buildServicePorts()})
+		addGrant(buildServiceIngressPolicyName(app.Name), buildServiceTargets(app, services), buildServicePorts())
 	}
 
 	egress := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: buildEgressPolicyName(app.Name), Namespace: buildNs}}
@@ -294,7 +345,9 @@ func (r *AppReconciler) reconcileBuildReach(ctx context.Context, app *appv1alpha
 		return fmt.Errorf("build reach egress policy: %w", err)
 	}
 
+	desired := make(map[string]bool, len(grants))
 	for _, g := range grants {
+		desired[g.ingress] = true
 		ingress := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: g.ingress, Namespace: app.Namespace}}
 		if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, ingress, func() error {
 			ingress.Labels = artifactLabels(app, "build-network-policy")
@@ -315,8 +368,14 @@ func (r *AppReconciler) reconcileBuildReach(ctx context.Context, app *appv1alpha
 			return fmt.Errorf("build reach ingress policy %s: %w", g.ingress, err)
 		}
 	}
-	if len(services) == 0 {
-		return r.deleteBuildIngress(ctx, app, buildServiceIngressPolicyName(app.Name))
+	// A grant the App's region no longer deals (no services left, or a region
+	// move narrowing its shares) goes, so no stale policy keeps a hole open.
+	for _, name := range buildIngressPolicyNames(app.Name) {
+		if !desired[name] {
+			if err := r.deleteBuildIngress(ctx, app, name); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

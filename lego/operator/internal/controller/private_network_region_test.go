@@ -76,6 +76,21 @@ func TestRegionComesFromTheAnnotationAlone(t *testing.T) {
 	}
 }
 
+func TestPlatformRegionAliasMapsBexRegion(t *testing.T) {
+	for _, tc := range []struct{ raw, want string }{
+		{"fsn1", "frankfurt"},
+		{"frankfurt", "frankfurt"},
+		{"oregon", "oregon"},
+		{"", ""},
+		{"   ", ""},
+		{" fsn1 ", "frankfurt"},
+	} {
+		if got := PlatformRegionAlias(tc.raw); got != tc.want {
+			t.Errorf("PlatformRegionAlias(%q) = %q, want %q", tc.raw, got, tc.want)
+		}
+	}
+}
+
 func TestServicePodTemplatesCarryTheRegion(t *testing.T) {
 	stamped := projectionApp(func(a *appv1alpha1.App) { regionAnnotated(a, "oregon") })
 	dep := project(stamped, deploymentParams{})
