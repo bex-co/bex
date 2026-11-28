@@ -293,7 +293,7 @@ describe("EnvironmentConnectionsCard (w1/m683)", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Upgrade" })).toHaveAttribute(
       "href",
-      "/workspace/settings",
+      "/billing/update-plan",
     );
   });
 

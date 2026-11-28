@@ -456,7 +456,7 @@ const ptUsage: Record<string, TranslationEntry> = {
   "usage.planChange": {
     message: "Alterar plano",
     description:
-      "Link from the billing page's plan card to the workspace-settings plan dialog",
+      "Link from the billing page's plan card to Render's plan page (w3/m708)",
   },
   "usage.paymentMethodTitle": {
     message: "Forma de pagamento",

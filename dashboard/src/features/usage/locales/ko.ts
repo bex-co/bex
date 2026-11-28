@@ -448,7 +448,7 @@ const koUsage: Record<string, TranslationEntry> = {
   "usage.planChange": {
     message: "요금제 변경",
     description:
-      "Link from the billing page's plan card to the workspace-settings plan dialog",
+      "Link from the billing page's plan card to Render's plan page (w3/m708)",
   },
   "usage.paymentMethodTitle": {
     message: "결제 수단",

@@ -17,6 +17,8 @@ export interface SudoCommandFieldProps {
   value: string;
   onValueChange: (value: string) => void;
   inputClassName?: string;
+  /** Focus the input on mount, as a page given over to the phrase does. */
+  autoFocus?: boolean;
 }
 
 /**
@@ -34,6 +36,7 @@ export function SudoCommandField({
   value,
   onValueChange,
   inputClassName,
+  autoFocus,
 }: SudoCommandFieldProps) {
   const { t } = useTranslations();
   return (
@@ -47,6 +50,7 @@ export function SudoCommandField({
         value={value}
         onChange={(e) => onValueChange(e.target.value)}
         autoComplete="off"
+        autoFocus={autoFocus}
         placeholder={phrase}
         className={inputClassName}
       />

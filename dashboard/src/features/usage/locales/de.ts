@@ -459,7 +459,7 @@ const deUsage: Record<string, TranslationEntry> = {
   "usage.planChange": {
     message: "Tarif ändern",
     description:
-      "Link from the billing page's plan card to the workspace-settings plan dialog",
+      "Link from the billing page's plan card to Render's plan page (w3/m708)",
   },
   "usage.paymentMethodTitle": {
     message: "Zahlungsmethode",

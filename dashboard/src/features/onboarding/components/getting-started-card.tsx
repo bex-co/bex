@@ -12,13 +12,14 @@ import { useGitConnections } from "@/features/git/hooks/use-git-connection";
 import { useTeam } from "@/features/team/hooks/use-team";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useGettingStartedDismissal } from "../hooks/use-getting-started-dismissal";
+import { updatePlanSearch } from "@/features/workspaces/lib/update-plan";
 
 interface ChecklistItem {
   key: string;
   done: boolean;
   to: string;
   hash?: string;
-  search?: Record<string, string>;
+  search?: Record<string, string | undefined>;
 }
 
 /**
@@ -43,8 +44,8 @@ function inviteItem(team: ReturnType<typeof useTeam>): ChecklistItem {
     return {
       key: "upgradeToInvite",
       done: false,
-      to: "/workspace/settings",
-      search: { plan: "change" },
+      to: "/billing/update-plan",
+      search: updatePlanSearch("pro", "/"),
     };
   }
   return { key: "inviteTeammate", done, to: "/workspace/settings" };

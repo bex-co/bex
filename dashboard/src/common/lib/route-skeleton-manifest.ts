@@ -756,7 +756,25 @@ export const ROUTE_SKELETON_MANIFEST = {
   "/billing/$first/$": {
     kind: "redirect",
     owner: "routes/billing_.$first.$.tsx",
-    destination: "/billing or /workspace/settings",
+    destination: "/billing",
+  },
+  "/billing/update-plan": {
+    kind: "render",
+    owner: "routes/billing_.update-plan.tsx",
+    shape: "update-plan",
+    regions: ["page-header", "select-plan", "payment-method", "page-footer"],
+  },
+  "/billing/update-plan-confirm": {
+    kind: "render",
+    owner: "routes/billing_.update-plan-confirm.tsx",
+    shape: "update-plan-confirm",
+    regions: ["page-header", "plan-summary", "page-footer"],
+  },
+  "/billing/update-plan-preview": {
+    kind: "redirect",
+    owner: "routes/billing_.update-plan-preview.tsx",
+    destination:
+      "/billing/update-plan-confirm, or /billing/update-plan with no plan",
   },
   "/project/$projectId/observability/logs/application": {
     kind: "render",

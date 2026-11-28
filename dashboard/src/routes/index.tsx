@@ -135,9 +135,9 @@ export const Route = createFileRoute("/")({
     ]);
   },
   // `?new=project|sandbox-group` opens the matching create dialog (w1/m45,
-  // w22/m311) — the URL owns the dialog state (the `?plan=change` pattern,
-  // routes/workspace.settings.tsx) so Render's New-menu URLs (`/new/project`)
-  // can alias onto it; `?new=database` is kept only to redirect (above).
+  // w22/m311) — the URL owns the dialog state so Render's New-menu URLs
+  // (`/new/project`) can alias onto it; `?new=database` is kept only to
+  // redirect (above).
   // Optional key, same rationale as workspace.settings' validateSearch.
   validateSearch: (
     search: Record<string, unknown>,
@@ -194,7 +194,7 @@ export function HomePage() {
   const { pending, run } = useServiceLifecycle({ refetch: refetchServices });
   // The URL owns which create dialog is open (`?new=…`), so Render's New-menu
   // aliases land directly in the dialog; `replace` keeps open/close out of the
-  // back-button history (the workspace.settings `?plan=change` idiom).
+  // back-button history.
   const { new: newParam } = Route.useSearch();
   const routeNavigate = Route.useNavigate();
   const newProjectOpen = newParam === "project";

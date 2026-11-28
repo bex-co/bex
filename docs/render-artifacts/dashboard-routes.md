@@ -99,7 +99,7 @@ Authenticated probes on `dashboard.render.com`, extending the resource-deep-link
 | `/w/settings` | canonicalizes to `/w/{tea-id}/settings` — Render resolves the caller's current workspace into the URL (header "Workspace settings" nav link mints the id-less form) | 404 | `w.$` alias → `/workspace/settings` |
 | `/w/{tea-id}/settings` | workspace settings, workspace named by the URL | 404 | `w.$` alias: select that workspace (membership-checked — a foreign id is refused, never silently shown as the caller's own), then `/workspace/settings` |
 | `/w/{tea-id}/billing` | workspace billing (sidebar Workspace → Billing) | 404 | same selection, land on `/usage` (bex's deliberate usage-not-billing counterpart, ADR023) |
-| `/billing/update-plan` | plan-change page (upgrade CTAs sitewide) | 404 | alias → `/workspace/settings?plan=change` (the plan dialog); billing proper stays a non-goal |
+| `/billing/update-plan` | plan-change page (upgrade CTAs sitewide) | 404 | alias → `/workspace/settings?plan=change` (the plan dialog then); Render's own plan page since w3/m708 |
 | `/settings` | canonicalizes to `/u/{usr-id}/settings` — account settings are user-scoped; one long page (Profile / Appearance / Account Security / CLI Tokens / API Keys / SSH Public Keys / PR Requests), no sub-URLs | `/settings` works (matches the inbound shape); `/u/…` 404 | `u.$` alias → `/settings` (page is caller-scoped; per the m39 rule, never validate the id) |
 | `/web/new`, `/static/new`, `/pserv/new`, `/cron/new`, `/worker/new` | New-menu service creates live under the type segment | served at these paths (2026-11-22; one `_serviceCreate` layout, so a type switch keeps the draft); the old `/services/new?type=…` redirects here | match |
 | `/d/new` | New menu's "Postgres" entry | **broken**: the `d.$` alias redirected it to nonexistent `/databases/new` → 404 catch-all | special-cased to the database create landing |
@@ -157,9 +157,9 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/billing#payment-method` | `/billing#payment-method` | matched | `features/usage/components/usage-page.tsx` |
 | `/billing#unbilled-charges` | `/billing#unbilled-charges` → the Charges card | matched | `usage-page.tsx` (w3/m707): Render's Unbilled Charges card is bex's Charges |
 | `/billing/*` | `billing_.$first.$` → `/billing` | matched | w1/m45 |
-| `/billing/update-plan` | `billing_.$first.$` → the change-plan dialog | partial | Render's plan page: `w3/m708` |
-| `/billing/update-plan-confirm` | `billing_.$first.$` → `/billing` | gap | `w3/m708` |
-| `/billing/update-plan-preview` | `billing_.$first.$` → `/billing` | gap | `w3/m708` |
+| `/billing/update-plan` | `billing_.update-plan` → Render's Change plan page | matched | w3/m708: `?plan=` aliases and `?next=`, Enterprise as Get in touch, the plan rules from `workspacePlanChangeBlockers` before Select plan, an upgrade applied here and a downgrade sent to the confirmation ([workspace-plan-change.md](workspace-plan-change.md)) |
+| `/billing/update-plan-confirm` | `billing_.update-plan-confirm` → Render's confirmation | matched | w3/m708: New plan summary and, for a downgrade, the typed `sudo downgrade workspace <name>`; no `?plan=` goes to the plan page. What a downgrade changes is not listed yet: `w3/165` |
+| `/billing/update-plan-preview` | `billing_.update-plan-preview` → the confirmation (no `?plan=`: the plan page) | partial | w3/m708: Render's plan page opens its preview only for a hard custom-domain limit and bex meters custom domains (ADR030 §16), so the flow never reaches it; a typed preview URL: `w3/164` |
 | `/bitbucket/exists` | — | non-goal | DO_NOT_DO: Bitbucket git-provider integration |
 | `/bitbucket/login-exists` | — | non-goal | DO_NOT_DO: Bitbucket git-provider integration |
 | `/blueprint/*` | `blueprint.$` → `/blueprints/…` | matched | w3/m677 |
@@ -438,9 +438,9 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/w/:param/*` | `w.$` → `/workspace/settings` | matched | w1/m45 |
 | `/w/:param/billing` | `w.$` → `/billing` | matched | w1/m45; bex's Billing page since w5/m70 |
 | `/w/:param/billing/*` | `w.$` → `/billing` | matched | w1/m45 |
-| `/w/:param/billing/update-plan` | `w.$` → `/billing` | gap | Render's plan change pages: `w3/m708` |
-| `/w/:param/billing/update-plan-confirm` | `w.$` → `/billing` | gap | Render's plan change pages: `w3/m708` |
-| `/w/:param/billing/update-plan-preview` | `w.$` → `/billing` | gap | Render's plan change pages: `w3/m708` |
+| `/w/:param/billing/update-plan` | `w.$` → `/billing/update-plan` | matched | w3/m708: the workspace is selected, the query kept, and Cancel returns to Billing as Render's `/w/` form does |
+| `/w/:param/billing/update-plan-confirm` | `w.$` → `/billing/update-plan-confirm` | matched | w3/m708 |
+| `/w/:param/billing/update-plan-preview` | `w.$` → `/billing/update-plan-preview` → the confirmation | partial | w3/m708, as `/billing/update-plan-preview`: `w3/164` |
 | `/w/:param/settings` | `w.$` → `/workspace/settings` | matched | w1/m45 |
 | `/w/:param/settings#audit-logs` | `w.$` → `/workspace/settings`, anchor dropped | partial | the section exists; `w.$` drops the hash on a workspace id: `w3/147` |
 | `/w/:param/settings#build-pipeline` | `w.$` → `/workspace/settings`, anchor dropped | partial | the section exists; `w.$` drops the hash on a workspace id: `w3/147` |

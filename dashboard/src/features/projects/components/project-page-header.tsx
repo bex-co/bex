@@ -14,6 +14,7 @@ import {
   PROJECT_HEADER_CLASS,
   PROJECT_HEADER_ROW_CLASS,
 } from "@/features/projects/lib/project-header-layout";
+import { UpgradePlanLink } from "@/features/workspaces/components/upgrade-plan-link";
 
 /** bex's page on projects and environments, Render's `/docs/projects`. */
 const PROJECTS_DOCS_URL = "https://bex.co/docs/platform/projects-environments";
@@ -146,9 +147,9 @@ function EnvironmentLimitPaywall({
         </div>
         <div className="flex gap-2">
           <Button asChild size="sm">
-            <Link to="/workspace/settings" search={{ plan: "change" }}>
+            <UpgradePlanLink plan="pro">
               {t("projects.environmentLimitUpgrade")}
-            </Link>
+            </UpgradePlanLink>
           </Button>
           <Button asChild variant="outline" size="sm">
             <a href={PROJECTS_DOCS_URL} target="_blank" rel="noreferrer">

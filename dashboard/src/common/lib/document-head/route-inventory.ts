@@ -41,6 +41,8 @@ export const ROUTE_HEAD_INVENTORY: Record<
     "automations_.$automationId_.edit.tsx",
     "automations_.new.tsx",
     "billing.tsx",
+    "billing_.update-plan.tsx",
+    "billing_.update-plan-confirm.tsx",
     "blueprint.generate.tsx",
     "blueprint.new.tsx",
     "blueprints.$blueprintId.tsx",
@@ -143,6 +145,7 @@ export const ROUTE_HEAD_INVENTORY: Record<
   ],
   "redirect-only": [
     "billing_.$first.$.tsx",
+    "billing_.update-plan-preview.tsx",
     "blueprint.$.tsx",
     "blueprints.$blueprintId.$.tsx",
     "blueprints.new.tsx",

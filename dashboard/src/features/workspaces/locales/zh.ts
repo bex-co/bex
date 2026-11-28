@@ -342,35 +342,7 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
   "workspaces.changePlanTrigger": {
     message: "更改套餐",
     description:
-      "Workspace settings plan-badge link opening the change-plan dialog",
-  },
-  "workspaces.changePlanTitle": {
-    message: "更改套餐",
-    description: "Change-plan dialog title",
-  },
-  "workspaces.changePlanDescription": {
-    message: "为此工作区选择新套餐。无需支付步骤 —— 套餐立即生效。",
-    description: "Change-plan dialog description",
-  },
-  "workspaces.changePlanCancel": {
-    message: "取消",
-    description: "Change-plan dialog cancel button",
-  },
-  "workspaces.changePlanSubmit": {
-    message: "更改套餐",
-    description: "Change-plan dialog submit button",
-  },
-  "workspaces.changePlanErrorTitle": {
-    message: "更改套餐失败",
-    description: "Change-plan dialog inline error alert title",
-  },
-  "workspaces.changePlanSuccess": {
-    message: "已更改为 {plan} 套餐",
-    description: "Toast on a successful plan change",
-  },
-  "workspaces.changePlanError": {
-    message: "无法更改工作区套餐",
-    description: "Fallback toast/inline message on a failed plan change",
+      "Plan link on Workspace Settings, the plan gates and the webhooks gate, opening Render's plan page (w3/m708)",
   },
   "workspaces.generalTitle": {
     message: "常规",
@@ -907,58 +879,6 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Shown in place of Save to a member who cannot manage the workspace (w4/653)",
   },
-  "workspaces.orgDowngradeWarningTitle": {
-    message: "降级到 Scale 以下会删除组织",
-    description:
-      "Change-plan dialog on an org's primary: title of the warning shown when a plan below Scale is selected (w7/m464)",
-  },
-  "workspaces.orgDowngradeWarning": {
-    message:
-      "这是你的组织的主工作区，它的套餐覆盖组织中的每个工作区。降级会移除组织以及组织级功能，此工作区将作为独立工作区继续使用。请先删除组织的其他工作区，将角色为账单、查看者或贡献者的成员和待处理邀请改为开发者或管理员，并删除服务、环境和此工作区的入站 IP 规则。",
-    description:
-      "Change-plan dialog on an org's primary: what a downgrade below Scale does and Render's preconditions (render.com/docs/organizations, w7/m464)",
-  },
-  "workspaces.orgDowngradeWarningHobby": {
-    message:
-      "Hobby 只有一名成员，因此还需移除此工作区的其他成员并撤销其待处理邀请。",
-    description:
-      "Change-plan dialog on an org's primary with Hobby selected: the extra step a one-member plan needs, below the downgrade warning (w7/087)",
-  },
-  "workspaces.orgDowngradeBlocked": {
-    message: "组织暂时无法删除。降级到 Scale 以下之前，请先完成以下事项：",
-    description:
-      "Change-plan dialog: lead-in above the unmet preconditions of ORGANIZATION_DOWNGRADE_BLOCKED (w7/m464)",
-  },
-  "workspaces.orgDowngradeSecondaryWorkspaces": {
-    message: "删除组织的其他工作区",
-    description:
-      "Unmet downgrade precondition secondary_workspaces; the workspace names follow (w7/m464)",
-  },
-  "workspaces.orgDowngradeMemberRoles": {
-    message: "将这些成员的角色改为开发者或管理员",
-    description:
-      "Unmet downgrade precondition member_roles; the members and roles follow (w7/m464)",
-  },
-  "workspaces.orgDowngradeInviteRoles": {
-    message: "将这些待处理邀请的角色改为开发者或管理员",
-    description:
-      "Unmet downgrade precondition invite_roles; the invited emails and roles follow (w7/m464)",
-  },
-  "workspaces.orgDowngradeMemberLimit": {
-    message: "移除这些成员和待处理邀请（Hobby 只有一名成员）",
-    description:
-      "Unmet downgrade precondition member_limit on a Hobby target: the members and pending invites beyond its one seat follow (w7/087)",
-  },
-  "workspaces.orgDowngradeInboundIpRules": {
-    message: "删除入站 IP 规则",
-    description:
-      "Unmet downgrade precondition inbound_ip_rules; the workspace, environments and services that hold them follow (w7/m464)",
-  },
-  "workspaces.orgDowngradeItems": {
-    message: "{label}：{items}",
-    description:
-      "One unmet downgrade precondition: {label} is what to do, {items} the list of what it applies to (w7/m464)",
-  },
   "workspaces.orgDowngradePersonRole": {
     message: "{person}（{role}）",
     description:
@@ -1075,6 +995,360 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
       "此组织的所有者要求每位成员在组织及其所有工作区中使用 Google 登录。在你使用 bex 邮箱对应的 Google 账号登录之前，你无法访问它们，你以其他方式登录时创建的 API 密钥和 SSH 密钥也无法在其中使用。",
     description:
       "Why the Google login blocked page is shown when the organization's setting refuses the member (w7/m466)",
+  },
+  "workspaces.updatePlanPageTitle": {
+    message: "更改套餐",
+    description: "Document title of the plan pages (w3/m708)",
+  },
+  "workspaces.updatePlanTitle": {
+    message: "更改 {name} 的套餐",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): page title with the workspace's name",
+  },
+  "workspaces.updatePlanConfirmTitle": {
+    message: "更改 {name} 的套餐",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): page title with the workspace's name (Render capitalizes Plan here)",
+  },
+  "workspaces.updatePlanBack": {
+    message: "返回",
+    description:
+      "Accessible label of the plan pages' Back button, and the confirmation's Back action (w3/m708)",
+  },
+  "workspaces.updatePlanSelectTitle": {
+    message: "选择套餐",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): heading of the plan cards",
+  },
+  "workspaces.updatePlanCompare": {
+    message: "访问我们的{link}，了解或比较各套餐。",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): line under Select a plan; {link} is the updatePlanPricingLink link to bex's pricing page",
+  },
+  "workspaces.updatePlanPricingLink": {
+    message: "价格页面",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): the link in updatePlanCompare",
+  },
+  "workspaces.updatePlanPaymentTitle": {
+    message: "付款方式",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): heading of the payment method section",
+  },
+  "workspaces.updatePlanCardRequired": {
+    message: "此工作区套餐需要绑定银行卡，用于付费服务和计算资源。",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): notice while a plan other than Hobby is selected",
+  },
+  "workspaces.updatePlanHowBillingWorks": {
+    message: "计费方式说明",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): link beside updatePlanCardRequired to bex's billing docs",
+  },
+  "workspaces.updatePlanWorkspaceBillingTitle": {
+    message: "工作区计费",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): heading beside the card on file",
+  },
+  "workspaces.updatePlanWorkspaceBillingBody": {
+    message:
+      "每个工作区单独计费。此工作区中付费服务或计算资源产生的费用将从你的银行卡扣除。",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): line under updatePlanWorkspaceBillingTitle",
+  },
+  "workspaces.updatePlanErrorsSummary": {
+    message: "你的选择存在一些问题，请检查并修正后继续。",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): summary under the plan rules a selection breaks",
+  },
+  "workspaces.updatePlanErrorPrefix": {
+    message: "发生错误。{message}",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): a refused change; {message} is the reason",
+  },
+  "workspaces.updatePlanPaymentRequired": {
+    message: "请添加有效的银行卡以升级到付费套餐。",
+    description:
+      "The plan pages' message when bex-api refuses a paid plan with PAYMENT_REQUIRED (w3/m708)",
+  },
+  "workspaces.updatePlanServerError": {
+    message: "提交时服务器出错，请重试",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): fallback reason when an upgrade fails without one",
+  },
+  "workspaces.updatePlanSubmit": {
+    message: "选择套餐",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): submit button",
+  },
+  "workspaces.updatePlanCancel": {
+    message: "取消",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): cancel button, back to where the page was opened from",
+  },
+  "workspaces.updatePlanNoPermission": {
+    message: "你的角色无法更改此工作区的套餐。请联系工作区管理员。",
+    description:
+      "The plan pages' notice for a member who cannot change the plan (can_manage) (w3/m708)",
+  },
+  "workspaces.planCurrentBadge": {
+    message: "当前套餐",
+    description:
+      "Badge on the workspace's own plan card on the plan page (Render's TeamPlanPicker, w3/m708)",
+  },
+  "workspaces.planNewBadge": {
+    message: "新套餐",
+    description:
+      "Badge on the chosen plan card on the plan page (Render's TeamPlanPicker, w3/m708)",
+  },
+  "workspaces.planContact": {
+    message: "联系我们",
+    description:
+      "Enterprise card's contact action on the plan page, Render's Get in touch (w3/m708)",
+  },
+  "workspaces.updatePlanSummaryTitle": {
+    message: "新套餐摘要",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): heading of the plan comparison and the card on file",
+  },
+  "workspaces.updatePlanConfirmDowngradeTitle": {
+    message: "确认降级",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): heading of the typed confirmation a downgrade asks for",
+  },
+  "workspaces.updatePlanConfirmChangesIncluding": {
+    message: "要开始更改你的套餐（包括以下内容）：",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): lead-in above the list of what a downgrade changes",
+  },
+  "workspaces.updatePlanConfirmTypeAfterList": {
+    message: "在文本框中输入 {phrase}，然后点击确认按钮。",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): the typed phrase after the list of changes; {phrase} is 'sudo downgrade workspace <name>' (rendered bold)",
+  },
+  "workspaces.updatePlanConfirmType": {
+    message:
+      "要开始更改你的套餐，请在文本框中输入 {phrase}，然后点击确认按钮。",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): the typed phrase when the downgrade lists no changes; {phrase} is 'sudo downgrade workspace <name>' (rendered bold)",
+  },
+  "workspaces.updatePlanConfirmSubmit": {
+    message: "确认",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): confirm button",
+  },
+  "workspaces.updatePlanErrorTitle": {
+    message: "发生错误。",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): title of a refused change",
+  },
+  "workspaces.updatePlanError": {
+    message: "更新套餐时出错。",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): fallback reason when the change fails without one",
+  },
+  "workspaces.updatePlanRemovesOrganization": {
+    message: "该组织将被移除。",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): bold start of the change an org primary's downgrade below Scale makes (ADR115 D6)",
+  },
+  "workspaces.updatePlanRemovesOrganizationDetail": {
+    message: "组织级功能将终止，此工作区将作为独立工作区继续存在。",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): rest of the org removal line after updatePlanRemovesOrganization",
+  },
+  "workspaces.planUpdated": {
+    message: "你的工作区现已切换到 {plan} 套餐。",
+    description:
+      "Toast after a plan change, Render's plan-updated toast; {plan} is the plan's name (w3/m708)",
+  },
+  "workspaces.planUpdatedWelcome": {
+    message: "欢迎使用 {plan} 套餐。",
+    description:
+      "Toast after a change to Scale, Render's welcome; {plan} is the plan's name (w3/m708)",
+  },
+  "workspaces.planComparisonCurrent": {
+    message: "当前套餐",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): badge on the current plan's side of the comparison",
+  },
+  "workspaces.planComparisonNew": {
+    message: "新套餐",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): badge on the new plan's side of the comparison",
+  },
+  "workspaces.planComparisonHighlights": {
+    message: "亮点",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): label above each side's highlights (shown in capitals)",
+  },
+  "workspaces.planHighlightJustForMe": {
+    message: "仅限本人",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): Hobby's one seat",
+  },
+  "workspaces.planHighlightUnlimitedMembers": {
+    message: "团队成员不限",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): unlimited seats",
+  },
+  "workspaces.planHighlightIncludedDomains": {
+    message: "含 {included} 个自定义域名，超出后每个 {price}",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): custom domains included before they are metered; {included} is the count, {price} bex's price per domain (ADR030 §16)",
+  },
+  "workspaces.planHighlightUnlimitedDomains": {
+    message: "自定义域名不限",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): every custom domain included (Enterprise)",
+  },
+  "workspaces.planHighlightTwoEnvironments": {
+    message: "每个项目 2 个环境",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): Hobby's environments per project",
+  },
+  "workspaces.planHighlightUnlimitedEnvironments": {
+    message: "项目和环境不限",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): unlimited projects and environments",
+  },
+  "workspaces.planHighlightRetention": {
+    message: "日志和指标保留 {days} 天",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): how far back logs and metrics reach; {days} is the number of days",
+  },
+  "workspaces.planHighlightBasicLogs": {
+    message: "基础日志和指标",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): Hobby's logs and metrics, without request logs",
+  },
+  "workspaces.planHighlightRequestLogs": {
+    message: "HTTP 请求日志和响应时间指标",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): Pro's HTTP request logs and response time metrics",
+  },
+  "workspaces.planHighlightKeptBuilds": {
+    message: "保留 {builds} 个构建用于即时回滚",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): builds kept for rollback; {builds} is the count (core.KeptBuilds)",
+  },
+  "workspaces.planHighlightAuditLogs": {
+    message: "工作区审计日志",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): workspace audit logs (Pro and higher)",
+  },
+  "workspaces.planHighlightOrganization": {
+    message: "组织：更多工作区、额外角色和入站 IP 规则",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): what an organization adds (Scale and higher, ADR115)",
+  },
+  "workspaces.planBlockerMemberLimitTitle": {
+    message: "团队用户过多。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title when the workspace has more people than the plan seats",
+  },
+  "workspaces.planBlockerMemberLimitOne": {
+    message: "{plan} 工作区只能有 1 名用户。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): a plan with one seat; {plan} is the plan's name",
+  },
+  "workspaces.planBlockerMemberLimitMany": {
+    message: "{plan} 工作区最多只能有 {limit} 名用户。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): a plan with several seats; {plan} is the plan's name, {limit} its seats",
+  },
+  "workspaces.planBlockerUpdateTeamMembers": {
+    message: "更新团队成员",
+    description:
+      "Render's plan rule on its plan page (w3/m708): link to Workspace Settings' Team section",
+  },
+  "workspaces.planBlockerServiceLimitTitle": {
+    message: "工作区服务过多。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title when the workspace has more services than the plan allows",
+  },
+  "workspaces.planBlockerServiceLimit": {
+    message: "{plan} 工作区最多只能有 {limit} 个服务。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): the plan's service cap; {plan} is the plan's name, {limit} its cap",
+  },
+  "workspaces.planBlockerUpdateServices": {
+    message: "更新服务",
+    description:
+      "Render's plan rule on its plan page (w3/m708): link to the workspace's services",
+  },
+  "workspaces.planBlockerWorkspaceLimitTitle": {
+    message: "Hobby 工作区过多。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title when the caller already has the most Hobby workspaces allowed",
+  },
+  "workspaces.planBlockerWorkspaceLimit": {
+    message:
+      "Hobby 工作区不能超过 {limit} 个。请升级套餐或删除另一个 Hobby 工作区。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): the cap on a person's Hobby workspaces; {limit} is the cap",
+  },
+  "workspaces.planBlockerWorkspaceLimitsDocs": {
+    message: "工作区限制",
+    description:
+      "Render's plan rule on its plan page (w3/m708): link to bex's docs on workspace limits",
+  },
+  "workspaces.planBlockerWorkspacesTitle": {
+    message: "工作区过多。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title when an org primary's downgrade leaves secondary workspaces",
+  },
+  "workspaces.planBlockerWorkspaces": {
+    message: "{plan} 不支持多个工作区。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): a plan without an organization; {plan} is the plan's name",
+  },
+  "workspaces.planBlockerUpdateWorkspaces": {
+    message: "更新工作区",
+    description:
+      "Render's plan rule on its plan page (w3/m708): link to the organization's workspaces",
+  },
+  "workspaces.planBlockerRolesTitle": {
+    message: "使用不可用角色时无法降级",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title when members or invites hold roles the plan does not offer",
+  },
+  "workspaces.planBlockerRolesOne": {
+    message:
+      "{plan} 不支持 {roles} 角色。要降级工作区，请先将受影响的团队成员和待处理邀请改为 Developer 或 Admin。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): one role the plan lacks; {plan} is the plan's name, {roles} the role",
+  },
+  "workspaces.planBlockerRolesMany": {
+    message:
+      "{plan} 不支持 {roles} 角色。要降级工作区，请先将受影响的团队成员和待处理邀请改为 Developer 或 Admin。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): several roles the plan lacks; {plan} is the plan's name, {roles} the roles",
+  },
+  "workspaces.planBlockerIpRulesTitle": {
+    message: "降级前必须移除 IP 允许列表。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title when inbound IP rules stand in the way (Render's words for them on its confirmation)",
+  },
+  "workspaces.planBlockerIpRules": {
+    message: "更改套餐前，请从工作区、环境和服务中移除所有 IP 允许列表配置。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): what to remove for planBlockerIpRulesTitle",
+  },
+  "workspaces.planBlockerUpdateIpRules": {
+    message: "更新入站 IP 规则",
+    description:
+      "Render's plan rule on its plan page (w3/m708): link to Workspace Settings' inbound IP rules",
+  },
+  "workspaces.planBlockerOtherTitle": {
+    message: "暂时无法选择此套餐。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title of a refusal kind this dashboard does not know yet",
+  },
+  "workspaces.planBlockerOther": {
+    message: "此工作区尚未满足 {plan} 套餐的限制。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): line under planBlockerOtherTitle; {plan} is the plan's name",
   },
 };
 

@@ -43,12 +43,7 @@ vi.mock("@/common/components/dashboard-layout", () => ({
 }));
 
 vi.mock("@/features/workspaces/components/workspace-details-card", () => ({
-  WorkspaceDetailsCard: ({ changePlanOpen }: { changePlanOpen: boolean }) => (
-    <div>
-      Workspace details card
-      {changePlanOpen ? <span>Change plan dialog open</span> : null}
-    </div>
-  ),
+  WorkspaceDetailsCard: () => <div>Workspace details card</div>,
 }));
 
 // Inbound IP Rules (w9/m388): the card's own behavior is pinned in its test;
@@ -252,8 +247,13 @@ async function renderPage(WorkspaceSettingsPage = Route.options.component) {
     path: "/workspace/settings",
     component: WorkspaceSettingsPage,
   });
+  const planRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/billing/update-plan",
+    component: () => <p>Change plan page</p>,
+  });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([settingsRoute]),
+    routeTree: rootRoute.addChildren([settingsRoute, planRoute]),
     history: createMemoryHistory({
       initialEntries: ["/workspace/settings"],
     }),
@@ -263,7 +263,7 @@ async function renderPage(WorkspaceSettingsPage = Route.options.component) {
   // Load the split route before starting DOM assertions; a cold import can
   // exceed Testing Library's polling window on a busy CI runner.
   await router.load();
-  return render(<RouterProvider router={router} />);
+  return { ...render(<RouterProvider router={router} />), router };
 }
 
 /** primaryWorkspace as a secondary of an organization (w7/m464). */
@@ -501,20 +501,54 @@ describe("WorkspaceSettingsPage", () => {
     ).toHaveAttribute("href", "#overlapping-deploy-policy");
   });
 
-  it("opens the change-plan dialog from the Inbound IP Rules upgrade prompt", async () => {
+  // w3/m708: Render's plan page on Scale, the plan with workspace rules,
+  // coming back to this card.
+  it("opens Render's plan page on Scale from the Inbound IP Rules upgrade prompt", async () => {
     const user = userEvent.setup();
-    await renderPage();
-    expect(
-      screen.queryByText("Change plan dialog open"),
-    ).not.toBeInTheDocument();
+    const { router } = await renderPage();
 
     await user.click(
       screen.getByRole("button", { name: "Upgrade from IP rules" }),
     );
 
-    expect(
-      await screen.findByText("Change plan dialog open"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Change plan page")).toBeInTheDocument();
+    expect(router.state.location.search).toEqual({
+      plan: "organization",
+      next: "/workspace/settings#inbound-ip-rules",
+    });
+  });
+
+  // The dialog `?plan=change` opened is gone: a link still carrying it lands
+  // on the plan page, which returns to Billing.
+  it("sends an old ?plan=change link to Render's plan page", () => {
+    const beforeLoad = Route.options.beforeLoad as unknown as (args: {
+      context: { session: unknown };
+      location: { href: string };
+      search: { plan?: "change" };
+    }) => void;
+    let thrown: unknown;
+    try {
+      beforeLoad({
+        context: { session: { id: "s" } },
+        location: { href: "/workspace/settings?plan=change" },
+        search: { plan: "change" },
+      });
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toMatchObject({
+      options: {
+        to: "/billing/update-plan",
+        state: { afterPlanUpdate: "/billing" },
+      },
+    });
+    expect(() =>
+      beforeLoad({
+        context: { session: { id: "s" } },
+        location: { href: "/workspace/settings" },
+        search: {},
+      }),
+    ).not.toThrow();
   });
 
   it("keeps an Inbound IP Rules skeleton region in the loading branch", async () => {

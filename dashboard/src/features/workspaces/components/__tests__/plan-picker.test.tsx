@@ -117,3 +117,64 @@ describe("PlanPicker", () => {
     );
   });
 });
+
+// Render's TeamPlanPicker for an existing workspace (w3/m708): the plan page
+// passes the workspace's plan as `current`.
+describe("PlanPicker on the plan page", () => {
+  it("marks the current plan and keeps it from being chosen again", async () => {
+    const onSelect = vi.fn();
+    const user = userEvent.setup();
+    render(<PlanPicker current="pro" selected="pro" onSelect={onSelect} />);
+
+    const pro = screen.getByRole("radio", { name: /Pro/ });
+    expect(pro).toHaveTextContent("Current plan");
+    expect(pro).toBeDisabled();
+    expect(pro).toHaveTextContent("Select plan");
+    await user.click(pro);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("says New plan and Plan selected on the chosen other plan", () => {
+    render(<PlanPicker current="pro" selected="hobby" onSelect={vi.fn()} />);
+    const hobby = screen.getByRole("radio", { name: /Hobby/ });
+    expect(hobby).toBeChecked();
+    expect(hobby).toHaveTextContent("New plan");
+    expect(hobby).toHaveTextContent("Plan selected");
+    expect(screen.getByRole("radio", { name: /Scale/ })).toHaveTextContent(
+      "Select plan",
+    );
+  });
+
+  it("draws Enterprise as Get in touch, never a plan to select", () => {
+    render(<PlanPicker current="hobby" selected="hobby" onSelect={vi.fn()} />);
+    expect(
+      screen.queryByRole("radio", { name: /Enterprise/ }),
+    ).not.toBeInTheDocument();
+    const card = screen.getByTestId("plan-card-enterprise");
+    expect(card).toHaveTextContent("Custom terms per organization");
+    expect(screen.getByRole("link", { name: "Get in touch" })).toHaveAttribute(
+      "href",
+      "mailto:hello@bex.co",
+    );
+    expect(screen.getAllByRole("radio")).toHaveLength(3);
+  });
+
+  it("leaves the current plan out of the arrow keys", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    render(<PlanPicker current="pro" selected="pro" onSelect={onSelect} />);
+    await user.tab();
+    expect(document.activeElement).toBe(
+      screen.getByRole("radio", { name: /Hobby/ }),
+    );
+    await user.keyboard("{ArrowRight}");
+    expect(onSelect).toHaveBeenLastCalledWith("scale");
+  });
+
+  it("keeps New Workspace's four selectable plans", () => {
+    render(<PlanPicker selected="hobby" onSelect={vi.fn()} />);
+    expect(screen.getAllByRole("radio")).toHaveLength(4);
+    expect(screen.queryByText("Current plan")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+});

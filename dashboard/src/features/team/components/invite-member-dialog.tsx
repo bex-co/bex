@@ -30,6 +30,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { isValidEmail } from "@/common/lib/utils/email";
 import { useInviteMember } from "@/features/team/hooks/use-invite-member";
 import { ROLES, type Role } from "@/features/team/types";
+import { upgradePlanTarget } from "@/features/workspaces/lib/update-plan";
 
 export interface InviteMemberDialogProps {
   workspaceId: string;
@@ -47,8 +48,8 @@ export interface InviteMemberDialogProps {
  * dialog closes and the pending-invite list refreshes.
  *
  * A plan refusal (the Hobby member cap, or a role the plan doesn't offer) stays
- * inline with an upgrade CTA that opens the change-plan dialog on workspace
- * settings (w6/m15/t001) — the rejection used to be a toast with nowhere to go.
+ * inline with an upgrade CTA (w6/m15/t001) — the rejection used to be a toast
+ * with nowhere to go. The CTA opens Render's plan page on Pro (w3/m708).
  */
 export function InviteMemberDialog({
   workspaceId,
@@ -82,11 +83,10 @@ export function InviteMemberDialog({
   }
 
   // The CTA leaves the invite behind, so close the dialog rather than stranding
-  // it open behind the settings page. `plan=change` is what opens the plan
-  // dialog on arrival (routes/workspace.settings.tsx).
+  // it open behind the plan page.
   function handleUpgrade() {
     setOpen(false);
-    void navigate({ to: "/workspace/settings", search: { plan: "change" } });
+    void navigate(upgradePlanTarget("pro"));
   }
 
   return (

@@ -24,6 +24,7 @@ import {
 } from "@/features/agent-sessions/lib/mapper";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 import { REPO_ENVIRONMENTS_ANCHOR } from "@/features/agent-environment/lib/repo-environments";
+import { upgradePlanTarget } from "@/features/workspaces/lib/update-plan";
 
 const SPEND_FAILURE_KEYS: Record<string, string> = {
   AGENT_MODEL_SPEND_CAP_REACHED: "agentSessions.failureSpendCapReached",
@@ -151,10 +152,8 @@ export function FailureCallout({ session, onRetried }: FailureCalloutProps) {
               type="button"
               size="sm"
               onClick={() =>
-                void navigate({
-                  to: "/workspace/settings",
-                  search: { plan: "change" },
-                })
+                // Pro raises the concurrent sandboxes (ADR030).
+                void navigate(upgradePlanTarget("pro"))
               }
             >
               <ArrowUpCircle className="size-4" />

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -32,19 +32,31 @@ import { useAuditLog } from "@/features/audit/hooks/use-audit-log";
 import { SECTION_NAVIGATION_TARGET_CLASS } from "@/common/components/section-navigation";
 import { PageFrame, PageHeader } from "@/common/components/page-frame";
 import { cn } from "@/common/lib/utils/utils";
+import {
+  AFTER_PLAN_UPDATE_BILLING,
+  updatePlanSearch,
+} from "@/features/workspaces/lib/update-plan";
+import type { WorkspacePlanId } from "@/features/workspaces/types";
 
 export const Route = createFileRoute("/workspace/settings")({
   staticData: { chrome: true },
   component: WorkspaceSettingsPage,
   pendingComponent: WorkspaceSettingsPageSkeleton,
-  // No-arg requireAuth (w1/m45): `next` keeps the full href so the
-  // `?plan=change` deep link (blocked-invite CTA, /billing/update-plan alias)
-  // survives the SSR login bounce.
-  beforeLoad: requireAuth(),
-  // `?plan=change` arrives from the blocked-invite CTA (w6/m15/t001) and opens
-  // the change-plan dialog straight away, so an invite the plan refused is one
-  // click from the upgrade that would allow it. Advisory: anything else just
-  // renders the settings page.
+  // `?plan=change` opened the change-plan dialog here until Render's plan
+  // page replaced it (w3/m708): a link that still carries it lands on
+  // `/billing/update-plan`, which returns to Billing, as Render's Update Plan
+  // link from Workspace Settings does. No-arg requireAuth (w1/m45) first, so
+  // `next` keeps the full href through the SSR login bounce.
+  beforeLoad: (args) => {
+    requireAuth()(args);
+    if (args.search.plan === "change") {
+      throw redirect({
+        to: "/billing/update-plan",
+        state: AFTER_PLAN_UPDATE_BILLING,
+        replace: true,
+      });
+    }
+  },
   // Typed optional (`plan?:`) so a navigation to this route (the switcher's
   // included) needn't pass `search`; the value always carries the key.
   validateSearch: (search: Record<string, unknown>): { plan?: "change" } => ({
@@ -63,7 +75,6 @@ export const Route = createFileRoute("/workspace/settings")({
 function WorkspaceSettingsPage() {
   const { t } = useTranslations();
   const { currentWorkspace, loading, workspaces } = useWorkspace();
-  const { plan } = Route.useSearch();
   const navigate = Route.useNavigate();
   const hasMultipleWorkspaces = workspaces.length > 1;
   const audit = useAuditLog();
@@ -88,13 +99,13 @@ function WorkspaceSettingsPage() {
   const pending = !currentWorkspace && loading;
   const skeleton = useWorkspaceSettingsSkeletonSections();
 
-  // The URL owns whether the plan dialog is open, so the blocked-invite CTA can
-  // open it from the team page by navigating here. `replace` keeps opening and
-  // closing it out of the back-button history.
-  function setChangePlanOpen(open: boolean) {
+  // A plan-gated card's Change plan opens Render's plan page on the plan that
+  // allows it, and comes back here (Render's
+  // `/billing/update-plan?plan=…&next=<page>`).
+  function changePlanTo(plan: WorkspacePlanId, section: string) {
     void navigate({
-      search: open ? { plan: "change" } : {},
-      replace: true,
+      to: "/billing/update-plan",
+      search: updatePlanSearch(plan, `/workspace/settings#${section}`),
     });
   }
 
@@ -127,11 +138,7 @@ function WorkspaceSettingsPage() {
         ) : (
           <>
             <section id="general" className={SECTION_NAVIGATION_TARGET_CLASS}>
-              <WorkspaceDetailsCard
-                workspace={currentWorkspace}
-                changePlanOpen={plan === "change"}
-                onChangePlanOpenChange={setChangePlanOpen}
-              />
+              <WorkspaceDetailsCard workspace={currentWorkspace} />
             </section>
             {/* Workspace privacy (w7/m464): Render's Public or Invite-only
                     for a workspace in an organization, set by its admins. */}
@@ -168,7 +175,7 @@ function WorkspaceSettingsPage() {
             >
               <WorkspaceIPRulesCard
                 workspace={currentWorkspace}
-                onChangePlan={() => setChangePlanOpen(true)}
+                onChangePlan={() => changePlanTo("scale", "inbound-ip-rules")}
               />
             </section>
             {/* Render's "Enforce 2FA & Google login" (w22/m402, w7/m465):
@@ -180,7 +187,7 @@ function WorkspaceSettingsPage() {
               <WorkspaceLoginRequirementCard
                 requirement="twoFactor"
                 workspace={currentWorkspace}
-                onChangePlan={() => setChangePlanOpen(true)}
+                onChangePlan={() => changePlanTo("pro", "two-factor")}
               />
             </section>
             <section
@@ -190,7 +197,7 @@ function WorkspaceSettingsPage() {
               <WorkspaceLoginRequirementCard
                 requirement="googleLogin"
                 workspace={currentWorkspace}
-                onChangePlan={() => setChangePlanOpen(true)}
+                onChangePlan={() => changePlanTo("pro", "google-login")}
               />
             </section>
             {/* Team management lives here (w1/m33/t006) — members are

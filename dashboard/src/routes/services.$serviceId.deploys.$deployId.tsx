@@ -36,8 +36,7 @@ function RouteComponent() {
       deployId={deployId}
       range={r}
       onRangeChange={(range) =>
-        // `replace` keeps range tweaks out of the back-button history — the
-        // workspace.settings `?plan=change` precedent.
+        // `replace` keeps range tweaks out of the back-button history.
         void navigate({ search: range ? { r: range } : {}, replace: true })
       }
     />

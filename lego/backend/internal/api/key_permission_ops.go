@@ -500,6 +500,7 @@ var keyPermissionOps = map[string][]core.KeyAction{
 	"GQL Query.workspaceInvitePreview":                                      {core.KeyNoGrant},
 	"GQL Query.workspaceInvites":                                            {core.KeyWorkspaceMembers},
 	"GQL Query.workspaceLimits":                                             {core.KeyWorkspaceSettings},
+	"GQL Query.workspacePlanChangeBlockers":                                 {core.KeyWorkspaceSettings},
 	"GQL Query.workspaceLoginRequirementImpact":                             {core.KeyWorkspaceSettings},
 	"GQL Query.workspaceMembers":                                            {core.KeyWorkspaceMembers},
 	"GQL Query.workspaceNonCompliantMembers":                                {core.KeyWorkspaceSettings},

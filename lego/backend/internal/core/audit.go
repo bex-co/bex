@@ -1742,6 +1742,7 @@ var readVerbs = map[string]bool{
 	"apikeys.PermissionCatalog":          true,
 	"sshkeys.List":                       true,
 	"workspaces.WorkspaceCreationPolicy": true,
+	"workspaces.PlanChangeBlockers":      true, // w3/m708: the plan page's blockers
 	"github.GetClaimSelection":           true,
 	"github.ListRepos":                   true,
 	"github.ListBranches":                true,

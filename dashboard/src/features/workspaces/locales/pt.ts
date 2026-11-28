@@ -352,36 +352,7 @@ const ptWorkspaces: Record<string, TranslationEntry> = {
   "workspaces.changePlanTrigger": {
     message: "Alterar plano",
     description:
-      "Workspace settings plan-badge link opening the change-plan dialog",
-  },
-  "workspaces.changePlanTitle": {
-    message: "Alterar plano",
-    description: "Change-plan dialog title",
-  },
-  "workspaces.changePlanDescription": {
-    message:
-      "Escolha um novo plano para este workspace. Sem etapa de pagamento — o plano muda imediatamente.",
-    description: "Change-plan dialog description",
-  },
-  "workspaces.changePlanCancel": {
-    message: "Cancelar",
-    description: "Change-plan dialog cancel button",
-  },
-  "workspaces.changePlanSubmit": {
-    message: "Alterar plano",
-    description: "Change-plan dialog submit button",
-  },
-  "workspaces.changePlanErrorTitle": {
-    message: "Não foi possível alterar o plano",
-    description: "Change-plan dialog inline error alert title",
-  },
-  "workspaces.changePlanSuccess": {
-    message: "Plano alterado para {plan}",
-    description: "Toast on a successful plan change",
-  },
-  "workspaces.changePlanError": {
-    message: "Não foi possível alterar o plano do workspace",
-    description: "Fallback toast/inline message on a failed plan change",
+      "Plan link on Workspace Settings, the plan gates and the webhooks gate, opening Render's plan page (w3/m708)",
   },
   "workspaces.generalTitle": {
     message: "Geral",
@@ -1030,62 +1001,6 @@ const ptWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Shown in place of Save to a member who cannot manage the workspace (w4/653)",
   },
-  "workspaces.orgDowngradeWarningTitle": {
-    message: "Fazer downgrade para abaixo do Scale exclui a organização",
-    description:
-      "Change-plan dialog on an org's primary: title of the warning shown when a plan below Scale is selected (w7/m464)",
-  },
-  "workspaces.orgDowngradeWarning": {
-    message:
-      "Este é o workspace principal da sua organização, e o plano dele cobre todos os workspaces da organização. O downgrade remove a organização e o acesso aos recursos da organização, e este workspace continua como um workspace independente. Primeiro exclua os outros workspaces da organização, altere para Desenvolvedor ou Administrador os membros e convites pendentes com a função Faturamento, Visualizador ou Colaborador, e exclua as regras de IP de entrada de serviços, ambientes e deste workspace.",
-    description:
-      "Change-plan dialog on an org's primary: what a downgrade below Scale does and Render's preconditions (render.com/docs/organizations, w7/m464)",
-  },
-  "workspaces.orgDowngradeWarningHobby": {
-    message:
-      "O Hobby tem um único membro, então remova também os outros membros deste workspace e revogue os convites pendentes.",
-    description:
-      "Change-plan dialog on an org's primary with Hobby selected: the extra step a one-member plan needs, below the downgrade warning (w7/087)",
-  },
-  "workspaces.orgDowngradeBlocked": {
-    message:
-      "A organização ainda não pode ser excluída. Antes de fazer downgrade para abaixo do Scale:",
-    description:
-      "Change-plan dialog: lead-in above the unmet preconditions of ORGANIZATION_DOWNGRADE_BLOCKED (w7/m464)",
-  },
-  "workspaces.orgDowngradeSecondaryWorkspaces": {
-    message: "Exclua os outros workspaces da organização",
-    description:
-      "Unmet downgrade precondition secondary_workspaces; the workspace names follow (w7/m464)",
-  },
-  "workspaces.orgDowngradeMemberRoles": {
-    message:
-      "Altere a função destes membros para Desenvolvedor ou Administrador",
-    description:
-      "Unmet downgrade precondition member_roles; the members and roles follow (w7/m464)",
-  },
-  "workspaces.orgDowngradeInviteRoles": {
-    message:
-      "Altere a função destes convites pendentes para Desenvolvedor ou Administrador",
-    description:
-      "Unmet downgrade precondition invite_roles; the invited emails and roles follow (w7/m464)",
-  },
-  "workspaces.orgDowngradeMemberLimit": {
-    message:
-      "Remova estes membros e convites pendentes (o Hobby tem um único membro)",
-    description:
-      "Unmet downgrade precondition member_limit on a Hobby target: the members and pending invites beyond its one seat follow (w7/087)",
-  },
-  "workspaces.orgDowngradeInboundIpRules": {
-    message: "Exclua as regras de IP de entrada",
-    description:
-      "Unmet downgrade precondition inbound_ip_rules; the workspace, environments and services that hold them follow (w7/m464)",
-  },
-  "workspaces.orgDowngradeItems": {
-    message: "{label}: {items}",
-    description:
-      "One unmet downgrade precondition: {label} is what to do, {items} the list of what it applies to (w7/m464)",
-  },
   "workspaces.orgDowngradePersonRole": {
     message: "{person} ({role})",
     description:
@@ -1209,6 +1124,370 @@ const ptWorkspaces: Record<string, TranslationEntry> = {
       "Um proprietário desta organização exige que todos os membros entrem com Google na organização e em todos os seus workspaces. Até você entrar com a conta Google do seu e-mail do bex, não é possível acessá-los, e as chaves de API e chaves SSH que você criou com outro login não podem ser usadas com eles.",
     description:
       "Why the Google login blocked page is shown when the organization's setting refuses the member (w7/m466)",
+  },
+  "workspaces.updatePlanPageTitle": {
+    message: "Alterar plano",
+    description: "Document title of the plan pages (w3/m708)",
+  },
+  "workspaces.updatePlanTitle": {
+    message: "Alterar plano de {name}",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): page title with the workspace's name",
+  },
+  "workspaces.updatePlanConfirmTitle": {
+    message: "Alterar plano de {name}",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): page title with the workspace's name (Render capitalizes Plan here)",
+  },
+  "workspaces.updatePlanBack": {
+    message: "Voltar",
+    description:
+      "Accessible label of the plan pages' Back button, and the confirmation's Back action (w3/m708)",
+  },
+  "workspaces.updatePlanSelectTitle": {
+    message: "Selecione um plano",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): heading of the plan cards",
+  },
+  "workspaces.updatePlanCompare": {
+    message: "Saiba mais ou compare os planos na nossa {link}.",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): line under Select a plan; {link} is the updatePlanPricingLink link to bex's pricing page",
+  },
+  "workspaces.updatePlanPricingLink": {
+    message: "página de preços",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): the link in updatePlanCompare",
+  },
+  "workspaces.updatePlanPaymentTitle": {
+    message: "Forma de pagamento",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): heading of the payment method section",
+  },
+  "workspaces.updatePlanCardRequired": {
+    message:
+      "Este plano de workspace exige um cartão para serviços pagos e computação.",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): notice while a plan other than Hobby is selected",
+  },
+  "workspaces.updatePlanHowBillingWorks": {
+    message: "Como funciona a cobrança",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): link beside updatePlanCardRequired to bex's billing docs",
+  },
+  "workspaces.updatePlanWorkspaceBillingTitle": {
+    message: "Cobrança do workspace",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): heading beside the card on file",
+  },
+  "workspaces.updatePlanWorkspaceBillingBody": {
+    message:
+      "A cobrança é separada para cada workspace. Seu cartão será cobrado pelas taxas de serviços pagos ou computação neste workspace.",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): line under updatePlanWorkspaceBillingTitle",
+  },
+  "workspaces.updatePlanErrorsSummary": {
+    message:
+      "Há alguns erros na sua seleção. Revise e corrija-os para continuar.",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): summary under the plan rules a selection breaks",
+  },
+  "workspaces.updatePlanErrorPrefix": {
+    message: "Ocorreu um erro. {message}",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): a refused change; {message} is the reason",
+  },
+  "workspaces.updatePlanPaymentRequired": {
+    message: "Adicione um cartão válido para fazer upgrade para um plano pago.",
+    description:
+      "The plan pages' message when bex-api refuses a paid plan with PAYMENT_REQUIRED (w3/m708)",
+  },
+  "workspaces.updatePlanServerError": {
+    message: "Erro no servidor ao enviar. Tente novamente",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): fallback reason when an upgrade fails without one",
+  },
+  "workspaces.updatePlanSubmit": {
+    message: "Selecionar plano",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): submit button",
+  },
+  "workspaces.updatePlanCancel": {
+    message: "Cancelar",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): cancel button, back to where the page was opened from",
+  },
+  "workspaces.updatePlanNoPermission": {
+    message:
+      "Sua função não pode alterar o plano deste workspace. Peça a um administrador do workspace.",
+    description:
+      "The plan pages' notice for a member who cannot change the plan (can_manage) (w3/m708)",
+  },
+  "workspaces.planCurrentBadge": {
+    message: "Plano atual",
+    description:
+      "Badge on the workspace's own plan card on the plan page (Render's TeamPlanPicker, w3/m708)",
+  },
+  "workspaces.planNewBadge": {
+    message: "Novo plano",
+    description:
+      "Badge on the chosen plan card on the plan page (Render's TeamPlanPicker, w3/m708)",
+  },
+  "workspaces.planContact": {
+    message: "Fale conosco",
+    description:
+      "Enterprise card's contact action on the plan page, Render's Get in touch (w3/m708)",
+  },
+  "workspaces.updatePlanSummaryTitle": {
+    message: "Resumo do novo plano",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): heading of the plan comparison and the card on file",
+  },
+  "workspaces.updatePlanConfirmDowngradeTitle": {
+    message: "Confirmar downgrade",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): heading of the typed confirmation a downgrade asks for",
+  },
+  "workspaces.updatePlanConfirmChangesIncluding": {
+    message: "Para iniciar as alterações no seu plano, incluindo:",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): lead-in above the list of what a downgrade changes",
+  },
+  "workspaces.updatePlanConfirmTypeAfterList": {
+    message:
+      "Digite {phrase} na caixa de texto e clique no botão de confirmar.",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): the typed phrase after the list of changes; {phrase} is 'sudo downgrade workspace <name>' (rendered bold)",
+  },
+  "workspaces.updatePlanConfirmType": {
+    message:
+      "Para iniciar as alterações no seu plano, digite {phrase} na caixa de texto e clique no botão de confirmar.",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): the typed phrase when the downgrade lists no changes; {phrase} is 'sudo downgrade workspace <name>' (rendered bold)",
+  },
+  "workspaces.updatePlanConfirmSubmit": {
+    message: "Confirmar",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): confirm button",
+  },
+  "workspaces.updatePlanErrorTitle": {
+    message: "Ocorreu um erro.",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): title of a refused change",
+  },
+  "workspaces.updatePlanError": {
+    message: "Erro ao atualizar o plano.",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): fallback reason when the change fails without one",
+  },
+  "workspaces.updatePlanRemovesOrganization": {
+    message: "A organização será removida.",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): bold start of the change an org primary's downgrade below Scale makes (ADR115 D6)",
+  },
+  "workspaces.updatePlanRemovesOrganizationDetail": {
+    message:
+      "Os recursos de nível de organização terminam, e este workspace continua como um workspace independente.",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): rest of the org removal line after updatePlanRemovesOrganization",
+  },
+  "workspaces.planUpdated": {
+    message: "Seu workspace agora está no plano {plan}.",
+    description:
+      "Toast after a plan change, Render's plan-updated toast; {plan} is the plan's name (w3/m708)",
+  },
+  "workspaces.planUpdatedWelcome": {
+    message: "Boas-vindas ao plano {plan}.",
+    description:
+      "Toast after a change to Scale, Render's welcome; {plan} is the plan's name (w3/m708)",
+  },
+  "workspaces.planComparisonCurrent": {
+    message: "Plano atual",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): badge on the current plan's side of the comparison",
+  },
+  "workspaces.planComparisonNew": {
+    message: "Novo plano",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): badge on the new plan's side of the comparison",
+  },
+  "workspaces.planComparisonHighlights": {
+    message: "Destaques",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): label above each side's highlights (shown in capitals)",
+  },
+  "workspaces.planHighlightJustForMe": {
+    message: "Só para mim",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): Hobby's one seat",
+  },
+  "workspaces.planHighlightUnlimitedMembers": {
+    message: "Membros da equipe ilimitados",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): unlimited seats",
+  },
+  "workspaces.planHighlightIncludedDomains": {
+    message:
+      "{included} domínios personalizados incluídos, depois {price}/domínio",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): custom domains included before they are metered; {included} is the count, {price} bex's price per domain (ADR030 §16)",
+  },
+  "workspaces.planHighlightUnlimitedDomains": {
+    message: "Domínios personalizados ilimitados",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): every custom domain included (Enterprise)",
+  },
+  "workspaces.planHighlightTwoEnvironments": {
+    message: "2 ambientes por projeto",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): Hobby's environments per project",
+  },
+  "workspaces.planHighlightUnlimitedEnvironments": {
+    message: "Projetos e ambientes ilimitados",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): unlimited projects and environments",
+  },
+  "workspaces.planHighlightRetention": {
+    message: "Janela de {days} dias para logs e métricas",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): how far back logs and metrics reach; {days} is the number of days",
+  },
+  "workspaces.planHighlightBasicLogs": {
+    message: "Logs e métricas básicos",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): Hobby's logs and metrics, without request logs",
+  },
+  "workspaces.planHighlightRequestLogs": {
+    message: "Logs de requisições HTTP e métricas de tempo de resposta",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): Pro's HTTP request logs and response time metrics",
+  },
+  "workspaces.planHighlightKeptBuilds": {
+    message: "{builds} builds mantidos para rollback instantâneo",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): builds kept for rollback; {builds} is the count (core.KeptBuilds)",
+  },
+  "workspaces.planHighlightAuditLogs": {
+    message: "Logs de auditoria do workspace",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): workspace audit logs (Pro and higher)",
+  },
+  "workspaces.planHighlightOrganization": {
+    message:
+      "Uma organização, com mais workspaces, funções extras e regras de IP de entrada",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): what an organization adds (Scale and higher, ADR115)",
+  },
+  "workspaces.planBlockerMemberLimitTitle": {
+    message: "Usuários demais na equipe.",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title when the workspace has more people than the plan seats",
+  },
+  "workspaces.planBlockerMemberLimitOne": {
+    message: "Workspaces {plan} só podem ter 1 usuário.",
+    description:
+      "Render's plan rule on its plan page (w3/m708): a plan with one seat; {plan} is the plan's name",
+  },
+  "workspaces.planBlockerMemberLimitMany": {
+    message: "Workspaces {plan} só podem ter até {limit} usuários.",
+    description:
+      "Render's plan rule on its plan page (w3/m708): a plan with several seats; {plan} is the plan's name, {limit} its seats",
+  },
+  "workspaces.planBlockerUpdateTeamMembers": {
+    message: "Atualizar membros da equipe",
+    description:
+      "Render's plan rule on its plan page (w3/m708): link to Workspace Settings' Team section",
+  },
+  "workspaces.planBlockerServiceLimitTitle": {
+    message: "Serviços demais no workspace.",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title when the workspace has more services than the plan allows",
+  },
+  "workspaces.planBlockerServiceLimit": {
+    message: "Workspaces {plan} só podem ter até {limit} serviços.",
+    description:
+      "Render's plan rule on its plan page (w3/m708): the plan's service cap; {plan} is the plan's name, {limit} its cap",
+  },
+  "workspaces.planBlockerUpdateServices": {
+    message: "Atualizar serviços",
+    description:
+      "Render's plan rule on its plan page (w3/m708): link to the workspace's services",
+  },
+  "workspaces.planBlockerWorkspaceLimitTitle": {
+    message: "Workspaces Hobby demais.",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title when the caller already has the most Hobby workspaces allowed",
+  },
+  "workspaces.planBlockerWorkspaceLimit": {
+    message:
+      "Você não pode ter mais de {limit} workspaces Hobby. Faça upgrade ou exclua outro workspace Hobby.",
+    description:
+      "Render's plan rule on its plan page (w3/m708): the cap on a person's Hobby workspaces; {limit} is the cap",
+  },
+  "workspaces.planBlockerWorkspaceLimitsDocs": {
+    message: "Limites de workspace",
+    description:
+      "Render's plan rule on its plan page (w3/m708): link to bex's docs on workspace limits",
+  },
+  "workspaces.planBlockerWorkspacesTitle": {
+    message: "Workspaces demais.",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title when an org primary's downgrade leaves secondary workspaces",
+  },
+  "workspaces.planBlockerWorkspaces": {
+    message: "{plan} não oferece suporte a mais de um workspace.",
+    description:
+      "Render's plan rule on its plan page (w3/m708): a plan without an organization; {plan} is the plan's name",
+  },
+  "workspaces.planBlockerUpdateWorkspaces": {
+    message: "Atualizar workspaces",
+    description:
+      "Render's plan rule on its plan page (w3/m708): link to the organization's workspaces",
+  },
+  "workspaces.planBlockerRolesTitle": {
+    message:
+      "Não é possível fazer downgrade enquanto funções indisponíveis estiverem em uso",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title when members or invites hold roles the plan does not offer",
+  },
+  "workspaces.planBlockerRolesOne": {
+    message:
+      "{plan} não oferece suporte à função {roles}. Para fazer downgrade do workspace, primeiro altere os membros da equipe e os convites pendentes afetados para Developer ou Admin.",
+    description:
+      "Render's plan rule on its plan page (w3/m708): one role the plan lacks; {plan} is the plan's name, {roles} the role",
+  },
+  "workspaces.planBlockerRolesMany": {
+    message:
+      "{plan} não oferece suporte às funções {roles}. Para fazer downgrade do workspace, primeiro altere os membros da equipe e os convites pendentes afetados para Developer ou Admin.",
+    description:
+      "Render's plan rule on its plan page (w3/m708): several roles the plan lacks; {plan} is the plan's name, {roles} the roles",
+  },
+  "workspaces.planBlockerIpRulesTitle": {
+    message:
+      "As listas de IPs permitidos devem ser removidas antes do downgrade.",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title when inbound IP rules stand in the way (Render's words for them on its confirmation)",
+  },
+  "workspaces.planBlockerIpRules": {
+    message:
+      "Remova todas as configurações de listas de IPs permitidos do workspace, dos ambientes e dos serviços antes de alterar o plano.",
+    description:
+      "Render's plan rule on its plan page (w3/m708): what to remove for planBlockerIpRulesTitle",
+  },
+  "workspaces.planBlockerUpdateIpRules": {
+    message: "Atualizar regras de IP de entrada",
+    description:
+      "Render's plan rule on its plan page (w3/m708): link to Workspace Settings' inbound IP rules",
+  },
+  "workspaces.planBlockerOtherTitle": {
+    message: "Este plano ainda não pode ser selecionado.",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title of a refusal kind this dashboard does not know yet",
+  },
+  "workspaces.planBlockerOther": {
+    message: "Este workspace ainda não atende aos limites do plano {plan}.",
+    description:
+      "Render's plan rule on its plan page (w3/m708): line under planBlockerOtherTitle; {plan} is the plan's name",
   },
 };
 

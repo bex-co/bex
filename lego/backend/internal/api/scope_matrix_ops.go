@@ -470,6 +470,7 @@ var classifiedOps = map[string]string{
 	"GQL Query.workspaceLoginRequirementImpact":                             core.OpClassRead,
 	"GQL Query.workspaceMembers":                                            core.OpClassRead,
 	"GQL Query.workspaceNonCompliantMembers":                                core.OpClassRead,
+	"GQL Query.workspacePlanChangeBlockers":                                 core.OpClassRead,
 	"GQL Query.workspaceSeatUsage":                                          core.OpClassRead,
 	"GQL Query.workspaces":                                                  core.OpClassRead,
 	"MCP accept_organization_invite":                                        core.OpClassWrite,

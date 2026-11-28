@@ -492,7 +492,7 @@ const koAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.upgradePlan": {
     message: "요금제 업그레이드",
     description:
-      "Detail page — CTA on a capacity failure; opens the change-plan dialog",
+      "Detail page — CTA on a capacity failure; opens Render's plan page on Pro (w3/m708)",
   },
   "agentSessions.failureCause.pool_full": {
     message: "여유 있는 샌드박스 머신이 없었습니다",

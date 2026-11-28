@@ -28,12 +28,12 @@ import {
   WORKSPACE_PLAN_CATALOG,
   organizationPlanOwner,
 } from "@/features/workspaces/types";
+import { AFTER_PLAN_UPDATE_BILLING } from "@/features/workspaces/lib/update-plan";
 
 /**
  * The workspace's plan, first on the billing page — what everything below is
- * priced against. Changing it stays owned by workspace settings; this links
- * there with the dialog already open, so there is one plan editor rather than
- * two that can disagree.
+ * priced against. Change plan opens Render's plan page, `/billing/update-plan`
+ * (w3/m708), which comes back here.
  *
  * A secondary workspace of an organization (w7/m464) shows its plan as the
  * org's and offers no change: Render's "Your primary workspace manages the
@@ -79,8 +79,8 @@ export function PlanCard() {
             {planOwner ? null : (
               <Button asChild variant="outline" size="sm">
                 <Link
-                  to="/workspace/settings"
-                  search={{ plan: "change" as const }}
+                  to="/billing/update-plan"
+                  state={AFTER_PLAN_UPDATE_BILLING}
                 >
                   {t("usage.planChange")}
                 </Link>

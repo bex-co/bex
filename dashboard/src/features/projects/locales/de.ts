@@ -462,7 +462,7 @@ const deProjects: Record<string, TranslationEntry> = {
   "projects.environmentLimitUpgrade": {
     message: "Upgraden",
     description:
-      "The environments paywall's button to the workspace's change-plan dialog",
+      "The environments paywall's button to Render's plan page (w3/m708)",
   },
   "projects.environmentLimitLearnMore": {
     message: "Mehr erfahren",

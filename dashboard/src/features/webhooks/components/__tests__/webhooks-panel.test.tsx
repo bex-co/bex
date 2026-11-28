@@ -229,10 +229,10 @@ it("previews a Hobby workspace's plan-gate card, not the Pro list (w4/432)", asy
   await screen.findByText(/Upgrade this workspace to add an endpoint/);
   const text = (el: Element | null) => el?.textContent?.trim();
   const readyHeader = text(ready.container.querySelector("[data-page-header]"));
-  // The gate offers the way out: the workspace's change-plan flow.
+  // The gate offers the way out: Render's plan page on Pro (w3/m708).
   expect(screen.getByRole("link", { name: "Change plan" })).toHaveAttribute(
     "href",
-    "/workspace/settings?plan=change",
+    "/billing/update-plan?plan=professional",
   );
   ready.unmount();
 

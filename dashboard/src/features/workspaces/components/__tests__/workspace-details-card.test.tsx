@@ -1,8 +1,9 @@
-import type { ReactElement } from "react";
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import type { ReactElement, ReactNode } from "react";
+import { beforeEach, describe, it, expect, vi } from "vitest";
+import { render as renderRaw, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
+  RouterContextProvider,
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
@@ -43,12 +44,6 @@ vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
   useCapabilities: () => ({ canManage: canManage.value }),
 }));
 
-// Stand in for the real dialog: what matters here is whether the card opens it.
-vi.mock("@/features/workspaces/components/change-plan-dialog", () => ({
-  ChangePlanDialog: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="change-plan-dialog" /> : null,
-}));
-
 const workspace: WorkspaceView = {
   id: "tea-1",
   name: "acme",
@@ -63,31 +58,49 @@ const workspace: WorkspaceView = {
   privacy: null,
 };
 
-describe("WorkspaceDetailsCard", () => {
-  it("keeps the change-plan dialog closed when the route says it isn't open", () => {
-    render(
-      <WorkspaceDetailsCard
-        workspace={workspace}
-        changePlanOpen={false}
-        onChangePlanOpenChange={vi.fn()}
-      />,
-    );
-    expect(screen.queryByTestId("change-plan-dialog")).not.toBeInTheDocument();
+/**
+ * The card's links resolve through the router: a real one, with the card
+ * rendered straight into its context so `rerender` re-renders the card.
+ */
+async function routedWrapper() {
+  const rootRoute = createRootRoute();
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      createRoute({ getParentRoute: () => rootRoute, path: "/" }),
+    ]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+    context: { client: {} as never, session: null },
   });
+  await router.load();
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <RouterContextProvider router={router}>{children}</RouterContextProvider>
+  );
+  return { router, wrapper };
+}
 
-  // The far end of w6/m15/t001: the blocked-invite CTA navigates to
-  // `/workspace/settings?plan=change`, and the route turns that into this prop.
-  // Without it the CTA would land on the settings page and still leave the user
-  // hunting for the plan section — the dead end it exists to remove.
-  it("shows the change-plan dialog when the route's ?plan=change says so", () => {
-    render(
-      <WorkspaceDetailsCard
-        workspace={workspace}
-        changePlanOpen
-        onChangePlanOpenChange={vi.fn()}
-      />,
-    );
-    expect(screen.getByTestId("change-plan-dialog")).toBeInTheDocument();
+let wrapper: Awaited<ReturnType<typeof routedWrapper>>["wrapper"];
+let router: Awaited<ReturnType<typeof routedWrapper>>["router"];
+beforeEach(async () => {
+  ({ router, wrapper } = await routedWrapper());
+});
+
+/** Renders under the router (testing-library keeps the wrapper on rerender). */
+function render(ui: ReactElement) {
+  return renderRaw(ui, { wrapper });
+}
+
+describe("WorkspaceDetailsCard", () => {
+  // Render's Settings links its Plan row to the plan page, which returns to
+  // Billing (w3/m708); the dialog this card opened is gone.
+  it("links Change plan to Render's plan page, returning to Billing", async () => {
+    const user = userEvent.setup();
+    render(<WorkspaceDetailsCard workspace={workspace} />);
+
+    const link = screen.getByRole("link", { name: "Change plan" });
+    expect(link).toHaveAttribute("href", "/billing/update-plan");
+    await user.click(link);
+    expect(router.state.location.pathname).toBe("/billing/update-plan");
+    expect(router.state.location.state.afterPlanUpdate).toBe("/billing");
   });
 
   it("renders the created date long-form, or an em dash when unknown", () => {
@@ -95,37 +108,12 @@ describe("WorkspaceDetailsCard", () => {
     const { rerender } = render(
       <WorkspaceDetailsCard
         workspace={{ ...workspace, createdAt: "2026-07-16T00:57:00" }}
-        changePlanOpen={false}
-        onChangePlanOpenChange={vi.fn()}
       />,
     );
     expect(screen.getByText("July 16, 2026")).toBeInTheDocument();
 
-    rerender(
-      <WorkspaceDetailsCard
-        workspace={workspace}
-        changePlanOpen={false}
-        onChangePlanOpenChange={vi.fn()}
-      />,
-    );
+    rerender(<WorkspaceDetailsCard workspace={workspace} />);
     expect(screen.getByText("—")).toBeInTheDocument();
-  });
-
-  it("asks the route to open the dialog when the plan link is clicked", async () => {
-    const onChangePlanOpenChange = vi.fn();
-    const user = userEvent.setup();
-    render(
-      <WorkspaceDetailsCard
-        workspace={workspace}
-        changePlanOpen={false}
-        onChangePlanOpenChange={onChangePlanOpenChange}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Change plan" }));
-
-    // The card never holds this state itself — the URL does.
-    expect(onChangePlanOpenChange).toHaveBeenCalledWith(true);
   });
 });
 
@@ -150,22 +138,10 @@ describe("WorkspaceDetailsCard — switching workspaces (w5/059)", () => {
   };
 
   it("re-seeds the name input when pointed at a different workspace", () => {
-    const { rerender } = render(
-      <WorkspaceDetailsCard
-        workspace={workspace}
-        changePlanOpen={false}
-        onChangePlanOpenChange={vi.fn()}
-      />,
-    );
+    const { rerender } = render(<WorkspaceDetailsCard workspace={workspace} />);
     expect(screen.getByDisplayValue("acme")).toBeInTheDocument();
 
-    rerender(
-      <WorkspaceDetailsCard
-        workspace={other}
-        changePlanOpen={false}
-        onChangePlanOpenChange={vi.fn()}
-      />,
-    );
+    rerender(<WorkspaceDetailsCard workspace={other} />);
     expect(screen.getByDisplayValue("beta")).toBeInTheDocument();
     expect(screen.queryByDisplayValue("acme")).not.toBeInTheDocument();
   });
@@ -173,24 +149,12 @@ describe("WorkspaceDetailsCard — switching workspaces (w5/059)", () => {
   it("does not clobber an in-progress edit of the same workspace", async () => {
     // The rename flow refetches on success, which re-renders this card with the
     // same workspace — a name-keyed reset would wipe whatever is being typed.
-    const { rerender } = render(
-      <WorkspaceDetailsCard
-        workspace={workspace}
-        changePlanOpen={false}
-        onChangePlanOpenChange={vi.fn()}
-      />,
-    );
+    const { rerender } = render(<WorkspaceDetailsCard workspace={workspace} />);
     const input = screen.getByDisplayValue("acme");
     await userEvent.clear(input);
     await userEvent.type(input, "acme-renamed");
 
-    rerender(
-      <WorkspaceDetailsCard
-        workspace={workspace}
-        changePlanOpen={false}
-        onChangePlanOpenChange={vi.fn()}
-      />,
-    );
+    rerender(<WorkspaceDetailsCard workspace={workspace} />);
     expect(screen.getByDisplayValue("acme-renamed")).toBeInTheDocument();
   });
 
@@ -200,11 +164,7 @@ describe("WorkspaceDetailsCard — switching workspaces (w5/059)", () => {
     rename.mockReset();
     rename.mockResolvedValue(true);
     render(
-      <WorkspaceDetailsCard
-        workspace={{ ...workspace, slug: "acme-key" }}
-        changePlanOpen={false}
-        onChangePlanOpenChange={vi.fn()}
-      />,
+      <WorkspaceDetailsCard workspace={{ ...workspace, slug: "acme-key" }} />,
     );
     expect(screen.getByText("acme-key")).toBeInTheDocument();
     const input = screen.getByDisplayValue("acme");
@@ -216,13 +176,7 @@ describe("WorkspaceDetailsCard — switching workspaces (w5/059)", () => {
   });
 
   it("refuses a blank name", async () => {
-    render(
-      <WorkspaceDetailsCard
-        workspace={workspace}
-        changePlanOpen={false}
-        onChangePlanOpenChange={vi.fn()}
-      />,
-    );
+    render(<WorkspaceDetailsCard workspace={workspace} />);
     const input = screen.getByDisplayValue("acme");
     await userEvent.clear(input);
     await userEvent.type(input, "   ");
@@ -263,25 +217,17 @@ describe("WorkspaceDetailsCard — an organization's secondary (w7/m464)", () =>
       context: { client: {} as never, session: null },
     });
     await router.load();
-    return render(<RouterProvider router={router} />);
+    return renderRaw(<RouterProvider router={router} />);
   }
 
   it("shows the plan read-only, with a link to the primary's settings", async () => {
     workspaceList.value = [{ id: "tea-primary" }, { id: "tea-secondary" }];
-    await renderUnderRouter(
-      <WorkspaceDetailsCard
-        workspace={secondary}
-        changePlanOpen
-        onChangePlanOpenChange={vi.fn()}
-      />,
-    );
+    await renderUnderRouter(<WorkspaceDetailsCard workspace={secondary} />);
 
     expect(screen.getByText("Scale")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Change plan" }),
+      screen.queryByRole("link", { name: "Change plan" }),
     ).not.toBeInTheDocument();
-    // Not even `?plan=change` opens a plan editor here.
-    expect(screen.queryByTestId("change-plan-dialog")).not.toBeInTheDocument();
     expect(screen.getByTestId("organization-plan-note")).toHaveTextContent(
       "Included in your organization's plan. The organization's primary workspace manages its plan and billing.",
     );
@@ -292,18 +238,12 @@ describe("WorkspaceDetailsCard — an organization's secondary (w7/m464)", () =>
 
   it("names the primary without a link when the caller is not in it", async () => {
     workspaceList.value = [{ id: "tea-secondary" }];
-    await renderUnderRouter(
-      <WorkspaceDetailsCard
-        workspace={secondary}
-        changePlanOpen={false}
-        onChangePlanOpenChange={vi.fn()}
-      />,
-    );
+    await renderUnderRouter(<WorkspaceDetailsCard workspace={secondary} />);
 
     expect(screen.getByTestId("organization-plan-note")).toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Change plan" }),
+      screen.queryByRole("link", { name: "Change plan" }),
     ).not.toBeInTheDocument();
   });
 
@@ -312,15 +252,13 @@ describe("WorkspaceDetailsCard — an organization's secondary (w7/m464)", () =>
     render(
       <WorkspaceDetailsCard
         workspace={{ ...secondary, id: "tea-primary", primary: true }}
-        changePlanOpen
-        onChangePlanOpenChange={vi.fn()}
       />,
     );
 
-    expect(
-      screen.getByRole("button", { name: "Change plan" }),
-    ).toBeInTheDocument();
-    expect(screen.getByTestId("change-plan-dialog")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Change plan" })).toHaveAttribute(
+      "href",
+      "/billing/update-plan",
+    );
     expect(
       screen.queryByTestId("organization-plan-note"),
     ).not.toBeInTheDocument();
@@ -339,11 +277,7 @@ describe("WorkspaceDetailsCard — an organization's secondary (w7/m464)", () =>
       />,
     );
     const { container: ready } = await renderUnderRouter(
-      <WorkspaceDetailsCard
-        workspace={secondary}
-        changePlanOpen={false}
-        onChangePlanOpenChange={vi.fn()}
-      />,
+      <WorkspaceDetailsCard workspace={secondary} />,
     );
     const pendingNote = pending.querySelector<HTMLElement>(
       '[data-skeleton-region="organization-plan-note"]',
@@ -382,13 +316,7 @@ describe("WorkspaceDetailsCard — an organization's secondary (w7/m464)", () =>
   // can set the workspace image."
   describe("Avatar", () => {
     const card = (view: WorkspaceView = workspace) =>
-      render(
-        <WorkspaceDetailsCard
-          workspace={view}
-          changePlanOpen={false}
-          onChangePlanOpenChange={vi.fn()}
-        />,
-      );
+      render(<WorkspaceDetailsCard workspace={view} />);
 
     it("shows an Admin the monogram of the name with Render's Edit menu", async () => {
       canManage.value = true;

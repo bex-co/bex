@@ -26,6 +26,7 @@ import { isolationGated } from "@/features/environments/lib/settings";
 import { useWorkspace } from "@/features/workspaces/context";
 import { GenerateBlueprintMenuItem } from "@/features/blueprints/components/generate-blueprint-menu-item";
 import type { BlueprintExportResource } from "@/features/blueprints/lib/blueprint-export";
+import { UpgradePlanLink } from "@/features/workspaces/components/upgrade-plan-link";
 
 /**
  * An environment section's ••• menu, Render's: the Block
@@ -135,7 +136,7 @@ export function EnvironmentMenu({
               </DropdownMenuItem>
               {gated ? (
                 <DropdownMenuItem asChild className="pl-9 text-xs">
-                  <Link to="/workspace/settings" search={{ plan: "change" }}>
+                  <UpgradePlanLink plan="pro">
                     <span>
                       {upgradeBefore}
                       <span className="font-medium underline underline-offset-4">
@@ -143,7 +144,7 @@ export function EnvironmentMenu({
                       </span>
                       {upgradeAfter}
                     </span>
-                  </Link>
+                  </UpgradePlanLink>
                 </DropdownMenuItem>
               ) : null}
               <DropdownMenuSeparator />

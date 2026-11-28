@@ -493,7 +493,7 @@ const esAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.upgradePlan": {
     message: "Mejorar plan",
     description:
-      "Detail page — CTA on a capacity failure; opens the change-plan dialog",
+      "Detail page — CTA on a capacity failure; opens Render's plan page on Pro (w3/m708)",
   },
   "agentSessions.failureCause.pool_full": {
     message: "Ninguna máquina de sandbox tenía espacio",

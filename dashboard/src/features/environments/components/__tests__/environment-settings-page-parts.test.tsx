@@ -223,7 +223,7 @@ describe("EnvironmentNetworkingCard (w1/m683)", () => {
     expect(screen.queryByRole("textbox")).toBeNull();
     expect(screen.getByRole("link", { name: "Upgrade" })).toHaveAttribute(
       "href",
-      "/workspace/settings",
+      "/billing/update-plan",
     );
 
     rerender(

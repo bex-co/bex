@@ -349,36 +349,7 @@ const jaWorkspaces: Record<string, TranslationEntry> = {
   "workspaces.changePlanTrigger": {
     message: "プランを変更",
     description:
-      "Workspace settings plan-badge link opening the change-plan dialog",
-  },
-  "workspaces.changePlanTitle": {
-    message: "プランを変更",
-    description: "Change-plan dialog title",
-  },
-  "workspaces.changePlanDescription": {
-    message:
-      "このワークスペースの新しいプランを選択してください。お支払い手続きはなく、プランはただちに変更されます。",
-    description: "Change-plan dialog description",
-  },
-  "workspaces.changePlanCancel": {
-    message: "キャンセル",
-    description: "Change-plan dialog cancel button",
-  },
-  "workspaces.changePlanSubmit": {
-    message: "プランを変更",
-    description: "Change-plan dialog submit button",
-  },
-  "workspaces.changePlanErrorTitle": {
-    message: "プランを変更できませんでした",
-    description: "Change-plan dialog inline error alert title",
-  },
-  "workspaces.changePlanSuccess": {
-    message: "プランを {plan} に変更しました",
-    description: "Toast on a successful plan change",
-  },
-  "workspaces.changePlanError": {
-    message: "ワークスペースのプランを変更できませんでした",
-    description: "Fallback toast/inline message on a failed plan change",
+      "Plan link on Workspace Settings, the plan gates and the webhooks gate, opening Render's plan page (w3/m708)",
   },
   "workspaces.generalTitle": {
     message: "一般",
@@ -934,60 +905,6 @@ const jaWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Shown in place of Save to a member who cannot manage the workspace (w4/653)",
   },
-  "workspaces.orgDowngradeWarningTitle": {
-    message: "Scale 未満にダウングレードすると組織が削除されます",
-    description:
-      "Change-plan dialog on an org's primary: title of the warning shown when a plan below Scale is selected (w7/m464)",
-  },
-  "workspaces.orgDowngradeWarning": {
-    message:
-      "これは組織のプライマリワークスペースで、そのプランは組織内のすべてのワークスペースに適用されます。ダウングレードすると組織と組織レベルの機能が削除され、このワークスペースは単独のワークスペースとして引き続き使用できます。先に組織のほかのワークスペースを削除し、請求担当・閲覧者・コントリビューターのロールを持つメンバーと保留中の招待を開発者または管理者に変更し、サービス、環境、このワークスペースのインバウンド IP ルールを削除してください。",
-    description:
-      "Change-plan dialog on an org's primary: what a downgrade below Scale does and Render's preconditions (render.com/docs/organizations, w7/m464)",
-  },
-  "workspaces.orgDowngradeWarningHobby": {
-    message:
-      "Hobby のメンバーは 1 人のため、このワークスペースのほかのメンバーも削除し、保留中の招待を取り消してください。",
-    description:
-      "Change-plan dialog on an org's primary with Hobby selected: the extra step a one-member plan needs, below the downgrade warning (w7/087)",
-  },
-  "workspaces.orgDowngradeBlocked": {
-    message:
-      "組織はまだ削除できません。Scale 未満にダウングレードする前に、次の対応が必要です。",
-    description:
-      "Change-plan dialog: lead-in above the unmet preconditions of ORGANIZATION_DOWNGRADE_BLOCKED (w7/m464)",
-  },
-  "workspaces.orgDowngradeSecondaryWorkspaces": {
-    message: "組織のほかのワークスペースを削除する",
-    description:
-      "Unmet downgrade precondition secondary_workspaces; the workspace names follow (w7/m464)",
-  },
-  "workspaces.orgDowngradeMemberRoles": {
-    message: "これらのメンバーのロールを開発者または管理者に変更する",
-    description:
-      "Unmet downgrade precondition member_roles; the members and roles follow (w7/m464)",
-  },
-  "workspaces.orgDowngradeInviteRoles": {
-    message: "これらの保留中の招待のロールを開発者または管理者に変更する",
-    description:
-      "Unmet downgrade precondition invite_roles; the invited emails and roles follow (w7/m464)",
-  },
-  "workspaces.orgDowngradeMemberLimit": {
-    message:
-      "これらのメンバーと保留中の招待を削除する（Hobby のメンバーは 1 人です）",
-    description:
-      "Unmet downgrade precondition member_limit on a Hobby target: the members and pending invites beyond its one seat follow (w7/087)",
-  },
-  "workspaces.orgDowngradeInboundIpRules": {
-    message: "インバウンド IP ルールを削除する",
-    description:
-      "Unmet downgrade precondition inbound_ip_rules; the workspace, environments and services that hold them follow (w7/m464)",
-  },
-  "workspaces.orgDowngradeItems": {
-    message: "{label}：{items}",
-    description:
-      "One unmet downgrade precondition: {label} is what to do, {items} the list of what it applies to (w7/m464)",
-  },
   "workspaces.orgDowngradePersonRole": {
     message: "{person}（{role}）",
     description:
@@ -1110,6 +1027,368 @@ const jaWorkspaces: Record<string, TranslationEntry> = {
       "この組織のオーナーが、組織とそのすべてのワークスペースで、すべてのメンバーに Google でのログインを求めています。bex のメールアドレスの Google アカウントでログインするまで、これらにはアクセスできず、ほかの方法でログインしているときに作成した API キーと SSH キーも使用できません。",
     description:
       "Why the Google login blocked page is shown when the organization's setting refuses the member (w7/m466)",
+  },
+  "workspaces.updatePlanPageTitle": {
+    message: "プランを変更",
+    description: "Document title of the plan pages (w3/m708)",
+  },
+  "workspaces.updatePlanTitle": {
+    message: "{name} のプランを変更",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): page title with the workspace's name",
+  },
+  "workspaces.updatePlanConfirmTitle": {
+    message: "{name} のプランを変更",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): page title with the workspace's name (Render capitalizes Plan here)",
+  },
+  "workspaces.updatePlanBack": {
+    message: "戻る",
+    description:
+      "Accessible label of the plan pages' Back button, and the confirmation's Back action (w3/m708)",
+  },
+  "workspaces.updatePlanSelectTitle": {
+    message: "プランを選択",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): heading of the plan cards",
+  },
+  "workspaces.updatePlanCompare": {
+    message: "プランの詳細や比較は{link}をご覧ください。",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): line under Select a plan; {link} is the updatePlanPricingLink link to bex's pricing page",
+  },
+  "workspaces.updatePlanPricingLink": {
+    message: "料金ページ",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): the link in updatePlanCompare",
+  },
+  "workspaces.updatePlanPaymentTitle": {
+    message: "お支払い方法",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): heading of the payment method section",
+  },
+  "workspaces.updatePlanCardRequired": {
+    message:
+      "このワークスペースプランでは、有料サービスとコンピュートのためにカードが必要です。",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): notice while a plan other than Hobby is selected",
+  },
+  "workspaces.updatePlanHowBillingWorks": {
+    message: "請求の仕組み",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): link beside updatePlanCardRequired to bex's billing docs",
+  },
+  "workspaces.updatePlanWorkspaceBillingTitle": {
+    message: "ワークスペースの請求",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): heading beside the card on file",
+  },
+  "workspaces.updatePlanWorkspaceBillingBody": {
+    message:
+      "請求はワークスペースごとに行われます。このワークスペースの有料サービスやコンピュートの料金がカードに請求されます。",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): line under updatePlanWorkspaceBillingTitle",
+  },
+  "workspaces.updatePlanErrorsSummary": {
+    message:
+      "選択内容にエラーがあります。確認して修正してから続行してください。",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): summary under the plan rules a selection breaks",
+  },
+  "workspaces.updatePlanErrorPrefix": {
+    message: "エラーが発生しました。{message}",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): a refused change; {message} is the reason",
+  },
+  "workspaces.updatePlanPaymentRequired": {
+    message:
+      "有料プランにアップグレードするには、有効なカードを追加してください。",
+    description:
+      "The plan pages' message when bex-api refuses a paid plan with PAYMENT_REQUIRED (w3/m708)",
+  },
+  "workspaces.updatePlanServerError": {
+    message: "送信中にサーバーエラーが発生しました。もう一度お試しください",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): fallback reason when an upgrade fails without one",
+  },
+  "workspaces.updatePlanSubmit": {
+    message: "プランを選択",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): submit button",
+  },
+  "workspaces.updatePlanCancel": {
+    message: "キャンセル",
+    description:
+      "Render's plan page, /billing/update-plan (w3/m708): cancel button, back to where the page was opened from",
+  },
+  "workspaces.updatePlanNoPermission": {
+    message:
+      "あなたのロールでは、このワークスペースのプランを変更できません。ワークスペース管理者に依頼してください。",
+    description:
+      "The plan pages' notice for a member who cannot change the plan (can_manage) (w3/m708)",
+  },
+  "workspaces.planCurrentBadge": {
+    message: "現在のプラン",
+    description:
+      "Badge on the workspace's own plan card on the plan page (Render's TeamPlanPicker, w3/m708)",
+  },
+  "workspaces.planNewBadge": {
+    message: "新しいプラン",
+    description:
+      "Badge on the chosen plan card on the plan page (Render's TeamPlanPicker, w3/m708)",
+  },
+  "workspaces.planContact": {
+    message: "お問い合わせ",
+    description:
+      "Enterprise card's contact action on the plan page, Render's Get in touch (w3/m708)",
+  },
+  "workspaces.updatePlanSummaryTitle": {
+    message: "新しいプランの概要",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): heading of the plan comparison and the card on file",
+  },
+  "workspaces.updatePlanConfirmDowngradeTitle": {
+    message: "ダウングレードの確認",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): heading of the typed confirmation a downgrade asks for",
+  },
+  "workspaces.updatePlanConfirmChangesIncluding": {
+    message: "プランの変更（以下を含む）を開始するには:",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): lead-in above the list of what a downgrade changes",
+  },
+  "workspaces.updatePlanConfirmTypeAfterList": {
+    message:
+      "テキストボックスに {phrase} と入力し、確認ボタンをクリックしてください。",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): the typed phrase after the list of changes; {phrase} is 'sudo downgrade workspace <name>' (rendered bold)",
+  },
+  "workspaces.updatePlanConfirmType": {
+    message:
+      "プランの変更を開始するには、テキストボックスに {phrase} と入力し、確認ボタンをクリックしてください。",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): the typed phrase when the downgrade lists no changes; {phrase} is 'sudo downgrade workspace <name>' (rendered bold)",
+  },
+  "workspaces.updatePlanConfirmSubmit": {
+    message: "確認",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): confirm button",
+  },
+  "workspaces.updatePlanErrorTitle": {
+    message: "エラーが発生しました。",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): title of a refused change",
+  },
+  "workspaces.updatePlanError": {
+    message: "プランの更新中にエラーが発生しました。",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): fallback reason when the change fails without one",
+  },
+  "workspaces.updatePlanRemovesOrganization": {
+    message: "組織は削除されます。",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): bold start of the change an org primary's downgrade below Scale makes (ADR115 D6)",
+  },
+  "workspaces.updatePlanRemovesOrganizationDetail": {
+    message:
+      "組織レベルの機能は終了し、このワークスペースは独立したワークスペースとして存続します。",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): rest of the org removal line after updatePlanRemovesOrganization",
+  },
+  "workspaces.planUpdated": {
+    message: "ワークスペースは {plan} プランになりました。",
+    description:
+      "Toast after a plan change, Render's plan-updated toast; {plan} is the plan's name (w3/m708)",
+  },
+  "workspaces.planUpdatedWelcome": {
+    message: "{plan} プランへようこそ。",
+    description:
+      "Toast after a change to Scale, Render's welcome; {plan} is the plan's name (w3/m708)",
+  },
+  "workspaces.planComparisonCurrent": {
+    message: "現在のプラン",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): badge on the current plan's side of the comparison",
+  },
+  "workspaces.planComparisonNew": {
+    message: "新しいプラン",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): badge on the new plan's side of the comparison",
+  },
+  "workspaces.planComparisonHighlights": {
+    message: "主な特徴",
+    description:
+      "Render's plan confirmation, /billing/update-plan-confirm (w3/m708): label above each side's highlights (shown in capitals)",
+  },
+  "workspaces.planHighlightJustForMe": {
+    message: "自分専用",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): Hobby's one seat",
+  },
+  "workspaces.planHighlightUnlimitedMembers": {
+    message: "チームメンバー無制限",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): unlimited seats",
+  },
+  "workspaces.planHighlightIncludedDomains": {
+    message:
+      "カスタムドメイン {included} 個まで込み、以降は 1 ドメインあたり {price}",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): custom domains included before they are metered; {included} is the count, {price} bex's price per domain (ADR030 §16)",
+  },
+  "workspaces.planHighlightUnlimitedDomains": {
+    message: "カスタムドメイン無制限",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): every custom domain included (Enterprise)",
+  },
+  "workspaces.planHighlightTwoEnvironments": {
+    message: "プロジェクトごとに 2 環境",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): Hobby's environments per project",
+  },
+  "workspaces.planHighlightUnlimitedEnvironments": {
+    message: "プロジェクトと環境は無制限",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): unlimited projects and environments",
+  },
+  "workspaces.planHighlightRetention": {
+    message: "ログとメトリクスは {days} 日間",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): how far back logs and metrics reach; {days} is the number of days",
+  },
+  "workspaces.planHighlightBasicLogs": {
+    message: "基本的なログとメトリクス",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): Hobby's logs and metrics, without request logs",
+  },
+  "workspaces.planHighlightRequestLogs": {
+    message: "HTTP リクエストログとレスポンスタイムのメトリクス",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): Pro's HTTP request logs and response time metrics",
+  },
+  "workspaces.planHighlightKeptBuilds": {
+    message: "即時ロールバック用に {builds} 件のビルドを保持",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): builds kept for rollback; {builds} is the count (core.KeptBuilds)",
+  },
+  "workspaces.planHighlightAuditLogs": {
+    message: "ワークスペース監査ログ",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): workspace audit logs (Pro and higher)",
+  },
+  "workspaces.planHighlightOrganization": {
+    message: "組織（追加のワークスペース、追加ロール、受信 IP ルール）",
+    description:
+      "A highlight in the confirmation's plan comparison (w3/m708): what an organization adds (Scale and higher, ADR115)",
+  },
+  "workspaces.planBlockerMemberLimitTitle": {
+    message: "チームのユーザーが多すぎます。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title when the workspace has more people than the plan seats",
+  },
+  "workspaces.planBlockerMemberLimitOne": {
+    message: "{plan} ワークスペースのユーザーは 1 人までです。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): a plan with one seat; {plan} is the plan's name",
+  },
+  "workspaces.planBlockerMemberLimitMany": {
+    message: "{plan} ワークスペースのユーザーは最大 {limit} 人です。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): a plan with several seats; {plan} is the plan's name, {limit} its seats",
+  },
+  "workspaces.planBlockerUpdateTeamMembers": {
+    message: "チームメンバーを更新",
+    description:
+      "Render's plan rule on its plan page (w3/m708): link to Workspace Settings' Team section",
+  },
+  "workspaces.planBlockerServiceLimitTitle": {
+    message: "ワークスペースのサービスが多すぎます。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title when the workspace has more services than the plan allows",
+  },
+  "workspaces.planBlockerServiceLimit": {
+    message: "{plan} ワークスペースのサービスは最大 {limit} 個です。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): the plan's service cap; {plan} is the plan's name, {limit} its cap",
+  },
+  "workspaces.planBlockerUpdateServices": {
+    message: "サービスを更新",
+    description:
+      "Render's plan rule on its plan page (w3/m708): link to the workspace's services",
+  },
+  "workspaces.planBlockerWorkspaceLimitTitle": {
+    message: "Hobby ワークスペースが多すぎます。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title when the caller already has the most Hobby workspaces allowed",
+  },
+  "workspaces.planBlockerWorkspaceLimit": {
+    message:
+      "Hobby ワークスペースは {limit} 個までです。アップグレードするか、別の Hobby ワークスペースを削除してください。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): the cap on a person's Hobby workspaces; {limit} is the cap",
+  },
+  "workspaces.planBlockerWorkspaceLimitsDocs": {
+    message: "ワークスペースの上限",
+    description:
+      "Render's plan rule on its plan page (w3/m708): link to bex's docs on workspace limits",
+  },
+  "workspaces.planBlockerWorkspacesTitle": {
+    message: "ワークスペースが多すぎます。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title when an org primary's downgrade leaves secondary workspaces",
+  },
+  "workspaces.planBlockerWorkspaces": {
+    message: "{plan} では複数のワークスペースを利用できません。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): a plan without an organization; {plan} is the plan's name",
+  },
+  "workspaces.planBlockerUpdateWorkspaces": {
+    message: "ワークスペースを更新",
+    description:
+      "Render's plan rule on its plan page (w3/m708): link to the organization's workspaces",
+  },
+  "workspaces.planBlockerRolesTitle": {
+    message: "利用できないロールを使用中のためダウングレードできません",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title when members or invites hold roles the plan does not offer",
+  },
+  "workspaces.planBlockerRolesOne": {
+    message:
+      "{plan} は {roles} ロールに対応していません。ワークスペースをダウングレードするには、まず該当するチームメンバーと保留中の招待を Developer または Admin に変更してください。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): one role the plan lacks; {plan} is the plan's name, {roles} the role",
+  },
+  "workspaces.planBlockerRolesMany": {
+    message:
+      "{plan} は {roles} ロールに対応していません。ワークスペースをダウングレードするには、まず該当するチームメンバーと保留中の招待を Developer または Admin に変更してください。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): several roles the plan lacks; {plan} is the plan's name, {roles} the roles",
+  },
+  "workspaces.planBlockerIpRulesTitle": {
+    message: "ダウングレードの前に IP 許可リストを削除する必要があります。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title when inbound IP rules stand in the way (Render's words for them on its confirmation)",
+  },
+  "workspaces.planBlockerIpRules": {
+    message:
+      "プランを変更する前に、ワークスペース、環境、サービスからすべての IP 許可リスト設定を削除してください。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): what to remove for planBlockerIpRulesTitle",
+  },
+  "workspaces.planBlockerUpdateIpRules": {
+    message: "受信 IP ルールを更新",
+    description:
+      "Render's plan rule on its plan page (w3/m708): link to Workspace Settings' inbound IP rules",
+  },
+  "workspaces.planBlockerOtherTitle": {
+    message: "このプランはまだ選択できません。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): title of a refusal kind this dashboard does not know yet",
+  },
+  "workspaces.planBlockerOther": {
+    message: "このワークスペースはまだ {plan} プランの上限を満たしていません。",
+    description:
+      "Render's plan rule on its plan page (w3/m708): line under planBlockerOtherTitle; {plan} is the plan's name",
   },
 };
 

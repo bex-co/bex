@@ -47,6 +47,7 @@ import {
   type Connections,
   type Protection,
 } from "@/features/environments/lib/settings";
+import { UpgradePlanLink } from "@/features/workspaces/components/upgrade-plan-link";
 
 /** The projects and environments docs, Render's "protected environment" link. */
 const ENVIRONMENTS_DOCS_URL =
@@ -534,9 +535,9 @@ export function EnvironmentConnectionsCard({
             })}
             action={
               <Button asChild size="sm">
-                <Link to="/workspace/settings" search={{ plan: "change" }}>
+                <UpgradePlanLink plan="pro">
                   {t("environments.upgrade")}
-                </Link>
+                </UpgradePlanLink>
               </Button>
             }
           />

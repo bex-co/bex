@@ -494,7 +494,7 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.upgradePlan": {
     message: "升级套餐",
     description:
-      "Detail page — CTA on a capacity failure; opens the change-plan dialog",
+      "Detail page — CTA on a capacity failure; opens Render's plan page on Pro (w3/m708)",
   },
   "agentSessions.failureCause.pool_full": {
     message: "没有沙箱机器有空余资源",

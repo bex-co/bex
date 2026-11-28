@@ -212,8 +212,15 @@ export function organizationPlan(plan: WorkspacePlanId): boolean {
   return plan === "scale" || plan === "enterprise";
 }
 
+/** The catalog entry of a plan id; undefined for one outside the catalog. */
+export function workspacePlanEntry(
+  plan: string,
+): WorkspacePlanCatalogEntry | undefined {
+  return WORKSPACE_PLAN_CATALOG.find((p) => p.id === plan);
+}
+
 export function workspacePlanNameKey(plan: string): string {
-  return WORKSPACE_PLAN_CATALOG.find((p) => p.id === plan)?.nameKey ?? "";
+  return workspacePlanEntry(plan)?.nameKey ?? "";
 }
 
 /**

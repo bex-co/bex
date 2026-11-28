@@ -29,6 +29,7 @@ import { PermissionTooltip } from "@/features/capabilities/components/permission
 import {
   useBillingOnboarding,
   type BillingReadiness,
+  type UseBillingOnboardingResult,
 } from "../hooks/use-billing-onboarding";
 import { BillingStatusAlerts } from "./billing-lifecycle-alert";
 
@@ -183,8 +184,17 @@ export function PaymentMethodCardView({
 }
 
 export function PaymentMethodCard() {
+  return <PaymentMethodCardFor billing={useBillingOnboarding()} />;
+}
+
+/** The card over a billing state its page already holds (Render's plan pages,
+ *  whose Stripe sessions come back to the plan page; w3/m708). */
+export function PaymentMethodCardFor({
+  billing: state,
+}: {
+  billing: UseBillingOnboardingResult;
+}) {
   const { t } = useTranslations();
-  const state = useBillingOnboarding();
   const capabilities = useCapabilities();
   const reasonKey = capabilities.reasonKey("can_manage_billing");
   return (

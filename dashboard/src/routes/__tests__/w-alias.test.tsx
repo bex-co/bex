@@ -35,7 +35,13 @@ async function renderAt(initialPath: string) {
     path: "/w/$",
     component: WAliasRoute.options.component!,
   });
-  const landings = ["/workspace/settings", "/billing"].map((path) =>
+  const landings = [
+    "/workspace/settings",
+    "/billing",
+    "/billing/update-plan",
+    "/billing/update-plan-confirm",
+    "/billing/update-plan-preview",
+  ].map((path) =>
     createRoute({
       getParentRoute: () => rootRoute,
       path,
@@ -118,5 +124,35 @@ describe("/w/{tea-id} alias (w1/m45)", () => {
       expect(router.state.location.pathname).toBe("/workspace/settings"),
     );
     expect(setCurrentWorkspaceId).not.toHaveBeenCalled();
+  });
+});
+
+// w3/m708: Render's `/w/<id>/billing/update-plan` forms open bex's plan pages
+// for that workspace, with the query kept, and return to Billing when they
+// name no `next`, as Render's `/w/` form does.
+describe("/w/{tea-id}/billing plan pages (w3/m708)", () => {
+  it.each([
+    ["update-plan", "/billing/update-plan"],
+    ["update-plan-confirm", "/billing/update-plan-confirm"],
+    ["update-plan-preview", "/billing/update-plan-preview"],
+  ])("opens /billing/%s with the query kept", async (page, landing) => {
+    const router = await renderAt(
+      `/w/tea-other/billing/${page}?plan=pro&next=%2Fwebhooks`,
+    );
+    await waitFor(() => expect(router.state.location.pathname).toBe(landing));
+    expect(setCurrentWorkspaceId).toHaveBeenCalledWith("tea-other");
+    expect(router.state.location.search).toEqual({
+      plan: "professional",
+      next: "/webhooks",
+    });
+    expect(router.state.location.state.afterPlanUpdate).toBe("/billing");
+    expect(router.history.length).toBe(1);
+  });
+
+  it("lands any other billing sub-page on Billing", async () => {
+    const router = await renderAt("/w/tea-mine/billing/invoices");
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/billing"),
+    );
   });
 });

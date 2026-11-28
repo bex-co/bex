@@ -1011,7 +1011,7 @@ describe("EnvironmentSection", () => {
     expect(toggle).toHaveAttribute("aria-disabled", "true");
     expect(
       screen.getByRole("menuitem", { name: "Upgrade to unlock this feature" }),
-    ).toHaveAttribute("href", "/workspace/settings?plan=change");
+    ).toHaveAttribute("href", "/billing/update-plan?plan=professional");
   });
 
   it("shows a non-Admin only All settings, as Render hides a toggle the member may not use", async () => {

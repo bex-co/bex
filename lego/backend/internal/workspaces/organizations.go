@@ -566,7 +566,7 @@ func (s *Service) downgradePreconditions(ctx context.Context, orgs OrganizationS
 	if limit := store.LimitsFor(plan).MaxMembers; limit > 0 {
 		over, overInvites := unseated(members, invites, limit, caller)
 		if items := append(s.memberRoles(ctx, over), invitedRoles(overInvites)...); len(items) > 0 {
-			unmet = append(unmet, core.DowngradePrecondition{Kind: core.PreconditionMemberLimit, Items: items})
+			unmet = append(unmet, core.DowngradePrecondition{Kind: core.PreconditionMemberLimit, Items: items, Limit: limit})
 		}
 	}
 	rules, err := s.inboundIPRules(ctx, orgs, o.PrimaryWorkspaceID)

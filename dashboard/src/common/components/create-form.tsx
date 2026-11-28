@@ -25,6 +25,7 @@ import {
   formatInstanceCPU,
   formatInstanceMemory,
 } from "@/features/services/lib/instance-type";
+import { upgradePlanTarget } from "@/features/workspaces/lib/update-plan";
 
 /**
  * Render's create-page template, shared by every bex create page (services,
@@ -416,10 +417,8 @@ export function CreateCapLimitAlert({
             size="sm"
             className="self-start"
             onClick={() =>
-              void navigate({
-                to: "/workspace/settings",
-                search: { plan: "change" },
-              })
+              // Pro lifts Hobby's caps.
+              void navigate(upgradePlanTarget("pro"))
             }
           >
             <ArrowUpRight className="size-3.5" />

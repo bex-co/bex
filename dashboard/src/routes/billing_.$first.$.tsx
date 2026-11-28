@@ -8,17 +8,13 @@ import { redirectPreservingSuffix } from "@/common/lib/render-alias";
  * Requiring one segment keeps `/billing` on the page route while preserving
  * the compatibility behavior for every actual `/billing/*` URL.
  *
- * `/billing/update-plan` (every upgrade CTA) opens the change-plan dialog; any
- * other sub-path folds back to the billing page. The incoming query (Render
- * appends `?next=…` etc.) has no bex meaning and folds into the landing's own.
+ * Render's plan pages (`/billing/update-plan`, `-preview`, `-confirm`) are
+ * routes of their own (w3/m708), which outrank this splat; any other sub-path
+ * folds back to the billing page. The incoming query (Render appends
+ * `?next=…` etc.) has no bex meaning here and folds into the landing's own.
  */
 export const Route = createFileRoute("/billing_/$first/$")({
-  beforeLoad: ({ params, location }) => {
-    redirectPreservingSuffix(
-      params.first === "update-plan"
-        ? "/workspace/settings?plan=change"
-        : "/billing",
-      location,
-    );
+  beforeLoad: ({ location }) => {
+    redirectPreservingSuffix("/billing", location);
   },
 });

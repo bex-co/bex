@@ -117,17 +117,17 @@ function renderPage() {
     path: "/",
     component: () => <p>Overview</p>,
   });
-  const settingsRoute = createRoute({
+  const planRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "/workspace/settings",
-    component: () => <p>Workspace settings</p>,
+    path: "/billing/update-plan",
+    component: () => <p>Change plan</p>,
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([
       newRoute,
       detailRoute,
       overviewRoute,
-      settingsRoute,
+      planRoute,
     ]),
     history: createMemoryHistory({ initialEntries: ["/new/database"] }),
     context: { client: {} as never, session: null },
@@ -504,9 +504,14 @@ describe("NewDatabasePage", () => {
         "button",
       ),
     );
+    // Render's plan page on Pro, coming back here (w3/m708).
     await waitFor(() =>
-      expect(router.state.location.pathname).toBe("/workspace/settings"),
+      expect(router.state.location.pathname).toBe("/billing/update-plan"),
     );
+    expect(router.state.location.search).toEqual({
+      plan: "professional",
+      next: "/",
+    });
   });
 });
 

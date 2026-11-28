@@ -658,7 +658,7 @@ const ptEnvironments: Record<string, TranslationEntry> = {
   "environments.upgrade": {
     message: "Fazer upgrade",
     description:
-      "Button or link that opens the change-plan dialog from an environment's plan gate (Render's words, w1/m683)",
+      "Button or link that opens Render's plan page from an environment's plan gate (Render's words, w1/m683, w3/m708)",
   },
   "environments.isolateTitle": {
     message: "Restringir conexões",

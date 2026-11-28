@@ -22,6 +22,7 @@ import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities"
 import { useWorkspace } from "@/features/workspaces/context";
 import { proFeaturesPlan } from "@/features/workspaces/types";
 import { eventLabelKey } from "@/features/webhooks/event-catalog";
+import { UpgradePlanLink } from "@/features/workspaces/components/upgrade-plan-link";
 
 /**
  * The `/webhooks` page header: title, the plan-aware description and the
@@ -140,12 +141,9 @@ export function WebhooksPanel() {
             action={
               !proPlan && canManage ? (
                 <Button size="sm" asChild>
-                  <Link
-                    to="/workspace/settings"
-                    search={{ plan: "change" as const }}
-                  >
+                  <UpgradePlanLink plan="pro">
                     {t("workspaces.changePlanTrigger")}
-                  </Link>
+                  </UpgradePlanLink>
                 </Button>
               ) : showCreate ? (
                 <CreateWebhookButton />

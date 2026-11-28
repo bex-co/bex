@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button } from "@/common/components/ui/button";
 import {
@@ -18,6 +17,7 @@ import {
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import { useUpdateEnvironment } from "@/features/environments/hooks/use-update-environment";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { UpgradePlanLink } from "@/features/workspaces/components/upgrade-plan-link";
 
 /**
  * Render's Networking card on an environment's settings page (w1/m683): the
@@ -81,12 +81,9 @@ export function EnvironmentNetworkingCard({
                         variant="link"
                         className="h-auto p-0 text-xs"
                       >
-                        <Link
-                          to="/workspace/settings"
-                          search={{ plan: "change" }}
-                        >
+                        <UpgradePlanLink plan="scale">
                           {t("environments.upgrade")}
-                        </Link>
+                        </UpgradePlanLink>
                       </Button>
                     </>
                   ),

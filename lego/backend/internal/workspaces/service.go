@@ -1530,16 +1530,9 @@ func (s *Service) ChangePlan(ctx context.Context, id, plan string) (WorkspaceVie
 	if err != nil {
 		return WorkspaceView{}, err
 	}
-	if s.Store == nil {
-		return WorkspaceView{}, core.ErrWorkspacesUnavailable
-	}
-	plan, err = normalizePlan(plan)
+	t, plan, err := s.planChangeTenant(ctx, id, plan)
 	if err != nil {
 		return WorkspaceView{}, err
-	}
-	t, err := s.Store.GetTenant(ctx, id)
-	if err != nil {
-		return WorkspaceView{}, mapStoreErr(err)
 	}
 	if t.Plan == plan {
 		return view(t, "admin"), nil // already there — nothing to write
@@ -1551,6 +1544,24 @@ func (s *Service) ChangePlan(ctx context.Context, id, plan string) (WorkspaceVie
 		s.resetCustomerEmail(ctx, t.ID)
 	}
 	return v, err
+}
+
+// planChangeTenant is the workspace a plan change acts on, read after the
+// caller was authorized, with plan normalized: ChangePlan's and
+// PlanChangeBlockers' common start.
+func (s *Service) planChangeTenant(ctx context.Context, id, plan string) (store.Tenant, string, error) {
+	if s.Store == nil {
+		return store.Tenant{}, "", core.ErrWorkspacesUnavailable
+	}
+	plan, err := normalizePlan(plan)
+	if err != nil {
+		return store.Tenant{}, "", err
+	}
+	t, err := s.Store.GetTenant(ctx, id)
+	if err != nil {
+		return store.Tenant{}, "", mapStoreErr(err)
+	}
+	return t, plan, nil
 }
 
 // planCallerSubject resolves the subject acting on ChangePlan. For a human
@@ -1632,7 +1643,7 @@ func (s *Service) guardPlanCapacity(ctx context.Context, id, plan, caller string
 		return err
 	}
 	limits := store.LimitsFor(plan)
-	if limits.MaxMembers > 0 && len(members)+len(invites) > limits.MaxMembers {
+	if seatsExceeded(limits, members, invites) {
 		if len(invites) == 0 {
 			return fmt.Errorf("%w: workspace has %d member(s), exceeds %s plan's limit of %d",
 				core.ErrBadRequest, len(members), plan, limits.MaxMembers)
@@ -1644,15 +1655,13 @@ func (s *Service) guardPlanCapacity(ctx context.Context, id, plan, caller string
 			core.ErrBadRequest, len(members), len(invites), strings.Join(inviteEmails(invites), ", "),
 			plan, limits.MaxMembers)
 	}
-	if limits.MaxServices > 0 {
-		n, err := s.Store.CountAppsForTenant(ctx, id)
-		if err != nil {
-			return err
-		}
-		if n > limits.MaxServices {
-			return fmt.Errorf("%w: workspace has %d services, exceeds %s plan's limit of %d",
-				core.ErrBadRequest, n, plan, limits.MaxServices)
-		}
+	services, exceeded, err := s.servicesExceeded(ctx, id, limits)
+	if err != nil {
+		return err
+	}
+	if exceeded {
+		return fmt.Errorf("%w: workspace has %d services, exceeds %s plan's limit of %d",
+			core.ErrBadRequest, services, plan, limits.MaxServices)
 	}
 	if caller != "" {
 		if err := s.guardPerUserWorkspaceCap(ctx, caller, plan); err != nil {
@@ -1767,18 +1776,48 @@ func inviteEmails(invites []store.Invite) []string {
 // (Hobby: five free workspaces/user; paid plans unlimited) — the one rule
 // both verbs enforce, Create on a new row and ChangePlan on a downgrade into it.
 func (s *Service) guardPerUserWorkspaceCap(ctx context.Context, subject, plan string) error {
-	limit := store.LimitsFor(plan).MaxWorkspacesPerUser
-	if limit == 0 {
-		return nil
-	}
-	n, err := s.Store.CountWorkspacesForSubjectPlan(ctx, subject, plan)
+	limit, reached, err := s.perUserCapReached(ctx, subject, plan)
 	if err != nil {
 		return err
 	}
-	if n >= limit {
+	if reached {
 		return fmt.Errorf("%w: at most %d %s workspaces per user", core.ErrBadRequest, limit, plan)
 	}
 	return nil
+}
+
+// perUserCapReached reports whether subject already has plan's cap of
+// workspaces of that plan (Hobby: 5), and the cap; a plan with no cap is never
+// reached.
+func (s *Service) perUserCapReached(ctx context.Context, subject, plan string) (int, bool, error) {
+	limit := store.LimitsFor(plan).MaxWorkspacesPerUser
+	if limit == 0 {
+		return 0, false, nil
+	}
+	n, err := s.Store.CountWorkspacesForSubjectPlan(ctx, subject, plan)
+	if err != nil {
+		return 0, false, err
+	}
+	return limit, n >= limit, nil
+}
+
+// servicesExceeded reports whether workspace id has more services than plan
+// allows, and how many it has; a plan with no cap is never exceeded.
+func (s *Service) servicesExceeded(ctx context.Context, id string, limits store.PlanLimits) (int, bool, error) {
+	if limits.MaxServices == 0 {
+		return 0, false, nil
+	}
+	n, err := s.Store.CountAppsForTenant(ctx, id)
+	if err != nil {
+		return 0, false, err
+	}
+	return n, n > limits.MaxServices, nil
+}
+
+// seatsExceeded reports whether the members and pending invites together
+// outnumber plan's seats; a pending invite is a seat already promised.
+func seatsExceeded(limits store.PlanLimits, members []store.TenantMember, invites []store.Invite) bool {
+	return limits.MaxMembers > 0 && len(members)+len(invites) > limits.MaxMembers
 }
 
 // DeleteConfirmation is the exact phrase the caller must type to arm a

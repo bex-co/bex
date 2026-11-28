@@ -2918,6 +2918,7 @@ type Query {
   workspaceLoginRequirementImpact(requirement: LoginRequirement!, workspaceId: String!): LoginRequirementImpact!
   workspaceMembers(workspaceId: String!): [WorkspaceMember]
   workspaceNonCompliantMembers(requirement: LoginRequirement!, workspaceId: String!): [NonCompliantMember!]!
+  workspacePlanChangeBlockers(id: String!, plan: String!): [WorkspacePlanChangeBlocker!]!
   workspaceSeatUsage(workspaceId: String!): WorkspaceSeatUsage
   workspaces: [Workspace]
 }
@@ -3851,6 +3852,12 @@ type WorkspaceOrganization {
   primaryWorkspaceId: String!
   requireGoogleLogin: Boolean!
   requireTwoFactor: Boolean!
+}
+
+type WorkspacePlanChangeBlocker {
+  items: [String!]!
+  kind: String!
+  limit: Int
 }
 
 type WorkspaceSeatUsage {

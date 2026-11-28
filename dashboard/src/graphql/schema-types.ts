@@ -5309,6 +5309,8 @@ export type Query = {
   workspaceMembers: Maybe<Array<Maybe<WorkspaceMember>>>;
   /** The workspace's members who do not meet a login requirement right now, by the enforcement gate's own check (admin only). */
   workspaceNonCompliantMembers: Array<NonCompliantMember>;
+  /** What would keep changeWorkspacePlan from moving the workspace to plan, by its own checks; empty when nothing would (admin only). */
+  workspacePlanChangeBlockers: Array<WorkspacePlanChangeBlocker>;
   workspaceSeatUsage: Maybe<WorkspaceSeatUsage>;
   workspaces: Maybe<Array<Maybe<Workspace>>>;
 };
@@ -6427,6 +6429,12 @@ export type QueryWorkspaceNonCompliantMembersArgs = {
 };
 
 
+export type QueryWorkspacePlanChangeBlockersArgs = {
+  id: Scalars['String']['input'];
+  plan: Scalars['String']['input'];
+};
+
+
 export type QueryWorkspaceSeatUsageArgs = {
   workspaceId: Scalars['String']['input'];
 };
@@ -7452,6 +7460,14 @@ export type WorkspaceOrganization = {
   primaryWorkspaceId: Scalars['String']['output'];
   requireGoogleLogin: Scalars['Boolean']['output'];
   requireTwoFactor: Scalars['Boolean']['output'];
+};
+
+/** One refusal changeWorkspacePlan would give for a plan (w3/m708): Render's plan page names each under Plan selection errors before Select plan. */
+export type WorkspacePlanChangeBlocker = {
+  __typename: 'WorkspacePlanChangeBlocker';
+  items: Array<Scalars['String']['output']>;
+  kind: Scalars['String']['output'];
+  limit: Maybe<Scalars['Int']['output']>;
 };
 
 export type WorkspaceSeatUsage = {

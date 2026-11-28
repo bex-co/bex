@@ -156,6 +156,16 @@ mutation ChangeWorkspacePlan($id: String!, $plan: String!) {
   }
 }
 
+# What would keep changeWorkspacePlan from moving the workspace to plan
+# (w3/m708): the plan page's Plan selection errors.
+query WorkspacePlanChangeBlockers($id: String!, $plan: String!) {
+  workspacePlanChangeBlockers(id: $id, plan: $plan) {
+    kind
+    items
+    limit
+  }
+}
+
 mutation DeleteWorkspace($id: String!, $confirmation: String!) {
   deleteWorkspace(id: $id, confirmation: $confirmation)
 }

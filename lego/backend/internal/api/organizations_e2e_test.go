@@ -616,6 +616,10 @@ func TestOrganizationDowngradePreconditionsE2E(t *testing.T) {
 		if got := preconditionKinds(out); !slices.Equal(got, want) {
 			t.Fatalf("downgrade preconditions = %v, want %v", got, want)
 		}
+		// The plan page lists exactly what the refusal names (w3/m708).
+		if got, refused := e.blockerItems(alice, acme.ID, "pro"), preconditionItems(out); !reflect.DeepEqual(got, refused) {
+			t.Fatalf("plan page blockers = %v, refusal = %v", got, refused)
+		}
 	}
 	wantKinds("member_roles", "invite_roles", "inbound_ip_rules")
 	if _, err := e.st.Pool.Exec(ctx, `UPDATE tenant_members SET role = 'developer' WHERE tenant_id = $1 AND subject = $2`, acme.ID, vic.Subject); err != nil {
@@ -632,6 +636,9 @@ func TestOrganizationDowngradePreconditionsE2E(t *testing.T) {
 	wantKinds("inbound_ip_rules") // the environment's rule is still there
 	if err := e.st.SetEnvironmentACL(ctx, env.ID, "unprotected", false, core.DefaultEnvironmentAllowList()); err != nil {
 		t.Fatal(err)
+	}
+	if got := e.blockerItems(alice, acme.ID, "pro"); len(got) != 0 {
+		t.Fatalf("plan page blockers with nothing unmet = %v", got)
 	}
 	if plan := e.ok(alice, downgrade)["changeWorkspacePlan"].(map[string]any)["plan"]; plan != "pro" {
 		t.Fatalf("downgrade with nothing unmet = %v", plan)
@@ -653,6 +660,23 @@ func preconditionItems(out map[string]any) map[string][]string {
 	got := map[string][]string{}
 	for _, p := range pre {
 		entry := p.(map[string]any)
+		items := []string{}
+		for _, item := range entry["items"].([]any) {
+			items = append(items, item.(string))
+		}
+		got[entry["kind"].(string)] = items
+	}
+	return got
+}
+
+// blockerItems reads workspacePlanChangeBlockers (w3/m708) as kind → items,
+// the plan page's view of what ChangePlan would refuse.
+func (e *orgE2E) blockerItems(id core.Identity, workspaceID, plan string) map[string][]string {
+	e.t.Helper()
+	data := e.ok(id, fmt.Sprintf(`{ workspacePlanChangeBlockers(id: %q, plan: %q) { kind items } }`, workspaceID, plan))
+	got := map[string][]string{}
+	for _, b := range data["workspacePlanChangeBlockers"].([]any) {
+		entry := b.(map[string]any)
 		items := []string{}
 		for _, item := range entry["items"].([]any) {
 			items = append(items, item.(string))
@@ -700,7 +724,11 @@ func TestOrganizationDowngradeNamesPeopleE2E(t *testing.T) {
 		if graphqlCode(out) != core.CodeOrganizationDowngradeBlocked {
 			t.Fatalf("downgrade to %s = %v, want %s", plan, out, core.CodeOrganizationDowngradeBlocked)
 		}
-		return preconditionItems(out)
+		refused := preconditionItems(out)
+		if got := e.blockerItems(alice, acme.ID, plan); !reflect.DeepEqual(got, refused) {
+			t.Fatalf("plan page blockers for %s = %v, refusal = %v", plan, got, refused)
+		}
+		return refused
 	}
 	if got, want := refusal("pro"), map[string][]string{core.PreconditionMemberRoles: {vicItem}}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("Pro downgrade preconditions = %v, want %v", got, want)
@@ -720,6 +748,9 @@ func TestOrganizationDowngradeNamesPeopleE2E(t *testing.T) {
 	}
 	if _, err := e.st.Pool.Exec(ctx, `DELETE FROM tenant_invites WHERE tenant_id = $1`, acme.ID); err != nil {
 		t.Fatal(err)
+	}
+	if got := e.blockerItems(alice, acme.ID, "hobby"); len(got) != 0 {
+		t.Fatalf("plan page blockers with the Owner alone = %v", got)
 	}
 	if plan := e.ok(alice, fmt.Sprintf(`mutation { changeWorkspacePlan(id: %q, plan: "hobby") { plan } }`, acme.ID))["changeWorkspacePlan"].(map[string]any)["plan"]; plan != "hobby" {
 		t.Fatalf("Hobby downgrade with the Owner alone = %v", plan)

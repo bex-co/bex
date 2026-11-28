@@ -79,7 +79,7 @@ The dashboard's project page draws this page, with these differences:
 - **Unassigned.** bex keeps resources that are in a project but in no environment (Render requires an environment). They have a section of their own after the environments, `Unassigned`, while it has rows or a resource list failed to load, so none becomes unreachable. An old `?env=unassigned` link lands on it.
 - **Interim actions.** Until w1/m684, the switcher row's right holds bex's New Service link and Manage resources before Render's ••• menu (w1/m683), instead of Render's trailing New row; Move existing services opens Manage resources until w1/m685.
 - **Selection.** bex's env groups table keeps row selection, so an env group still moves with the section's Move toolbar (w4/564).
-- **Plan.** bex's environment limit is Hobby's two (ADR030); the paywall's Upgrade opens the change-plan dialog and Learn more opens bex's projects and environments docs.
+- **Plan.** bex's environment limit is Hobby's two (ADR030); the paywall's Upgrade opens Render's plan page on Pro, `/billing/update-plan?plan=professional&next=<page>` (w3/m708), and Learn more opens bex's projects and environments docs.
 - **Old links.** `?env=<id>` redirects to the environment's URL, and `?q=` and `?kind=` are dropped.
 
 ## What bex does (w1/m683)

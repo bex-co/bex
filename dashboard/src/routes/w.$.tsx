@@ -1,5 +1,9 @@
 import { useEffect } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import {
   redirectPreservingSuffix,
@@ -11,6 +15,14 @@ import {
   ResourceStatePage,
 } from "@/common/components/resource-not-found";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import {
+  UpdatePlanConfirmPageSkeleton,
+  UpdatePlanPageSkeleton,
+} from "@/features/workspaces/components/update-plan-skeletons";
+import {
+  AFTER_PLAN_UPDATE_BILLING,
+  validateUpdatePlanSearch,
+} from "@/features/workspaces/lib/update-plan";
 
 /**
  * Render's workspace-scoped URL scheme (w1/m45, live capture 2026-07-16 —
@@ -53,24 +65,58 @@ function landingFor(
   return "/workspace/settings";
 }
 
+/** Render's plan pages under a workspace's billing (w3/m708). */
+const PLAN_PAGES = {
+  "update-plan": "/billing/update-plan",
+  "update-plan-confirm": "/billing/update-plan-confirm",
+  "update-plan-preview": "/billing/update-plan-preview",
+} as const;
+
+/** The plan page `/w/<tea-id>/billing/<page>` names, if it names one. */
+function planPageFor(
+  sub: string | undefined,
+  page: string | undefined,
+): (typeof PLAN_PAGES)[keyof typeof PLAN_PAGES] | undefined {
+  return sub === "billing" &&
+    page !== undefined &&
+    Object.hasOwn(PLAN_PAGES, page)
+    ? PLAN_PAGES[page as keyof typeof PLAN_PAGES]
+    : undefined;
+}
+
 function WorkspaceAliasPage() {
   const { _splat } = Route.useParams();
   const navigate = useNavigate();
   const { workspaces, loading, currentWorkspaceId, setCurrentWorkspaceId } =
     useWorkspace();
 
-  const [teaId, sub] = splatParts(_splat);
+  const [teaId, sub, page] = splatParts(_splat);
   const isMember = workspaces.some((w) => w.id === teaId);
+  const planPage = planPageFor(sub, page);
+  const search = useRouterState({ select: (s) => s.location.search });
 
   useEffect(() => {
     if (loading || !isMember) return;
     if (teaId !== currentWorkspaceId) setCurrentWorkspaceId(teaId);
+    if (planPage) {
+      // The plan page keeps its query, and returns to Billing when it names
+      // no `next`, as Render's `/w/<id>/billing/update-plan` does.
+      void navigate({
+        to: planPage,
+        search: validateUpdatePlanSearch(search),
+        state: AFTER_PLAN_UPDATE_BILLING,
+        replace: true,
+      });
+      return;
+    }
     void navigate({ to: landingFor(sub), replace: true });
   }, [
     loading,
     isMember,
     teaId,
     sub,
+    planPage,
+    search,
     currentWorkspaceId,
     setCurrentWorkspaceId,
     navigate,
@@ -91,5 +137,16 @@ function WorkspaceAliasPage() {
   // resolves and while a member selection lands.
   const destination =
     sub === "billing" ? "billing" : sub === undefined ? "overview" : "settings";
-  return <WorkspaceAliasSkeleton destination={destination} />;
+  return (
+    <WorkspaceAliasSkeleton
+      destination={destination}
+      page={
+        planPage === "/billing/update-plan" ? (
+          <UpdatePlanPageSkeleton />
+        ) : planPage ? (
+          <UpdatePlanConfirmPageSkeleton />
+        ) : undefined
+      }
+    />
+  );
 }

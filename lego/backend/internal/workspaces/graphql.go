@@ -371,6 +371,9 @@ func (s *Service) workspaceGraphQLQuery() graphql.Fields {
 				return s.ResourceLimits(p.Context, p.Args["ownerId"].(string))
 			},
 		},
+		// workspacePlanChangeBlockers is the plan page's Plan selection errors
+		// (w3/m708).
+		"workspacePlanChangeBlockers": s.planChangeBlockersField(),
 		// workspaceLoginRequirementImpact is the enable confirmation's list
 		// (w7/m471): admin only, GraphQL-only like the setters.
 		"workspaceLoginRequirementImpact": loginRequirementImpactField("workspaceId",

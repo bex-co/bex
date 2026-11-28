@@ -76,7 +76,7 @@ describe("InviteMemberDialog", () => {
       ).toBeInTheDocument();
     });
 
-    it("the CTA routes to the plan section and opens the change-plan dialog", async () => {
+    it("the CTA opens Render's plan page on Pro, coming back here (w3/m708)", async () => {
       inviteState.planLimit =
         "The hobby plan is limited to 1 workspace member(s). Upgrade to invite more.";
       const user = userEvent.setup();
@@ -85,8 +85,8 @@ describe("InviteMemberDialog", () => {
       await user.click(screen.getByRole("button", { name: /Change plan/ }));
 
       expect(mockNavigate).toHaveBeenCalledWith({
-        to: "/workspace/settings",
-        search: { plan: "change" },
+        to: "/billing/update-plan",
+        search: { plan: "professional", next: "/" },
       });
     });
 

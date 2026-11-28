@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import {
   MAX_LABEL_LENGTH,
   isValidLabel,
@@ -28,8 +29,8 @@ import { WorkspaceAvatar } from "@/features/avatars/components/avatar";
 import { AvatarEditor } from "@/features/avatars/components/avatar-row";
 import { AvatarType } from "@/features/avatars/hooks/use-avatar-actions";
 import { workspaceMonogram } from "@/features/avatars/lib/avatar-utils";
-import { ChangePlanDialog } from "@/features/workspaces/components/change-plan-dialog";
 import { OrganizationPlanNote } from "@/features/workspaces/components/organization-plan-note";
+import { AFTER_PLAN_UPDATE_BILLING } from "@/features/workspaces/lib/update-plan";
 import {
   organizationPlanOwner,
   workspacePlanNameKey,
@@ -38,33 +39,20 @@ import {
 
 export interface WorkspaceDetailsCardProps {
   workspace: WorkspaceView;
-  /**
-   * Whether the change-plan dialog is open. Owned by the route, which keeps it
-   * in the URL (`/workspace/settings?plan=change`) — that's how the blocked-
-   * invite CTA opens it from another page (w6/m15/t001). Controlled rather than
-   * seeded at mount so the URL stays the single source of truth: closing the
-   * dialog clears the param instead of leaving it to re-open on the next visit.
-   */
-  changePlanOpen: boolean;
-  onChangePlanOpenChange: (open: boolean) => void;
 }
 
 /**
  * Workspace settings' primary card (w6/m3/t003, plan section w6/m12/t005):
- * rename, the plan as a badge with a change-plan dialog (upgrade/downgrade —
- * no payment step; Stripe payment-method onboarding remains deferred, .pm/w6/README.md "Not in
- * w6"), and the id/created-at metadata Render's own settings page shows
- * alongside the name.
+ * rename, the plan with Render's link to change it, and the id/created-at
+ * metadata Render's own settings page shows alongside the name. Change plan
+ * opens Render's plan page, `/billing/update-plan` (w3/m708), which returns to
+ * Billing as Render's Update Plan link does.
  *
  * A secondary workspace of an organization (w7/m464) has no plan of its own to
  * change: its plan is the org's, managed on the primary, so it shows that with
- * a link there instead of the change-plan link and dialog, as on Render.
+ * a link there instead of the change-plan link, as on Render.
  */
-export function WorkspaceDetailsCard({
-  workspace,
-  changePlanOpen,
-  onChangePlanOpenChange,
-}: WorkspaceDetailsCardProps) {
+export function WorkspaceDetailsCard({ workspace }: WorkspaceDetailsCardProps) {
   const { t } = useTranslations();
   const { rename, busy, error } = useRenameWorkspace();
   const { refetch, workspaces } = useWorkspace();
@@ -179,12 +167,13 @@ export function WorkspaceDetailsCard({
                 {planNameKey ? t(planNameKey) : workspace.plan}
               </span>
               {planOwner ? null : (
-                <Button
-                  variant="link"
-                  className="h-auto p-0"
-                  onClick={() => onChangePlanOpenChange(true)}
-                >
-                  {t("workspaces.changePlanTrigger")}
+                <Button variant="link" className="h-auto p-0" asChild>
+                  <Link
+                    to="/billing/update-plan"
+                    state={AFTER_PLAN_UPDATE_BILLING}
+                  >
+                    {t("workspaces.changePlanTrigger")}
+                  </Link>
                 </Button>
               )}
             </dd>
@@ -228,15 +217,6 @@ export function WorkspaceDetailsCard({
         </dl>
         {planOwner ? <OrganizationPlanNote owner={planOwner} /> : null}
       </CardContent>
-
-      {planOwner ? null : (
-        <ChangePlanDialog
-          workspace={workspace}
-          open={changePlanOpen}
-          onOpenChange={onChangePlanOpenChange}
-          onChanged={() => void refetch()}
-        />
-      )}
     </Card>
   );
 }

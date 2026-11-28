@@ -185,7 +185,7 @@ describe("FailureCallout", () => {
     expect(onRetried).toHaveBeenCalled();
   });
 
-  it("offers an Upgrade plan CTA (opening the change-plan dialog) on a capacity failure", async () => {
+  it("offers an Upgrade plan CTA (Render's plan page on Pro) on a capacity failure", async () => {
     const user = userEvent.setup();
     // The code decides, whatever the sentence beside it says (w5/m132).
     render(
@@ -207,9 +207,10 @@ describe("FailureCallout", () => {
     ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Upgrade plan" }));
+    // Render's plan page on Pro, coming back to the session (w3/m708).
     expect(navigate).toHaveBeenCalledWith({
-      to: "/workspace/settings",
-      search: { plan: "change" },
+      to: "/billing/update-plan",
+      search: { plan: "professional", next: "/" },
     });
     // Retry stays for the "freed a sandbox" case.
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();

@@ -4721,8 +4721,12 @@ export function ServiceRouteContentSkeleton({
 
 export function WorkspaceAliasSkeleton({
   destination,
+  page,
 }: {
   destination: "overview" | "billing" | "settings";
+  /** A destination page's own pending frame, drawn instead of the
+   *  destination's (Render's plan pages under billing, w3/m708). */
+  page?: React.ReactNode;
 }) {
   return (
     <PendingFrame
@@ -4730,7 +4734,9 @@ export function WorkspaceAliasSkeleton({
       className="flex min-h-0 flex-1 flex-col"
     >
       <Region name="destination-page" className="contents">
-        {destination === "billing" ? (
+        {page ? (
+          page
+        ) : destination === "billing" ? (
           <BillingPageSkeleton />
         ) : destination === "settings" ? (
           <WorkspaceSettingsPageSkeleton />

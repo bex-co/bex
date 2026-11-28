@@ -40,7 +40,12 @@ function renderCard() {
     path: "/",
     component: () => <GettingStartedCard />,
   });
-  const routes = ["/web/new", "/settings", "/workspace/settings"].map((path) =>
+  const routes = [
+    "/web/new",
+    "/settings",
+    "/workspace/settings",
+    "/billing/update-plan",
+  ].map((path) =>
     createRoute({
       getParentRoute: () => rootRoute,
       path,
@@ -106,8 +111,13 @@ describe("GettingStartedCard (ADR075 D2)", () => {
         name: "Upgrade your plan to invite teammates",
       }),
     );
-    expect(router.state.location.pathname).toBe("/workspace/settings");
-    expect(router.state.location.search).toEqual({ plan: "change" });
+    // Render's plan page on Pro, the plan with more seats, back home after
+    // (w3/m708).
+    expect(router.state.location.pathname).toBe("/billing/update-plan");
+    expect(router.state.location.search).toEqual({
+      plan: "professional",
+      next: "/",
+    });
   });
 
   it("keeps the invite step while a seat is free", async () => {

@@ -452,7 +452,7 @@ const koProjects: Record<string, TranslationEntry> = {
   "projects.environmentLimitUpgrade": {
     message: "업그레이드",
     description:
-      "The environments paywall's button to the workspace's change-plan dialog",
+      "The environments paywall's button to Render's plan page (w3/m708)",
   },
   "projects.environmentLimitLearnMore": {
     message: "자세히 알아보기",

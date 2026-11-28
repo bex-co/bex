@@ -69,12 +69,13 @@ beforeEach(() => {
 });
 
 describe("PlanCard", () => {
-  it("links a workspace that holds its own plan to the change-plan dialog", async () => {
+  // w3/m708: Render's plan page, which comes back to Billing.
+  it("links a workspace that holds its own plan to Render's plan page", async () => {
     await renderCard();
 
     expect(screen.getByRole("link", { name: "Change plan" })).toHaveAttribute(
       "href",
-      "/workspace/settings?plan=change",
+      "/billing/update-plan",
     );
     expect(
       screen.queryByTestId("organization-plan-note"),

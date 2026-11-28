@@ -28,7 +28,7 @@ import {
 
 export interface WorkspaceIPRulesCardProps {
   workspace: WorkspaceView;
-  /** Opens the change-plan dialog on this page (`?plan=change`). */
+  /** Opens Render's plan page on the plan that allows the setting (w3/m708). */
   onChangePlan: () => void;
 }
 

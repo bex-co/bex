@@ -244,16 +244,27 @@ const (
 	// PreconditionMemberLimit names, on a target plan with a member cap
 	// (Hobby seats one), every member and pending invite beyond it.
 	PreconditionMemberLimit = "member_limit"
+	// PreconditionServiceLimit and PreconditionWorkspaceLimit are the plan
+	// page's blockers for a plan's service cap and the cap on a person's
+	// workspaces of that plan (Hobby: 25 and 5); no org refusal carries them
+	// (w3/m708).
+	PreconditionServiceLimit   = "service_limit"
+	PreconditionWorkspaceLimit = "workspace_limit"
 )
 
 // DowngradePrecondition is one of Render's preconditions for downgrading an
-// org's primary below Scale that does not hold yet (ADR115 D6).
+// org's primary below Scale that does not hold yet (ADR115 D6), and the shape
+// of each blocker the plan page draws before a plan change (w3/m708).
 type DowngradePrecondition struct {
 	Kind string `json:"kind"`
 	// Items name what to clear: workspace names, "email:role" pairs (a
 	// member's sign-in subject only when no email resolves), or the
 	// resources with inbound IP rules.
 	Items []string `json:"items"`
+	// Limit is the target plan's own number the kind is about: its seats
+	// (member_limit), services (service_limit) or workspaces per person
+	// (workspace_limit); zero for the other kinds.
+	Limit int `json:"limit,omitempty"`
 }
 
 // NewOrganizationDowngradeBlockedError lists every unmet precondition.
@@ -261,7 +272,11 @@ func NewOrganizationDowngradeBlockedError(orgID, plan string, unmet []DowngradeP
 	pre := make([]map[string]any, 0, len(unmet))
 	kinds := make([]string, 0, len(unmet))
 	for _, p := range unmet {
-		pre = append(pre, map[string]any{"kind": p.Kind, "items": p.Items})
+		entry := map[string]any{"kind": p.Kind, "items": p.Items}
+		if p.Limit > 0 {
+			entry["limit"] = p.Limit
+		}
+		pre = append(pre, entry)
 		kinds = append(kinds, p.Kind)
 	}
 	return NewBadRequestError(CodeOrganizationDowngradeBlocked,
