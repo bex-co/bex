@@ -1035,34 +1035,39 @@ describe("service settings card heights per breakpoint", () => {
   );
 });
 
+type SettingsService = ComponentProps<
+  typeof ServiceSettingsSkeleton
+>["service"];
+
+/** The index-th card a Settings skeleton draws for a section. */
+function settingsCard(
+  service: SettingsService,
+  region: string,
+  index = 0,
+): Element | undefined {
+  const { container } = render(<ServiceSettingsSkeleton service={service} />);
+  return [
+    ...container.querySelectorAll(
+      `[data-skeleton-region="${region}"] > [data-slot="card"]`,
+    ),
+  ][index];
+}
+const imageSource = { repo: null, runtime: "image" };
+const nativeSource = {
+  repo: "https://github.com/example/app",
+  runtime: "node",
+  builder: "native",
+};
+const dockerSource = {
+  repo: "https://github.com/example/app",
+  runtime: "docker",
+  builder: "dockerfile",
+};
+
 // w3/104: the heights the ready cards measured in Chromium at 390 and 1440
 // for each service shape whose cards differ, so a shape cannot fall back to
 // another shape's card.
 describe("service settings card heights per service shape", () => {
-  function card(
-    service: ComponentProps<typeof ServiceSettingsSkeleton>["service"],
-    region: string,
-    index = 0,
-  ): Element | undefined {
-    const { container } = render(<ServiceSettingsSkeleton service={service} />);
-    return [
-      ...container.querySelectorAll(
-        `[data-skeleton-region="${region}"] > [data-slot="card"]`,
-      ),
-    ][index];
-  }
-  const image = { repo: null, runtime: "image" };
-  const native = {
-    repo: "https://github.com/example/app",
-    runtime: "node",
-    builder: "native",
-  };
-  const docker = {
-    repo: "https://github.com/example/app",
-    runtime: "docker",
-    builder: "dockerfile",
-  };
-
   it.each([
     [
       "a running web service",
@@ -1103,18 +1108,19 @@ describe("service settings card heights per service shape", () => {
       "sm:h-[134px]",
     ],
   ])("sizes %s's Suspend card", (_, shape, narrow, wide) => {
-    expect(card({ ...image, ...shape }, "suspend")).toHaveClass(narrow, wide);
+    expect(settingsCard({ ...imageSource, ...shape }, "suspend")).toHaveClass(
+      narrow,
+      wide,
+    );
   });
 
   it("sizes an image source's card below a repo's on a phone", () => {
-    expect(card({ type: "web_service", ...image }, "source")).toHaveClass(
-      "h-[168px]",
-      "sm:h-[148px]",
-    );
-    expect(card({ type: "web_service", ...native }, "source")).toHaveClass(
-      "h-[228px]",
-      "sm:h-[148px]",
-    );
+    expect(
+      settingsCard({ type: "web_service", ...imageSource }, "source"),
+    ).toHaveClass("h-[168px]", "sm:h-[148px]");
+    expect(
+      settingsCard({ type: "web_service", ...nativeSource }, "source"),
+    ).toHaveClass("h-[228px]", "sm:h-[148px]");
   });
 
   it.each([
@@ -1126,8 +1132,8 @@ describe("service settings card heights per service shape", () => {
     "sizes a %s image service's Deploy card (pre-deploy %s)",
     (plan, preDeployCommand, narrow, wide) => {
       expect(
-        card(
-          { type: "web_service", ...image, plan, preDeployCommand },
+        settingsCard(
+          { type: "web_service", ...imageSource, plan, preDeployCommand },
           "deploy",
         ),
       ).toHaveClass(narrow, wide);
@@ -1135,36 +1141,377 @@ describe("service settings card heights per service shape", () => {
   );
 
   it.each([
-    ["native", native, "starter", "h-[820px]", "sm:h-[642px]"],
-    ["native", native, "free", "h-[868px]", "sm:h-[670px]"],
-    ["Dockerfile", docker, "starter", "h-[822px]", "sm:h-[644px]"],
-    ["Dockerfile", docker, "free", "h-[870px]", "sm:h-[672px]"],
+    ["native", nativeSource, "starter", "h-[820px]", "sm:h-[642px]"],
+    ["native", nativeSource, "free", "h-[868px]", "sm:h-[670px]"],
+    ["Dockerfile", dockerSource, "starter", "h-[822px]", "sm:h-[644px]"],
+    ["Dockerfile", dockerSource, "free", "h-[870px]", "sm:h-[672px]"],
   ])(
     "sizes a %s build's Deploy card on a %s plan",
     (_, source, plan, narrow, wide) => {
       expect(
-        card({ type: "web_service", ...source, plan }, "build", 1),
+        settingsCard({ type: "web_service", ...source, plan }, "build", 1),
       ).toHaveClass(narrow, wide);
     },
   );
 
   it.each([
-    ["native", native, "h-[382px]", "sm:h-[326px]"],
-    ["Dockerfile", docker, "h-[384px]", "sm:h-[328px]"],
-    ["image", image, "h-[384px]", "sm:h-[328px]"],
+    ["native", nativeSource, "h-[382px]", "sm:h-[326px]"],
+    ["Dockerfile", dockerSource, "h-[384px]", "sm:h-[328px]"],
+    ["image", imageSource, "h-[384px]", "sm:h-[328px]"],
   ])("sizes a %s cron job's Deploy card", (_, source, narrow, wide) => {
-    expect(card({ type: "cron_job", ...source }, "deploy")).toHaveClass(
+    expect(settingsCard({ type: "cron_job", ...source }, "deploy")).toHaveClass(
       narrow,
       wide,
     );
   });
 
   it("sizes a cron job's lone Build card, the same for every build", () => {
-    for (const source of [native, docker]) {
-      expect(card({ type: "cron_job", ...source }, "build")).toHaveClass(
-        "h-[898px]",
-        "sm:h-[680px]",
-      );
+    for (const source of [nativeSource, dockerSource]) {
+      expect(
+        settingsCard({ type: "cron_job", ...source }, "build"),
+      ).toHaveClass("h-[898px]", "sm:h-[680px]");
     }
+  });
+});
+
+// w3/123: from lg a coarse pointer keeps the touch region's 44px controls, and
+// a card whose hint wraps a line more in the narrower desktop column (720px at
+// 1024, 696px at 1280) steps up below the width it wraps at. Measured in
+// Chromium with and without `hasTouch` at 1024, 1280 and 1440 for the shapes
+// w3/104 measured: every pending card then equals its ready card.
+describe("service settings card heights with a coarse pointer", () => {
+  const web = { type: "web_service", plan: "starter", ...nativeSource };
+  const staticSite = { type: "static_site", ...nativeSource };
+
+  it.each<[string, SettingsService, string, number, string[]]>([
+    // General: each row's control, and Region's hint below a 738px column.
+    [
+      "a web service's General",
+      web,
+      "general",
+      0,
+      ["sm:h-[434px]", "lg:pointer-coarse:h-[450px]"],
+    ],
+    [
+      "a web service's General with a region",
+      { ...web, region: "fsn1" },
+      "general",
+      0,
+      [
+        "sm:h-[546px]",
+        "lg:pointer-coarse:h-[570px]",
+        "lg:@max-[738px]:h-[566px]",
+        "lg:@max-[738px]:pointer-coarse:h-[590px]",
+      ],
+    ],
+    [
+      "a free web service's General",
+      { ...web, plan: "free" },
+      "general",
+      0,
+      ["sm:h-[474px]", "lg:pointer-coarse:h-[490px]"],
+    ],
+    [
+      "a free web service's General with a region",
+      { ...web, plan: "free", region: "fsn1" },
+      "general",
+      0,
+      [
+        "sm:h-[586px]",
+        "lg:pointer-coarse:h-[610px]",
+        "lg:@max-[738px]:h-[606px]",
+        "lg:@max-[738px]:pointer-coarse:h-[630px]",
+      ],
+    ],
+    [
+      "a worker's General",
+      { type: "background_worker", ...imageSource },
+      "general",
+      0,
+      ["sm:h-[366px]", "lg:pointer-coarse:h-[382px]"],
+    ],
+    [
+      "a worker's General with a region",
+      { type: "background_worker", ...nativeSource, region: "fsn1" },
+      "general",
+      0,
+      [
+        "sm:h-[478px]",
+        "lg:pointer-coarse:h-[502px]",
+        "lg:@max-[738px]:h-[498px]",
+        "lg:@max-[738px]:pointer-coarse:h-[522px]",
+      ],
+    ],
+    [
+      "a cron job's General",
+      { type: "cron_job", ...imageSource },
+      "general",
+      0,
+      ["sm:h-[186px]", "lg:pointer-coarse:h-[194px]"],
+    ],
+    [
+      "a cron job's General with a region",
+      { type: "cron_job", ...imageSource, region: "fsn1" },
+      "general",
+      0,
+      [
+        "sm:h-[298px]",
+        "lg:pointer-coarse:h-[314px]",
+        "lg:@max-[738px]:h-[318px]",
+        "lg:@max-[738px]:pointer-coarse:h-[334px]",
+      ],
+    ],
+    [
+      "a static site's General",
+      staticSite,
+      "general",
+      0,
+      ["sm:h-[186px]", "lg:pointer-coarse:h-[194px]"],
+    ],
+    // Deploy and Build, with each Build card's Root Directory hint below a
+    // 750px column.
+    [
+      "an image service's Deploy",
+      { type: "web_service", plan: "starter", ...imageSource },
+      "deploy",
+      0,
+      ["sm:h-[530px]", "lg:pointer-coarse:h-[562px]"],
+    ],
+    [
+      "a free image service's Deploy",
+      { type: "web_service", plan: "free", ...imageSource },
+      "deploy",
+      0,
+      ["sm:h-[558px]", "lg:pointer-coarse:h-[590px]"],
+    ],
+    [
+      "a native cron job's Deploy",
+      { type: "cron_job", ...nativeSource },
+      "deploy",
+      0,
+      ["sm:h-[326px]", "lg:pointer-coarse:h-[342px]"],
+    ],
+    [
+      "an image cron job's Deploy",
+      { type: "cron_job", ...imageSource },
+      "deploy",
+      0,
+      ["sm:h-[328px]", "lg:pointer-coarse:h-[344px]"],
+    ],
+    [
+      "a cron job's Build",
+      { type: "cron_job", ...dockerSource },
+      "build",
+      0,
+      [
+        "sm:h-[680px]",
+        "lg:pointer-coarse:h-[726px]",
+        "lg:@max-[750px]:h-[700px]",
+        "lg:@max-[750px]:pointer-coarse:h-[746px]",
+      ],
+    ],
+    [
+      "a native build's Build",
+      web,
+      "build",
+      0,
+      [
+        "sm:h-[680px]",
+        "lg:pointer-coarse:h-[728px]",
+        "lg:@max-[750px]:h-[700px]",
+        "lg:@max-[750px]:pointer-coarse:h-[748px]",
+      ],
+    ],
+    [
+      "a native build's Deploy",
+      web,
+      "build",
+      1,
+      ["sm:h-[642px]", "lg:pointer-coarse:h-[680px]"],
+    ],
+    [
+      "a free native build's Deploy",
+      { ...web, plan: "free" },
+      "build",
+      1,
+      ["sm:h-[670px]", "lg:pointer-coarse:h-[708px]"],
+    ],
+    [
+      "a Dockerfile build's Build",
+      { ...web, ...dockerSource },
+      "build",
+      0,
+      [
+        "sm:h-[794px]",
+        "lg:pointer-coarse:h-[850px]",
+        "lg:@max-[750px]:h-[814px]",
+        "lg:@max-[750px]:pointer-coarse:h-[870px]",
+      ],
+    ],
+    [
+      "a Dockerfile build's Deploy",
+      { ...web, ...dockerSource },
+      "build",
+      1,
+      ["sm:h-[644px]", "lg:pointer-coarse:h-[682px]"],
+    ],
+    [
+      "a free Dockerfile build's Deploy",
+      { ...web, ...dockerSource, plan: "free" },
+      "build",
+      1,
+      ["sm:h-[672px]", "lg:pointer-coarse:h-[710px]"],
+    ],
+    [
+      "a static site's Deploy",
+      staticSite,
+      "build",
+      1,
+      ["sm:h-[416px]", "lg:pointer-coarse:h-[438px]"],
+    ],
+    [
+      "a static site's publish directory card",
+      staticSite,
+      "static-site",
+      0,
+      [
+        "sm:h-[238px]",
+        "lg:pointer-coarse:h-[246px]",
+        "lg:@max-[722px]:h-[258px]",
+        "lg:@max-[722px]:pointer-coarse:h-[266px]",
+      ],
+    ],
+    [
+      "Runtime",
+      web,
+      "runtime",
+      0,
+      ["lg:h-[210px]", "lg:pointer-coarse:h-[222px]"],
+    ],
+    [
+      "the Registry credential",
+      { type: "background_worker", ...imageSource },
+      "registry-credential",
+      0,
+      ["sm:h-[256px]", "lg:pointer-coarse:h-[272px]"],
+    ],
+    [
+      "Notifications",
+      web,
+      "notifications",
+      0,
+      ["sm:h-[208px]", "lg:pointer-coarse:h-[214px]"],
+    ],
+    ["Port", web, "port", 0, ["sm:h-[226px]", "lg:pointer-coarse:h-[234px]"]],
+    [
+      "Health Checks",
+      web,
+      "health-checks",
+      0,
+      ["sm:h-[246px]", "lg:pointer-coarse:h-[254px]"],
+    ],
+    [
+      "Edge Caching",
+      web,
+      "edge-caching",
+      0,
+      ["lg:h-[436px]", "lg:pointer-coarse:h-[448px]"],
+    ],
+    [
+      "Maintenance",
+      web,
+      "maintenance",
+      0,
+      ["sm:h-[286px]", "lg:pointer-coarse:h-[294px]"],
+    ],
+    [
+      "a cron job's Deploy Hook",
+      { type: "cron_job", ...imageSource },
+      "deploy-hook",
+      0,
+      ["sm:h-[222px]", "lg:pointer-coarse:h-[238px]"],
+    ],
+    // Suspend and Danger Zone: their button.
+    [
+      "a running web service's Suspend",
+      web,
+      "suspend",
+      0,
+      ["sm:h-[154px]", "lg:pointer-coarse:h-[162px]"],
+    ],
+    [
+      "a running cron job's Suspend",
+      { type: "cron_job", ...imageSource },
+      "suspend",
+      0,
+      ["sm:h-[154px]", "lg:pointer-coarse:h-[162px]"],
+    ],
+    [
+      "a running worker's Suspend",
+      { type: "background_worker", ...imageSource },
+      "suspend",
+      0,
+      ["sm:h-[134px]", "lg:pointer-coarse:h-[142px]"],
+    ],
+    [
+      "a suspended web service's Suspend",
+      { ...web, suspended: true },
+      "suspend",
+      0,
+      ["sm:h-[134px]", "lg:pointer-coarse:h-[142px]"],
+    ],
+    [
+      "a suspended cron job's Suspend",
+      { type: "cron_job", ...imageSource, suspended: true },
+      "suspend",
+      0,
+      ["sm:h-[134px]", "lg:pointer-coarse:h-[142px]"],
+    ],
+    [
+      "the Danger Zone",
+      web,
+      "danger-zone",
+      0,
+      ["sm:h-[134px]", "lg:pointer-coarse:h-[142px]"],
+    ],
+  ])(
+    "reserves the touch height of %s",
+    (_, service, region, index, classes) => {
+      expect(settingsCard(service, region, index)).toHaveClass(...classes);
+    },
+  );
+
+  it("leaves the Domains card's height alone: nothing in it grows", () => {
+    expect(settingsCard(web, "domains")?.className).not.toContain(
+      "pointer-coarse:",
+    );
+  });
+
+  // A phone with a coarse pointer already has the touch-size controls in its
+  // own height, and a desktop column is only narrower from lg: an ungated
+  // coarse or column step would override the phone's height.
+  it.each<[string, SettingsService]>([
+    ["web service", { ...web, region: "fsn1" }],
+    ["Dockerfile web service", { ...web, ...dockerSource, plan: "free" }],
+    [
+      "image web service",
+      { type: "web_service", plan: "free", ...imageSource },
+    ],
+    ["worker", { type: "background_worker", ...imageSource, region: "fsn1" }],
+    ["cron job", { type: "cron_job", ...dockerSource, region: "fsn1" }],
+    ["static site", staticSite],
+  ])("gates every coarse and column step of a %s at lg", (_, service) => {
+    const { container } = render(<ServiceSettingsSkeleton service={service} />);
+    const steps = [
+      ...container.querySelectorAll(
+        '[data-skeleton-region] > [data-slot="card"]',
+      ),
+    ].flatMap((card) =>
+      [...card.classList].filter(
+        (name) => name.includes("pointer-coarse:") || name.includes("@max-"),
+      ),
+    );
+    expect(steps.length).toBeGreaterThan(0);
+    for (const step of steps) expect(step).toMatch(/^lg:/);
   });
 });

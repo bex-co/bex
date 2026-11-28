@@ -3570,6 +3570,15 @@ type SettingsSkeletonService = SettingsSectionsService & {
 // stored registry credential. The classes are literal so Tailwind sees them;
 // the skeleton rows inside are clipped to the card. Networking is drawn
 // structurally instead (ServiceNetworkingCardSkeleton, w4/m710).
+//
+// From lg, a coarse pointer (a tablet or a touch laptop) keeps the 44px
+// controls the project's touch region gives every width below lg, so a card
+// with buttons, inputs or selects reserves their touch height there too
+// (`lg:pointer-coarse:`, w3/123). A card whose hint wraps one more line in the
+// narrower desktop column (720px at 1024, 696px at 1280, against 768px at
+// 1440) steps up below the width it wraps at, read from the content column it
+// sits in (`lg:@max-[…]:`, the column is a container), for either pointer.
+// Measured in Chromium with and without `hasTouch` at 1024, 1280 and 1440.
 type PlainSettingsSection =
   | "static-site"
   | "domains"
@@ -3584,14 +3593,39 @@ const SETTINGS_CARD: Record<
   PlainSettingsSection,
   { fields: number; height: string }
 > = {
-  "static-site": { fields: 2, height: "h-[350px] sm:h-[238px]" },
+  // The publish directory's hint wraps a line more below a 722px column.
+  "static-site": {
+    fields: 2,
+    height:
+      "h-[350px] sm:h-[238px] lg:pointer-coarse:h-[246px] lg:@max-[722px]:h-[258px] lg:@max-[722px]:pointer-coarse:h-[266px]",
+  },
+  // A 44px Add Custom Domain still fits beside the 46px title and
+  // description, and a switch keeps its drawn size.
   domains: { fields: 2, height: "h-[637px] sm:h-[473px]" },
-  "registry-credential": { fields: 1, height: "h-[292px] sm:h-[256px]" },
-  notifications: { fields: 1, height: "h-[268px] sm:h-[208px]" },
-  port: { fields: 1, height: "h-[294px] sm:h-[226px]" },
-  "health-checks": { fields: 1, height: "h-[354px] sm:h-[246px]" },
-  maintenance: { fields: 2, height: "h-[354px] sm:h-[286px]" },
-  "deploy-hook": { fields: 1, height: "h-[278px] sm:h-[222px]" },
+  "registry-credential": {
+    fields: 1,
+    height: "h-[292px] sm:h-[256px] lg:pointer-coarse:h-[272px]",
+  },
+  notifications: {
+    fields: 1,
+    height: "h-[268px] sm:h-[208px] lg:pointer-coarse:h-[214px]",
+  },
+  port: {
+    fields: 1,
+    height: "h-[294px] sm:h-[226px] lg:pointer-coarse:h-[234px]",
+  },
+  "health-checks": {
+    fields: 1,
+    height: "h-[354px] sm:h-[246px] lg:pointer-coarse:h-[254px]",
+  },
+  maintenance: {
+    fields: 2,
+    height: "h-[354px] sm:h-[286px] lg:pointer-coarse:h-[294px]",
+  },
+  "deploy-hook": {
+    fields: 1,
+    height: "h-[278px] sm:h-[222px] lg:pointer-coarse:h-[238px]",
+  },
 };
 
 /**
@@ -3652,23 +3686,32 @@ function isPlainSettingsSection(
  * service's select, a paid one's shorter always-on notice), the max shutdown
  * delay (web, private, worker) and Region when the install sets one. Region is
  * 136px at narrow mobile and 88px at desktop plus a 24px gap; a static site
- * never shows it.
+ * never shows it. Region's hint wraps a line more below a 738px column, and
+ * each row's control takes 8px more with a coarse pointer.
  */
 function generalHeight(service: SettingsSkeletonService): string {
   const region = Boolean(service.region) && !isStaticSiteType(service.type);
   switch (service.type) {
     case "web_service":
       if (!planSleeps(service.plan ?? null)) {
-        return region ? "h-[722px] sm:h-[546px]" : "h-[562px] sm:h-[434px]";
+        return region
+          ? "h-[722px] sm:h-[546px] lg:pointer-coarse:h-[570px] lg:@max-[738px]:h-[566px] lg:@max-[738px]:pointer-coarse:h-[590px]"
+          : "h-[562px] sm:h-[434px] lg:pointer-coarse:h-[450px]";
       }
-      return region ? "h-[858px] sm:h-[586px]" : "h-[698px] sm:h-[474px]";
+      return region
+        ? "h-[858px] sm:h-[586px] lg:pointer-coarse:h-[610px] lg:@max-[738px]:h-[606px] lg:@max-[738px]:pointer-coarse:h-[630px]"
+        : "h-[698px] sm:h-[474px] lg:pointer-coarse:h-[490px]";
     case "cron_job":
       // Name and Region only: the plan is the Compute section (w3/m554).
-      return region ? "h-[414px] sm:h-[298px]" : "h-[254px] sm:h-[186px]";
+      return region
+        ? "h-[414px] sm:h-[298px] lg:pointer-coarse:h-[314px] lg:@max-[738px]:h-[318px] lg:@max-[738px]:pointer-coarse:h-[334px]"
+        : "h-[254px] sm:h-[186px] lg:pointer-coarse:h-[194px]";
     case "static_site":
-      return "h-[254px] sm:h-[186px]";
+      return "h-[254px] sm:h-[186px] lg:pointer-coarse:h-[194px]";
     default:
-      return region ? "h-[654px] sm:h-[478px]" : "h-[494px] sm:h-[366px]";
+      return region
+        ? "h-[654px] sm:h-[478px] lg:pointer-coarse:h-[502px] lg:@max-[738px]:h-[498px] lg:@max-[738px]:pointer-coarse:h-[522px]"
+        : "h-[494px] sm:h-[366px] lg:pointer-coarse:h-[382px]";
   }
 }
 
@@ -3687,15 +3730,22 @@ function generalRows(service: SettingsSkeletonService): number {
  * Suspend's height: a running publicly routed service's card says what its
  * visitors will see, and a running cron job's what happens to an active run,
  * both a line longer at desktop than a worker's; a suspended service's card
- * offers Resume, which a cron job words more briefly.
+ * offers Resume, which a cron job words more briefly. Its button takes 8px
+ * more with a coarse pointer.
  */
 function suspendHeight(service: SettingsSkeletonService): string {
   const cron = isCronType(service.type);
   if (service.suspended) {
-    return cron ? "h-[142px] sm:h-[134px]" : "h-[162px] sm:h-[134px]";
+    return cron
+      ? "h-[142px] sm:h-[134px] lg:pointer-coarse:h-[142px]"
+      : "h-[162px] sm:h-[134px] lg:pointer-coarse:h-[142px]";
   }
-  if (publiclyRoutable(service.type)) return "h-[202px] sm:h-[154px]";
-  return cron ? "h-[182px] sm:h-[154px]" : "h-[182px] sm:h-[134px]";
+  if (publiclyRoutable(service.type)) {
+    return "h-[202px] sm:h-[154px] lg:pointer-coarse:h-[162px]";
+  }
+  return cron
+    ? "h-[182px] sm:h-[154px] lg:pointer-coarse:h-[162px]"
+    : "h-[182px] sm:h-[134px] lg:pointer-coarse:h-[142px]";
 }
 
 /**
@@ -3711,11 +3761,17 @@ function deployCardHeight(
   const paidOnly = service.plan === "free" && !service.preDeployCommand;
   switch (kind) {
     case "image":
-      return paidOnly ? "h-[730px] sm:h-[558px]" : "h-[682px] sm:h-[530px]";
+      return paidOnly
+        ? "h-[730px] sm:h-[558px] lg:pointer-coarse:h-[590px]"
+        : "h-[682px] sm:h-[530px] lg:pointer-coarse:h-[562px]";
     case "docker":
-      return paidOnly ? "h-[870px] sm:h-[672px]" : "h-[822px] sm:h-[644px]";
+      return paidOnly
+        ? "h-[870px] sm:h-[672px] lg:pointer-coarse:h-[710px]"
+        : "h-[822px] sm:h-[644px] lg:pointer-coarse:h-[682px]";
     case "native":
-      return paidOnly ? "h-[868px] sm:h-[670px]" : "h-[820px] sm:h-[642px]";
+      return paidOnly
+        ? "h-[868px] sm:h-[670px] lg:pointer-coarse:h-[708px]"
+        : "h-[820px] sm:h-[642px] lg:pointer-coarse:h-[680px]";
   }
 }
 
@@ -3814,8 +3870,8 @@ export function SettingsSectionSkeleton({
           fields={2}
           className={
             isNativeRuntime(service.runtime)
-              ? "h-[382px] sm:h-[326px]"
-              : "h-[384px] sm:h-[328px]"
+              ? "h-[382px] sm:h-[326px] lg:pointer-coarse:h-[342px]"
+              : "h-[384px] sm:h-[328px] lg:pointer-coarse:h-[344px]"
           }
         />
       ) : (
@@ -3829,11 +3885,12 @@ export function SettingsSectionSkeleton({
       // Chromium (en): the select drops below the note under sm (318px at
       // 390), sits beside it from sm (222px), the md sidebar narrows the card
       // so the note wraps once more (242px at 768), and from lg its controls
-      // drop to their desktop height (210px at 1024 through 1440).
+      // drop to their desktop height (210px at 1024 through 1440), unless the
+      // pointer is coarse (222px).
       return (
         <SettingsFormCardSkeleton
           fields={1}
-          className="h-[318px] sm:h-[222px] md:h-[242px] lg:h-[210px]"
+          className="h-[318px] sm:h-[222px] md:h-[242px] lg:h-[210px] lg:pointer-coarse:h-[222px]"
         />
       );
     case "build": {
@@ -3842,12 +3899,13 @@ export function SettingsSectionSkeleton({
       // Every other build shows Build and Deploy cards; a Dockerfile build
       // shows Dockerfile Path and Docker Build Context Directory where a
       // native one shows a Build Command (w8/m128): +122px below sm, +114px
-      // from sm.
+      // from sm. Each Build card's Root Directory hint wraps a line more
+      // below a 750px column.
       if (isCronType(type)) {
         return (
           <SettingsFormCardSkeleton
             fields={4}
-            className="h-[898px] sm:h-[680px]"
+            className="h-[898px] sm:h-[680px] lg:pointer-coarse:h-[726px] lg:@max-[750px]:h-[700px] lg:@max-[750px]:pointer-coarse:h-[746px]"
           />
         );
       }
@@ -3857,13 +3915,15 @@ export function SettingsSectionSkeleton({
           <SettingsFormCardSkeleton
             fields={docker ? 8 : 7}
             className={
-              docker ? "h-[1042px] sm:h-[794px]" : "h-[920px] sm:h-[680px]"
+              docker
+                ? "h-[1042px] sm:h-[794px] lg:pointer-coarse:h-[850px] lg:@max-[750px]:h-[814px] lg:@max-[750px]:pointer-coarse:h-[870px]"
+                : "h-[920px] sm:h-[680px] lg:pointer-coarse:h-[728px] lg:@max-[750px]:h-[700px] lg:@max-[750px]:pointer-coarse:h-[748px]"
             }
           />
           {isStaticSiteType(type) ? (
             <SettingsFormCardSkeleton
               fields={2}
-              className="h-[538px] sm:h-[416px]"
+              className="h-[538px] sm:h-[416px] lg:pointer-coarse:h-[438px]"
             />
           ) : (
             <SettingsFormCardSkeleton
@@ -3881,20 +3941,22 @@ export function SettingsSectionSkeleton({
       // Three option cards, a note and Save/Purge. Measured in Chromium (en):
       // 532px at 390 (552px when a free plan's unavailable note wraps), 468px
       // at sm, 500px at md while the sidebar narrows the card, and 436px from
-      // lg through 1440.
+      // lg through 1440 (448px with a coarse pointer).
       return (
         <SettingsFormCardSkeleton
           fields={3}
           className={cn(
             service.plan === "free" ? "h-[552px]" : "h-[532px]",
-            "sm:h-[468px] md:h-[500px] lg:h-[436px]",
+            "sm:h-[468px] md:h-[500px] lg:h-[436px] lg:pointer-coarse:h-[448px]",
           )}
         />
       );
     case "suspend":
       return <SettingsActionCardSkeleton className={suspendHeight(service)} />;
     case "danger-zone":
-      return <SettingsActionCardSkeleton className="h-[162px] sm:h-[134px]" />;
+      return (
+        <SettingsActionCardSkeleton className="h-[162px] sm:h-[134px] lg:pointer-coarse:h-[142px]" />
+      );
     default: {
       const unrendered: never = section;
       return unrendered;
