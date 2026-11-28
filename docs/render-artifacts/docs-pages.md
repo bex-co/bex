@@ -203,7 +203,7 @@ A page makes many claims. For a page read in full, the disposition is the weakes
 | [`hipaa-compliance`](https://render.com/docs/hipaa-compliance) | gap | HIPAA-enabled workspaces, the BAA flow and the 20% fee are `w7/071`, parked on the user's call | `8a0396f32a1d` |
 | [`hipaa-best-practices`](https://render.com/docs/hipaa-best-practices) | gap | HIPAA workspaces are `w7/071`; roles, audit logs, the private network, PITR and encrypted disks and backups match (ADR018 § Identity, workspaces & account: Audit logs; [ADR082](../ADR082-persistent-disks.md) D3); new Postgres and Key Value volumes are encrypted at rest (ADR018 § Managed Postgres and § Other datastores & storage: Encryption at rest); moving existing ones and the registry's images is `w4/m714` | `8a2504d7bbc0` |
 | [`shared-responsibility-model`](https://render.com/docs/shared-responsibility-model) | gap | the page itself is `w4/748`, security advisories `w4/749`; the platform duties it lists are done (runtime patching, the private network, status.bex.co), DDoS protection is `w21/126` | `41819dbff1bc` |
-| [`penetration-testing`](https://render.com/docs/penetration-testing) | gap | a published testing policy and `SECURITY.md` are `w4/748`; `bex.co/.well-known/security.txt` names a contact; DDoS protection is `w21/126` | `943b19cbecf8` |
+| [`penetration-testing`](https://render.com/docs/penetration-testing) | gap | the published testing policy is `w4/748`, parked on the user's approval and a push to the docs site; reports go to GitHub private vulnerability reporting or the `bex.co/.well-known/security.txt` contact, as [`SECURITY.md`](../../SECURITY.md) says; DDoS protection is `w21/126` | `943b19cbecf8` |
 
 ### Compare
 

@@ -216,10 +216,11 @@ bex is a working public alpha with a live, production-shaped architecture and br
 - [Architecture and trust boundaries](docs/ADR002-architecture.md)
 - [CLI compatibility checklist](docs/cli-compatibility-checklist.md)
 - [Contributing guide](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
 
 ## Help build the open cloud
 
-If you want a PaaS that agents can operate and developers can own, [star the repository](https://github.com/bex-co/bex), try the local cluster, and tell us where the experience breaks. Issues and pull requests are welcome; agent-authored contributions are welcome when the author has reviewed the diff and the tests pass.
+If you want a PaaS that agents can operate and developers can own, [star the repository](https://github.com/bex-co/bex), try the local cluster, and tell us where the experience breaks. Issues and pull requests are welcome; agent-authored contributions are welcome when the author has reviewed the diff and the tests pass. Report a security issue privately, as [SECURITY.md](SECURITY.md) describes, never in a public issue.
 
 Apache-2.0 licensed. See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
 
