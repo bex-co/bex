@@ -1,6 +1,6 @@
 # w3 · m706 — A dead resource link shows Render's "not found" or "deleted" page in place
 
-**Worker:** worker3 **Goal:** a dashboard URL naming a resource that does not exist, or no longer exists, keeps its URL and draws Render's page in place ("`<Label>` not found" or "`<Label>` deleted", the id, Go to project when known, Return home), with Render's separate no-access and load-error states, instead of a toast and a redirect home. **Status:** blocked (pin must carry `bc89ee1158`; t001–t006 and t008–t010 done; t007's production walk on pin `7d1dce861173` found two tab-title gaps and the bare dead service URL's landing, fixed in `bc89ee1158`; their production re-check and t011 left)
+**Worker:** worker3 **Goal:** a dashboard URL naming a resource that does not exist, or no longer exists, keeps its URL and draws Render's page in place ("`<Label>` not found" or "`<Label>` deleted", the id, Go to project when known, Return home), with Render's separate no-access and load-error states, instead of a toast and a redirect home. **Status:** done (2026-11-28: walked locally on dev-3, on production pin `7d1dce861173`, and re-checked on pin `45b1e8ec4f09`, which carries the walk's fix `bc89ee1158`)
 
 ## Tasks (in order)
 
@@ -12,11 +12,11 @@
 | [t004](done/t004.md) | Every `useNotFoundRedirect` call site draws the page in place; a dead deploy or build reads Render's "for `<service>`" with View deploys — **DONE** | 1h30m | t002 |
 | [t005](done/t005.md) | A resource in a workspace the user cannot see shows Render's no-access state, and a failed load its error state — **DONE** | 45m | t004 |
 | [t006](done/t006.md) | ADR018 records dead resource links, and w9/m55's redirect is marked superseded — **DONE** | 20m | t004 |
-| [t007](t007.md) | Walk every resource type in a real browser at 1440 and 390, pending and ready, locally and on production | 45m | t003, t005, t006 |
+| [t007](done/t007.md) | Walk every resource type in a real browser at 1440 and 390, pending and ready, locally and on production — **DONE** | 45m | t003, t005, t006 |
 | [t008](done/t008.md) | Render parity — **DONE** | 25m | t007 |
 | [t009](done/t009.md) | Simplify — **DONE** | 15m | t008 |
 | [t010](done/t010.md) | Test coverage — **DONE** | 45m | t008 |
-| [t011](t011.md) | Closeout | 10m | t009, t010 |
+| [t011](done/t011.md) | Closeout — **DONE** | 10m | t009, t010 |
 
 Total: **11 tasks, about 7h10m**.
 
@@ -46,7 +46,7 @@ Recorded 2026-11-27 (t001–t006, t008–t010). The capture is [resource-not-fou
 - **No access:** bex-api answers a resource in a workspace the caller is not in with `FORBIDDEN`, which Apollo caches as a bare null, so the route loaders gained a `forbidden` state (`routeResourceFailure`) that the pages honor. `/w/<tea-id>` for a workspace the caller is not in draws Access denied with the id.
 - **Own delete:** `resourceReadState` stands down on not found while a dashboard delete is in flight or just done (w4/645), and the service layout keeps its own delete flag (w4/340).
 - **Follow-ups:** w3/158 (Render's join hint and Join workspace), w3/159 (Render's own not-found at `/resource/<id>`).
-- **Fixed after the production walk** (2026-11-28, `bc89ee1158`): the state now claims the tab's title back while the URL is still its own, and hands back the title it replaced only if nothing has claimed the tab since and the URL has not moved on. The bare `/services/<id>` (`redirectServiceRootByType`) lands a live service on its primary tab as before, and keeps the URL of an id the read finds nothing for. The walk's follow-ups are w3/170 (the sidebar blanks for a frame as a page hydrates), w3/171 (a dead deploy, build or `/w/` link paints the live page's skeleton first, and the server's title for a state is not the drawn one) and w3/172 (a dead project's sidebar keeps its nav).
+- **Fixed after the production walk** (2026-11-28, `bc89ee1158`): the state now claims the tab's title back while the URL is still its own, and hands back the title it replaced only if nothing has claimed the tab since and the URL has not moved on. The bare `/services/<id>` (`redirectServiceRootByType`) lands a live service on its primary tab as before, and keeps the URL of an id the read finds nothing for. The walk's follow-ups are w3/170 (the sidebar blanks for a frame as a page hydrates), w3/171 (a dead deploy, build or `/w/` link paints the live page's skeleton first, and the server's title for a state is not the drawn one) and w3/172 (a dead project's sidebar keeps its nav). The re-check filed w3/174 (every client navigation empties the tab's title for a moment, live pages included).
 
 ## Walk
 
@@ -64,7 +64,17 @@ Recorded 2026-11-27 (t001–t006, t008–t010). The capture is [resource-not-fou
 - **Observed, filed:** the sidebar blanks for one frame as every resource page hydrates, live ones included (w3/170, the m705 walk's "empty sidebar in the loading frame"), and a dead project's sidebar keeps its nav (w3/172).
 - **Cleanup:** every resource above was deleted and answers 404, the run key was revoked, and the QA session was logged out.
 
-**Next, once a pin carries `bc89ee1158`** (t007 step 3): as the QA user in `bex-canary`, at 1440 and 390, with resources created for the walk (disposable), check that Return home, Go to Webhooks and Go to project leave the destination's own tab title, that a sandbox group or service deleted elsewhere and re-opened by client navigation keeps "… deleted" in its tab, and that `/services/<dead id>` stays at its URL drawing "Service not found". Record the pin and the results here, delete what was created, and run t011.
+**Production re-check, 2026-11-28** (t007 step 3). Pin `45b1e8ec4f09` (`8da265c1e0`, which carries `bc89ee1158`): the `dashboard` pod ran `bex-dashboard@sha256:9a87940589e2…` and both `bex-api` pods `bex-operator@sha256:e5ff553ab838…`, the pin's digests, read through the admin kubeconfig before the walk. Walked 06:20–06:35Z as the QA user (`scripts/qa-login.sh`) in `bex-canary` (`tea-daif693dqjvc73e7as3g`) with a run-minted API key, in a headless Chromium of its own through `playwright-core`, `en-US`, at 1440×900 and 390×844, tracing `document.title`, the path and the drawn state on every animation frame. Created for the walk through REST (disposable): project `qa-20261128-m706r-prj` with a Production environment, free image web services `qa-20261128-m706r-srv` and `-srv2` in it, sandbox group `qa-20261128-m706r-sbg` in that environment, and webhook `qa-20261128-m706r-whk`. Each "own title" below is what a fresh full load of the destination reads. All three checks held at both widths, with no toast, no redirect home and no sideways scroll:
+
+- **Leaving a state keeps the destination's title:** Return home from "Service not found" (`/services/<mistyped>/deploys`), "Page not found" (`/databases/<mistyped>`) and "Sandbox group not found" ended on "Overview ・ bex Dashboard", home's own. Go to Webhooks from a mistyped webhook, and from the real webhook deleted through REST and re-opened, ended on "Webhooks ・ bex Dashboard". Go to project from "Service deleted" and from "Sandbox group deleted" ended on "qa-20261128-m706r-prj ・ bex Dashboard", the project's own. No frame after the destination's title landed read the state's title again.
+- **Deleted elsewhere, re-opened:** the service page drew "Service deleted" in place 15 s (1440) and 44 s (390) after the REST delete. Going home and back by client navigation drew "Service deleted", "qa-20261128-m706r-srv (`<id>`) was deleted.", Go to project then Return home, with "Service deleted ・ bex Dashboard" in the tab for the 8 s watched after. The sandbox group page does not poll, so it kept the live group until it was re-opened the same way, then drew "Sandbox group deleted" with its name, Go to project and Return home, and kept "Sandbox group deleted ・ bex Dashboard" in the tab, where the first walk had flipped it to "Page not found". On the way back, the cached live page and its title showed for 160–280 ms before the read answered.
+- **Bare dead service URL:** `/services/srv-d0000000000000000000`, opened as a full load and by client navigation, stayed at that URL and drew "Service not found", "We couldn’t find `<id>`…", Return home, titled "Service not found ・ bex Dashboard". It never passed through `/deploys`. The live `qa-20261128-m706r-srv2`'s bare URL still landed on `/services/<id>/deploys`.
+- **Observed, filed:** every client navigation left `document.title` empty for 250–690 ms before the destination's title, starting 240–720 ms after the navigation began. The m706 buttons showed it, and so did two live-to-live navigations (`/webhooks` → `/`, a live service → `/webhooks`), so the state does not cause it (w3/174).
+- **Cleanup:** both services, the sandbox group, the webhook, the project and its environment were deleted and answer 404. The run key was revoked, the QA session was logged out, and its state file and jar were removed.
+
+## Unblock record
+
+- **2026-11-28, `/loopx w3` (verified evidence, no user decision):** the gate, pin must carry `bc89ee1158`, holds. The newest pin on `origin/main` is `8da265c1e0` `chore(deploy): pin platform images to 45b1e8ec4f09`, `git merge-base --is-ancestor bc89ee1158 45b1e8ec4f09` exits 0, and production's `dashboard` and `bex-api` run that pin's digests. t007 step 3 then held at 1440 and 390 (§ Walk, "Production re-check"), so t011 closed the milestone.
 
 ## Definition of done
 
