@@ -577,6 +577,10 @@ ensure_prometheus() {
   fi
   kubectl -n monitoring rollout status deploy/prometheus-server --timeout=600s ||
     { echo "error: Prometheus did not become ready ('kubectl -n monitoring describe pod -l app.kubernetes.io/name=prometheus')." >&2; exit 1; }
+  if kubectl -n monitoring get deploy kube-state-metrics >/dev/null 2>&1; then
+    kubectl -n monitoring rollout status deploy/kube-state-metrics --timeout=600s ||
+      { echo "error: kube-state-metrics did not become ready ('kubectl -n monitoring describe pod -l app.kubernetes.io/name=kube-state-metrics')." >&2; exit 1; }
+  fi
   if kubectl -n local-path-volume-usage get daemonset local-path-volume-usage >/dev/null 2>&1; then
     kubectl -n local-path-volume-usage rollout status daemonset/local-path-volume-usage --timeout=600s ||
       { echo "error: the local-path volume-usage DaemonSet did not become ready." >&2; exit 1; }

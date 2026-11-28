@@ -964,6 +964,14 @@ type PGStore struct {
 	// and memory as billed rows, and attributes them to its session. An hour
 	// boundary, never before SandboxUsageBilledFrom. Zero means never.
 	AgentSandboxUsageBilledFrom time.Time
+	// StorageCapacityBilledFrom is the instant a Postgres database's storage
+	// starts billing on its provisioned capacity instead of its used bytes, as
+	// Render bills it, and a Key Value's storage stops billing (w4/m713): the
+	// usage reads, the billing outbox and the settle totals classify both
+	// storage kinds by hour against it (storageShown). A UTC month start; the
+	// composition root sets it from the price sheet. Zero means never: capacity
+	// is shown at $0 and used bytes bill.
+	StorageCapacityBilledFrom time.Time
 	// SandboxCredentialLockTimeout overrides the per-group write lock timeout
 	// for sandbox group credential mutations (default 2s).
 	SandboxCredentialLockTimeout time.Duration

@@ -62,8 +62,12 @@ type memUsageStore struct {
 	// sandboxUsageBilledFrom mirrors PGStore.SandboxUsageBilledFrom: sandbox CPU
 	// and memory in an earlier hour (every hour, when zero) read as unbilled.
 	sandboxUsageBilledFrom time.Time
-	cronRuns               map[string][]store.CronRunRecord // appID -> finished runs
-	cronRunsErr            error
+	// storageCapacityBilledFrom mirrors PGStore.StorageCapacityBilledFrom: the
+	// storage reading that does not bill at a row's hour reads as unbilled
+	// (store.storageShown, w4/m713).
+	storageCapacityBilledFrom time.Time
+	cronRuns                  map[string][]store.CronRunRecord // appID -> finished runs
+	cronRunsErr               error
 	// diskRows is the provisioned-disk meter's source: GB-seconds per window
 	// start, so a test can assert exactly which windows got metered.
 	diskRows map[time.Time][]store.DiskUsageRow
@@ -316,6 +320,18 @@ type monthlyVal struct {
 	quantity     int64
 }
 
+// storageShown is store.storageShown for the in-memory store.
+func (m *memUsageStore) storageShown(kind string, at time.Time) bool {
+	from := m.storageCapacityBilledFrom
+	switch kind {
+	case store.UsageKindStorageCapacityGBSeconds:
+		return from.IsZero() || at.Before(from)
+	case store.UsageKindStorageGBSeconds:
+		return !from.IsZero() && !at.Before(from)
+	}
+	return false
+}
+
 func newMemUsageStore(apps ...store.App) *memUsageStore {
 	return &memUsageStore{
 		apps:     apps,
@@ -416,7 +432,8 @@ func (m *memUsageStore) UsageMonthToDate(_ context.Context, workspaceID string, 
 			continue
 		}
 		sandboxUsage := k.kind == store.UsageKindSandboxCPUSeconds || k.kind == store.UsageKindSandboxMemoryGBSeconds
-		unbilled := sandboxUsage && (m.sandboxUsageBilledFrom.IsZero() || ws.Before(m.sandboxUsageBilledFrom))
+		unbilled := sandboxUsage && (m.sandboxUsageBilledFrom.IsZero() || ws.Before(m.sandboxUsageBilledFrom)) ||
+			m.storageShown(k.kind, ws)
 		key := summaryKey{k.serviceID, k.kind, k.tier, row.ResourceKind, unbilled}
 		totals[key] += row.Quantity
 	}
@@ -424,7 +441,7 @@ func (m *memUsageStore) UsageMonthToDate(_ context.Context, workspaceID string, 
 		if v.workspaceID != workspaceID || !k.month.Equal(monthStart) {
 			continue
 		}
-		key := summaryKey{k.serviceID, k.kind, k.tier, v.resourceKind, false}
+		key := summaryKey{k.serviceID, k.kind, k.tier, v.resourceKind, m.storageShown(k.kind, k.month)}
 		totals[key] += v.quantity
 	}
 	out := make([]store.UsageSummaryRow, 0, len(totals))

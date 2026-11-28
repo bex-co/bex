@@ -828,7 +828,18 @@ const deUsage: Record<string, TranslationEntry> = {
   },
   "usage.chargeStorage": {
     message: "Speicher",
-    description: "Charge line for metered datastore storage",
+    description:
+      "Charge line for a Postgres database's provisioned storage capacity, on every instance, billed per GB-month (w4/m713)",
+  },
+  "usage.chargeStorageUsed": {
+    message: "Belegter Speicher",
+    description:
+      "Charge line for the storage a Postgres database or Key Value uses; billed before the storage switch, shown at $0 from it",
+  },
+  "usage.chargeStorageCapacityUnbilled": {
+    message: "Speicher (noch nicht abgerechnet)",
+    description:
+      "Charge line for a Postgres database's provisioned storage before billing switched to it; shown at $0 because the storage it used was billed then",
   },
   "usage.chargeSandboxCompute": {
     message: "Sandbox-Compute",
@@ -865,6 +876,12 @@ const deUsage: Record<string, TranslationEntry> = {
       "Die Sandbox einer Agent-Sitzung wird ab {date} UTC so abgerechnet; davor wird ihre Nutzung als Sandbox-Compute abgerechnet.",
     description:
       "Second sentence of the note under the charge tree of a period with sandbox usage; date is the instant an agent session's sandbox switched from sandbox compute to used CPU and allocated memory, formatted in UTC (it may be in the future)",
+  },
+  "usage.storageCapacityBilledFromNote": {
+    message:
+      "Ab {date} UTC wird eine Postgres-Datenbank wie bei Render nach ihrer Speicherkapazität abgerechnet, und ihr belegter Speicher wird mit $0 angezeigt; der Speicher eines Key Value wird nicht berechnet. Davor wurde bei beiden der belegte Speicher abgerechnet.",
+    description:
+      "Note under the charge tree of a period with datastore storage; date is the instant a Postgres database's storage switched from used bytes to its capacity, formatted in UTC (it may be in the future)",
   },
   "usage.chargeSandboxSnapshotStorage": {
     message: "Sandbox-Snapshot-Speicher",

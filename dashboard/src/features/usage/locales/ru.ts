@@ -825,7 +825,18 @@ const ruUsage: Record<string, TranslationEntry> = {
   },
   "usage.chargeStorage": {
     message: "Хранилище",
-    description: "Charge line for metered datastore storage",
+    description:
+      "Charge line for a Postgres database's provisioned storage capacity, on every instance, billed per GB-month (w4/m713)",
+  },
+  "usage.chargeStorageUsed": {
+    message: "Использованное хранилище",
+    description:
+      "Charge line for the storage a Postgres database or Key Value uses; billed before the storage switch, shown at $0 from it",
+  },
+  "usage.chargeStorageCapacityUnbilled": {
+    message: "Хранилище (пока не оплачивается)",
+    description:
+      "Charge line for a Postgres database's provisioned storage before billing switched to it; shown at $0 because the storage it used was billed then",
   },
   "usage.chargeSandboxCompute": {
     message: "Вычисления песочницы",
@@ -862,6 +873,12 @@ const ruUsage: Record<string, TranslationEntry> = {
       "Песочница сессии агента оплачивается так с {date} UTC; до этого её использование оплачивается как вычисления песочницы.",
     description:
       "Second sentence of the note under the charge tree of a period with sandbox usage; date is the instant an agent session's sandbox switched from sandbox compute to used CPU and allocated memory, formatted in UTC (it may be in the future)",
+  },
+  "usage.storageCapacityBilledFromNote": {
+    message:
+      "С {date} UTC база данных Postgres оплачивается за выделенный ей объём хранилища, как в Render, а использованное хранилище показывается по $0; хранилище Key Value не оплачивается. До этого оба оплачивались за использованное хранилище.",
+    description:
+      "Note under the charge tree of a period with datastore storage; date is the instant a Postgres database's storage switched from used bytes to its capacity, formatted in UTC (it may be in the future)",
   },
   "usage.chargeSandboxSnapshotStorage": {
     message: "Хранение снимков песочницы",

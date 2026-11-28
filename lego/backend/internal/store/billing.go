@@ -196,10 +196,14 @@ func (s *PGStore) SelectWorkspaceUnemittedUsage(ctx context.Context, workspaceID
 }
 
 // selectPendingUsage is the one outbox read; workspaceID "" reads every
-// workspace.
+// workspace. A row comes back Unbilled when it is marked so or is the datastore
+// storage reading shown at $0 at its hour (storageShown, w4/m713): the export
+// stamps it emitted without sending it, so no hour of a Postgres reaches Stripe
+// on both storage kinds, and no Key Value storage from the switch.
 func (s *PGStore) selectPendingUsage(ctx context.Context, workspaceID string, floor time.Time, seal UsageSeal, limit int, requirePaymentMethod bool) ([]HourlyRow, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT u.workspace_id, u.service_id, u.kind, u.tier, u.resource_kind, u.window_start, u.quantity, u.billing_export_quantity, u.unbilled,
+		SELECT u.workspace_id, u.service_id, u.kind, u.tier, u.resource_kind, u.window_start, u.quantity, u.billing_export_quantity,
+		       (u.unbilled OR `+storageShown("u.kind", "u.window_start", "$9::timestamptz")+`),
 		       `+egressAttackHour("u")+`
 		FROM usage_hourly u
 		JOIN tenants t ON t.id = u.workspace_id
@@ -210,7 +214,8 @@ func (s *PGStore) selectPendingUsage(ctx context.Context, workspaceID string, fl
 		  AND ($4 = false OR t.billing_comped OR m.payment_method_bound_at IS NOT NULL)
 		ORDER BY u.window_start
 		LIMIT $3`,
-		floor, seal.Before, limit, requirePaymentMethod, nonNil(seal.FastKinds), seal.FastBefore, nonNil(seal.HoldKinds), workspaceID)
+		floor, seal.Before, limit, requirePaymentMethod, nonNil(seal.FastKinds), seal.FastBefore, nonNil(seal.HoldKinds), workspaceID,
+		s.storageCapacityBilledFrom())
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +246,8 @@ type ExportedUsageTotal struct {
 // window starts in [from, to), per meter dimension. Settle before delete
 // (ADR091 D10.4) compares it with Stripe's meter event summaries before it
 // invoices. Served by the (workspace_id, window_start) index. Sandbox CPU and
-// memory recorded before SandboxUsageBilledFrom, and every row marked unbilled,
+// memory recorded before SandboxUsageBilledFrom, every row marked unbilled, and
+// the datastore storage reading shown at $0 at its hour (storageShown, w4/m713)
 // are left out: they are stamped emitted without ever being sent (w22/m314,
 // w6/m566), so every total returned for those kinds was exported.
 func (s *PGStore) ExportedUsageTotals(ctx context.Context, workspaceID string, from, to, recentSince time.Time) ([]ExportedUsageTotal, error) {
@@ -252,8 +258,10 @@ func (s *PGStore) ExportedUsageTotals(ctx context.Context, workspaceID string, f
 		WHERE workspace_id = $1 AND window_start >= $2 AND window_start < $3
 		  AND billing_export_state = 'emitted' AND NOT unbilled
 		  AND NOT (kind = ANY($5::text[]) AND ($6::timestamptz IS NULL OR window_start < $6))
+		  AND NOT `+storageShown("kind", "window_start", "$7::timestamptz")+`
 		GROUP BY kind, tier, resource_kind`,
-		workspaceID, from.UTC(), to.UTC(), recentSince.UTC(), sandboxUsageKinds, s.sandboxUsageBilledFrom())
+		workspaceID, from.UTC(), to.UTC(), recentSince.UTC(), sandboxUsageKinds, s.sandboxUsageBilledFrom(),
+		s.storageCapacityBilledFrom())
 	if err != nil {
 		return nil, err
 	}

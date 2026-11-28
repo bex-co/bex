@@ -37,7 +37,11 @@ export const CHARGE_LABEL_KEYS: Record<string, string> = {
   instance_seconds: "usage.chargeCompute",
   egress_bytes: "usage.chargeBandwidth",
   build_seconds: "usage.chargeBuild",
-  storage_gb_seconds: "usage.chargeStorage",
+  // A Postgres's storage capacity is the billed "Storage" line, and the bytes
+  // a Postgres or Key Value uses are "Storage used": billed before
+  // `estimatedCost.storageCapacityBilledFrom`, a reading at $0 from it (w4/m713).
+  storage_capacity_gb_seconds: "usage.chargeStorage",
+  storage_gb_seconds: "usage.chargeStorageUsed",
   sandbox_compute_seconds: "usage.chargeSandboxCompute",
   sandbox_cpu_seconds: "usage.chargeSandboxCpu",
   sandbox_memory_gb_seconds: "usage.chargeSandboxMemory",
@@ -58,11 +62,14 @@ export const CHARGE_LABEL_KEYS: Record<string, string> = {
 /**
  * Sandbox CPU and memory recorded before billing switched to use (w22/m314)
  * are `unbilled` lines: the sandbox compute line charged for those hours, so
- * they say so instead of reading as a second charge.
+ * they say so instead of reading as a second charge. A Postgres's storage
+ * capacity before storage switched to it (w4/m713) says it is not billed yet;
+ * "Storage used" at $0 reads as the reading it is under its own label.
  */
 export const UNBILLED_CHARGE_LABEL_KEYS: Record<string, string> = {
   sandbox_cpu_seconds: "usage.chargeSandboxCpuUnbilled",
   sandbox_memory_gb_seconds: "usage.chargeSandboxMemoryUnbilled",
+  storage_capacity_gb_seconds: "usage.chargeStorageCapacityUnbilled",
 };
 
 /**

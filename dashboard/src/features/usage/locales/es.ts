@@ -828,7 +828,18 @@ const esUsage: Record<string, TranslationEntry> = {
   },
   "usage.chargeStorage": {
     message: "Almacenamiento",
-    description: "Charge line for metered datastore storage",
+    description:
+      "Charge line for a Postgres database's provisioned storage capacity, on every instance, billed per GB-month (w4/m713)",
+  },
+  "usage.chargeStorageUsed": {
+    message: "Almacenamiento usado",
+    description:
+      "Charge line for the storage a Postgres database or Key Value uses; billed before the storage switch, shown at $0 from it",
+  },
+  "usage.chargeStorageCapacityUnbilled": {
+    message: "Almacenamiento (aún no facturado)",
+    description:
+      "Charge line for a Postgres database's provisioned storage before billing switched to it; shown at $0 because the storage it used was billed then",
   },
   "usage.chargeSandboxCompute": {
     message: "Cómputo de sandbox",
@@ -865,6 +876,12 @@ const esUsage: Record<string, TranslationEntry> = {
       "El sandbox de una sesión de agente se factura así desde el {date} UTC; antes, su uso se factura como cómputo de sandbox.",
     description:
       "Second sentence of the note under the charge tree of a period with sandbox usage; date is the instant an agent session's sandbox switched from sandbox compute to used CPU and allocated memory, formatted in UTC (it may be in the future)",
+  },
+  "usage.storageCapacityBilledFromNote": {
+    message:
+      "A partir del {date} UTC, una base de datos Postgres se factura por la capacidad de almacenamiento que tiene, como en Render, y su almacenamiento usado se muestra a $0; el almacenamiento de un Key Value no se cobra. Antes, ambos se facturaban por el almacenamiento usado.",
+    description:
+      "Note under the charge tree of a period with datastore storage; date is the instant a Postgres database's storage switched from used bytes to its capacity, formatted in UTC (it may be in the future)",
   },
   "usage.chargeSandboxSnapshotStorage": {
     message: "Almacenamiento de snapshots de sandbox",

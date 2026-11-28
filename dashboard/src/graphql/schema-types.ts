@@ -2110,6 +2110,7 @@ export type EstimatedCost = {
   meters: Maybe<Array<Maybe<MeterEstimate>>>;
   resources: Maybe<Array<Maybe<ResourceEstimate>>>;
   sandboxUsageBilledFrom: Maybe<Scalars['String']['output']>;
+  storageCapacityBilledFrom: Maybe<Scalars['String']['output']>;
   totalUsd: Maybe<Scalars['String']['output']>;
 };
 

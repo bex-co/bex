@@ -815,7 +815,18 @@ const koUsage: Record<string, TranslationEntry> = {
   },
   "usage.chargeStorage": {
     message: "스토리지",
-    description: "Charge line for metered datastore storage",
+    description:
+      "Charge line for a Postgres database's provisioned storage capacity, on every instance, billed per GB-month (w4/m713)",
+  },
+  "usage.chargeStorageUsed": {
+    message: "사용된 스토리지",
+    description:
+      "Charge line for the storage a Postgres database or Key Value uses; billed before the storage switch, shown at $0 from it",
+  },
+  "usage.chargeStorageCapacityUnbilled": {
+    message: "스토리지(아직 청구되지 않음)",
+    description:
+      "Charge line for a Postgres database's provisioned storage before billing switched to it; shown at $0 because the storage it used was billed then",
   },
   "usage.chargeSandboxCompute": {
     message: "샌드박스 컴퓨팅",
@@ -852,6 +863,12 @@ const koUsage: Record<string, TranslationEntry> = {
       "에이전트 세션의 샌드박스는 {date} UTC부터 이 방식으로 요금이 청구됩니다. 그 이전 사용량은 샌드박스 컴퓨팅으로 청구됩니다.",
     description:
       "Second sentence of the note under the charge tree of a period with sandbox usage; date is the instant an agent session's sandbox switched from sandbox compute to used CPU and allocated memory, formatted in UTC (it may be in the future)",
+  },
+  "usage.storageCapacityBilledFromNote": {
+    message:
+      "{date} UTC부터 Postgres 데이터베이스는 Render와 같이 보유한 스토리지 용량으로 청구되며, 사용된 스토리지는 $0로 표시됩니다. Key Value의 스토리지는 청구되지 않습니다. 그 이전에는 둘 다 사용한 스토리지로 청구되었습니다.",
+    description:
+      "Note under the charge tree of a period with datastore storage; date is the instant a Postgres database's storage switched from used bytes to its capacity, formatted in UTC (it may be in the future)",
   },
   "usage.chargeSandboxSnapshotStorage": {
     message: "샌드박스 스냅샷 스토리지",

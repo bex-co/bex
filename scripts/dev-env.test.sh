@@ -177,6 +177,15 @@ assert "the shared Prometheus template carries no per-N value" \
   "! grep -Eq '__(N|DEV_NS|DEV_AUTH_NS|[A-Z_]*_PORT)__' $prom_tmpl"
 assert "the Service keeps production's prometheus-server name" \
   "grep -q 'name: prometheus-server # production' $prom_tmpl"
+# w4/m713: the Postgres storage capacity meter reads volume claims' requests
+# from production's kube-state-metrics job; without it every dev-N Postgres
+# hour reads unavailable.
+assert "kube-state-metrics is scraped under production's job and target" \
+  "grep -A3 -- '- job_name: kube-state-metrics' $prom_tmpl | grep -q 'prometheus-kube-state-metrics.monitoring.svc:8080' && grep -A4 -- '- job_name: kube-state-metrics' deploy/gitops/base/prometheus.yaml | grep -q 'prometheus-kube-state-metrics.monitoring.svc:8080'"
+assert "kube-state-metrics exports volume claims" \
+  "grep -q -- '--resources=persistentvolumeclaims' $prom_tmpl"
+assert "up waits for kube-state-metrics" \
+  "sed -n '/^ensure_prometheus()/,/^}/p' scripts/dev-env.sh | grep -q 'rollout status deploy/kube-state-metrics'"
 # The local-path stand-in for the kubelet series: the exact series and labels
 # NewPrometheusDiskUsageSource queries, one per claim directory, in bytes.
 vu_root="$(mktemp -d)"

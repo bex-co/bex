@@ -39,7 +39,9 @@ type usageRow struct {
 	// Unbilled marks sandbox CPU or memory recorded before
 	// estimatedCost.sandboxUsageBilledFrom, or for an agent session's sandbox
 	// before estimatedCost.agentSandboxUsageBilledFrom: shown, never charged
-	// (w22/m314, w6/m566).
+	// (w22/m314, w6/m566). It also marks the datastore storage reading that
+	// does not bill on either side of estimatedCost.storageCapacityBilledFrom
+	// (w4/m713).
 	Unbilled bool `json:"unbilled,omitempty"`
 }
 

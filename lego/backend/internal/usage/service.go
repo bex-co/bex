@@ -813,15 +813,63 @@ var datastoreMeterKinds = [...]string{
 	store.UsageKindInstanceSeconds,
 	store.UsageKindStorageGBSeconds,
 	store.UsageKindEgressBytes,
+	store.UsageKindStorageCapacityGBSeconds,
+}
+
+// meterKinds are the datastore meters that apply to ds: all of them for a
+// Postgres, all but the storage capacity meter for a Key Value, which Render
+// charges no storage for (w4/m713).
+func (ds datastoreEntry) meterKinds() []string {
+	kinds := make([]string, 0, len(datastoreMeterKinds))
+	for _, kind := range datastoreMeterKinds {
+		if kind != store.UsageKindStorageCapacityGBSeconds || ds.Kind == store.ResourceKindPostgres {
+			kinds = append(kinds, kind)
+		}
+	}
+	return kinds
+}
+
+// meterSources is the source each of ds's meters keeps its health under, for
+// the window a meter could not run at all.
+func (ds datastoreEntry) meterSources() map[string]string {
+	egress := store.UsageSourcePostgres
+	if ds.Kind == store.ResourceKindKeyValue {
+		egress = store.UsageSourceKeyValue
+	}
+	sources := map[string]string{}
+	for _, kind := range ds.meterKinds() {
+		switch kind {
+		case store.UsageKindInstanceSeconds:
+			sources[kind] = store.UsageSourceInstance
+		case store.UsageKindEgressBytes:
+			sources[kind] = egress
+		default: // both storage meters
+			sources[kind] = store.UsageSourceStorage
+		}
+	}
+	return sources
+}
+
+// expectedFrom is the first hour kind's coverage stream expects a row of ds
+// for: its creation hour, except for the storage capacity meter, which arrived
+// after most datastores and expects rows from the first window it measures
+// (the stream keeps its earliest start), so the month it joined does not read
+// as partial (w4/m713).
+func (ds datastoreEntry) expectedFrom(kind string, window time.Time) time.Time {
+	if kind == store.UsageKindStorageCapacityGBSeconds {
+		return window
+	}
+	return usageExpectedFrom(ds.CreatedAt)
 }
 
 // processDatastoreWindow measures every applicable meter for one datastore.
 // The live loop gives each meter an independent cursor; this seam runs them
 // together for tests and explicit one-window processing.
 func (s *Service) processDatastoreWindow(ctx context.Context, ds datastoreEntry, window time.Time) bool {
+	kinds := ds.meterKinds()
 	var wg sync.WaitGroup
-	results := make(chan bool, len(datastoreMeterKinds))
-	for _, kind := range datastoreMeterKinds {
+	results := make(chan bool, len(kinds))
+	for _, kind := range kinds {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -842,7 +890,7 @@ func (s *Service) processDatastoreMeterWindow(ctx context.Context, ds datastoreE
 	var quantity int64
 	var ok bool
 	var health []store.UsageSourceObservation
-	expectedFrom := usageExpectedFrom(ds.CreatedAt)
+	expectedFrom := ds.expectedFrom(kind, window)
 	switch kind {
 	case store.UsageKindInstanceSeconds:
 		quantity, ok = s.queryInstanceSecondsStateful(ctx, ds, window, end)
@@ -850,6 +898,13 @@ func (s *Service) processDatastoreMeterWindow(ctx context.Context, ds datastoreE
 	case store.UsageKindStorageGBSeconds:
 		quantity, ok = s.queryStorageGBSeconds(ctx, ds, window, end)
 		health = oneSourceHealth(store.UsageSourceStorage, ok, expectedFrom)
+	case store.UsageKindStorageCapacityGBSeconds:
+		var complete bool
+		quantity, complete, ok = s.queryStorageCapacityGBSeconds(ctx, ds, window, end)
+		health = oneSourceHealth(store.UsageSourceStorage, ok, expectedFrom)
+		if ok && !complete {
+			health = degradeSourceHealth(health)
+		}
 	case store.UsageKindEgressBytes:
 		quantity, health, ok = s.queryDatastoreEgressBytesEvidence(ctx, ds, window, end)
 		for i := range health {
@@ -866,7 +921,7 @@ func (s *Service) processDatastoreMeterWindow(ctx context.Context, ds datastoreE
 	// Free datastore's included storage (w4/427). Each meter has its own
 	// forward cursor, so no window already written is re-keyed.
 	tier := ""
-	if kind == store.UsageKindInstanceSeconds || kind == store.UsageKindStorageGBSeconds {
+	if kind != store.UsageKindEgressBytes {
 		tier = ds.Plan
 	}
 	if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
@@ -885,7 +940,7 @@ func (s *Service) processDatastoreMeterWindow(ctx context.Context, ds datastoreE
 // each meter retries its oldest gap before writing a newer window.
 func (s *Service) catchUpDatastoreThrough(ctx context.Context, ds datastoreEntry, last time.Time) {
 	var wg sync.WaitGroup
-	for _, kind := range datastoreMeterKinds {
+	for _, kind := range ds.meterKinds() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -1033,12 +1088,9 @@ func (s *Service) meterDatastoresThrough(ctx context.Context, datastores []datas
 				s.catchUpDatastoreThrough(ctx, ds, last)
 				continue
 			}
-			egressSource := store.UsageSourcePostgres
-			if ds.Kind == store.ResourceKindKeyValue {
-				egressSource = store.UsageSourceKeyValue
-			}
-			for kind, source := range map[string]string{store.UsageKindInstanceSeconds: store.UsageSourceInstance, store.UsageKindStorageGBSeconds: store.UsageSourceStorage, store.UsageKindEgressBytes: egressSource} {
-				health = append(health, store.UsageSourceRecord{WorkspaceID: tenant, ResourceKind: ds.Kind, ServiceID: ds.ID, Kind: kind, WindowStart: ds.meterThrough(last), UsageSourceObservation: store.UsageSourceObservation{Source: source, State: store.UsageSourceUnavailable, ExpectedFrom: usageExpectedFrom(ds.CreatedAt)}})
+			window := ds.meterThrough(last)
+			for kind, source := range ds.meterSources() {
+				health = append(health, store.UsageSourceRecord{WorkspaceID: tenant, ResourceKind: ds.Kind, ServiceID: ds.ID, Kind: kind, WindowStart: window, UsageSourceObservation: store.UsageSourceObservation{Source: source, State: store.UsageSourceUnavailable, ExpectedFrom: ds.expectedFrom(kind, window)}})
 			}
 		}
 		if len(health) > 0 {
@@ -1438,6 +1490,62 @@ func (s *Service) queryStorageGBSeconds(ctx context.Context, ds datastoreEntry, 
 		usedBytes = 0
 	}
 	return int64(math.Round(usedBytes * float64(windowSecs) / bytesPerDecimalGB)), true
+}
+
+// capacitySampleStepSeconds is the resolution storage capacity is measured at:
+// the kube-state-metrics scrape interval (deploy/gitops/base/prometheus.yaml),
+// so a volume created, resized or deleted mid-hour is billed from or until the
+// minute it changed.
+const capacitySampleStepSeconds = 60
+
+// capacityJob is the Prometheus job that exports each volume claim's requested
+// size (kube-state-metrics' kube_persistentvolumeclaim_resource_requests_storage_bytes).
+const capacityJob = "kube-state-metrics"
+
+// queryStorageCapacityGBSeconds returns a Postgres's provisioned storage
+// capacity over [start,end) in the product's GB × seconds (w4/m713): each of
+// its volume claims' requested bytes ÷ 2^30 (the operator requests
+// "<storageGB>Gi", so a 10 GB database is 10, not the 10.74 decimal GB of its
+// claim), at every capacitySampleStepSeconds step the claim existed, summed
+// over the primary's and each read replica's CNPG cluster and every instance
+// in them. A 10 GB database held the whole hour reads 36,000; an HA pair
+// twice that. It reads the claim's request, which a manual increase or disk
+// autoscaling raises, never the volume's filesystem capacity
+// (kubelet_volume_stats_capacity_bytes), which on Hetzner has a 10 GiB floor
+// (metrics/datastore.go). Prometheus keeps the series' history, so a catch-up
+// bills a resize from the hour it happened.
+//
+// complete is false when the exporter was not up at every step, so the reading
+// may undercount and is kept degraded. ok is false when the exporter reported
+// at no step (or Prometheus is unavailable): no row, and catch-up retries.
+func (s *Service) queryStorageCapacityGBSeconds(ctx context.Context, ds datastoreEntry, start, end time.Time) (gbSeconds int64, complete, ok bool) {
+	if s.PromBase == "" {
+		return 0, false, false
+	}
+	windowSecs := int64(end.Sub(start) / time.Second)
+	steps := windowSecs / capacitySampleStepSeconds
+	// [windowSecs-1 : step]: the window's own steps, (start, end], as
+	// instanceSecondsQuery counts them, so consecutive hours share none.
+	upSteps, err := egressquery.Instant(ctx, s.promHTTP, s.PromBase, fmt.Sprintf(
+		`count_over_time((max(up{job=%q}) == 1)[%ds:%ds])`, capacityJob, windowSecs-1, capacitySampleStepSeconds), end)
+	if err != nil {
+		log.Printf("usage: %s exporter for %s: %v", store.UsageKindStorageCapacityGBSeconds, ds.Name, err)
+		return 0, false, false
+	}
+	if upSteps <= 0 {
+		return 0, false, false
+	}
+	byteSteps, err := egressquery.Instant(ctx, s.promHTTP, s.PromBase, fmt.Sprintf(
+		`sum(sum_over_time((max by (persistentvolumeclaim) (kube_persistentvolumeclaim_resource_requests_storage_bytes{job=%q,namespace=%q,persistentvolumeclaim=~%q}))[%ds:%ds]))`,
+		capacityJob, ds.Namespace, fmt.Sprintf(`^%s-[0-9]+$`, datastoreClusters(ds.Name, ds.Kind)),
+		windowSecs-1, capacitySampleStepSeconds), end)
+	if err != nil {
+		log.Printf("usage: %s for %s: %v", store.UsageKindStorageCapacityGBSeconds, ds.Name, err)
+		return 0, false, false
+	}
+	// The product's GB is a GiB: a database's storageGB is provisioned as
+	// that many GiB.
+	return int64(math.Round(byteSteps * capacitySampleStepSeconds / pricing.BytesPerGiB)), int64(upSteps) >= steps, true
 }
 
 // instanceSampleStepSeconds is the resolution instance-seconds are measured

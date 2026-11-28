@@ -76,8 +76,14 @@ type Sheet struct {
 	// egressIncluded is plan → egress_bytes a month the plan includes before
 	// bandwidth is charged (docs/ADR030 §14).
 	egressIncluded map[string]int64
-	storage        float64 // $/GB-second of USED datastore volume for storage_gb_seconds
-	disk           float64 // $/GB-second of PROVISIONED capacity for disk_gb_seconds
+	// storage is $/GB-second of datastore storage: a Postgres's provisioned
+	// capacity (storage_capacity_gb_seconds) from storageCapacityFrom, its and
+	// a Key Value's used bytes (storage_gb_seconds) before it (w4/m713).
+	storage float64
+	// storageCapacityFrom is the UTC month start from which a Postgres bills
+	// its storage capacity and a Key Value no storage; zero means never.
+	storageCapacityFrom time.Time
+	disk                float64 // $/GB-second of PROVISIONED capacity for disk_gb_seconds
 	// sandboxSnapshot is $/GB-second of a suspended sandbox's retained image for
 	// sandbox_snapshot_gb_seconds.
 	sandboxSnapshot float64
@@ -254,6 +260,17 @@ func (s *Sheet) AgentSandboxUsageBilledFrom() time.Time {
 	return s.agentSandboxUsageFrom
 }
 
+// StorageCapacityBilledFrom is the instant (a UTC month start) from which a
+// Postgres database bills the storage capacity it has rather than the bytes it
+// uses, and a Key Value's storage is not charged, in every workspace, as on
+// Render (storageCapacity.billedFrom, w4/m713); zero when it never does.
+func (s *Sheet) StorageCapacityBilledFrom() time.Time {
+	if s == nil {
+		return time.Time{}
+	}
+	return s.storageCapacityFrom
+}
+
 // SandboxUsageBilledAt reports whether sandbox CPU and memory metered in the
 // hour starting at window are billed: the switch has happened by then.
 func (s *Sheet) SandboxUsageBilledAt(window time.Time) bool {
@@ -414,6 +431,12 @@ type EstimatedCost struct {
 	// weighted charge, and its CPU and memory are unbilled lines (w6/m566).
 	// Present with SandboxUsageBilledFrom when the sheet has the instant.
 	AgentSandboxUsageBilledFrom string `json:"agentSandboxUsageBilledFrom,omitempty"`
+	// StorageCapacityBilledFrom is the instant (RFC 3339, UTC) from which a
+	// Postgres database is billed for its storage capacity and its used bytes
+	// are a line shown at $0, and a Key Value's storage is not charged
+	// (w4/m713). Present only when the period has datastore storage: it is
+	// what explains which of the two storage lines bills.
+	StorageCapacityBilledFrom string `json:"storageCapacityBilledFrom,omitempty"`
 }
 
 // ResourceEstimate is one resource's estimated cost for the period, with the
@@ -463,7 +486,9 @@ type ChargeLine struct {
 	// Unbilled marks sandbox CPU or memory recorded before
 	// EstimatedCost.SandboxUsageBilledFrom, or for an agent session's sandbox
 	// before EstimatedCost.AgentSandboxUsageBilledFrom (w6/m566): shown at a
-	// rate of 0, because the sandbox compute line charged for those hours.
+	// rate of 0, because the sandbox compute line charged for those hours. It
+	// also marks the datastore storage reading that does not bill on either
+	// side of EstimatedCost.StorageCapacityBilledFrom (w4/m713).
 	Unbilled bool `json:"unbilled,omitempty"`
 }
 
@@ -562,13 +587,16 @@ func (s *Sheet) EstimateIncluding(rows []store.UsageSummaryRow, included Include
 	rows, covered := applyIncluded(rows, included)
 	var order []meterKey
 	seen := map[meterKey]bool{}
-	sandboxUsage := false
+	sandboxUsage, datastoreStorage := false, false
 	for _, r := range rows {
 		if r.ResourceKind == store.ResourceKindSandbox && r.Total != 0 {
 			switch r.Kind {
 			case store.UsageKindSandboxComputeSeconds, store.UsageKindSandboxCPUSeconds, store.UsageKindSandboxMemoryGBSeconds:
 				sandboxUsage = true
 			}
+		}
+		if r.Total != 0 && (r.Kind == store.UsageKindStorageGBSeconds || r.Kind == store.UsageKindStorageCapacityGBSeconds) {
+			datastoreStorage = true
 		}
 		if r.Unbilled {
 			continue // shown on its resource's lines, never part of a total
@@ -585,6 +613,10 @@ func (s *Sheet) EstimateIncluding(rows []store.UsageSummaryRow, included Include
 		if agent := s.AgentSandboxUsageBilledFrom(); !agent.IsZero() {
 			agentBilledFrom = agent.UTC().Format(time.RFC3339)
 		}
+	}
+	storageCapacityFrom := ""
+	if from := s.StorageCapacityBilledFrom(); datastoreStorage && !from.IsZero() {
+		storageCapacityFrom = from.UTC().Format(time.RFC3339)
 	}
 
 	resources, meterCents, totalCents := s.resourceEstimates(rows, covered)
@@ -613,6 +645,7 @@ func (s *Sheet) EstimateIncluding(rows []store.UsageSummaryRow, included Include
 
 		SandboxUsageBilledFrom:      billedFrom,
 		AgentSandboxUsageBilledFrom: agentBilledFrom,
+		StorageCapacityBilledFrom:   storageCapacityFrom,
 	}
 }
 
@@ -755,8 +788,8 @@ func unitFor(kind string) meterUnit {
 		return meterUnit{"GB", BytesPerGiB}
 	case store.UsageKindBuildSeconds:
 		return meterUnit{"min", 60}
-	case store.UsageKindStorageGBSeconds, store.UsageKindDiskGBSeconds, store.UsageKindSandboxSnapshotGBSeconds,
-		store.UsageKindObjectStorageGBSeconds:
+	case store.UsageKindStorageGBSeconds, store.UsageKindStorageCapacityGBSeconds, store.UsageKindDiskGBSeconds,
+		store.UsageKindSandboxSnapshotGBSeconds, store.UsageKindObjectStorageGBSeconds:
 		return meterUnit{"GB-mo", MonthSeconds}
 	case store.UsageKindObjectStorageIngressBytes, store.UsageKindObjectStorageEgressBytes:
 		return meterUnit{"GB", BytesPerGiB}
@@ -827,12 +860,26 @@ func (s *Sheet) rateFor(kind, tier, resourceKind string) float64 {
 	case store.UsageKindBuildSeconds:
 		return s.build
 	case store.UsageKindStorageGBSeconds:
-		// A Free Postgres or Key Value includes its fixed storage at $0, as
-		// Render's Free Postgres does (w4/427, ADR030).
+		// Used bytes, the basis a Postgres and a Key Value were billed on before
+		// storageCapacity.billedFrom; the reads mark the rows from it Unbilled,
+		// which rates them 0 whatever this returns (w4/m713). A Free Postgres
+		// or Key Value includes its fixed storage at $0, as Render's Free
+		// Postgres does (w4/427, ADR030).
 		if tier == "free" {
 			return 0
 		}
 		if resourceKind == store.ResourceKindPostgres || resourceKind == store.ResourceKindKeyValue {
+			return s.storage
+		}
+	case store.UsageKindStorageCapacityGBSeconds:
+		// A Postgres's provisioned capacity, every instance's, as Render bills
+		// it from storageCapacity.billedFrom (w4/m713); the reads mark the rows
+		// before it Unbilled. Free stays included at $0 (w4/427), and a Key
+		// Value has no storage rate on Render.
+		if tier == "free" {
+			return 0
+		}
+		if resourceKind == store.ResourceKindPostgres {
 			return s.storage
 		}
 	case store.UsageKindSandboxComputeSeconds:
@@ -952,6 +999,11 @@ type sheetFile struct {
 	publicSheet
 	// SandboxUsage stays private until bex.co quotes it (public.go).
 	SandboxUsage sandboxUsage `json:"sandboxUsage"`
+	// StorageCapacity is the instant datastore storage switches to Render's
+	// basis (w4/m713); the rate stays the public storage section's.
+	StorageCapacity struct {
+		BilledFrom string `json:"billedFrom"`
+	} `json:"storageCapacity"`
 	// CustomDomains stays private until bex.co quotes it (public.go).
 	CustomDomains struct {
 		USDPerDomainSecond float64 `json:"usdPerDomainSecond"`
@@ -1054,6 +1106,16 @@ func parseSheet(raw []byte) (*Sheet, error) {
 	}
 	if err := s.parseSandboxUsage(f.SandboxUsage); err != nil {
 		return nil, err
+	}
+	if from := f.StorageCapacity.BilledFrom; from != "" {
+		// A UTC month start keeps every month on one storage basis, which
+		// is what lets a compacted month be classified by its month alone
+		// (store.storageShown).
+		at, err := time.Parse(time.RFC3339, from)
+		if err != nil || !at.Equal(time.Date(at.UTC().Year(), at.UTC().Month(), 1, 0, 0, 0, 0, time.UTC)) {
+			return nil, fmt.Errorf("storageCapacity.billedFrom %q must be an RFC 3339 instant on a UTC month start", from)
+		}
+		s.storageCapacityFrom = at.UTC()
 	}
 	if rate := f.CustomDomains.USDPerDomainSecond; math.IsNaN(rate) || math.IsInf(rate, 0) || rate < 0 {
 		return nil, fmt.Errorf("customDomains.usdPerDomainSecond %v must be a non-negative rate", rate)

@@ -27,13 +27,25 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// UsageKind names the metering dimensions. storage_gb_seconds is the average
-// used datastore volume size in decimal GB multiplied by window seconds.
+// UsageKind names the metering dimensions.
 const (
-	UsageKindInstanceSeconds  = "instance_seconds"
-	UsageKindEgressBytes      = "egress_bytes"
-	UsageKindBuildSeconds     = "build_seconds"
+	UsageKindInstanceSeconds = "instance_seconds"
+	UsageKindEgressBytes     = "egress_bytes"
+	UsageKindBuildSeconds    = "build_seconds"
+	// UsageKindStorageGBSeconds is the average USED datastore volume size in
+	// decimal GB multiplied by window seconds, for Postgres and Key Value. It
+	// is billed before PGStore.StorageCapacityBilledFrom and, from it, a
+	// reading shown at $0 (storageShown, w4/m713).
 	UsageKindStorageGBSeconds = "storage_gb_seconds"
+	// UsageKindStorageCapacityGBSeconds is a Postgres database's PROVISIONED
+	// storage capacity in the product's GB (its volumes' requested bytes ÷
+	// 2^30, since the operator provisions "<storageGB>Gi") multiplied by the
+	// seconds each was held, summed over the primary, an HA standby and every
+	// read replica: Render bills "Storage capacity for Render Postgres
+	// databases", each instance alike (render.com/docs/faq, w4/m713). A Key
+	// Value has none: Render has no Key Value storage rate. Billed from
+	// PGStore.StorageCapacityBilledFrom, shown at $0 before it.
+	UsageKindStorageCapacityGBSeconds = "storage_capacity_gb_seconds"
 	// UsageKindSandboxComputeSeconds is measured in milli-vCPU-equivalent
 	// seconds. Memory is folded into the weight at the AgentCore reference
 	// ratio ($0.00945/GB-hour ÷ $0.0895/vCPU-hour); see ADR047 D6.
@@ -220,7 +232,9 @@ type UsageSummaryRow struct {
 	// PGStore.AgentSandboxUsageBilledFrom (usage_hourly.unbilled, w6/m566):
 	// shown, never charged, because the
 	// weighted compute meter billed those hours (w22/m314). Such usage is a
-	// row of its own beside the billed one of the same kind.
+	// row of its own beside the billed one of the same kind. It also marks the
+	// datastore storage reading that is not the billed one at the row's hour
+	// (storageShown, w4/m713).
 	Unbilled bool
 }
 
@@ -750,16 +764,20 @@ func (s *PGStore) LatestUsageWindow(ctx context.Context, resourceKind, serviceID
 // Sandbox CPU and memory recorded before SandboxUsageBilledFrom, and rows the
 // meter marked unbilled, come back as rows of their own with Unbilled set.
 // usage_monthly holds none of them: CompactUsage drops them instead of folding
-// them in. An egress hour a live attack window covers is left out altogether
-// (w4/m709): the read reports the bandwidth that bills, and Render's bill
-// carries no attack line either.
+// them in. The datastore storage reading that is not the billed one at its
+// hour (storageShown) comes back Unbilled too, from usage_hourly and
+// usage_monthly alike: compaction keeps both storage readings (w4/m713). An
+// egress hour a live attack window covers is left out altogether (w4/m709):
+// the read reports the bandwidth that bills, and Render's bill carries no
+// attack line either.
 func (s *PGStore) UsageMonthToDate(ctx context.Context, workspaceID string, now time.Time) ([]UsageSummaryRow, error) {
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	rows, err := s.Pool.Query(ctx, `
 		SELECT service_id, kind, tier, resource_kind, unbilled, SUM(quantity)
 		FROM (
 			SELECT service_id, kind, tier, resource_kind, quantity,
-			       (unbilled OR (kind = ANY($4::text[]) AND ($5::timestamptz IS NULL OR window_start < $5))) AS unbilled
+			       (unbilled OR (kind = ANY($4::text[]) AND ($5::timestamptz IS NULL OR window_start < $5))
+			        OR `+storageShown("kind", "window_start", "$6::timestamptz")+`) AS unbilled
 			FROM usage_hourly h
 			WHERE workspace_id = $1
 			  AND window_start >= $2
@@ -767,7 +785,8 @@ func (s *PGStore) UsageMonthToDate(ctx context.Context, workspaceID string, now 
 			  AND NOT `+egressAttackHour("h")+`
 			UNION ALL
 			SELECT service_id, kind, tier, resource_kind, quantity,
-			       (kind = ANY($4::text[]) AND $5::timestamptz IS NULL) AS unbilled
+			       ((kind = ANY($4::text[]) AND $5::timestamptz IS NULL)
+			        OR `+storageShown("kind", "(month::timestamp AT TIME ZONE 'UTC')", "$6::timestamptz")+`) AS unbilled
 			FROM usage_monthly
 			WHERE workspace_id = $1
 			  AND month = ($2::timestamptz AT TIME ZONE 'UTC')::date
@@ -775,7 +794,7 @@ func (s *PGStore) UsageMonthToDate(ctx context.Context, workspaceID string, now 
 		GROUP BY service_id, kind, tier, resource_kind, unbilled
 		HAVING kind = 'instance_seconds' OR SUM(quantity) <> 0
 		ORDER BY service_id, kind, tier, resource_kind, unbilled DESC`,
-		workspaceID, monthStart, now, sandboxUsageKinds, s.sandboxUsageBilledFrom())
+		workspaceID, monthStart, now, sandboxUsageKinds, s.sandboxUsageBilledFrom(), s.storageCapacityBilledFrom())
 	if err != nil {
 		return nil, err
 	}
@@ -806,6 +825,28 @@ func (s *PGStore) sandboxUsageBilledFrom() *time.Time {
 	return &at
 }
 
+// storageShown is the SQL predicate, over a usage row whose kind column is
+// kind and whose instant is at, that holds for the datastore storage reading
+// shown at $0 rather than billed (w4/m713): the capacity kind before from (or
+// always, with from NULL), the used-bytes kind from it on. from is a UTC month
+// start (pricing.Sheet.StorageCapacityBilledFrom), so a usage_monthly row's
+// month start classifies its whole month the way each of its hours was. Exactly
+// one of the two kinds bills any hour, so no hour is billed on both.
+func storageShown(kind, at, from string) string {
+	return fmt.Sprintf(`((%[1]s = '%[4]s' AND (%[3]s IS NULL OR %[2]s < %[3]s)) OR (%[1]s = '%[5]s' AND %[3]s IS NOT NULL AND %[2]s >= %[3]s))`,
+		kind, at, from, UsageKindStorageCapacityGBSeconds, UsageKindStorageGBSeconds)
+}
+
+// storageCapacityBilledFrom is StorageCapacityBilledFrom as a query argument:
+// NULL when the switch never happens.
+func (s *PGStore) storageCapacityBilledFrom() *time.Time {
+	if s.StorageCapacityBilledFrom.IsZero() {
+		return nil
+	}
+	at := s.StorageCapacityBilledFrom.UTC()
+	return &at
+}
+
 // AgentModelEventRetentionMonths is how long agent_model_usage_events outlive
 // compaction's boundary: an annual invoice period plus a dispute window
 // (ADR091 D6, D10.7). Each event is the evidence behind one charged request.
@@ -820,7 +861,10 @@ const AgentModelEventRetentionMonths = 13
 // overwriting it. Sandbox CPU and memory recorded before
 // SandboxUsageBilledFrom, every row marked unbilled, and every egress hour a
 // live attack window covers (w4/m709) were never billed and are purged without
-// being folded in, so a compacted month holds billed usage only.
+// being folded in. Both datastore storage readings are folded in, the one
+// shown at $0 included: UsageMonthToDate classifies a monthly row by its month
+// again (storageShown), so a compacted month keeps the used reading beside the
+// billed capacity, and its billed total (w4/m713).
 func (s *PGStore) CompactUsage(ctx context.Context, before time.Time) (UsageCompaction, error) {
 	var res UsageCompaction
 	err := s.Pool.QueryRow(ctx, `

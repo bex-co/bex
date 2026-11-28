@@ -281,7 +281,7 @@ Mechanics:
 
   `tiers.yaml` stays price-free (the ADR030 invariant — money never reaches the operator; the operator sees only `sizeGB`).
 
-- `estimatedCost` and the Blueprint pricing panel include disk lines; the "estimated on provisioned floor, invoiced on used bytes" disclaimer applies to datastore rows only — disk rows are exact.
+- `estimatedCost` and the Blueprint pricing panel include disk lines; the "estimated on provisioned floor, invoiced on used bytes" disclaimer applies to datastore rows only — disk rows are exact. From 2026-12-01 a Postgres's storage is invoiced on its capacity too, so its row is exact as well, and a Key Value has no storage line (w4/m713).
 
 **Unit economics (why $0.175 works on Hetzner):**
 

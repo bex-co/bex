@@ -21,12 +21,18 @@
 #                      value = bytes/2^30, price = 1.5 cents/GiB  (Stripe's 12-decimal
 #                      unit_amount_decimal can't express $1.4e-11/byte)
 #   build_seconds    → per-second                        event=build_seconds
-#   storage_gb_seconds → re-based to per-GB-hour         event=storage_gb_hours
-#                      value = gb_seconds/3600, price = usdPerGBSecond×3600×100
+#   storage_capacity_gb_seconds, storage_gb_seconds → re-based to per-GB-hour
+#                      event=storage_gb_hours, value = gb_seconds/3600,
+#                      price = usdPerGBSecond×3600×100. One meter, never both
+#                      for the same hour: from pricing.yaml
+#                      storageCapacity.billedFrom a Postgres's PROVISIONED
+#                      capacity bills on it, as Render bills Postgres storage,
+#                      and used bytes (Postgres and Key Value) are never sent;
+#                      before it, used bytes were (w4/m713). No new meter.
 #   disk_gb_seconds  → re-based to per-GB-hour           event=disk_gb_hours
 #                      value = gb_seconds/3600, price = usdPerGBSecond×3600×100.
-#                      Distinct from storage_gb_hours: PROVISIONED capacity at a
-#                      different rate, not used bytes (docs/ADR082 D8/D9)
+#                      Distinct from storage_gb_hours: a service disk's
+#                      provisioned capacity at a different rate (docs/ADR082 D8/D9)
 #   sandbox_compute_seconds → milli-vCPU-equivalent sec  event=sandbox_compute_seconds
 #                      value = weighted seconds, price = usdPerWeightedSecond×100
 #   sandbox_snapshot_gb_seconds → re-based to per-GB-hour  event=sandbox_snapshot_gb_hours

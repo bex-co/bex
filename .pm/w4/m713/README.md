@@ -1,19 +1,19 @@
 # w4 · m713 — A Postgres database bills its provisioned storage, and a Key Value instance carries no storage charge, as on Render
 
-**Worker:** worker4 **Goal:** a Postgres invoice charges the storage capacity the database has (its plan or chosen size, grown by a manual increase or disk autoscaling), on every instance Render bills, and a Key Value invoice has no storage line, as on Render. The used-bytes reading stays on the Billing page and the usage API, shown at $0. **Status:** todo
+**Worker:** worker4 **Goal:** a Postgres invoice charges the storage capacity the database has (its plan or chosen size, grown by a manual increase or disk autoscaling), on every instance Render bills, and a Key Value invoice has no storage line, as on Render. The used-bytes reading stays on the Billing page and the usage API, shown at $0. **Status:** todo (t001, t002, t003, t004, t006, t007, t008 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Record a Postgres's storage capacity as its own hourly meter | 1h30m | — |
-| [t002](t002.md) | Bill capacity instead of used bytes from the cutover; a Key Value's storage is never charged | 1h15m | t001 |
-| [t003](t003.md) | The Billing page names both lines | 45m | t002 |
-| [t004](t004.md) | ADR023, ADR030 and the ADR018 row state Render's basis | 25m | t002 |
+| [t001](done/t001.md) | Record a Postgres's storage capacity as its own hourly meter — **DONE** | 1h30m | — |
+| [t002](done/t002.md) | Bill capacity instead of used bytes from the cutover; a Key Value's storage is never charged — **DONE** | 1h15m | t001 |
+| [t003](done/t003.md) | The Billing page names both lines — **DONE** | 45m | t002 |
+| [t004](done/t004.md) | ADR023, ADR030 and the ADR018 row state Render's basis — **DONE** | 25m | t002 |
 | [t005](t005.md) | Live: on dev-4 and then production, a Postgres bills its size and a Key Value bills no storage | 40m | t003, t004 |
-| [t006](t006.md) | Render parity | 20m | t005 |
-| [t007](t007.md) | Simplify | 15m | t006 |
-| [t008](t008.md) | Test coverage | 30m | t006, t007 |
+| [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 30m | t006, t007 |
 | [t009](t009.md) | Closeout | 10m | t008 |
 
 Total: **9 tasks, about 5h50m**.

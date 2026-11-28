@@ -1,6 +1,10 @@
 # Workspace-scoped usage (bex extension, no Render equivalent).
 # Kinds: instance_seconds (compute), egress_bytes (bandwidth),
-# build_seconds (CI/build), storage_gb_seconds (managed datastore storage),
+# build_seconds (CI/build), storage_capacity_gb_seconds (a Postgres
+# database's provisioned storage on every instance, billed from
+# estimatedCost.storageCapacityBilledFrom, as Render bills Postgres storage),
+# storage_gb_seconds (the used storage of a Postgres or Key Value: billed
+# before that instant, an `unbilled` reading from it; w4/m713),
 # sandbox_compute_seconds (weighted hosted-sandbox compute: every sandbox
 # before estimatedCost.sandboxUsageBilledFrom, an agent session's sandbox
 # after), sandbox_cpu_seconds (the CPU a running sandbox used) and
@@ -85,6 +89,11 @@ query Usage($period: String, $ownerId: String) {
       # sandbox is billed the same way; before it, it kept the weighted charge
       # (w6/m566). Empty when sandboxUsageBilledFrom is.
       agentSandboxUsageBilledFrom
+      # storageCapacityBilledFrom: the instant from which a Postgres database
+      # is billed for its storage capacity and its used storage is shown at
+      # $0, and a Key Value's storage is not charged (w4/m713); empty when the
+      # period has no datastore storage.
+      storageCapacityBilledFrom
       # resources is the same total grouped by the resource that incurred it,
       # each with the charge lines behind it (rate x quantity = cost, all in
       # one display unit). This is what the billing page's charge tree renders;
@@ -111,7 +120,9 @@ query Usage($period: String, $ownerId: String) {
           costUsd
           # unbilled: sandbox CPU or memory recorded before
           # sandboxUsageBilledFrom, shown at a rate of 0 because the sandbox
-          # compute line charged for those hours.
+          # compute line charged for those hours, or the datastore storage
+          # reading that does not bill on its side of
+          # storageCapacityBilledFrom.
           unbilled
         }
       }

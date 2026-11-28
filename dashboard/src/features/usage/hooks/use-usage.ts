@@ -43,7 +43,8 @@ export interface ChargeLine {
    * `EstimatedCost.sandboxUsageBilledFrom` (w22/m314), or for an agent
    * session's sandbox before `EstimatedCost.agentSandboxUsageBilledFrom`
    * (w6/m566): shown at a rate of 0, because the sandbox compute line charged
-   * for those hours.
+   * for those hours. Also the datastore storage reading that does not bill on
+   * its side of `EstimatedCost.storageCapacityBilledFrom` (w4/m713).
    */
   unbilled?: boolean;
 }
@@ -79,6 +80,13 @@ export interface EstimatedCost {
    * Empty or absent when `sandboxUsageBilledFrom` is.
    */
   agentSandboxUsageBilledFrom?: string;
+  /**
+   * RFC3339 instant from which a Postgres database is billed for its storage
+   * capacity and the storage it uses is an `unbilled` line, and a Key Value's
+   * storage is not charged (w4/m713). Empty or absent when the period has no
+   * datastore storage.
+   */
+  storageCapacityBilledFrom?: string;
 }
 
 /**
@@ -315,6 +323,8 @@ export function useUsage(
                     raw.estimatedCost.sandboxUsageBilledFrom ?? "",
                   agentSandboxUsageBilledFrom:
                     raw.estimatedCost.agentSandboxUsageBilledFrom ?? "",
+                  storageCapacityBilledFrom:
+                    raw.estimatedCost.storageCapacityBilledFrom ?? "",
                   resources: (raw.estimatedCost.resources ?? [])
                     .filter(Boolean)
                     .map((r) => ({

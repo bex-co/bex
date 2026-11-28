@@ -445,6 +445,9 @@ export function ChargesCard({
   const agentSandboxSwitch = parseInstant(
     estimatedCost?.agentSandboxUsageBilledFrom,
   );
+  // When a Postgres's storage switched from used bytes to its capacity, as
+  // Render bills it, and a Key Value's storage stopped being charged (w4/m713).
+  const storageSwitch = parseInstant(estimatedCost?.storageCapacityBilledFrom);
   const switchDate = new Intl.DateTimeFormat(i18n.language || "en", {
     dateStyle: "medium",
     timeStyle: "short",
@@ -522,6 +525,13 @@ export function ChargesCard({
                     })}
                   </>
                 )}
+              </p>
+            )}
+            {storageSwitch && (
+              <p className="text-xs text-muted-foreground">
+                {t("usage.storageCapacityBilledFromNote", {
+                  date: switchDate.format(storageSwitch),
+                })}
               </p>
             )}
           </>

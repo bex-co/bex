@@ -405,6 +405,10 @@ func main() {
 		st.SandboxUsageBilledFrom = pricing.Default.SandboxUsageBilledFrom()
 		// An agent session's sandbox switches at its own instant (w6/m566).
 		st.AgentSandboxUsageBilledFrom = pricing.Default.AgentSandboxUsageBilledFrom()
+		// A Postgres bills its storage capacity, and a Key Value no storage,
+		// from one instant too: the usage reads, the outbox and the settle
+		// totals classify both storage kinds by it (w4/m713).
+		st.StorageCapacityBilledFrom = pricing.Default.StorageCapacityBilledFrom()
 		// ADR088 §4 store-level guards: invite redemption into the pinned ops
 		// workspace skips seat/plan gating, and account-deletion disposition
 		// classifies a sole-member ops workspace blocked instead of delete.

@@ -822,7 +822,18 @@ const jaUsage: Record<string, TranslationEntry> = {
   },
   "usage.chargeStorage": {
     message: "ストレージ",
-    description: "Charge line for metered datastore storage",
+    description:
+      "Charge line for a Postgres database's provisioned storage capacity, on every instance, billed per GB-month (w4/m713)",
+  },
+  "usage.chargeStorageUsed": {
+    message: "使用中のストレージ",
+    description:
+      "Charge line for the storage a Postgres database or Key Value uses; billed before the storage switch, shown at $0 from it",
+  },
+  "usage.chargeStorageCapacityUnbilled": {
+    message: "ストレージ（まだ課金されません）",
+    description:
+      "Charge line for a Postgres database's provisioned storage before billing switched to it; shown at $0 because the storage it used was billed then",
   },
   "usage.chargeSandboxCompute": {
     message: "サンドボックスのコンピュート",
@@ -859,6 +870,12 @@ const jaUsage: Record<string, TranslationEntry> = {
       "エージェントセッションのサンドボックスは {date} UTC からこの方式で課金されます。それ以前の利用はサンドボックスのコンピュートとして課金されます。",
     description:
       "Second sentence of the note under the charge tree of a period with sandbox usage; date is the instant an agent session's sandbox switched from sandbox compute to used CPU and allocated memory, formatted in UTC (it may be in the future)",
+  },
+  "usage.storageCapacityBilledFromNote": {
+    message:
+      "{date} UTC から、Postgres データベースは保有するストレージ容量に対して課金され（Render と同様）、使用中のストレージは $0 で表示されます。Key Value のストレージは課金されません。それ以前は、どちらも使用したストレージに対して課金されました。",
+    description:
+      "Note under the charge tree of a period with datastore storage; date is the instant a Postgres database's storage switched from used bytes to its capacity, formatted in UTC (it may be in the future)",
   },
   "usage.chargeSandboxSnapshotStorage": {
     message: "サンドボックスのスナップショットストレージ",

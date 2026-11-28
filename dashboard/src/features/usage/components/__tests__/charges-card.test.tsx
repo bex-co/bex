@@ -729,6 +729,176 @@ describe("ChargesCard", () => {
     expect(screen.queryByText(/a running sandbox is billed/)).toBeNull();
   });
 
+  // w4/m713: from the switch a Postgres database is billed for the storage it
+  // has, as on Render: a billed "Storage" line beside a "Storage used" reading
+  // at $0. A Key Value's storage is not charged, so it shows only the reading.
+  // The note names the instant, and before it the capacity says it is not
+  // billed yet.
+  it("names a Postgres's billed storage and the storage used at $0", () => {
+    const storage = (
+      kind: string,
+      rateUsd: string,
+      quantity: string,
+      costUsd: string,
+      unbilled: boolean,
+    ) => ({
+      kind,
+      tier: "basic-1gb",
+      unit: "GB-mo",
+      rateUsd,
+      quantity,
+      costUsd,
+      unbilled,
+    });
+    const datastores = (capacityBilled: boolean) =>
+      estimate(
+        [
+          resource({
+            serviceId: "dpg-db",
+            serviceName: "orders-db",
+            resourceKind: "postgres",
+            costUsd: capacityBilled ? "2.10" : "0.42",
+            charges: [
+              storage(
+                "storage_capacity_gb_seconds",
+                capacityBilled ? "0.21" : "0",
+                "10.00",
+                capacityBilled ? "2.10" : "0.00",
+                !capacityBilled,
+              ),
+              storage(
+                "storage_gb_seconds",
+                capacityBilled ? "0" : "0.21",
+                "2.00",
+                capacityBilled ? "0.00" : "0.42",
+                capacityBilled,
+              ),
+            ],
+          }),
+          resource({
+            serviceId: "red-kv",
+            serviceName: "sessions-kv",
+            resourceKind: "key_value",
+            costUsd: "0.00",
+            charges: [storage("storage_gb_seconds", "0", "1.00", "0.00", true)],
+          }),
+        ],
+        capacityBilled ? "2.10" : "0.42",
+      );
+    const { rerender } = render(
+      <ChargesCard
+        estimatedCost={{
+          ...datastores(true),
+          storageCapacityBilledFrom: "2026-12-01T00:00:00Z",
+        }}
+        invoicedUsd={null}
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Expand all" }));
+    fireEvent.click(screen.getByRole("button", { name: /orders-db/ }));
+    fireEvent.click(screen.getByRole("button", { name: /sessions-kv/ }));
+    // The Postgres's two lines and the Key Value's one.
+    expect(screen.getAllByText("Storage")).toHaveLength(1);
+    expect(screen.getAllByText("Storage used")).toHaveLength(2);
+    expect(screen.getByText("$0.21/GB-mo")).toBeInTheDocument();
+    expect(screen.getAllByText("Included")).toHaveLength(2);
+    expect(screen.getByText("10.00 GB-mo")).toBeInTheDocument();
+    expect(
+      screen.queryByText("storage_capacity_gb_seconds"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "From Dec 1, 2026, 12:00 AM UTC, a Postgres database is billed for the storage it has, as on Render, and the storage it uses is shown at $0; a Key Value’s storage is not charged. Before then, both were billed for the storage they used.",
+      ),
+    ).toBeInTheDocument();
+
+    // A period before the switch: the used storage bills, and the capacity is
+    // shown as not billed yet.
+    rerender(
+      <ChargesCard
+        estimatedCost={{
+          ...datastores(false),
+          storageCapacityBilledFrom: "2026-12-01T00:00:00Z",
+        }}
+        invoicedUsd={null}
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+    expect(screen.getByText("Storage (not yet billed)")).toBeInTheDocument();
+    expect(screen.queryByText("Storage")).toBeNull();
+    expect(screen.getAllByText("Storage used")).toHaveLength(2);
+  });
+
+  it("says nothing about the storage switch in a period with no datastore storage", () => {
+    render(
+      <ChargesCard
+        estimatedCost={estimate([resource()])}
+        invoicedUsd={null}
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+    expect(screen.queryByText(/a Postgres database is billed/)).toBeNull();
+  });
+
+  // zh reads the lines and the note in Chinese, never as raw meter names.
+  it("translates the storage lines and the note", async () => {
+    await ensureLanguage("zh");
+    await i18n.changeLanguage("zh");
+    try {
+      render(
+        <ChargesCard
+          estimatedCost={{
+            ...estimate(
+              [
+                resource({
+                  serviceId: "red-kv",
+                  serviceName: "sessions-kv",
+                  resourceKind: "key_value",
+                  costUsd: "0.00",
+                  charges: [
+                    {
+                      kind: "storage_gb_seconds",
+                      tier: "starter",
+                      unit: "GB-mo",
+                      rateUsd: "0",
+                      quantity: "1.00",
+                      costUsd: "0.00",
+                      unbilled: true,
+                    },
+                  ],
+                }),
+              ],
+              "0.00",
+            ),
+            storageCapacityBilledFrom: "2026-12-01T00:00:00Z",
+          }}
+          invoicedUsd={null}
+          loading={false}
+          period=""
+          now={MID_JULY}
+        />,
+      );
+      fireEvent.click(
+        screen.getByRole("button", { name: i18n.t("usage.expandAll") }),
+      );
+      fireEvent.click(screen.getByRole("button", { name: /sessions-kv/ }));
+      expect(screen.getByText("已用存储")).toBeInTheDocument();
+      expect(screen.queryByText("storage_gb_seconds")).toBeNull();
+      expect(
+        screen.getByText(/Postgres 数据库按其拥有的存储容量计费/),
+      ).toBeInTheDocument();
+    } finally {
+      await i18n.changeLanguage("en");
+    }
+  });
+
   // w6/m566: an agent session's sandbox switches at its own, later instant,
   // and the note names it beside the first. Without it the note keeps one
   // sentence.

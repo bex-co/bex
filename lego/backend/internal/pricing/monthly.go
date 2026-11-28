@@ -48,16 +48,17 @@ func (s *Sheet) DiskMonthlyUSD(sizeGB int32) string {
 }
 
 // StorageMonthlyUSDPerGB returns what one GB of a datastore instance's storage
-// costs a month on tier ("0.21" for a paid Postgres, ADR030), the rate
+// capacity costs a month on tier ("0.21" for a paid Postgres, ADR030), the rate
 // MonthlyEstimate prices a datastore's storage line at. A Free tier's fixed
-// storage is included at $0 (w4/427), so it answers "0.00", and so does a
-// resource kind with no storage meter. A plan review multiplies it by the
-// storage size and by every instance the database bills (w3/m674).
+// storage is included at $0 (w4/427), so it answers "0.00", and so does a Key
+// Value, which has no storage rate on Render (w4/m713), and any other resource
+// kind. A plan review multiplies it by the storage size and by every instance
+// the database bills (w3/m674), which is what the capacity meter bills.
 func (s *Sheet) StorageMonthlyUSDPerGB(tier, resourceKind string) string {
 	if s == nil {
 		return "0.00"
 	}
-	rate := s.rateFor(store.UsageKindStorageGBSeconds, tier, resourceKind)
+	rate := s.rateFor(store.UsageKindStorageCapacityGBSeconds, tier, resourceKind)
 	if rate <= 0 {
 		return "0.00"
 	}
@@ -133,10 +134,11 @@ type MonthlyResource struct {
 	// Cron marks a cron service: listed as variable, never priced into the
 	// total (it only bills per-second while runs execute).
 	Cron bool
-	// StorageGB is the provisioned volume size. Datastore kinds price it at the
-	// used-storage rate; a service prices its attached DISK at the disk rate
-	// (docs/ADR082-persistent-disks.md D8). The caller resolves the plan's floor when
-	// the blueprint omits an explicit size.
+	// StorageGB is the provisioned volume size. A Postgres prices it at the
+	// storage capacity rate it is billed on, and a Key Value not at all: Render
+	// has no Key Value storage rate (w4/m713). A service prices its attached
+	// DISK at the disk rate (docs/ADR082-persistent-disks.md D8). The caller
+	// resolves the plan's floor when the blueprint omits an explicit size.
 	StorageGB int32
 	// HighAvailability adds a standby line at the same price (ratio 1.0).
 	HighAvailability bool
@@ -146,8 +148,8 @@ type MonthlyResource struct {
 
 // MonthlyEstimate is the always-on monthly projection for a set of declared
 // resources — what a Blueprint costs per month if everything runs continuously.
-// Storage is priced on provisioned size, an upper bound of the metered
-// used-bytes rate the invoice applies.
+// Storage is priced on provisioned size, the capacity a Postgres's invoice
+// bills (w4/m713).
 type MonthlyEstimate struct {
 	// TotalUSD sums the line items, formatted to cents ("0.00" when all-free).
 	TotalUSD string `json:"totalUsd"`
@@ -219,7 +221,8 @@ func (s *Sheet) MonthlyEstimate(resources []MonthlyResource) MonthlyEstimate {
 		var storageUSD float64
 		switch {
 		case r.ResourceKind == store.ResourceKindPostgres || r.ResourceKind == store.ResourceKindKeyValue:
-			storageUSD = float64(r.StorageGB) * s.storage * MonthSeconds
+			// A Key Value rates 0: its plan includes its storage.
+			storageUSD = float64(r.StorageGB) * s.rateFor(store.UsageKindStorageCapacityGBSeconds, r.Tier, r.ResourceKind) * MonthSeconds
 		case r.ResourceKind == store.ResourceKindService:
 			// A service's storage is its attached disk, priced at the disk rate
 			// on PROVISIONED capacity — the one estimate line that equals its

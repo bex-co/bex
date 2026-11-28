@@ -45,16 +45,17 @@ func TestInstanceMonthlyUSD(t *testing.T) {
 }
 
 // A plan review prices a datastore's storage per GB-month (w3/m674): the
-// storage meter's rate over one pricing month, ADR030's $0.21 for paid
-// Postgres and Key Value, and $0 for a Free tier's included storage (w4/427)
-// or a kind the storage meter does not price.
+// storage capacity meter's rate over one pricing month, ADR030's $0.21 for a
+// paid Postgres, and $0 for a Free tier's included storage (w4/427), a Key
+// Value, whose storage Render does not charge (w4/m713), or a kind the meter
+// does not price.
 func TestStorageMonthlyUSDPerGB(t *testing.T) {
 	for _, tt := range []struct {
 		tier, kind, want string
 	}{
 		{"basic-1gb", store.ResourceKindPostgres, "0.21"},
 		{"1c-2g", store.ResourceKindPostgres, "0.21"},
-		{"starter", store.ResourceKindKeyValue, "0.21"},
+		{"starter", store.ResourceKindKeyValue, "0.00"},
 		{"free", store.ResourceKindPostgres, "0.00"},
 		{"starter", store.ResourceKindService, "0.00"},
 	} {
@@ -102,10 +103,12 @@ func TestMonthlyEstimateTierFamilies(t *testing.T) {
 	if len(got.Lines) != 3 {
 		t.Fatalf("lines = %d, want 3: %+v", len(got.Lines), got.Lines)
 	}
+	// A Key Value's plan includes its storage, as on Render: no storage
+	// line however large its volume (w4/m713).
 	wantLines := []struct{ name, monthly, instance, storage string }{
 		{"web", "17.50", "17.50", ""},
 		{"db", "14.35", "13.30", "1.05"},
-		{"cache", "15.05", "14.00", "1.05"},
+		{"cache", "14.00", "14.00", ""},
 	}
 	for i, w := range wantLines {
 		l := got.Lines[i]
@@ -113,8 +116,8 @@ func TestMonthlyEstimateTierFamilies(t *testing.T) {
 			t.Errorf("line %d = %+v, want %+v", i, l, w)
 		}
 	}
-	if got.TotalUSD != "46.90" {
-		t.Errorf("TotalUSD = %s, want 46.90", got.TotalUSD)
+	if got.TotalUSD != "45.85" {
+		t.Errorf("TotalUSD = %s, want 45.85", got.TotalUSD)
 	}
 	if len(got.Variable) != 0 {
 		t.Errorf("Variable = %+v, want empty", got.Variable)

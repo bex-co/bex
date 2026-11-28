@@ -300,6 +300,16 @@ func TestStripeMeterEventMapping(t *testing.T) {
 		{"free key value storage skipped", Event{EventType: "storage_gb_seconds", Properties: map[string]string{"tier": "free", "resource_kind": "keyvalue", "value": "7200"}}, "", "", true},
 		{"paid postgres storage sent", Event{EventType: "storage_gb_seconds", Properties: map[string]string{"tier": "basic-256mb", "resource_kind": "postgres", "value": "7200"}}, "storage_gb_hours", "2", false},
 		{"storage rounded to Stripe precision", Event{EventType: "storage_gb_seconds", Properties: map[string]string{"value": "1"}}, "storage_gb_hours", "0.000277777778", false},
+		// w4/m713: from the switch a Postgres's capacity bills on the same
+		// GB-hour meter (a full hour of 10 GB is 10 GB-hours) and the used
+		// bytes the outbox marks Unbilled are never sent, a Key Value's
+		// included; a Free Postgres's capacity is included at $0.
+		{"paid postgres capacity re-based to GB-hours", Event{EventType: "storage_capacity_gb_seconds", Properties: map[string]string{"tier": "basic-1gb", "resource_kind": "postgres", "value": "36000"}}, "storage_gb_hours", "10", false},
+		{"free postgres capacity skipped", Event{EventType: "storage_capacity_gb_seconds", Properties: map[string]string{"tier": "free", "resource_kind": "postgres", "value": "3600"}}, "", "", true},
+		{"key value capacity skipped", Event{EventType: "storage_capacity_gb_seconds", Properties: map[string]string{"tier": "starter", "resource_kind": "key_value", "value": "3600"}}, "", "", true},
+		{"capacity before the switch skipped", Event{EventType: "storage_capacity_gb_seconds", Unbilled: true, Properties: map[string]string{"tier": "basic-1gb", "resource_kind": "postgres", "value": "36000"}}, "", "", true},
+		{"postgres used bytes from the switch skipped", Event{EventType: "storage_gb_seconds", Unbilled: true, Properties: map[string]string{"tier": "basic-1gb", "resource_kind": "postgres", "value": "7200"}}, "", "", true},
+		{"key value used bytes from the switch skipped", Event{EventType: "storage_gb_seconds", Unbilled: true, Properties: map[string]string{"tier": "starter", "resource_kind": "key_value", "value": "3600"}}, "", "", true},
 		{"build unchanged", Event{EventType: "build_seconds", Properties: map[string]string{"value": "120"}}, "build_seconds", "120", false},
 		{"sandbox weighted seconds unchanged", Event{EventType: "sandbox_compute_seconds", Properties: map[string]string{"value": "1990800"}}, "sandbox_compute_seconds", "1990800", false},
 		// w22/m314: sandbox CPU and memory recorded before billing switched to

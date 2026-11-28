@@ -1759,6 +1759,7 @@ type EstimatedCost {
   meters: [MeterEstimate]
   resources: [ResourceEstimate]
   sandboxUsageBilledFrom: String
+  storageCapacityBilledFrom: String
   totalUsd: String
 }
 

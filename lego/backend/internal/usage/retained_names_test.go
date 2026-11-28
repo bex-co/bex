@@ -469,7 +469,8 @@ func TestDatastoreNameCaptureFailureIsIsolatedByWorkspace(t *testing.T) {
 			t.Fatalf("failed retention wrote usage: %+v", row)
 		}
 	}
-	if len(st.healthRecords) != 3 || st.healthWrites != 1 {
+	// A Postgres's four meters, the storage capacity one included (w4/m713).
+	if len(st.healthRecords) != 4 || st.healthWrites != 1 {
 		t.Fatalf("failed meter health records=%+v", st.healthRecords)
 	}
 	for _, record := range st.healthRecords {

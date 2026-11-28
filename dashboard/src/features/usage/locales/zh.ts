@@ -804,7 +804,18 @@ const zhUsage: Record<string, TranslationEntry> = {
   },
   "usage.chargeStorage": {
     message: "存储",
-    description: "Charge line for metered datastore storage",
+    description:
+      "Charge line for a Postgres database's provisioned storage capacity, on every instance, billed per GB-month (w4/m713)",
+  },
+  "usage.chargeStorageUsed": {
+    message: "已用存储",
+    description:
+      "Charge line for the storage a Postgres database or Key Value uses; billed before the storage switch, shown at $0 from it",
+  },
+  "usage.chargeStorageCapacityUnbilled": {
+    message: "存储（尚未计费）",
+    description:
+      "Charge line for a Postgres database's provisioned storage before billing switched to it; shown at $0 because the storage it used was billed then",
   },
   "usage.chargeSandboxCompute": {
     message: "沙箱计算",
@@ -841,6 +852,12 @@ const zhUsage: Record<string, TranslationEntry> = {
       "智能体会话的沙箱自 {date} UTC 起按此方式计费；此前其用量按沙箱计算计费。",
     description:
       "Second sentence of the note under the charge tree of a period with sandbox usage; date is the instant an agent session's sandbox switched from sandbox compute to used CPU and allocated memory, formatted in UTC (it may be in the future)",
+  },
+  "usage.storageCapacityBilledFromNote": {
+    message:
+      "自 {date} UTC 起，Postgres 数据库按其拥有的存储容量计费（与 Render 一致），已用存储按 $0 显示；Key Value 的存储不收费。在此之前，两者均按已用存储计费。",
+    description:
+      "Note under the charge tree of a period with datastore storage; date is the instant a Postgres database's storage switched from used bytes to its capacity, formatted in UTC (it may be in the future)",
   },
   "usage.chargeSandboxSnapshotStorage": {
     message: "沙箱快照存储",

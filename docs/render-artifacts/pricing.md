@@ -88,7 +88,7 @@ Source: render.com/docs/redis
 | Starter  | $10       | 256 MB |
 | Standard | $30       | 1 GB   |
 
-Render does not publish a separate Key Value storage price: persistence is a plan feature. bex's separately-metered Valkey PVC usage is therefore a deliberate extension priced at the same transparent `$0.21/GB-month` used-storage rate as Postgres.
+Render does not publish a separate Key Value storage price: persistence is a plan feature. bex billed a Valkey PVC's used bytes at the Postgres storage rate until 2026-12-01; from then a Key Value has no storage charge, as on Render, and its used storage is a reading shown at $0 ([ADR030](../ADR030-pricing.md), w4/m713).
 
 ---
 

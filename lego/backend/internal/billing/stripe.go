@@ -572,8 +572,22 @@ func stripeMeterEvent(e Event) (eventName, value string, skip bool) {
 	case store.UsageKindEgressBytes:
 		return "egress_gib", scaleDown(e.Properties["value"], pricing.BytesPerGiB), false
 	case store.UsageKindStorageGBSeconds:
-		// A Free datastore's included storage is owed nothing (w4/427).
+		// Used bytes bill only before storageCapacity.billedFrom: the outbox
+		// read marks a row from it Unbilled (store.storageShown, w4/m713),
+		// which returned above. A Free datastore's included storage is owed
+		// nothing (w4/427).
 		if e.Properties["tier"] == "free" {
+			return "", "", true
+		}
+		return "storage_gb_hours", scaleDown(e.Properties["value"], secondsPerHour), false
+	case store.UsageKindStorageCapacityGBSeconds:
+		// A Postgres's storage capacity, every instance's, as Render bills it
+		// (w4/m713), on the same GB-hour meter and rate used bytes were billed
+		// on: no new Price, and the Subscription stays within Stripe's 20
+		// items. Its rows before storageCapacity.billedFrom are Unbilled and
+		// returned above. Free is included at $0 (w4/427), and only a Postgres
+		// writes the kind.
+		if e.Properties["tier"] == "free" || store.NormalizeResourceKind(e.Properties["resource_kind"]) != store.ResourceKindPostgres {
 			return "", "", true
 		}
 		return "storage_gb_hours", scaleDown(e.Properties["value"], secondsPerHour), false

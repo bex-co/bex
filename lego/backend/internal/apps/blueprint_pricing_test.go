@@ -62,12 +62,13 @@ func TestValidateBlueprintEstimatedPricingBeancountFixture(t *testing.T) {
 	if est == nil {
 		t.Fatal("EstimatedPricing missing on a valid manifest")
 	}
-	// standard web $17.50 + basic-1gb db $13.30 + 5 GB × $0.21 + standard KV
-	// $14.00 + 5 GB × $0.21 (both datastores price their plan storage floor).
+	// standard web $17.50 + basic-1gb db $13.30 + 5 GB × $0.21 (its plan's
+	// storage floor) + standard KV $14.00, whose plan includes its storage, as
+	// on Render (w4/m713).
 	want := map[string]string{
 		"beancount-forum":       "17.50",
 		"beancount-forum-db":    "14.35",
-		"beancount-forum-redis": "15.05",
+		"beancount-forum-redis": "14.00",
 	}
 	if len(est.Lines) != len(want) {
 		t.Fatalf("lines = %+v, want %d entries", est.Lines, len(want))
@@ -77,8 +78,8 @@ func TestValidateBlueprintEstimatedPricingBeancountFixture(t *testing.T) {
 			t.Errorf("line %q = %s/mo, want %s", l.Name, l.MonthlyUSD, want[l.Name])
 		}
 	}
-	if est.TotalUSD != "46.90" {
-		t.Errorf("TotalUSD = %s, want 46.90", est.TotalUSD)
+	if est.TotalUSD != "45.85" {
+		t.Errorf("TotalUSD = %s, want 45.85", est.TotalUSD)
 	}
 	if len(est.Variable) != 0 {
 		t.Errorf("Variable = %+v, want empty", est.Variable)
@@ -261,7 +262,7 @@ func TestValidateBlueprintEstimatedPricingKeyValueTierLabels(t *testing.T) {
 // takes the create path's default rather than a free tier: a plan-less web
 // service is starter ($4.90), a plan-less database is basic-256mb ($4.20 plus
 // its 1 GB floor at $0.21), and a plan-less Key Value store is Render's 256mb,
-// bex's starter ($7.00 plus its 1 GB at $0.21; w33/m436).
+// bex's starter ($7.00, its storage included as on Render; w33/m436, w4/m713).
 func TestValidateBlueprintEstimatedPricingOmittedPlansTakeCreateDefaults(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
 	manifest := `services:
@@ -282,7 +283,7 @@ databases:
 	want := map[string]struct{ tier, monthly string }{
 		"web":   {tier: "starter", monthly: "4.90"},
 		"db":    {tier: "basic-256mb", monthly: "4.41"},
-		"cache": {tier: "starter", monthly: "7.21"},
+		"cache": {tier: "starter", monthly: "7.00"},
 	}
 	if len(v.EstimatedPricing.Lines) != len(want) {
 		t.Fatalf("lines = %+v, want a paid line for each of %d resources", v.EstimatedPricing.Lines, len(want))
@@ -293,8 +294,8 @@ databases:
 			t.Errorf("line %q = tier %q %s/mo, want tier %q %s/mo", l.Name, l.Tier, l.MonthlyUSD, w.tier, w.monthly)
 		}
 	}
-	if v.EstimatedPricing.TotalUSD != "16.52" {
-		t.Errorf("TotalUSD = %s, want 16.52", v.EstimatedPricing.TotalUSD)
+	if v.EstimatedPricing.TotalUSD != "16.31" {
+		t.Errorf("TotalUSD = %s, want 16.31", v.EstimatedPricing.TotalUSD)
 	}
 }
 
@@ -312,8 +313,8 @@ func TestPreviewBlueprintCarriesEstimatedPricing(t *testing.T) {
 	if !p.Found || p.Validation == nil || p.Validation.EstimatedPricing == nil {
 		t.Fatalf("preview = %+v, want validation.estimatedPricing", p)
 	}
-	if p.Validation.EstimatedPricing.TotalUSD != "46.90" {
-		t.Errorf("preview TotalUSD = %s, want 46.90", p.Validation.EstimatedPricing.TotalUSD)
+	if p.Validation.EstimatedPricing.TotalUSD != "45.85" {
+		t.Errorf("preview TotalUSD = %s, want 45.85", p.Validation.EstimatedPricing.TotalUSD)
 	}
 }
 
@@ -331,8 +332,8 @@ func TestGraphQLValidateBlueprintEstimatedPricing(t *testing.T) {
 	if !ok {
 		t.Fatalf("estimatedPricing missing: %+v", v)
 	}
-	if est["totalUsd"] != "46.90" {
-		t.Errorf("totalUsd = %v, want 46.90", est["totalUsd"])
+	if est["totalUsd"] != "45.85" {
+		t.Errorf("totalUsd = %v, want 45.85", est["totalUsd"])
 	}
 	lines := est["lines"].([]any)
 	if len(lines) != 3 {
@@ -363,8 +364,8 @@ func TestRESTValidateBlueprintEstimatedPricing(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if out.EstimatedPricing == nil || out.EstimatedPricing.TotalUSD != "46.90" || len(out.EstimatedPricing.Lines) != 3 {
-		t.Fatalf("REST estimatedPricing = %+v, want 3 lines at 46.90", out.EstimatedPricing)
+	if out.EstimatedPricing == nil || out.EstimatedPricing.TotalUSD != "45.85" || len(out.EstimatedPricing.Lines) != 3 {
+		t.Fatalf("REST estimatedPricing = %+v, want 3 lines at 45.85", out.EstimatedPricing)
 	}
 	// The wire object matches the core shape byte-for-byte (one core, thin
 	// adapters): re-marshal and check the JSON field names the dashboard reads.
@@ -390,8 +391,8 @@ func TestMCPValidateBlueprintEstimatedPricing(t *testing.T) {
 	if !ok {
 		t.Fatalf("MCP estimatedPricing missing: %+v", result)
 	}
-	if est["totalUsd"] != "46.90" {
-		t.Errorf("MCP totalUsd = %v, want 46.90", est["totalUsd"])
+	if est["totalUsd"] != "45.85" {
+		t.Errorf("MCP totalUsd = %v, want 45.85", est["totalUsd"])
 	}
 	if lines, ok := est["lines"].([]any); !ok || len(lines) != 3 {
 		t.Errorf("MCP lines = %+v, want 3", est["lines"])
