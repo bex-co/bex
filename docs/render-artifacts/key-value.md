@@ -103,7 +103,7 @@ Every card of bex's former single Key Value page goes to Info, in the order of i
 ### Still apart
 
 - Render's `/plan` is a full-page plan chooser; bex's plan picker is the plan card on Info, where `/plan` lands ([w3/127](../../.pm/w3/127.md)).
-- Render's Logs and Metrics pages hide the resource header; bex keeps it, as on a Postgres database's pages ([w3/128](../../.pm/w3/128.md), after [w3/117](../../.pm/w3/117.md) for Postgres).
+- Render's Logs and Metrics pages hide the resource header; bex keeps it ([w3/128](../../.pm/w3/128.md)), where a Postgres database's Logs and Metrics have none since [w3/117](../../.pm/w3/done/117.md).
 - Render folds Maxmemory Policy and Persistence Mode into General; bex keeps them as cards of their own beside it.
 - Render's document title has no page name; bex's names the page first, as its service tabs do.
 

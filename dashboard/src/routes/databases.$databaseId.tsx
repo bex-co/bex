@@ -108,9 +108,10 @@ function RouteComponent() {
  * the header (name, status, plan badge, View docs and Connect, w3/m675), the
  * open page's heading, which is its sidebar entry's label, and an `<Outlet/>`
  * for the page. As on Render, the header has no overflow menu: Suspend,
- * Resume, Restart and Delete are in Info's danger zone. The sidebar is
- * DashboardSidebar's DatabaseSidebar. The layout reads the database once and
- * hands it to its pages through DatabaseDetailProvider.
+ * Resume, Restart and Delete are in Info's danger zone, and Logs and Metrics
+ * draw no header at all (w3/117). The sidebar is DashboardSidebar's
+ * DatabaseSidebar. The layout reads the database once and hands it to its
+ * pages through DatabaseDetailProvider.
  */
 function DatabaseDetailLayout({
   routePending = false,
@@ -146,6 +147,8 @@ function DatabaseDetailLayout({
     : resourceReadState(loaded, loading, error, routeState);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const pageLabelKey = databasePageLabelKey(pathname, databaseId);
+  // From the pathname, so the pending frame leaves the header out too.
+  const headerHidden = headerHiddenOn(pageLabelKey);
   useScrollToHashedCard(pathname, database !== null);
 
   if (readState) {
@@ -162,36 +165,38 @@ function DatabaseDetailLayout({
         className="contents"
         data-route-skeleton={!database ? "database-detail" : undefined}
       >
-        <div
-          data-skeleton-region={!database ? "resource-header" : undefined}
-          className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6"
-        >
-          {database ? (
-            <div className="flex min-w-0 max-w-full items-center gap-2">
-              <h1 className="truncate text-xl font-semibold">
-                {database.name}
-              </h1>
-              <DatabaseStatusBadge database={database} />
-              <DatabasePlanBadge database={database} />
-            </div>
-          ) : (
-            <div
-              data-skeleton-region="resource-title"
-              className="flex min-w-0 max-w-full items-center gap-2"
-            >
-              {/* The h1's text-xl line box is 28px (w4/m209); a badge is
-                  22px. */}
-              <Skeleton className="h-7 w-48" />
-              <Skeleton className="h-[22px] w-16 rounded-full" />
-              <Skeleton className="h-[22px] w-14 rounded-full" />
-            </div>
-          )}
-          {database ? (
-            <DatabaseHeaderActions database={database} />
-          ) : (
-            <DatastoreHeaderActionsSkeleton />
-          )}
-        </div>
+        {headerHidden ? null : (
+          <div
+            data-skeleton-region={!database ? "resource-header" : undefined}
+            className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6"
+          >
+            {database ? (
+              <div className="flex min-w-0 max-w-full items-center gap-2">
+                <h1 className="truncate text-xl font-semibold">
+                  {database.name}
+                </h1>
+                <DatabaseStatusBadge database={database} />
+                <DatabasePlanBadge database={database} />
+              </div>
+            ) : (
+              <div
+                data-skeleton-region="resource-title"
+                className="flex min-w-0 max-w-full items-center gap-2"
+              >
+                {/* The h1's text-xl line box is 28px (w4/m209); a badge is
+                    22px. */}
+                <Skeleton className="h-7 w-48" />
+                <Skeleton className="h-[22px] w-16 rounded-full" />
+                <Skeleton className="h-[22px] w-14 rounded-full" />
+              </div>
+            )}
+            {database ? (
+              <DatabaseHeaderActions database={database} />
+            ) : (
+              <DatastoreHeaderActionsSkeleton />
+            )}
+          </div>
+        )}
 
         <PageScroll
           data-skeleton-region={!database ? "active-page" : undefined}
@@ -242,6 +247,23 @@ function DatabaseDetailLayout({
 /** Whether `pathname` is a database's guided version-upgrade page. */
 function isVersionUpgradePage(pathname: string): boolean {
   return pathname.replace(/\/+$/, "").endsWith("/version-upgrade");
+}
+
+/**
+ * The pages Render draws without the database header (w3/117): Logs and
+ * Metrics. Render's Postgres layout passes `hideResourceHeader` on its
+ * full-screen pages (`index-*.js`, the fluid-layout hook of `CronJob-*.js`:
+ * a path with `/logs`, `/metrics` or `/shell`), and its page template then
+ * skips the header and the banners under it, giving the log explorer and the
+ * charts the page's full height. A signed-in walk on 2026-11-25 confirmed it
+ * (w3/106). The sidebar and the breadcrumb still name the database.
+ */
+function headerHiddenOn(
+  labelKey: ReturnType<typeof databasePageLabelKey>,
+): boolean {
+  return (
+    labelKey === "databases.navLogs" || labelKey === "databases.navMetrics"
+  );
 }
 
 /** The pages whose almost-full warning leads them, above their heading. */

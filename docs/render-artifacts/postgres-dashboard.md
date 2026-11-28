@@ -81,10 +81,10 @@ Each card of bex's former single Postgres page goes to the page whose Render cou
 - `/upgrade` lands on `/plan`, `/high-availability-upgrade` on `/plan#high-availability`, `/metrics/<period>` on `/metrics`, and `/version-upgrade`, `/sharing` and any other sub-path on Info.
 - The old single page's links land on their page: `?tab=logs` on `/logs` with its range and filter keys, and each anchor of a card that left Info on that card's page, the hash kept.
 - A database's read replicas, with Add read replica and each replica's Remove, are the Details card's last field on Info, under its facts, as Render's General card ends with Read Replicas ([w3/116](../../.pm/w3/done/116.md), 2026-11-27). Plan's High Availability card holds only the switch and failover.
+- Logs and Metrics draw no database header, as Render's do ([w3/117](../../.pm/w3/done/117.md), 2026-11-27): each opens on its heading, then the log viewer's toolbar or the charts, and so does its loading frame. Render's Postgres layout passes `hideResourceHeader` on those two pages (`index-D5V4ZgbE.js`, through the fluid-layout hook of `CronJob-DioyV2Vf.js`), and a signed-in, read-only walk on 2026-11-25 confirmed it: Info draws the header, Logs (at 1440 and 390) and Metrics (at 1440) do not ([w3/106](../../.pm/w3/done/106.md)). The sidebar and the breadcrumb still name the database there. The clone banner stays above every page, Logs and Metrics included, since Render draws it in the layout's body, not under its header. Every other page keeps the header.
 
 ## Still apart
 
-- Render's Logs and Metrics pages hide the resource header ([w3/117](../../.pm/w3/117.md)). A signed-in, read-only walk on 2026-11-25 confirmed it: a Postgres database's Info page draws the header, and its Logs page (at 1440 and 390) and Metrics page (at 1440) do not. [w3/106](../../.pm/w3/done/106.md) did the same for a service's.
 - A Key Value instance keeps its single page ([w3/115](../../.pm/w3/done/115.md), promoted to w3/m649).
 - Render's document title has no page name; bex's names the page first, as its service tabs do.
 - Render's Sharing page (legacy, flagged) and its log stream override (a [`DO_NOT_DO.md`](../../.pm/DO_NOT_DO.md) non-goal) have no bex counterpart.
@@ -162,7 +162,7 @@ Read 2026-11-26 from Render's public dashboard bundle, without sign-in: `index-D
 
 ### What bex does (w3/m675)
 
-- Every page of a database (Info, Logs, Metrics, Plan, Apps, Recovery) has the header: the name, the status, the plan badge, and at the row's end View docs and Connect. At 390 the actions wrap under the name.
+- Info, Plan, Apps and Recovery have the header: the name, the status, the plan badge, and at the row's end View docs and Connect. At 390 the actions wrap under the name. Logs and Metrics have none, as on Render (w3/117).
 - The plan badge shows the plan's catalogue name and opens `/databases/<id>/plan`. View docs opens https://bex.co/docs/platform/postgres in a new tab.
 - Connect (`dashboard/src/common/components/datastore-connect-menu.tsx`) has Render's two tabs, titles and lines, with bex's name where Render names itself. Its links go to bex's docs and CLI page. The command is `bex psql <id>`, the CLI's Render-compatible `psql` command.
 - The external endpoint admits traffic once the database is public, bex's counterpart of a non-empty allow list. Until then the External tab shows Render's note, linking Info's Access control card (`#access-control`), which holds the IP rules.

@@ -192,9 +192,6 @@ describe("a Postgres database's pages (w3/m641)", () => {
     await renderDatabasePages(ROUTES, href);
 
     expect(
-      await screen.findByRole("heading", { level: 1, name: "orders-db" }),
-    ).toBeVisible();
-    expect(
       await screen.findByRole("heading", { level: 2, name: heading }),
     ).toBeVisible();
     await waitFor(() => expect(cards()).toEqual(expected));
@@ -349,17 +346,10 @@ describe("a Postgres database's almost-full warning (w3/m656)", () => {
 
 // w3/m675: every page's header is Render's: the name, the status, the plan
 // badge opening Plan, View docs and Connect, and no overflow menu
-// (docs/render-artifacts/postgres-dashboard.md § Header).
+// (docs/render-artifacts/postgres-dashboard.md § Header). Logs and Metrics
+// have none (w3/117, below).
 describe("a Postgres database's header (w3/m675)", () => {
-  const PAGES = [
-    "",
-    "/info",
-    "/logs",
-    "/metrics",
-    "/plan",
-    "/apps",
-    "/recovery",
-  ];
+  const PAGES = ["", "/info", "/plan", "/apps", "/recovery"];
 
   it.each(PAGES)(
     "/databases/dpg-main%s carries Render's header",
@@ -424,7 +414,7 @@ describe("a Postgres database's header (w3/m675)", () => {
     const user = userEvent.setup();
     const router = await renderDatabasePages(
       ROUTES,
-      "/databases/dpg-main/logs",
+      "/databases/dpg-main/apps",
     );
     await user.click(await screen.findByRole("button", { name: "Connect" }));
 
@@ -518,4 +508,70 @@ describe("a Postgres database's header (w3/m675)", () => {
       "Connect",
     ]);
   });
+});
+
+// w3/117: Render's Postgres layout passes `hideResourceHeader` on its Logs and
+// Metrics pages, so the log explorer and the charts open at the page's top;
+// the sidebar and the breadcrumb still name the database. The pending frame
+// leaves the header out too, so it opens where the ready page does.
+describe("a Postgres database's Logs and Metrics pages (w3/117)", () => {
+  const resourceHeader = () =>
+    document.querySelector('[data-skeleton-region="resource-header"]');
+
+  it.each([
+    ["logs", "Logs", ["logs"]],
+    ["metrics", "Metrics", ["metrics", "insights"]],
+  ])("/%s draws no database header", async (page, heading, expected) => {
+    catalog.current = [
+      { id: "basic-1gb", name: "Basic-1gb", storageGB: 5, maxStorageGB: 16384 },
+    ];
+    await renderDatabasePages(ROUTES, `/databases/dpg-main/${page}`);
+
+    const title = await screen.findByRole("heading", {
+      level: 2,
+      name: heading,
+    });
+    await waitFor(() => expect(cards()).toEqual(expected));
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+    expect(screen.queryByText("orders-db")).toBeNull();
+    expect(screen.queryByText("Available")).toBeNull();
+    expect(screen.queryByRole("link", { name: "Basic-1gb" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "View docs" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Connect" })).toBeNull();
+    // The page's heading is the first thing in the scroller.
+    const scroller = title.closest("[data-page-scroll]")!;
+    expect(scroller.previousElementSibling).toBeNull();
+  });
+
+  it.each(["logs", "metrics"])(
+    "/%s's pending frame draws no header frame either",
+    async (page) => {
+      await renderDatastorePendingFrame(
+        "database",
+        `/databases/dpg-main/${page}`,
+      );
+
+      await waitFor(() =>
+        expect(
+          document.querySelector('[data-skeleton-region="active-page"]'),
+        ).not.toBeNull(),
+      );
+      expect(resourceHeader()).toBeNull();
+      expect(
+        document.querySelector('[data-route-skeleton="database-detail"]'),
+      ).not.toBeNull();
+    },
+  );
+
+  it.each(["", "/info", "/plan", "/apps", "/recovery"])(
+    "/databases/dpg-main%s's pending frame keeps the header frame",
+    async (page) => {
+      await renderDatastorePendingFrame(
+        "database",
+        `/databases/dpg-main${page}`,
+      );
+
+      await waitFor(() => expect(resourceHeader()).not.toBeNull());
+    },
+  );
 });

@@ -64,13 +64,16 @@ vi.mock("@/features/environments/hooks/use-environments", () => ({
 
 function renderAt(pathname: string) {
   const root = createRootRoute({ component: () => <Outlet /> });
-  const routes = ["/databases/$databaseId", "/keyvalue/$keyValueId"].map(
-    (path) =>
-      createRoute({
-        getParentRoute: () => root,
-        path,
-        component: DashboardBreadcrumbs,
-      }),
+  const routes = [
+    "/databases/$databaseId",
+    "/databases/$databaseId/$page",
+    "/keyvalue/$keyValueId",
+  ].map((path) =>
+    createRoute({
+      getParentRoute: () => root,
+      path,
+      component: DashboardBreadcrumbs,
+    }),
   );
   const router = createRouter({
     routeTree: root.addChildren(routes),
@@ -92,6 +95,23 @@ describe("datastore breadcrumbs (w4/144)", () => {
     expect(nav).toHaveTextContent("primary-db");
     expect(nav).not.toHaveTextContent("dpg-main");
   });
+
+  // Logs and Metrics draw no database header (w3/117): the trail still
+  // names the database there.
+  it.each(["logs", "metrics"])(
+    "names the Postgres on its %s page, which has no header",
+    async (page) => {
+      renderAt(`/databases/dpg-main/${page}`);
+
+      const nav = await screen.findByRole("navigation", {
+        name: "Breadcrumbs",
+      });
+      expect(nav).toHaveTextContent("primary-db");
+      expect(
+        screen.getByRole("button", { name: /Staging/ }),
+      ).toBeInTheDocument();
+    },
+  );
 
   it("keeps an ungrouped Key Value's type crumb, with its name as the leaf", async () => {
     renderAt("/keyvalue/red-cache");
