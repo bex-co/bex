@@ -867,8 +867,8 @@ Grouped by product area, then sorted by name.
 | `adminLoginAs` | mutation | n/a | Render staff tooling (sign in as a user, flag overlays), not a customer surface |
 | `allFrontendFlags` | query | n/a | Render's frontend-flag plumbing: Render's server answers which frontend flags are on for the signed-in user and workspace. The flags themselves are rows in the Frontend flags table |
 | `cannyToken` | query | n/a | Render's own support and feedback vendors (Intercom, Canny, surveys) |
-| `documentDownloadURL` | mutation | n/a | Render's Document Center (signed NDAs and compliance reports): Render's legal paperwork, not a product surface |
-| `documents` | query | n/a | Render's Document Center (signed NDAs and compliance reports): Render's legal paperwork, not a product surface |
+| `documentDownloadURL` | mutation | gap | Render's Compliance and Documents page: the SOC 3 report and the GDPR DPA for every workspace, and under NDA the SOC 2 Type 2 report, ISO 27001 certificate and security policy for Pro and higher. `w4/746` waits on the user's decision (ADR018 § Identity, workspaces & account: Compliance and Documents page) |
+| `documents` | query | gap | Render's Compliance and Documents page: the SOC 3 report and the GDPR DPA for every workspace, and under NDA the SOC 2 Type 2 report, ISO 27001 certificate and security policy for Pro and higher. `w4/746` waits on the user's decision (ADR018 § Identity, workspaces & account: Compliance and Documents page) |
 | `firstServiceCreationCompleted` | query | n/a | Render's first-service onboarding experiment: whether to auto-create a project; growth UI, no contract |
 | `ownerFeatureFlags` | query | n/a | Render's feature-flag plumbing; the flags themselves are rows in the Flag table |
 | `ownerForIntercom` | query | n/a | Render's own support and feedback vendors (Intercom, Canny, surveys) |
@@ -877,8 +877,8 @@ Grouped by product area, then sorted by name.
 | `saveOwnerSettingsJSON` | mutation | n/a | Render's dashboard UI state kept server-side (dismissed banners, collapsed panels); no contract beyond the page itself |
 | `saveUserSettingsJSON` | mutation | n/a | Render's dashboard UI state kept server-side (dismissed banners, collapsed panels); no contract beyond the page itself |
 | `sessionFlagOverlayFlags` | query | n/a | Render staff tooling (sign in as a user, flag overlays), not a customer surface |
-| `signedNDAActive` | query | n/a | Render's Document Center (signed NDAs and compliance reports): Render's legal paperwork, not a product surface |
-| `signNDA` | mutation | n/a | Render's Document Center (signed NDAs and compliance reports): Render's legal paperwork, not a product surface |
+| `signedNDAActive` | query | gap | Render's Compliance and Documents page: the SOC 3 report and the GDPR DPA for every workspace, and under NDA the SOC 2 Type 2 report, ISO 27001 certificate and security policy for Pro and higher. `w4/746` waits on the user's decision (ADR018 § Identity, workspaces & account: Compliance and Documents page) |
+| `signNDA` | mutation | gap | Render's Compliance and Documents page: the SOC 3 report and the GDPR DPA for every workspace, and under NDA the SOC 2 Type 2 report, ISO 27001 certificate and security policy for Pro and higher. `w4/746` waits on the user's decision (ADR018 § Identity, workspaces & account: Compliance and Documents page) |
 | `submitSurveyResponse` | mutation | n/a | Render's own support and feedback vendors (Intercom, Canny, surveys) |
 | `unbilledChargesForOwnerForIntercom` | query | n/a | Render's own support and feedback vendors (Intercom, Canny, surveys) |
 | `userFeatureFlags` | query | n/a | Render's feature-flag plumbing; the flags themselves are rows in the Flag table |

@@ -106,7 +106,7 @@ Authenticated probes on `dashboard.render.com`, extending the resource-deep-link
 | `/new/database`, `/new/redis`, `/new/project` | New-menu datastore/project creates live under `/new/` | 404 | `/new/redis` and `/new/database` are the create pages (2026-11-22; the old `/keyvalue/new` and `/?new=database` redirect to them); project → the URL-owned create dialog on `/` (`?new=project`) |
 | `/workflow/new`, `/wf/{id}` | New menu / CLI switch | 404 | non-goal (workflows off-roadmap) |
 | `/login`, `/register` | auth pages | `/auth/login`, `/auth/sign-up` | thin redirects (query/hash preserved — an `?invite=` token must survive) |
-| `/observability`, `/private-links`, `/dedicated-ips`, `/invites`, `/documents` | sidebar/footer pages | 404 | non-goals (drains, managed-infra, referral program, compliance docs — `.pm/DO_NOT_DO.md`) |
+| `/observability`, `/private-links`, `/dedicated-ips`, `/invites`, `/documents` | sidebar/footer pages | 404 | `/observability` (drains) and `/dedicated-ips` are non-goals (`.pm/DO_NOT_DO.md`); `/private-links` is a gap (`w7/071`); `/invites` (the referral program) is `n/a`; `/documents`, Render's Compliance and Documents page, is a gap awaiting the user's decision ([ADR018 § Identity, workspaces & account](../ADR018/identity-workspaces-account.md): Compliance and Documents page, `w4/746`). [Render's URL inventory](#renders-url-inventory) has each row |
 
 ## Sidebar navigation (2026-07-16 live probes, w1/m45)
 
@@ -225,8 +225,8 @@ The `render-dashboard-ops` job in `.github/workflows/render-schema-drift.yml` fa
 | `/dedicated-ips/:param/settings` | — | non-goal | DO_NOT_DO: dedicated outbound IPs (ADR018 parity non-goals) |
 | `/dedicated-ips/new` | — | non-goal | DO_NOT_DO: dedicated outbound IPs (ADR018 parity non-goals) |
 | `/device-authorization/:param` | — | n/a | the pinned Render CLI opens the `verification_uri_complete` bex-api returns (`/auth/device`), never a Render-shaped page (`pkg/client/oauth/oauth.go`) |
-| `/documents` | — | n/a | Render's Document Center (signed NDAs and compliance reports): Render's legal paperwork |
-| `/documents/*` | — | n/a | Render's Document Center (signed NDAs and compliance reports): Render's legal paperwork |
+| `/documents` | — | gap | Render's Compliance and Documents page: the SOC 3 report and the GDPR DPA for every workspace, and under NDA the SOC 2 Type 2 report, ISO 27001 certificate and security policy for Pro and higher. `w4/746` waits on the user's decision (ADR018 § Identity, workspaces & account: Compliance and Documents page) |
+| `/documents/*` | — | gap | Render's Compliance and Documents page: the SOC 3 report and the GDPR DPA for every workspace, and under NDA the SOC 2 Type 2 report, ISO 27001 certificate and security policy for Pro and higher. `w4/746` waits on the user's decision (ADR018 § Identity, workspaces & account: Compliance and Documents page) |
 | `/email-confirm` | — | n/a | reached only from Render's own sign-in flow and account emails; bex's are its own (`/auth/*`, ADR012) |
 | `/email-confirm-next` | — | n/a | Render's second variant of its sign-in pages (`auth_variant: next`), an experiment beside the classic path's row |
 | `/email-reset/confirm` | — | n/a | reached only from Render's own sign-in flow and account emails; bex's are its own (`/auth/*`, ADR012) |

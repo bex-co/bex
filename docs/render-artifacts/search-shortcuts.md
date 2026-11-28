@@ -56,6 +56,6 @@ Names and descriptions are in every dashboard locale. Render's keywords stay Eng
 
 These shortcuts have no bex destination, so bex shows no row for them:
 
-- **Compliance and documents** and **HIPAA Compliance**: bex publishes no compliance documents and has no HIPAA workspace setting.
+- **Compliance and documents** and **HIPAA Compliance**: bex publishes no compliance documents and has no HIPAA workspace setting. The Documents page waits on the user's decision (`w4/746`), HIPAA-enabled workspaces on `w7/071`.
 - **Metrics Stream** and **Log Streams**: external metric and log drains are a non-goal ([`DO_NOT_DO.md`](../../.pm/DO_NOT_DO.md), "External log/metric drains"; [ADR018](../ADR018-render-parity.md) rows _Log streams (external drains)_ and _Metric streams (external)_).
 - **Sandboxes docs**: bex's docs have no sandboxes page yet.

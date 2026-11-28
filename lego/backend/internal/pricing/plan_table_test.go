@@ -248,6 +248,10 @@ func pitrRetentionDays(plan string) int64 {
 // w7/m429 t005.
 const followUpHIPAALinks = "w7/071 (HIPAA-enabled workspaces and AWS private links have no recorded disposition)"
 
+// The ADR018 row and board item a gap names for Render's compliance documents,
+// which Render's dashboard serves on its Compliance and Documents page (w4/746).
+const gapComplianceDocuments = "ADR018 Compliance and Documents page, w4/746 (the user decides which documents bex offers)"
+
 // planDispositions is bex's answer to every captured row.
 var planDispositions = map[string]planDisposition{
 	// render.com/pricing — Render Services & Storage
@@ -339,10 +343,10 @@ var planDispositions = map[string]planDisposition{
 	"pricing: OIDC authentication":        gap("ADR018 Managed OIDC for AI providers, w2/m476–m480"),
 	"pricing: Audit logs":                 gate(core.FeatureAuditLogs),
 	// Compliance
-	"pricing: GDPR DPA":                  commercial("a contract term"),
-	"pricing: SOC 2 Type II":             commercial("an attestation"),
-	"pricing: ISO 27001":                 commercial("a certification"),
-	"pricing: SOC 2 & ISO documentation": commercial("documents shared under NDA"),
+	"pricing: GDPR DPA":                  gap(gapComplianceDocuments),
+	"pricing: SOC 2 Type II":             gap(gapComplianceDocuments),
+	"pricing: ISO 27001":                 gap(gapComplianceDocuments),
+	"pricing: SOC 2 & ISO documentation": gap(gapComplianceDocuments),
 	"pricing: HIPAA BAA":                 followUp(followUpHIPAALinks),
 	// Support
 	"pricing: Email":                                      commercial("support channel"),
@@ -376,7 +380,7 @@ var planDispositions = map[string]planDisposition{
 			}
 		}
 	}},
-	"features: Compliance documentation": commercial("documents shared under NDA"),
+	"features: Compliance documentation": gap(gapComplianceDocuments),
 	"features: Audit logs":               minimumGate(core.FeatureAuditLogs),
 	"features: OIDC":                     gap("ADR018 Managed OIDC for AI providers, w2/m476–m480"),
 	"features: SAML SSO and SCIM":        nonGoal("DO_NOT_DO: SSO/SAML · SCIM"),
