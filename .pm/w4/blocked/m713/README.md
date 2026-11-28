@@ -1,6 +1,6 @@
 # w4 · m713 — A Postgres database bills its provisioned storage, and a Key Value instance carries no storage charge, as on Render
 
-**Worker:** worker4 **Goal:** a Postgres invoice charges the storage capacity the database has (its plan or chosen size, grown by a manual increase or disk autoscaling), on every instance Render bills, and a Key Value invoice has no storage line, as on Render. The used-bytes reading stays on the Billing page and the usage API, shown at $0. **Status:** todo (t001, t002, t003, t004, t006, t007, t008 done)
+**Worker:** worker4 **Goal:** a Postgres invoice charges the storage capacity the database has (its plan or chosen size, grown by a manual increase or disk autoscaling), on every instance Render bills, and a Key Value invoice has no storage line, as on Render. The used-bytes reading stays on the Billing page and the usage API, shown at $0. **Status:** blocked (t001, t002, t003, t004, t006, t007, t008 done; t005's dev-4 half done)
 
 ## Tasks (in order)
 
@@ -20,7 +20,7 @@ Total: **9 tasks, about 5h50m**.
 
 ## Decision (2026-11-27, `/loopx w4` worker, promoting w4/745)
 
-The basis is picked by Render's behavior, as the worker rules require ([ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first)). It is not a user decision:
+The basis is picked by Render's behavior, as the worker rules require ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first). It is not a user decision:
 
 - **Render (read 2026-11-27):** its [faq](https://render.com/docs/faq) ("What does Render bill for?") bills "Storage capacity for Render Postgres databases and persistent disks", "Prorated by the second". [pricing](https://render.com/pricing) lists Postgres "Expandable storage ($0.30/GB)" and gives Key Value plans an included storage amount with no storage rate. [postgresql-high-availability](https://render.com/docs/postgresql-high-availability): "Your standby instance always has the same compute plan and storage as your primary instance and is billed accordingly." [postgresql-read-replicas](https://render.com/docs/postgresql-read-replicas): "Read replicas always have the same compute plan and storage as their primary database and are billed accordingly."
 - **bex adopts:** a new meter records each Postgres's capacity, and it is billed at the existing rate ($0.21/GB-month, Render's $0.30 × 0.70) on the existing Stripe meter `storage_gb_hours`. `storage_gb_seconds` keeps measuring used bytes for Postgres and Key Value. From the cutover it is a reading shown at $0 and is never exported. Free Postgres capacity stays at $0 (w4/427).
@@ -37,12 +37,12 @@ The basis is picked by Render's behavior, as the worker rules require ([ADR008 �
 - **Usage reads:** `GET /v1/usage`, GraphQL `usage` and MCP `get_usage` return both kinds with the same totals on all three.
 - **Billing page:** each Postgres shows a billed "Storage" line (capacity) and a "Storage used" line at $0. A Key Value shows only the "Storage used" line.
 - **Compaction:** a compacted month keeps both readings and its billed total.
-- **Docs:** [ADR023](../../../docs/ADR023-usage-metering.md), [ADR030](../../../docs/ADR030-pricing.md) and the Usage metering row in [docs/ADR018/bex-ahead-of-render.md](../../../docs/ADR018/bex-ahead-of-render.md) state the capacity basis. The row no longer calls it "Documented drift".
+- **Docs:** [ADR023](../../../../docs/ADR023-usage-metering.md, [ADR030](../../../../docs/ADR030-pricing.md and the Usage metering row in [docs/ADR018/bex-ahead-of-render.md](../../../../docs/ADR018/bex-ahead-of-render.md state the capacity basis. The row no longer calls it "Documented drift".
 - **Live:** on dev-4 and then production (`bex-canary`, the QA user's workspace, with a disposable Postgres and Key Value), the usage read shows the capacity row at plan GB × seconds and no billed Key Value storage.
 
 ## Source + Goal linkage
 
-- **Source:** promoted from [w4/745](../done/745.md) on 2026-11-27 by `/loopx w4`. That note came from w4/m688 t002, a full read of Render's faq on 2026-11-27.
+- **Source:** promoted from [w4/745](../../done/745.md) on 2026-11-27 by `/loopx w4`. That note came from w4/m688 t002, a full read of Render's faq on 2026-11-27.
 - **Evidence (`origin/main` `3b55d72024`):**
   - `queryStorageGBSeconds` (`lego/backend/internal/usage/service.go:1420`) averages `kubelet_volume_stats_used_bytes` for both datastore kinds.
   - `Sheet.rateFor` (`lego/backend/internal/pricing/pricing.go:829`) prices Postgres and Key Value alike at `storage`.
@@ -50,7 +50,16 @@ The basis is picked by Render's behavior, as the worker rules require ([ADR008 �
   - `MonthlyEstimate` (`pricing/monthly.go:221`) adds a storage line to a Key Value.
   - The operator provisions `<storageGB>Gi` (`lego/operator/internal/controller/database_controller.go:528`), and on Hetzner the physical volume has a 10 GiB floor (`lego/backend/internal/metrics/datastore.go:301`).
   - ADR018 lists the used-bytes basis as unsigned "Documented drift".
-- **Goal linkage:** Render parity (billing and invoicing), [ADR008](../../../docs/ADR008-vision.md#render-parity-first).
+- **Goal linkage:** Render parity (billing and invoicing), [ADR008](../../../../docs/ADR008-vision.md#render-parity-first.
 - **Expected outcome:** a Postgres invoice matches what Render would charge for the same database, a Key Value invoice has no storage line, and the ledgers say so.
 - **Why now:** every paid Postgres is billed for less than Render charges, and every paid Key Value for more, in every workspace today. The longer the used-bytes basis runs, the more invoices differ from Render's.
 - **Render parity:** included. The change alters what REST, GraphQL, MCP and the Billing page report and bill.
+
+## Parked (2026-11-28)
+
+The code shipped in `9535759cbe`: the capacity meter, the cutover at 2026-12-01T00:00:00Z, the Stripe export, the Billing page, the estimates and the ADRs. dev-4 measured a full hour of a 10 GB Postgres at 36,000 GB-seconds (t005). What is left clears by itself:
+
+- production's pin must carry `9535759cbe`;
+- the first billed hour, 2026-12-01T00:00Z, must close.
+
+Then a worker runs t005's production check in `bex-canary` and closes out with t009. No user action is needed.
