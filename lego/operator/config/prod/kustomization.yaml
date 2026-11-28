@@ -130,6 +130,22 @@ patches:
         value:
           name: BEX_DISK_STORAGE_CLASS
           value: hcloud-volumes-luks-bounded
+      # w4/m714: Postgres and Key Value volumes are LUKS-encrypted at rest,
+      # as Render's are, on the disk class's whole-volume variant (a
+      # datastore's filesystem keeps the provider volume's full size, as on
+      # hcloud-volumes). The operator mints each claim's "<pvc>-luks"
+      # passphrase (DatastoreVolumeKeyReconciler). New instances, and new
+      # standbys, replacements and read replicas of existing Clusters, land
+      # on it; a live claim's class is immutable, so volumes made before
+      # this stay on hcloud-volumes until they are moved. Prod-only like
+      # BEX_DISK_STORAGE_CLASS: the class exists only with the hcloud CSI
+      # driver. Rollback: remove this; new claims return to hcloud-volumes and
+      # encrypted ones keep their Secrets.
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_DATASTORE_STORAGE_CLASS
+          value: hcloud-volumes-luks
       # w2/m245: every public Database gets a Let's Encrypt certificate for
       # its <dpg-id>.db.bex.co names (HTTP-01 through Traefik on :80), served
       # by CNPG, so the copied external URL connects from a stock client with

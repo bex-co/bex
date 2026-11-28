@@ -55,9 +55,6 @@ import (
 )
 
 const (
-	// kvStorageClass is the StorageClass for Valkey data volumes (same class the
-	// Database controller uses for Postgres PVCs).
-	kvStorageClass = "hcloud-volumes"
 	// kvPort is the Valkey listen + Service port.
 	kvPort = 6379
 	// kvDefaultUser is Valkey's built-in default ACL user; required by
@@ -385,6 +382,9 @@ type KeyValueReconciler struct {
 	// ClusterIssuer signs the end-to-end Valkey server certificate used only by
 	// the proxy-facing TLS port. Public endpoints fail closed when it is empty.
 	ClusterIssuer string
+	// StorageClass is the class a new instance's volume claims
+	// (BEX_DATASTORE_STORAGE_CLASS; empty is datastoreStorageClass's default).
+	StorageClass string
 	// SecretClient reads and writes this KeyValue's credential Secrets. It must
 	// be an UNCACHED client: the manager's Secret informer covers exactly one
 	// namespace (NamespacedSecretCacheOptions), while under ADR043 D8 a KeyValue
@@ -722,8 +722,11 @@ func (r *KeyValueReconciler) reconcileKeyValueBackupNetworkPolicy(ctx context.Co
 // both need, resolved once instead of threaded as loose locals. Mirrors
 // clusterParams/databaseBackupIntent in database_controller.go.
 type keyValueIntent struct {
-	plan         tiers.ValkeyTier
-	storageGB    int32
+	plan      tiers.ValkeyTier
+	storageGB int32
+	// storageClass is KeyValueReconciler.StorageClass, the class a new
+	// StatefulSet's claim template names (datastoreStorageClass).
+	storageClass string
 	internalHost string
 	public       bool
 	// tlsRuntime selects the runtime TLS switch (w8/m134, keyvalue_tls_runtime.go):
@@ -874,6 +877,23 @@ func (r *KeyValueReconciler) retireHeadlessKeyValueService(ctx context.Context, 
 	return true, nil
 }
 
+// ensureKeyValueVolumeKey mints the passphrase of the claim a new StatefulSet
+// is about to make, so the Secret exists before its pod first mounts the
+// volume (w4/m714). The claim's name is fixed (keyValuePVCName), so its Secret
+// is known up front. It is owned by the KeyValue until the claim exists;
+// DatastoreVolumeKeyReconciler then adds the claim, so the Secret outlives
+// both. An existing StatefulSet's claim template is immutable and keeps its
+// class, so there is nothing to mint for it here.
+func (r *KeyValueReconciler) ensureKeyValueVolumeKey(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet) error {
+	if !sts.CreationTimestamp.IsZero() {
+		return nil
+	}
+	key := client.ObjectKey{Namespace: kv.Namespace, Name: volumeLUKSSecretName(keyValuePVCName(kv.Name))}
+	_, err := ensureLUKSPassphrase(ctx, r.secretClient(), key, nil,
+		func(secret *corev1.Secret) error { return controllerutil.SetControllerReference(kv, secret, r.Scheme) })
+	return err
+}
+
 // reconcileKeyValueWorkload authors the single-instance Valkey StatefulSet,
 // sized to the tier.
 func (r *KeyValueReconciler) reconcileKeyValueWorkload(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet, intent keyValueIntent) error {
@@ -910,7 +930,7 @@ func writeKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue,
 						corev1.ResourceStorage: resource.MustParse(fmt.Sprintf("%dGi", intent.storageGB)),
 					},
 				},
-				StorageClassName: new(kvStorageClass),
+				StorageClassName: new(datastoreStorageClass(intent.storageClass)),
 			},
 		}}
 	}
@@ -1085,6 +1105,7 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	listening := keyValueTemplateListens(sts) || (kv.Status.TLSListener && !kv.Status.TLSRuntimeSwitch)
 	intent := keyValueIntentFor(&kv, plan, storageGB, r.KvDomain, listening,
 		keyValueTLSRuntime(&kv, sts, r.KvDomain, listening))
+	intent.storageClass = r.StorageClass
 	// Validate public TLS before updating the workload. A missing issuer must
 	// fail closed without publishing a public host.
 	if reason, err := r.reconcileKeyValueTLS(ctx, &kv, intent.public, intent.tlsListener, intent.tlsSecretName); err != nil {
@@ -1113,6 +1134,9 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	proxyCutPending := r.cutStaleKeyValueProxyClients(ctx, &kv, platform)
 	if result, done, err := r.prepareKeyValuePersistence(ctx, &kv, sts, platform, &intent); done || err != nil {
 		return result, err
+	}
+	if err := r.ensureKeyValueVolumeKey(ctx, &kv, sts); err != nil {
+		return r.kvFail(ctx, &kv, appv1alpha1.ReasonStatefulSetFailed, err)
 	}
 	if err := r.reconcileKeyValueWorkload(ctx, &kv, sts, intent); err != nil {
 		return r.kvFail(ctx, &kv, appv1alpha1.ReasonStatefulSetFailed, err)

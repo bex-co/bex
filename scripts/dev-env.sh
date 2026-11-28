@@ -455,10 +455,11 @@ install_pinned_cnpg() {
   [ "$rc" -eq 0 ] || { echo "error: installing the lock-pinned CNPG operator (release cnpg, namespace cnpg-system) failed" >&2; exit 1; }
 }
 
-# ensure_tenant_storage_class — the operator puts every tenant Postgres and Key
-# Value volume on `hcloud-volumes`, production's Hetzner class
-# (database_controller.go dbStorageClass, keyvalue_controller.go
-# kvStorageClass). The local cluster has only local-path, so a paid
+# ensure_tenant_storage_class — with BEX_DATASTORE_STORAGE_CLASS unset, as on
+# the local cluster, the operator puts every tenant Postgres and Key Value
+# volume on `hcloud-volumes`, the Hetzner CSI chart's plain class
+# (volume_key.go defaultDatastoreStorageClass; production names its LUKS
+# class instead). The local cluster has only local-path, so a paid
 # datastore's PVC sat Pending for ever ("storageclass hcloud-volumes not
 # found"). This shared alias on the local-path provisioner lets them bind.
 # local-path cannot expand a volume: a Postgres storage grow is recorded but

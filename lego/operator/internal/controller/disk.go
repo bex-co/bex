@@ -18,8 +18,6 @@ package controller
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"path"
 	"slices"
@@ -54,11 +52,6 @@ import (
 const (
 	// diskVolumeName is the pod-template volume name for the attached disk.
 	diskVolumeName = "disk"
-	// diskLUKSSecretKey is the data key the hcloud CSI driver reads a disk's
-	// encryption passphrase from. The Secret's NAME (and the PVC's) is derived
-	// in lego/types, because bex-api must derive the same claim name to graph
-	// the disk's usage.
-	diskLUKSSecretKey = "encryption-passphrase"
 	// These non-secret fields carry current logical intent only to the CSI node.
 	// The bounded-ext4 StorageClass opts in; old classes ignore both fields.
 	diskFilesystemModeKey  = "boundedFilesystem"
@@ -69,8 +62,6 @@ const (
 	// KeyValue StatefulSet: for a single-instance stateful pod an eviction is
 	// downtime. Manual and CAPI drains (node upgrades) still evict it.
 	diskSafeToEvictAnnotation = "cluster-autoscaler.kubernetes.io/safe-to-evict"
-	// diskPassphraseBytes is the entropy behind a disk's LUKS passphrase.
-	diskPassphraseBytes = 32
 	// annotDiskProvisioned marks an App whose disk children exist, so a detach
 	// knows there is something to delete without reading the cluster.
 	//
@@ -363,42 +354,10 @@ func (r *AppReconciler) reconcileDisk(ctx context.Context, app *appv1alpha1.App)
 // The Secret is minted whether or not the configured StorageClass encrypts, so
 // that moving a cluster onto the encrypted class later needs no backfill.
 func (r *AppReconciler) ensureDiskPassphrase(ctx context.Context, app *appv1alpha1.App) error {
-	// Uncached on both reads and writes: the disk's Secret lives in the App's
-	// OWN namespace, which the manager's single-namespace Secret informer does
-	// not cover — see uncachedSecretClient.
-	secrets := r.uncachedSecretClient()
-	secret := &corev1.Secret{}
 	key := client.ObjectKey{Namespace: app.Namespace, Name: diskLUKSSecretName(app.Name)}
-	if err := secrets.Get(ctx, key, secret); err == nil {
-		if len(secret.Data[diskLUKSSecretKey]) == 0 && secret.StringData[diskLUKSSecretKey] == "" {
-			return fmt.Errorf("disk passphrase Secret %s is missing its encryption key; refusing to replace or use it", key)
-		}
-		return nil
-	} else if !apierrors.IsNotFound(err) {
-		return err
-	}
-	passphrase := make([]byte, diskPassphraseBytes)
-	if _, err := rand.Read(passphrase); err != nil {
-		return fmt.Errorf("generate disk passphrase: %w", err)
-	}
-	secret = &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      key.Name,
-			Namespace: key.Namespace,
-			Labels:    map[string]string{labelApp: app.Name},
-		},
-		Type: corev1.SecretTypeOpaque,
-		StringData: map[string]string{
-			diskLUKSSecretKey: base64.RawStdEncoding.EncodeToString(passphrase),
-		},
-	}
-	if err := controllerutil.SetControllerReference(app, secret, r.Scheme); err != nil {
-		return err
-	}
-	if err := secrets.Create(ctx, secret); err != nil && !apierrors.IsAlreadyExists(err) {
-		return err
-	}
-	return nil
+	_, err := ensureLUKSPassphrase(ctx, r.uncachedSecretClient(), key, map[string]string{labelApp: app.Name},
+		func(secret *corev1.Secret) error { return controllerutil.SetControllerReference(app, secret, r.Scheme) })
+	return err
 }
 
 // syncDiskFilesystemIntent authorizes only a request admitted by the PVC API.

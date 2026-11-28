@@ -73,7 +73,10 @@ var cnpgPoolerGVK = schema.GroupVersionKind{Group: cnpgGroup, Version: "v1", Kin
 var barmanCloudObjectStoreGVK = schema.GroupVersionKind{Group: "barmancloud.cnpg.io", Version: "v1", Kind: "ObjectStore"}
 
 const (
-	dbStorageClass = "hcloud-volumes"
+	// componentDatabase is the app.bex.co/component value every tenant
+	// Cluster's inheritedMetadata carries onto its instances and claims; the
+	// platform's own CNPG clusters never set it.
+	componentDatabase = "database"
 	// pgPort is the Postgres listen + Service port.
 	pgPort = 5432
 	// hibernationAnnotation / restartAnnotation are the CNPG cluster annotations
@@ -186,7 +189,9 @@ type clusterParams struct {
 	name      string
 	plan      tiers.PostgresTier
 	storageGB int32
-	version   string
+	// storageClass is DatabaseReconciler.StorageClass (datastoreStorageClass).
+	storageClass string
+	version      string
 	// runningVersion is the major the Database recorded the cluster runs
 	// (status.currentVersion), and creating says the Cluster does not exist
 	// yet. They pick an unversioned Database's image; runningVersion also
@@ -525,8 +530,13 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	spec := map[string]any{
 		"instances": instances,
 		"storage": map[string]any{
-			"size":         fmt.Sprintf("%dGi", p.storageGB),
-			"storageClass": dbStorageClass,
+			"size": fmt.Sprintf("%dGi", p.storageGB),
+			// An existing Cluster takes a changed class too: CloudNativePG
+			// 1.30 builds a claim's class only when it creates the claim and
+			// reconciles only the size of existing ones, so a new standby,
+			// replacement or replica lands on it and every live volume stays
+			// where it is (w4/m714).
+			"storageClass": datastoreStorageClass(p.storageClass),
 		},
 		"resources": map[string]any{
 			"requests": map[string]any{"cpu": p.plan.CPU, "memory": p.plan.Memory},
@@ -897,6 +907,11 @@ type DatabaseReconciler struct {
 	// which is correct for a single-namespace deployment: the Database is
 	// already beside the originals.
 	BackupSourceNamespace string
+	// StorageClass is the class every instance's volume claims
+	// (BEX_DATASTORE_STORAGE_CLASS; empty is datastoreStorageClass's default).
+	// Production names the LUKS class, whose passphrases
+	// DatastoreVolumeKeyReconciler mints (w4/m714).
+	StorageClass string
 	// SecretClient reads and writes this Database's derived Secrets. It must be
 	// an UNCACHED client — see KeyValueReconciler.SecretClient for why the
 	// manager's Secret informer cannot simply be widened. Nil falls back to the
@@ -1041,8 +1056,8 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		serverTLSSecret, serverCASecret = databasePublicTLSName(&db), databasePublicCAName(&db)
 	}
 	preloadHeld, err := r.reconcileCluster(ctx, &db, cluster, clusterParams{
-		name: db.Name, plan: plan, storageGB: storageGB, version: db.Spec.Version, runningVersion: db.Status.CurrentVersion,
-		dbname: dbname, owner: owner, store: backups.store, namespace: db.Namespace,
+		name: db.Name, plan: plan, storageGB: storageGB, storageClass: r.StorageClass,
+		version: db.Spec.Version, runningVersion: db.Status.CurrentVersion, dbname: dbname, owner: owner, store: backups.store, namespace: db.Namespace,
 		backupServerName: backups.targetServerName,
 		recovery:         db.Spec.Recovery, users: db.Spec.Users,
 		deletedUsers:       db.Spec.DeletedUsers,
@@ -1218,7 +1233,7 @@ func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alph
 		// Mark CNPG-managed pods as tenant databases so the node log shipper can
 		// exclude platform/auth CNPG clusters. Propagate workspace identity through
 		// the same bounded inheritedMetadata label map for NetworkPolicy selection.
-		inheritedLabels := map[string]any{appv1alpha1.LabelComponent: "database"}
+		inheritedLabels := map[string]any{appv1alpha1.LabelComponent: componentDatabase}
 		if ws := db.Labels[labelWorkspace]; ws != "" {
 			inheritedLabels[labelWorkspace] = ws
 		}

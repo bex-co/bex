@@ -617,7 +617,7 @@ func TestKeyValuePVCExpansionAndStorageClassFailure(t *testing.T) {
 			pvc := &corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{Name: keyValuePVCName(kv.Name), Namespace: kv.Namespace},
 				Spec: corev1.PersistentVolumeClaimSpec{
-					StorageClassName: new(kvStorageClass),
+					StorageClassName: new(defaultDatastoreStorageClass),
 					Resources: corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{
 						corev1.ResourceStorage: resource.MustParse("1Gi"),
 					}},
@@ -627,7 +627,7 @@ func TestKeyValuePVCExpansionAndStorageClassFailure(t *testing.T) {
 					Capacity: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
 				},
 			}
-			sc := &storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{Name: kvStorageClass}, AllowVolumeExpansion: &tc.expandable}
+			sc := &storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{Name: defaultDatastoreStorageClass}, AllowVolumeExpansion: &tc.expandable}
 			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv, pvc, sc).Build()
 			r := &KeyValueReconciler{Client: cl, Scheme: scheme}
 			state, err := r.reconcileKeyValueStorage(context.Background(), kv, sts, 5)
@@ -668,7 +668,7 @@ func TestKeyValuePVCExpansionBlockedByNamespaceQuota(t *testing.T) {
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: keyValuePVCName(kv.Name), Namespace: kv.Namespace},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: new(kvStorageClass),
+			StorageClassName: new(defaultDatastoreStorageClass),
 			Resources: corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{
 				corev1.ResourceStorage: resource.MustParse("1Gi"),
 			}},
@@ -679,7 +679,7 @@ func TestKeyValuePVCExpansionBlockedByNamespaceQuota(t *testing.T) {
 		},
 	}
 	expandable := true
-	sc := &storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{Name: kvStorageClass}, AllowVolumeExpansion: &expandable}
+	sc := &storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{Name: defaultDatastoreStorageClass}, AllowVolumeExpansion: &expandable}
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv, pvc, sc).
 		WithInterceptorFuncs(interceptor.Funcs{
 			Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
@@ -844,7 +844,7 @@ func TestKeyValueLogicalStorageIgnoresPhysicalFloor(t *testing.T) {
 			pvc := &corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{Name: keyValuePVCName(kv.Name), Namespace: kv.Namespace},
 				Spec: corev1.PersistentVolumeClaimSpec{
-					StorageClassName: new(kvStorageClass),
+					StorageClassName: new(defaultDatastoreStorageClass),
 					Resources: corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{
 						corev1.ResourceStorage: resource.MustParse(tc.requestGi),
 					}},
@@ -855,7 +855,7 @@ func TestKeyValueLogicalStorageIgnoresPhysicalFloor(t *testing.T) {
 				},
 			}
 			expandable := true
-			sc := &storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{Name: kvStorageClass}, AllowVolumeExpansion: &expandable}
+			sc := &storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{Name: defaultDatastoreStorageClass}, AllowVolumeExpansion: &expandable}
 			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv, pvc, sc).Build()
 			r := &KeyValueReconciler{Client: cl, Scheme: scheme}
 			ctx := context.Background()
@@ -946,7 +946,7 @@ var _ = Describe("KeyValue Controller", func() {
 		Expect(c.Resources.Limits.Memory().Equal(*c.Resources.Requests.Memory())).To(BeTrue(), "Guaranteed QoS")
 		pvc := sts.Spec.VolumeClaimTemplates[0]
 		Expect(pvc.Spec.Resources.Requests.Storage().String()).To(Equal("5Gi"), "standard storage floor")
-		Expect(*pvc.Spec.StorageClassName).To(Equal(kvStorageClass))
+		Expect(*pvc.Spec.StorageClassName).To(Equal(defaultDatastoreStorageClass))
 		Expect(sts.Spec.Template.Annotations).To(HaveKeyWithValue("cluster-autoscaler.kubernetes.io/safe-to-evict", "false"),
 			"singleton stateful pod must not be bin-packed away by the autoscaler")
 
@@ -1117,7 +1117,7 @@ var _ = Describe("KeyValue Controller", func() {
 	It("expands the live PVC and waits for capacity plus the current StatefulSet revision", func() {
 		expand := true
 		sc := &storagev1.StorageClass{
-			ObjectMeta:  metav1.ObjectMeta{Name: kvStorageClass},
+			ObjectMeta:  metav1.ObjectMeta{Name: defaultDatastoreStorageClass},
 			Provisioner: "example.test/noop", AllowVolumeExpansion: &expand,
 		}
 		Expect(k8sClient.Create(ctx, sc)).To(Succeed())

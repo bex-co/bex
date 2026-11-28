@@ -835,6 +835,29 @@ if yq -e '
   echo "FAIL: default/local operator config must not set BEX_DISK_STORAGE_CLASS (the CAPD mock has no hcloud class)" >&2
   fail=1
 fi
+# w4/m714: Postgres and Key Value volumes are encrypted at rest on production.
+# The operator names BEX_DATASTORE_STORAGE_CLASS on every Cluster and Key Value
+# claim and mints "<pvc>-luks" for each (volumeLUKSSecretName); the class must
+# be the whole-volume LUKS class whose shape is pinned above, so its
+# ${pvc.name}-luks template resolves to exactly that Secret.
+echo "==> datastore LUKS class contract (w4/m714)"
+prod_datastore_class="$(yq -N '
+  select(.kind == "Deployment" and .metadata.name == "bex-controller-manager") |
+  .spec.template.spec.containers[] | select(.name == "manager") |
+  [.env[] | select(.name == "BEX_DATASTORE_STORAGE_CLASS") | .value] | .[0] // ""' \
+  - <<<"$prod_operator_render" | tr -d '\n')"
+[ "$prod_datastore_class" = "$disk_sc_name" ] \
+  || { echo "FAIL: prod operator BEX_DATASTORE_STORAGE_CLASS is '$prod_datastore_class' (want '$disk_sc_name' — Postgres and Key Value volumes must stay encrypted at rest)" >&2; fail=1; }
+grep -q '^const DiskLUKSSecretSuffix = "-luks"$' lego/types/v1alpha1/disknames.go \
+  && grep -q '^	return claim + appv1alpha1.DiskLUKSSecretSuffix$' lego/operator/internal/controller/volume_key.go \
+  || { echo "FAIL: the operator's datastore passphrase Secret is no longer <pvc>-luks (volumeLUKSSecretName), which $DISK_SC's \${pvc.name}-luks template fetches" >&2; fail=1; }
+if yq -e '
+  select(.kind == "Deployment" and .metadata.name == "bex-controller-manager") |
+  .spec.template.spec.containers[] | select(.name == "manager") |
+  .env[] | select(.name == "BEX_DATASTORE_STORAGE_CLASS")' - <<<"$default_operator_render" >/dev/null 2>&1; then
+  echo "FAIL: default/local operator config must not set BEX_DATASTORE_STORAGE_CLASS (the CAPD mock and dev-N have no hcloud LUKS class)" >&2
+  fail=1
+fi
 # w2/m245: public Postgres serves Let's Encrypt certificates in production
 # only. Prod must name the HTTP-01 ClusterIssuer the chart installs; the
 # local/default render must not, or a mock cluster orders certificates for

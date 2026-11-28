@@ -176,7 +176,7 @@ var _ = Describe("Persistent disk reconcile", func() {
 
 		secret := &corev1.Secret{}
 		Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: diskLUKSSecretName(app.Name)}, secret)).To(Succeed())
-		Expect(secret.Data).To(HaveKey(diskLUKSSecretKey))
+		Expect(secret.Data).To(HaveKey(luksPassphraseKey))
 		Expect(metav1.GetControllerOf(secret)).NotTo(BeNil())
 
 		Expect(app.Status.Disk).NotTo(BeNil())
@@ -193,13 +193,13 @@ var _ = Describe("Persistent disk reconcile", func() {
 		secret := &corev1.Secret{}
 		key := client.ObjectKey{Namespace: app.Namespace, Name: diskLUKSSecretName(app.Name)}
 		Expect(k8sClient.Get(ctx, key, secret)).To(Succeed())
-		first := string(secret.Data[diskLUKSSecretKey])
+		first := string(secret.Data[luksPassphraseKey])
 
 		for range 3 {
 			Expect(reconciler.reconcileDisk(ctx, app)).To(Succeed())
 		}
 		Expect(k8sClient.Get(ctx, key, secret)).To(Succeed())
-		Expect(string(secret.Data[diskLUKSSecretKey])).To(Equal(first))
+		Expect(string(secret.Data[luksPassphraseKey])).To(Equal(first))
 	})
 
 	It("keeps the volume while the App is suspended", func() {

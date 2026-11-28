@@ -1,14 +1,14 @@
 # w4 · m714 — Managed Postgres, Key Value and registry image volumes are encrypted at rest, as Render's are
 
-**Worker:** worker4 **Goal:** every Postgres instance (primary, HA standby, read replica), every persistent Key Value instance and the registry that holds every service's OCI images keep their data on a LUKS-encrypted volume with its own passphrase, new ones from the start and existing ones after a migration, and ADR018 says so, as Render promises AES-256 at rest for all three. **Status:** todo
+**Worker:** worker4 **Goal:** every Postgres instance (primary, HA standby, read replica), every persistent Key Value instance and the registry that holds every service's OCI images keep their data on a LUKS-encrypted volume with its own passphrase, new ones from the start and existing ones after a migration, and ADR018 says so, as Render promises AES-256 at rest for all three. **Status:** todo (t001–t003 done: new Postgres and Key Value volumes claim `BEX_DATASTORE_STORAGE_CLASS`, production's `hcloud-volumes-luks`, each with its own passphrase)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | An encrypted StorageClass and a per-volume passphrase for datastore volumes | 1h | — |
-| [t002](t002.md) | A new Postgres's volumes are encrypted: primary, standby, read replicas, restores | 1h15m | t001 |
-| [t003](t003.md) | A new Key Value's volume is encrypted | 45m | t001 |
+| [t001](done/t001.md) | An encrypted StorageClass and a per-volume passphrase for datastore volumes — **DONE** | 1h | — |
+| [t002](done/t002.md) | A new Postgres's volumes are encrypted: primary, standby, read replicas, restores — **DONE** | 1h15m | t001 |
+| [t003](done/t003.md) | A new Key Value's volume is encrypted — **DONE** | 45m | t001 |
 | [t004](t004.md) | The registry's images move to an encrypted volume | 1h15m | t001 |
 | [t005](t005.md) | Existing Postgres volumes move to the encrypted class, one switchover each | 1h30m | t002 |
 | [t006](t006.md) | Existing Key Value volumes move to the encrypted class | 1h | t003 |

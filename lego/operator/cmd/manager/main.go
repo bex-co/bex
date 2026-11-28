@@ -678,9 +678,22 @@ func backupHelperImage(c client.Client) string {
 }
 
 func setupDatastoreReconcilers(mgr ctrl.Manager, uncachedClient client.Client, appsNamespace string) {
+	// Postgres and Key Value volumes claim this class (w4/m714). Production
+	// names the LUKS class; unset keeps hcloud-volumes, which dev-N aliases
+	// onto local-path.
+	datastoreStorageClass := os.Getenv("BEX_DATASTORE_STORAGE_CLASS")
+	if err := (&controller.DatastoreVolumeKeyReconciler{
+		Client:       mgr.GetClient(),
+		SecretClient: uncachedClient,
+		StorageClass: datastoreStorageClass,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "Failed to create controller", "controller", "datastorevolumekey")
+		os.Exit(1)
+	}
 	databaseReconciler := &controller.DatabaseReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:       mgr.GetClient(),
+		Scheme:       mgr.GetScheme(),
+		StorageClass: datastoreStorageClass,
 		// Datastore Secrets live beside their CR in the workspace's own
 		// namespace (ADR043 D8), which the manager's single-namespace Secret
 		// informer does not cover — see the field's doc.
@@ -740,6 +753,7 @@ func setupDatastoreReconcilers(mgr ctrl.Manager, uncachedClient client.Client, a
 		Client:                mgr.GetClient(),
 		Scheme:                mgr.GetScheme(),
 		SecretClient:          uncachedClient, // see DatabaseReconciler above
+		StorageClass:          datastoreStorageClass,
 		BackupSourceNamespace: appsNamespace,
 		InternalProxyImage:    internalProxyImage,
 		BackupHelperImage:     internalProxyImage,

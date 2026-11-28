@@ -213,7 +213,7 @@ func TestCnpgClusterSpec(t *testing.T) {
 		t.Errorf("free instances = %v, want 1", spec["instances"])
 	}
 	storage := spec["storage"].(map[string]any)
-	if storage["size"] != "1Gi" || storage["storageClass"] != dbStorageClass {
+	if storage["size"] != "1Gi" || storage["storageClass"] != defaultDatastoreStorageClass {
 		t.Errorf("storage = %v", storage)
 	}
 	req := spec["resources"].(map[string]any)["requests"].(map[string]any)

@@ -332,13 +332,13 @@ func TestDiskPassphraseUsesTheUncachedClientInATenantNamespace(t *testing.T) {
 	if err := real.Get(context.Background(), key, secret); err != nil {
 		t.Fatalf("passphrase Secret should exist in the tenant namespace: %v", err)
 	}
-	if len(secret.Data[diskLUKSSecretKey]) == 0 && secret.StringData[diskLUKSSecretKey] == "" {
+	if len(secret.Data[luksPassphraseKey]) == 0 && secret.StringData[luksPassphraseKey] == "" {
 		t.Error("passphrase Secret carries no passphrase")
 	}
 
 	// Second pass must find the existing Secret rather than mint a new one:
 	// the passphrase is the only thing that can unlock the volume.
-	before := secret.StringData[diskLUKSSecretKey]
+	before := secret.StringData[luksPassphraseKey]
 	if err := r.ensureDiskPassphrase(context.Background(), app); err != nil {
 		t.Fatalf("second pass: %v", err)
 	}
@@ -346,7 +346,7 @@ func TestDiskPassphraseUsesTheUncachedClientInATenantNamespace(t *testing.T) {
 	if err := real.Get(context.Background(), key, after); err != nil {
 		t.Fatal(err)
 	}
-	if after.StringData[diskLUKSSecretKey] != before {
+	if after.StringData[luksPassphraseKey] != before {
 		t.Error("passphrase was rewritten on a later reconcile; that locks the tenant out of their own data")
 	}
 }
@@ -409,7 +409,7 @@ func TestDiskFilesystemIntentGrowsWithoutRotatingPassphrase(t *testing.T) {
 	if err := cl.Get(ctx, key, initial); err != nil {
 		t.Fatal(err)
 	}
-	passphrase := initial.StringData[diskLUKSSecretKey]
+	passphrase := initial.StringData[luksPassphraseKey]
 	if string(initial.Data[diskFilesystemBytesKey]) != "1073741824" {
 		t.Fatalf("initial capacity=%q", initial.Data[diskFilesystemBytesKey])
 	}
@@ -421,7 +421,7 @@ func TestDiskFilesystemIntentGrowsWithoutRotatingPassphrase(t *testing.T) {
 	if err := cl.Get(ctx, key, grown); err != nil {
 		t.Fatal(err)
 	}
-	if string(grown.Data[diskFilesystemBytesKey]) != "5368709120" || grown.StringData[diskLUKSSecretKey] != passphrase {
+	if string(grown.Data[diskFilesystemBytesKey]) != "5368709120" || grown.StringData[luksPassphraseKey] != passphrase {
 		t.Fatal("grow failed to retain passphrase and raise logical capacity")
 	}
 	// A stale admitted-PVC read cannot lower a previously accepted bound.

@@ -43,6 +43,13 @@
 # (they did, for App names ≥54 chars, until w2/m86 fixed the derivation).
 # scripts/gitops-validate.sh pins both template parameters and the prod env
 # agreement.
+#
+# Managed Postgres and Key Value volumes use this class too (w4/m714): the
+# prod overlay sets BEX_DATASTORE_STORAGE_CLASS to it, and the operator mints
+# "<pvc>-luks" for every datastore claim on it (volumeLUKSSecretName, owned by
+# the claim). New service disks moved on to hcloud-volumes-luks-bounded; a
+# datastore keeps this whole-volume variant, whose filesystem fills the
+# provider volume as it did on hcloud-volumes.
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
