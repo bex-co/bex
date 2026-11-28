@@ -1,6 +1,6 @@
 # w4 · m712 — Services and datastores in different regions don't reach each other over the private network, as on Render
 
-**Worker:** worker4 **Goal:** a workspace's private network is split by the region each resource reads back, as Render's is. A service, a cron run or a pre-deploy command reaches another service's internal address, or a Postgres or Key Value internal URL, only when both read back the same region. Everything else stays as it is: same-region traffic, environment isolation, public URLs, external datastore URLs and SSH. Nothing restarts to apply it, and ADR041's unsigned "No region axis" goes. **Status:** in progress (t001–t004 and t006–t009 done; t005, the production check, and t010 open)
+**Worker:** worker4 **Goal:** a workspace's private network is split by the region each resource reads back, as Render's is. A service, a cron run or a pre-deploy command reaches another service's internal address, or a Postgres or Key Value internal URL, only when both read back the same region. Everything else stays as it is: same-region traffic, environment isolation, public URLs, external datastore URLs and SSH. Nothing restarts to apply it, and ADR041's unsigned "No region axis" goes. **Status:** blocked (t001–t004 and t006–t009 done; t005 waits for production to carry `c92ab66019`, then t010)
 
 ## Tasks (in order)
 
@@ -44,6 +44,17 @@ Read-only, on the production app cluster (`scripts/fetch-app-kubeconfig.sh`), at
 - **Workspaces whose resources read back more than one region: 0.** So no env var, secret file or Blueprint link can name a resource of another region, and no workspace has cross-region private traffic to lose. The milestone continues.
 - **Policies.** 84 hosting namespaces carry `allow-same-namespace`; none has an `isolate-<env>` boundary (no isolated environment). No CNPG Pooler runs.
 
+## Production check baseline (2026-11-28, 04:35Z, before the upgrade)
+
+Pod UIDs of first-party workloads, to compare once production runs this milestone's operator (t005 step 2). bex's own workspace (`tea-d98210cbbpdc73dcrkvg`):
+
+- `tea-d98210cbbpdc73dcrkvg-beancount-forum-578bb9cfb8-mnznm` `d013c2b0-93cf-4e09-9aec-5bd6a8a14de2`
+- `tea-d98210cbbpdc73dcrkvg-twenty-crm-74bf7f5fd8-k7rc5` `bd4d15fa-fef1-4f29-9293-be5efb59f05f`
+- Postgres `dpg-d9nqg95cavls73fp8m20-1` `80172205-1260-4d77-b4e1-ac823da639de`
+- Key Value `red-d9p49kdrtmes73c34ovg-0` `5e84c5b5-629b-438b-bd70-9d351973dde2` and its proxy `red-d9p49kdrtmes73c34ovg-internal-5bf6648486-2pm5p` `b6211ff1-ca76-441b-8f67-90b501820bc2`
+
+`bex-canary` (`tea-daif693dqjvc73e7as3g`): `tea-daif693dqjvc73e7as3g-hello-go-7875965c6b-29whc` `b8dc0067-2fe2-44a7-8ce0-5813cd00f25a`, Key Value `red-dbpf5q5me2kc73f2l0og-0` `9cb16254-3a90-46c7-a2a6-b859bcf7a35e`.
+
 ## Design (t001)
 
 - **Label.** `app.bex.co/region` (`appv1alpha1.LabelRegion`), the same key as the CR annotation, whose value it copies (`appv1alpha1.AnnotationRegion`, which `resourcemeta.AnnotRegion` now aliases). The operator sets it only when the CR carries the annotation: a resource created without a region gets no label. Render's region is fixed at creation, so the value never changes.
@@ -65,11 +76,11 @@ Read-only, on the production app cluster (`scripts/fetch-app-kubeconfig.sh`), at
   - [render.com/docs/key-value](https://render.com/docs/key-value): the internal URL is "for connections from your other Render services running in the _same region_".
   - Render's Connect → Internal tab reads "All of your Render services in the same region can communicate internally over their private network" (dashboard bundle, `CronJob-DioyV2Vf.js` chunk).
 - **bex today:**
-  - Every create surface accepts any Render region and records it (`app.bex.co/region`, `resourcemeta.StampRegion`, `lego/backend/internal/resourcemeta/metadata.go:143-165`). Every surface reads it back (w9/105). The resource is placed in `BEX_REGION` (user decision D1, 2026-10-29, [w8/152](../../w8/done/152.md)).
+  - Every create surface accepts any Render region and records it (`app.bex.co/region`, `resourcemeta.StampRegion`, `lego/backend/internal/resourcemeta/metadata.go:143-165`). Every surface reads it back (w9/105). The resource is placed in `BEX_REGION` (user decision D1, 2026-10-29, [w8/152](../../../w8/done/152.md)).
   - Nothing reads the region for networking. `sameNamespaceNetworkPolicy` (`lego/backend/internal/store/namespaces.go:934-951`) splits a workspace only by isolated environment, so services in different regions reach each other.
   - ADR041 D5 (`docs/ADR041-service-addresses.md:85`) reads "No region axis | bex is one cluster; the private-network scope is workspace (+ environment isolation), never region".
 - **Not against D1:** D1 decided that any Render region is accepted and placed in `BEX_REGION`. It says nothing about the private network. bex already applies Render's private-network limits: a free web service receives no private traffic (w8/m130), and workers, cron runs and pre-deploy commands only send (w6/m640).
-- **Goal linkage:** [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first), [ADR041](../../../docs/ADR041-service-addresses.md) and [ADR043](../../../docs/ADR043-tenant-namespace-isolation.md) (tenant namespaces and environment isolation).
+- **Goal linkage:** [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first), [ADR041](../../../../docs/ADR041-service-addresses.md) and [ADR043](../../../../docs/ADR043-tenant-namespace-isolation.md) (tenant namespaces and environment isolation).
 - **Expected outcome:** a workspace's resources reach each other privately on bex exactly when they would on Render. A Blueprint or setup moved between the two behaves the same on both.
 - **Why now:** w9/105 made the region readable on every surface on 2026-11-18, so a resource now visibly carries a region that the network ignores. The longer that lasts, the more workspaces may come to depend on cross-region private traffic that Render refuses. t001 counts them first.
 - **Risk and its gate:** all bex resources run in one cluster, so the region is only a label. Enforcing it could break a workspace that mixed regions without knowing, for example API-created services with one region and dashboard-created datastores with another. t001 counts this on production, and if it finds cross-region private traffic in use, it stops and asks the user before anything is enforced.
