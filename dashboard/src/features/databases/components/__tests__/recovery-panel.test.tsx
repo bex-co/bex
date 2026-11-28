@@ -237,6 +237,49 @@ describe("RecoveryPanel plan window", () => {
       screen.queryByTestId("recovery-skeleton-retention"),
     ).not.toBeInTheDocument();
   });
+
+  it("lays out the scope line naming the panel's database while it loads (w3/121)", () => {
+    state.loading = true;
+    state.info = {
+      enabled: false,
+      earliestRecoveryTime: null,
+      latestRecoveryTime: null,
+      backups: [],
+      retention: null,
+    };
+    const { rerender } = render(
+      <RecoveryPanel id="dpg-source" databaseName="orders" />,
+    );
+    const skeleton = () => screen.getByTestId("recovery-skeleton");
+    expect(skeleton()).toHaveTextContent(
+      "An export contains the database orders only.",
+    );
+    rerender(<RecoveryPanel id="dpg-source" />);
+    expect(skeleton()).not.toHaveTextContent("An export contains");
+  });
+});
+
+describe("RecoveryPanel backups", () => {
+  it("keeps a backup's age and status on one line, so its id gives way on a phone (w3/121)", () => {
+    state.info = {
+      ...windowInfo(),
+      backups: [
+        {
+          id: "dpg-source-backup-20261125093000",
+          status: "completed",
+          createdAt: "2026-07-14T11:25:00Z",
+        },
+      ],
+    };
+    render(<RecoveryPanel id="dpg-source" />);
+    const id = screen.getByText("dpg-source-backup-20261125093000");
+    expect(id).toHaveClass("truncate");
+    // At 390 the age shrank to one character per line ("3", "5", "m"), and
+    // the row's height followed the age's length; the loading row could not.
+    const status = screen.getByText("completed");
+    expect(status.parentElement).toHaveClass("shrink-0");
+    expect(status.parentElement?.querySelector("time")).not.toBeNull();
+  });
 });
 
 describe("RecoveryPanel logical exports", () => {

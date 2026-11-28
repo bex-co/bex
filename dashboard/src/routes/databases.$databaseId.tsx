@@ -235,6 +235,7 @@ function DatabaseDetailLayout({
                 labelKey={pageLabelKey}
                 versionUpgrade={isVersionUpgradePage(pathname)}
                 database={loaded}
+                databaseId={databaseId}
               />
             )}
           </div>
@@ -282,11 +283,13 @@ function DatabasePageSkeleton({
   labelKey,
   versionUpgrade,
   database,
+  databaseId,
 }: {
   labelKey: ReturnType<typeof databasePageLabelKey>;
   /** The guided version-upgrade page, which has no sidebar entry. */
   versionUpgrade: boolean;
   database: DatabaseDetailView | null;
+  databaseId: string;
 }) {
   if (versionUpgrade) {
     return <DatabaseVersionUpgradeSkeleton database={database} />;
@@ -301,7 +304,9 @@ function DatabasePageSkeleton({
     case "databases.navApps":
       return <DatabaseAppsSkeleton />;
     case "databases.navRecovery":
-      return <DatabaseRecoverySkeleton database={database} />;
+      return (
+        <DatabaseRecoverySkeleton database={database} databaseId={databaseId} />
+      );
     default:
       return <DatabaseInfoSkeleton />;
   }

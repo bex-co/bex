@@ -900,6 +900,89 @@ describe("service metrics pending frame (w3/103)", () => {
   );
 });
 
+// w3/121: a held Database read drew the Recovery card 76 px short at 390,
+// because its header and scope line were bars of fixed height where the ready
+// copy wraps. The frame now lays out the ready copy invisibly under its bars.
+describe("database recovery pending frame (w3/121)", () => {
+  function reservedText(element: Element | null | undefined) {
+    const copy = element?.querySelector(":scope > span.invisible");
+    expect(element).toHaveClass("relative");
+    expect(
+      element?.querySelector(':scope > [data-slot="skeleton"]'),
+    ).toHaveClass("absolute", "inset-0");
+    return copy?.textContent;
+  }
+
+  it("lays out the ready title and description, so the header wraps as the ready one", () => {
+    const { container } = render(
+      <DatabaseRecoverySkeleton databaseId="dpg-c185th5c2rvvnhbfiltg" />,
+    );
+    const header = container.querySelector('[data-slot="card-header"]');
+    expect(reservedText(header?.children[0])).toBe("Recovery");
+    expect(reservedText(header?.children[1])).toBe(
+      "Point-in-time recovery and backups. Restore always creates a new database — this one is never modified.",
+    );
+    // No second heading inside the frame: the page's h2 names it.
+    expect(header?.querySelector("h2")).toBeNull();
+  });
+
+  it("names the database a create names none for in the scope line before the read lands", () => {
+    const { container } = render(
+      <DatabaseRecoverySkeleton databaseId="dpg-c185th5c2rvvnhbfiltg" />,
+    );
+    const skeleton = container.querySelector(
+      '[data-testid="recovery-skeleton"]',
+    );
+    expect(skeleton?.textContent).toContain(
+      "An export contains the database dpg_c185th5c2rvvnhbfiltg only.",
+    );
+    // The actions and the list headings are the ready copy too, and the one
+    // backup row is a single line at every width.
+    expect(skeleton?.textContent).toContain("Restore to new instance");
+    expect(skeleton?.textContent).toContain("Create export");
+    expect(skeleton?.textContent).toContain("Backups");
+    expect(skeleton?.textContent).toContain("No exports yet.");
+    const row = container.querySelector(
+      '[data-testid="recovery-skeleton-backup"]',
+    );
+    expect(row).toHaveClass("h-10");
+    expect(row?.className).not.toMatch(/(^|\s)h-\[/);
+  });
+
+  it("names a known database's own name, and leaves the line out where it has none", () => {
+    const { container, rerender } = render(
+      <DatabaseRecoverySkeleton
+        database={{ backupsEnabled: true, databaseName: "orders" }}
+        databaseId="dpg-c185th5c2rvvnhbfiltg"
+      />,
+    );
+    const text = () =>
+      container.querySelector('[data-testid="recovery-skeleton"]')?.textContent;
+    expect(text()).toContain("An export contains the database orders only.");
+    rerender(
+      <DatabaseRecoverySkeleton
+        database={{ backupsEnabled: true, databaseName: null }}
+        databaseId="dpg-c185th5c2rvvnhbfiltg"
+      />,
+    );
+    expect(text()).not.toContain("An export contains");
+  });
+
+  it("lays out the disabled line's copy for a database without backups", () => {
+    const { container } = render(
+      <DatabaseRecoverySkeleton
+        database={{ backupsEnabled: false, databaseName: "orders" }}
+      />,
+    );
+    const line = container.querySelector(
+      '[data-testid="recovery-skeleton"] > p',
+    );
+    expect(reservedText(line)).toBe(
+      "Backups aren't enabled for this plan, so recovery isn't available. Upgrade to a plan with backups to enable point-in-time recovery.",
+    );
+  });
+});
+
 // The Runtime and Edge Caching cards reserve the heights measured in Chromium
 // at 390/640/768/1024/1280/1440 (en), one per breakpoint where the ready card
 // changes: the md sidebar narrows the card at 768, and from lg its controls

@@ -158,6 +158,7 @@ import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton"
 import { CronRunsFrameSkeleton } from "@/features/services/components/cron-runs-frame";
 import { AdminAppsPanelSkeleton } from "@/features/databases/components/admin-apps-panel-skeleton";
 import { RecoveryPanelSkeleton } from "@/features/databases/components/recovery-panel-skeleton";
+import { defaultPostgresDatabaseName } from "@/features/databases/lib/identifiers";
 import { useOptionalDatabaseDetail } from "@/features/databases/lib/database-detail";
 import {
   isUpgradeClone,
@@ -4363,24 +4364,33 @@ export function DatabaseAppsSkeleton() {
 }
 
 /**
- * A Postgres database's Recovery page (w3/m641). Whether backups run and
- * whether an export names the database decide the card's shape, so it reads
- * them off the database when one is known: the layout passes what its cache
- * holds, and a page switch reads the open database.
+ * A Postgres database's Recovery page (w3/m641). Whether backups run and the
+ * database an export names decide the card's shape, so it reads them off the
+ * database when one is known: the layout passes what its cache holds, and a
+ * page switch reads the open database. Before either, the scope line names
+ * the database a create that names none gets, from `databaseId` (w3/121).
  */
 export function DatabaseRecoverySkeleton({
   database,
+  databaseId,
 }: {
   database?: Pick<DatabaseDetailView, "backupsEnabled" | "databaseName"> | null;
+  /** The URL's database, which the layout passes on a cold load. */
+  databaseId?: string;
 }) {
   const open = useOptionalDatabaseDetail()?.database;
   const known = database ?? open;
+  const exportScope = known
+    ? known.databaseName
+    : databaseId
+      ? defaultPostgresDatabaseName(databaseId)
+      : null;
   return (
     <PendingFrame route="database-recovery">
       <Region name="recovery">
         <RecoveryPanelSkeleton
           backupsEnabled={known?.backupsEnabled !== false}
-          exportScope={known ? Boolean(known.databaseName) : true}
+          exportScope={exportScope}
         />
       </Region>
     </PendingFrame>

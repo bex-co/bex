@@ -120,7 +120,7 @@ export function RecoveryPanel({
         {loading && !info.enabled && !error ? (
           <RecoveryContentSkeleton
             backupsEnabled={backupsEnabled !== false}
-            exportScope={Boolean(databaseName)}
+            exportScope={databaseName ?? null}
           />
         ) : error ? (
           <p className="text-sm text-destructive" role="alert">
@@ -472,7 +472,9 @@ function BackupList({
               className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
             >
               <code className="truncate font-mono text-xs">{b.id}</code>
-              <div className="flex items-center gap-2">
+              {/* The id gives way, so a phone keeps the age on one line
+                  instead of one character per line (w3/121). */}
+              <div className="flex shrink-0 items-center gap-2">
                 <RelativeAge
                   value={b.createdAt}
                   className="text-xs text-muted-foreground"

@@ -3,6 +3,12 @@ export function isValidPostgresIdentifier(value: string): boolean {
   return /^[a-z_][a-z0-9_]{0,62}$/.test(value);
 }
 
+/** The physical database a Postgres gets when its create names none: its id
+ *  with underscores (mirrors DefaultPostgresDatabaseName). */
+export function defaultPostgresDatabaseName(resourceId: string): string {
+  return resourceId.replaceAll("-", "_").toLowerCase();
+}
+
 /** Database names PostgreSQL itself owns (mirrors ReservedPostgresDatabaseName). */
 export function isReservedPostgresDatabaseName(value: string): boolean {
   return value === "postgres" || value === "template0" || value === "template1";

@@ -34,7 +34,7 @@ function RouteComponent() {
           fallback={
             <RecoveryPanelSkeleton
               backupsEnabled={database.backupsEnabled !== false}
-              exportScope={Boolean(database.databaseName)}
+              exportScope={database.databaseName ?? null}
             />
           }
         >
