@@ -4,9 +4,14 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { isCronType } from "@/features/services/lib/service-type";
 import {
   isSuspended,
+  rawRunsInstances,
   suspendedNoticeTitleKeyFor,
   type SuspendedNoticeTitleKey,
 } from "@/features/services/lib/status";
+import {
+  shellAccess,
+  type ShellAccess,
+} from "@/features/services/lib/ssh-remedy";
 
 /**
  * The service as already held in Apollo's cache — its own `server(id)` read,
@@ -44,6 +49,26 @@ function useCachedService(serviceId: string) {
  */
 export function useCachedServiceType(serviceId: string): string | null {
   return useCachedService(serviceId)?.type ?? null;
+}
+
+/**
+ * Whether the service runs instances now (not suspended, not asleep), from
+ * the cache: its Metrics frame then draws the instance filter the Application
+ * card will (w3/124). Null while no cached read has said.
+ */
+export function useCachedRunsInstances(serviceId: string): boolean | null {
+  return rawRunsInstances(useCachedService(serviceId));
+}
+
+/**
+ * What the service's Shell page will draw, from the cache (w3/124): its own
+ * read names the SSH address, the services list its type, plan and
+ * suspension. Null while neither has named its type.
+ */
+export function useCachedServiceShellAccess(
+  serviceId: string,
+): ShellAccess | null {
+  return shellAccess(useCachedService(serviceId));
 }
 
 /**

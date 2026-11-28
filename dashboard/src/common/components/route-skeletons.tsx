@@ -49,6 +49,7 @@ import {
   Copy,
   Download,
   ExternalLink,
+  KeyRound,
   Pencil,
   Plus,
   RefreshCw,
@@ -101,7 +102,7 @@ import {
   KeyValueNetworkingPreview,
   KeyValuePolicyPreview,
 } from "@/common/components/datastore-overview-previews";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import { Skeleton, SkeletonSpan } from "@/common/components/ui/skeleton";
 import { EditableFieldRowPreview } from "@/features/services/components/editable-field-row";
 import {
   ReservedBadge,
@@ -187,7 +188,11 @@ import {
   EnvRowsSkeleton,
 } from "@/features/services/components/env-rows-skeleton";
 import { RepoListSkeleton } from "@/features/services/components/repo-list-skeleton";
-import { SERVICE_TAB_DESCRIPTION_OFFSET } from "@/features/services/components/service-tab-description";
+import {
+  SERVICE_TAB_DESCRIPTION_CLASS,
+  SERVICE_TAB_DESCRIPTION_OFFSET,
+} from "@/features/services/components/service-tab-description";
+import type { ShellAccess } from "@/features/services/lib/ssh-remedy";
 import { AgentEnvironmentCardSkeleton } from "@/features/agent-environment/components/agent-environment-card-skeleton";
 import { AgentSecretsCardSkeleton } from "@/features/agent-environment/components/agent-secrets-card-skeleton";
 import { AgentRepoEnvironmentsCardSkeleton } from "@/features/agent-environment/components/agent-repo-environments-card-skeleton";
@@ -3333,49 +3338,213 @@ export function ServiceLogsBodySkeleton({
   );
 }
 
-function MetricsCardSkeleton({
-  sections,
-  compact = false,
-  eventLane = false,
+// A ready control's touch rule (style.css): below lg or on a coarse pointer a
+// select, button or input in the service layout's touch region is at least
+// 44 px tall, and a segmented control's tabs grow to 44 px (the Application
+// card's own TOUCH_SEGMENTS_CLASS).
+const TOUCH_MIN_HEIGHT = "max-lg:min-h-11 pointer-coarse:min-h-11";
+
+/**
+ * A ready `Select` trigger's box (`size="sm"`: 32 px, 44 px under the touch
+ * rule) around its label, value and chevron laid out invisibly, so it is as
+ * wide as the ready one in every language and wraps where it does (w3/124).
+ */
+function ReservedSelect({
+  label,
+  value,
+  className,
 }: {
-  sections: number;
-  compact?: boolean;
-  /** Service charts: the empty 24px event lane above a ratio-sized plot,
-   *  as the ready MetricSection draws them (w4/446). */
-  eventLane?: boolean;
+  label: string;
+  value: string;
+  /** The ready trigger's own width and flex classes. */
+  className?: string;
 }) {
   return (
-    <Card>
-      <CardHeader className="flex-row flex-wrap items-start justify-between gap-3">
-        <div className="space-y-2">
-          <Skeleton className="h-5 w-40" />
-          <Skeleton className="h-4 w-64 max-w-full" />
+    <span
+      className={cn(
+        "relative flex h-8 w-fit items-center justify-between gap-2 rounded-md border border-transparent px-3 py-2 text-sm whitespace-nowrap",
+        TOUCH_MIN_HEIGHT,
+        className,
+      )}
+    >
+      <span className="invisible">{label}</span>
+      <span className="invisible">{value}</span>
+      <span className="size-4 shrink-0" />
+      <SkeletonSpan />
+    </span>
+  );
+}
+
+/**
+ * A ready segmented control (`TabsList` of `TabsTrigger`s) as one bar: its
+ * 3 px padding around each tab's label laid out invisibly, 36 px tall, and
+ * 50 px where the touch rule grows each tab to 44 px (w3/124).
+ */
+function ReservedSegments({ labels }: { labels: readonly string[] }) {
+  return (
+    <span className="relative inline-flex h-9 w-fit items-center rounded-lg p-[3px] max-lg:h-auto pointer-coarse:h-auto">
+      {labels.map((label) => (
+        <span
+          key={label}
+          className={cn(
+            "invisible inline-flex h-[calc(100%-1px)] items-center justify-center border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap",
+            TOUCH_MIN_HEIGHT,
+          )}
+        >
+          {label}
+        </span>
+      ))}
+      <SkeletonSpan className="rounded-lg" />
+    </span>
+  );
+}
+
+/**
+ * One chart section of a service metrics card, on MetricSection's geometry:
+ * the title row (the section's title laid out invisibly, so it wraps with the
+ * row's controls where the ready one does), 8 px under it the empty 24 px
+ * event lane, and the plot at the chart's own ratio (w4/446, w3/124).
+ */
+function MetricSectionSkeleton({
+  title,
+  extra,
+}: {
+  title: string;
+  /** The row's controls and figures, beside the title. */
+  extra?: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <div className="relative text-sm font-medium [overflow-wrap:normal]">
+          <ReservedText>{title}</ReservedText>
         </div>
+        {extra}
+      </div>
+      <div className="h-6" />
+      <Skeleton className="w-full" style={CHART_FRAME_STYLE} />
+    </div>
+  );
+}
+
+/**
+ * ApplicationMetricsCard's frame (w3/124): the title alone on its row, then
+ * the instance filter and the two segmented controls wrapping under it, and
+ * Memory, CPU and Total Instances, each with its limit and latest figure.
+ */
+function ApplicationMetricsCardSkeleton({
+  instanceFilter,
+}: {
+  /** The service runs instances, so the card draws its instance filter. */
+  instanceFilter: boolean;
+}) {
+  const { t } = useTranslations();
+  const figure = <Skeleton className="h-4 w-32" />;
+  return (
+    <Card>
+      <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
+        <Skeleton className="h-4 w-40" />
         <div className="flex flex-wrap items-center gap-2">
-          <Skeleton className="h-9 w-40" />
-          <Skeleton className="h-9 w-36" />
-          <Skeleton className="h-9 w-40" />
+          {instanceFilter ? (
+            <Skeleton className={cn("h-9 w-36", TOUCH_TARGET_HEIGHT)} />
+          ) : null}
+          <ReservedSegments
+            labels={[
+              t("metrics.aggregateRaw"),
+              t("metrics.aggregateMin"),
+              t("metrics.aggregateMax"),
+              t("metrics.aggregateAvg"),
+            ]}
+          />
+          <ReservedSegments
+            labels={[t("metrics.filterPercentage"), t("metrics.filterTotal")]}
+          />
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {Array.from({ length: sections }, (_, index) => (
-          <div key={index} className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-7 w-32" />
-            </div>
-            {eventLane ? (
-              <>
-                <div className="h-6" />
-                <Skeleton className="w-full" style={CHART_FRAME_STYLE} />
-              </>
-            ) : (
-              <Skeleton
-                className={compact ? "h-[154px] w-full" : "h-[180px] w-full"}
-              />
-            )}
+        <MetricSectionSkeleton title={t("metrics.memory")} extra={figure} />
+        <MetricSectionSkeleton title={t("metrics.cpu")} extra={figure} />
+        <MetricSectionSkeleton
+          title={t("metrics.totalInstances")}
+          extra={figure}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * NetworkMetricsCard's frame (w3/124): its title and subtitle, and for a type
+ * that serves public requests the Status Code, Host and Path filters, Total
+ * Requests (its count and Group by) and Response Times (its Percentile).
+ * Every type has Outbound Bandwidth and the month-to-date line under it
+ * (w4/613, w3/103).
+ */
+function NetworkMetricsCardSkeleton({
+  servesRequests,
+}: {
+  servesRequests: boolean;
+}) {
+  const { t } = useTranslations();
+  return (
+    <Card>
+      <CardHeader className="flex-row items-start justify-between gap-2">
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-32" />
+          <CardDescription className="relative">
+            <ReservedText>{t("metrics.networkDescription")}</ReservedText>
+          </CardDescription>
+        </div>
+        {servesRequests ? (
+          // The two selects share a phone's line and the path field takes the
+          // next; below 24rem each takes its own.
+          <div className="flex flex-wrap items-center gap-2">
+            <ReservedSelect
+              label={t("metrics.statusCode")}
+              value={t("metrics.statusCodeAll")}
+              className="min-w-36 max-sm:min-w-0 max-sm:flex-1 max-[24rem]:basis-full"
+            />
+            <ReservedSelect
+              label={t("metrics.host")}
+              value={t("metrics.hostAll")}
+              className="max-w-72 min-w-36 max-sm:min-w-0 max-sm:flex-1 max-[24rem]:basis-full"
+            />
+            <Skeleton
+              className={cn("h-8 w-40 max-sm:basis-full", TOUCH_TARGET_HEIGHT)}
+            />
           </div>
-        ))}
+        ) : null}
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {servesRequests ? (
+          <>
+            <MetricSectionSkeleton
+              title={t("metrics.totalRequests")}
+              extra={
+                <div className="flex flex-wrap items-center gap-2">
+                  <Skeleton className="h-4 w-20" />
+                  <ReservedSelect
+                    label={t("metrics.groupBy")}
+                    value={t("metrics.groupByAllRequests")}
+                    className="min-w-40"
+                  />
+                </div>
+              }
+            />
+            <MetricSectionSkeleton
+              title={t("metrics.responseTimes")}
+              extra={
+                <ReservedSelect
+                  label={t("metrics.percentile")}
+                  value="p90"
+                  className="min-w-36"
+                />
+              }
+            />
+          </>
+        ) : null}
+        <MetricSectionSkeleton title={t("metrics.outboundBandwidth")} />
+        <Skeleton className="h-5 w-48" />
       </CardContent>
     </Card>
   );
@@ -3385,6 +3554,7 @@ export function ServiceMetricsSkeleton({
   staticSite = false,
   servesRequests = true,
   cronJob = false,
+  runsInstances = true,
 }: {
   staticSite?: boolean;
   /** False for a worker, cron job or private service: its Network card is
@@ -3393,6 +3563,9 @@ export function ServiceMetricsSkeleton({
   /** A cron job's page: the range picker and Outbound Bandwidth alone, with
    *  no event controls and no Application card (w3/103). */
   cronJob?: boolean;
+  /** False while the service is suspended or asleep: its Application card
+   *  has no instance filter (w3/124). */
+  runsInstances?: boolean;
 }) {
   return (
     <PendingFrame
@@ -3418,46 +3591,15 @@ export function ServiceMetricsSkeleton({
       )}
       {!staticSite && !cronJob ? (
         <Region name="application-metrics">
-          <MetricsCardSkeleton sections={3} eventLane />
+          <ApplicationMetricsCardSkeleton instanceFilter={runsInstances} />
         </Region>
       ) : null}
       <Region name="network-metrics">
-        {servesRequests && !cronJob ? (
-          <MetricsCardSkeleton sections={3} eventLane />
-        ) : (
-          <BandwidthCardSkeleton />
-        )}
+        <NetworkMetricsCardSkeleton
+          servesRequests={servesRequests && !cronJob}
+        />
       </Region>
     </PendingFrame>
-  );
-}
-
-/**
- * The Network card of a type with no public requests (a worker, private
- * service or cron job): Outbound Bandwidth alone (w4/613, w3/103), on the ready
- * card's geometry. Its title and subtitle, the section's title row, the event
- * lane directly over the ratio-sized plot, and the month-to-date line.
- */
-function BandwidthCardSkeleton() {
-  return (
-    <Card>
-      <CardHeader className="gap-2">
-        <div className="space-y-1.5">
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-5 w-52 max-w-full" />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div>
-          <div className="mb-2 flex h-5 items-center">
-            <Skeleton className="h-4 w-36" />
-          </div>
-          <div className="h-6" />
-          <Skeleton className="w-full" style={CHART_FRAME_STYLE} />
-        </div>
-        <Skeleton className="h-5 w-48" />
-      </CardContent>
-    </Card>
   );
 }
 
@@ -4097,39 +4239,95 @@ export function ServiceDiskSkeleton() {
   );
 }
 
-export function ServiceShellSkeleton() {
+/**
+ * A service's Shell page: its description, then what the page will draw for
+ * this service (w3/124), the Web Shell and SSH command cards, or the one
+ * "Shell access isn't available" card a Free, suspended or shell-less service
+ * lands on. Unknown access draws the terminal.
+ */
+export function ServiceShellSkeleton({
+  access = null,
+}: {
+  access?: ShellAccess | null;
+}) {
+  const { t } = useTranslations();
   return (
     <PendingFrame route="service-shell" className="space-y-6">
       {/* The tab's name is the layout's heading; this is its description. */}
       <Region
         name="page-header"
-        className={cn("space-y-1", SERVICE_TAB_DESCRIPTION_OFFSET)}
+        className={cn("relative", SERVICE_TAB_DESCRIPTION_CLASS)}
       >
-        <Skeleton className="h-4 w-72 max-w-full" />
-        <Skeleton className="h-5 w-3/4 sm:hidden" />
+        <ReservedText>{t("services.shellDescription")}</ReservedText>
       </Region>
-      <ServiceShellCardsSkeleton />
+      <ServiceShellCardsSkeleton access={access} />
     </PendingFrame>
   );
 }
 
-export function ServiceShellCardsSkeleton() {
+/**
+ * ServiceShellPage's cards on their ready geometry (w3/124): the copy is laid
+ * out invisibly, so each description wraps where the ready one does, and the
+ * SSH card keeps the ready card's reading measure (`max-w-3xl`).
+ */
+export function ServiceShellCardsSkeleton({
+  access = null,
+}: {
+  access?: ShellAccess | null;
+}) {
+  const { t } = useTranslations();
+  if (access && !access.eligible) {
+    // The ready card names the remedy a Free or suspended service has, and
+    // otherwise the general reason and the SSH keys link.
+    const remedy = access.remedy.action ? access.remedy : null;
+    return (
+      <Region name="ssh-connection">
+        <Card className="max-w-3xl">
+          <CardHeader>
+            <Skeleton className="h-4 w-52" />
+            <CardDescription className="relative">
+              <ReservedText>
+                {t(remedy ? remedy.reason : "services.shellUnavailableBody")}
+              </ReservedText>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <ReservedButton variant="outline" size="sm" data-touch-spacer>
+              {remedy?.action ? (
+                t(remedy.action.label)
+              ) : (
+                <>
+                  <KeyRound />
+                  {t("services.shellManageKeys")}
+                </>
+              )}
+            </ReservedButton>
+          </CardContent>
+        </Card>
+      </Region>
+    );
+  }
   return (
     <>
       <Region name="web-terminal">
         <Card>
-          <CardHeader className="space-y-1">
-            <Skeleton className="h-5 w-32" />
-            <div className="space-y-1">
-              <Skeleton className="h-4 w-4/5" />
-              <Skeleton className="h-3 w-2/3 sm:hidden" />
-            </div>
+          <CardHeader>
+            <Skeleton className="h-4 w-28" />
+            <CardDescription className="relative">
+              <ReservedText>{t("services.shellWebDescription")}</ReservedText>
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-3">
-              <div className="flex h-8 items-center gap-2">
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-8 w-[220px]" />
+              <div className="flex items-center gap-2">
+                <span className="relative text-sm">
+                  <ReservedText>
+                    {t("services.shellInstanceLabel")}
+                  </ReservedText>
+                </span>
+                <Skeleton
+                  className={cn("h-8 w-[220px]", TOUCH_TARGET_HEIGHT)}
+                />
               </div>
               <div className="space-y-2">
                 <Skeleton className="h-5 w-24" />
@@ -4138,29 +4336,44 @@ export function ServiceShellCardsSkeleton() {
                 </div>
               </div>
             </div>
-            <div className="space-y-1">
-              <Skeleton className="h-4 w-4/5" />
-              <Skeleton className="h-5 w-2/3 sm:hidden" />
-            </div>
+            <p className="relative text-sm">
+              <ReservedText>{t("services.shellSshFallback")}</ReservedText>
+            </p>
           </CardContent>
         </Card>
       </Region>
       <Region name="ssh-connection">
-        <Card>
-          <CardHeader className="space-y-1">
-            <Skeleton className="h-5 w-36" />
-            <div className="space-y-1">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-3 w-3/4 sm:hidden" />
-            </div>
+        <Card className="max-w-3xl">
+          <CardHeader>
+            <Skeleton className="h-4 w-36" />
+            <CardDescription className="relative">
+              <ReservedText>
+                {t("services.shellConnectionDescription")}
+              </ReservedText>
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-28" />
-              <Skeleton className="h-9 w-full" />
+            {/* ConnectionField: its label and copy button, then the command
+                in a bordered box one 24 px line tall. */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="relative text-sm font-medium">
+                  <ReservedText>{t("services.shellCommand")}</ReservedText>
+                </span>
+                <Skeleton className={cn("size-8", TOUCH_TARGET_SIZE)} />
+              </div>
+              <div className="relative rounded-md border border-transparent px-3 py-2">
+                <code className="invisible font-mono text-xs">ssh</code>
+                <SkeletonSpan />
+              </div>
             </div>
-            <Skeleton className="h-[4.375rem] w-full sm:h-4" />
-            <Skeleton className="h-9 w-44" />
+            <p className="relative text-sm">
+              <ReservedText>{t("services.shellSessionLifecycle")}</ReservedText>
+            </p>
+            <ReservedButton variant="outline" size="sm" data-touch-spacer>
+              <KeyRound />
+              {t("services.shellManageKeys")}
+            </ReservedButton>
           </CardContent>
         </Card>
       </Region>
@@ -4791,11 +5004,18 @@ function cronLanding(
 export function ServiceRouteContentSkeleton({
   base,
   serviceType = null,
+  runsInstances = null,
+  shellAccess = null,
   deploys,
 }: {
   base: "/services" | "/static";
   /** The service's type when already known (cache), for type-shaped tabs. */
   serviceType?: string | null;
+  /** Whether it runs instances now, when known (cache): Metrics' instance
+   *  filter (w3/124). */
+  runsInstances?: boolean | null;
+  /** What its Shell page draws, when known (cache, w3/124). */
+  shellAccess?: ShellAccess | null;
   /** The deploy history's own pending state, drawn from the cached service
    *  (its auto-deploy-off banner, w3/064), so this frame and the route's
    *  skeleton that replaces it match. */
@@ -4839,6 +5059,7 @@ export function ServiceRouteContentSkeleton({
           staticSite={base === "/static"}
           servesRequests={serviceType == null || publiclyRoutable(serviceType)}
           cronJob={serviceType != null && isCronType(serviceType)}
+          runsInstances={runsInstances ?? true}
         />
       );
     case "compute":
@@ -4848,7 +5069,7 @@ export function ServiceRouteContentSkeleton({
     case "settings":
       return <ServiceSettingsSkeleton staticSite={base === "/static"} />;
     case "shell":
-      return <ServiceShellSkeleton />;
+      return <ServiceShellSkeleton access={shellAccess} />;
     default:
       return base === "/static" ? (
         <ServiceEventsSkeleton />

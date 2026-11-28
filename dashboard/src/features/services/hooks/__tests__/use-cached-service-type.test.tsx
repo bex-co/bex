@@ -7,7 +7,9 @@ import { ServerDocument, ServicesDocument } from "@/graphql/definitions";
 import { WorkspaceContext } from "@/features/workspaces/context/context";
 import type { WorkspaceContextValue } from "@/features/workspaces/context/context";
 import {
+  useCachedRunsInstances,
   useCachedServiceName,
+  useCachedServiceShellAccess,
   useCachedServiceSource,
   useCachedServiceType,
 } from "@/features/services/hooks/use-cached-service-type";
@@ -340,6 +342,96 @@ describe("useCachedServiceSource (w3/094)", () => {
     }, useCachedServiceSource);
     expect(read("srv-a")).toBeNull();
     expect(read("srv-b")).toBeNull();
+    expect(read("srv-other")).toBeNull();
+  });
+});
+
+// w3/124: the Metrics frame draws the instance filter the Application card
+// shows while the service runs instances, and the Shell frame draws the
+// cards the Shell page will.
+describe("useCachedRunsInstances (w3/124)", () => {
+  it("says which listed services run instances now", () => {
+    const read = setup(
+      (cache) =>
+        writeServices(cache, [
+          { id: "srv-run", suspended: "not_suspended", phase: "Running" },
+          { id: "srv-sus", suspended: "suspended", phase: "Running" },
+          { id: "srv-zzz", suspended: "not_suspended", phase: "Hibernated" },
+        ]),
+      useCachedRunsInstances,
+    );
+    expect(read("srv-run")).toBe(true);
+    expect(read("srv-sus")).toBe(false);
+    expect(read("srv-zzz")).toBe(false);
+    expect(read("srv-other")).toBeNull();
+  });
+
+  it("stays undecided until a cached read has answered its phase", () => {
+    const read = setup(
+      (cache) => writeServer(cache, "srv-a", "web_service"),
+      useCachedRunsInstances,
+    );
+    expect(read("srv-a")).toBeNull();
+  });
+});
+
+describe("useCachedServiceShellAccess (w3/124)", () => {
+  it("reads the service's own SSH address when its read is cached", () => {
+    const read = setup((cache) => {
+      for (const [id, sshAddress] of [
+        ["srv-ssh", "srv-ssh@ssh.oregon.bex.co"],
+        ["srv-none", null],
+      ] as const) {
+        cache.writeQuery({
+          query: ServerDocument,
+          variables: { id },
+          data: {
+            server: {
+              __typename: "Service",
+              id,
+              type: "web_service",
+              plan: "starter",
+              suspended: "not_suspended",
+              sshAddress,
+            },
+          } as never,
+        });
+      }
+    }, useCachedServiceShellAccess);
+    expect(read("srv-ssh")).toEqual({ eligible: true });
+    expect(read("srv-none")).toEqual({
+      eligible: false,
+      remedy: { reason: "services.sshUnavailableHint", action: null },
+    });
+  });
+
+  it("predicts the address from the list's type, plan and suspension", () => {
+    const read = setup(
+      (cache) =>
+        writeServices(cache, [
+          {
+            id: "srv-paid",
+            type: "background_worker",
+            plan: "starter",
+            suspended: "not_suspended",
+          },
+          {
+            id: "srv-free",
+            type: "web_service",
+            plan: "free",
+            suspended: "not_suspended",
+          },
+        ]),
+      useCachedServiceShellAccess,
+    );
+    expect(read("srv-paid")).toEqual({ eligible: true });
+    expect(read("srv-free")).toEqual({
+      eligible: false,
+      remedy: {
+        reason: "services.sshUnavailableFree",
+        action: { label: "services.sshRemedyChangePlan", path: "plan" },
+      },
+    });
     expect(read("srv-other")).toBeNull();
   });
 });

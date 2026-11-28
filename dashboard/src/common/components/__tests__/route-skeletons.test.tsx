@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-router";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { en } from "@/i18n";
 import {
   AccountSettingsPageSkeleton,
   AuthWidgetSkeleton,
@@ -37,6 +38,7 @@ import {
   ServiceMetricsSkeleton,
   ServiceRouteContentSkeleton,
   ServiceSettingsSkeleton,
+  ServiceShellSkeleton,
   StaticEdgeRulesSkeleton,
   WebhookCreatePageSkeleton,
   WebhookSettingsSkeleton,
@@ -101,14 +103,19 @@ function renderServiceRootSkeleton(
 
 function renderServiceTabParentSkeleton(
   serviceType: string | null,
-  tab: "compute" | "metrics" = "compute",
+  tab: "compute" | "metrics" | "shell" = "compute",
+  props: Partial<ComponentProps<typeof ServiceRouteContentSkeleton>> = {},
 ) {
   const rootRoute = createRootRoute({ component: Outlet });
   const resourceRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/services/$serviceId",
     component: () => (
-      <ServiceRouteContentSkeleton base="/services" serviceType={serviceType} />
+      <ServiceRouteContentSkeleton
+        base="/services"
+        serviceType={serviceType}
+        {...props}
+      />
     ),
   });
   const computeRoute = createRoute({
@@ -898,6 +905,252 @@ describe("service metrics pending frame (w3/103)", () => {
       ).toHaveLength(toolbarSlots);
     },
   );
+});
+
+// w3/124: the Metrics frame drew each card as a title over a subtitle with
+// three 36 px boxes beside it, and each section as a 28 px row with 8 px gaps
+// around the event lane, so the Application card was 76 px taller than the
+// ready one at 1440 and 48 px at 390, and the Network card took the same
+// shape. Each card now lays out the ready card's own controls and titles.
+describe("service metrics cards on their ready geometry (w3/124)", () => {
+  const region = (container: HTMLElement, name: string) =>
+    container.querySelector(`[data-skeleton-region="${name}"]`)!;
+  const words = (element: Element) =>
+    [...element.querySelectorAll("span.invisible")].map(
+      (span) => span.textContent,
+    );
+  const sections = (card: Element) => [
+    ...card.querySelector('[data-slot="card-content"]')!.children,
+  ];
+  // A section is MetricSection's title row, the event lane and the plot.
+  function expectChartSection(section: Element, title: string) {
+    const [row, lane, plot] = section.children;
+    expect(row).toHaveClass("mb-2", "flex", "flex-wrap", "gap-y-1");
+    expect(row.firstElementChild).toHaveClass("relative", "text-sm");
+    expect(row.querySelector("span.invisible")).toHaveTextContent(title);
+    expect(lane).toHaveClass("h-6");
+    expect((plot as HTMLElement).style.aspectRatio).not.toBe("");
+  }
+
+  it("draws the Application card's title alone and its controls under it", () => {
+    const { container } = render(<ServiceMetricsSkeleton />);
+    const card = region(container, "application-metrics");
+    const header = card.querySelector('[data-slot="card-header"]')!;
+    expect(header).toHaveClass("flex-row", "flex-wrap", "gap-3");
+    const [title, controls] = header.children;
+    expect(title).toHaveClass("h-4");
+    const [filter, aggregate, mode] = controls.children;
+    expect(filter).toHaveClass(
+      "h-9",
+      "w-36",
+      "max-lg:h-11",
+      "pointer-coarse:h-11",
+    );
+    expect(words(aggregate)).toEqual(["Raw", "Min", "Max", "Avg"]);
+    expect(words(mode)).toEqual(["Percentage", "Total"]);
+    // The segmented controls grow to 50 px where each tab takes 44.
+    expect(aggregate).toHaveClass("h-9", "p-[3px]", "max-lg:h-auto");
+    expect(aggregate.querySelector("span.invisible")).toHaveClass(
+      "px-2",
+      "max-lg:min-h-11",
+      "pointer-coarse:min-h-11",
+    );
+    const charts = sections(card);
+    expect(charts).toHaveLength(3);
+    ["Memory", "CPU", "Total Instances"].forEach((name, index) =>
+      expectChartSection(charts[index], name),
+    );
+  });
+
+  it("leaves the instance filter out while the service runs no instances", () => {
+    const { container } = render(
+      <ServiceMetricsSkeleton runsInstances={false} />,
+    );
+    const controls = region(container, "application-metrics").querySelector(
+      '[data-slot="card-header"] > :nth-child(2)',
+    )!;
+    expect(controls.children).toHaveLength(2);
+    expect(words(controls)).toEqual([
+      "Raw",
+      "Min",
+      "Max",
+      "Avg",
+      "Percentage",
+      "Total",
+    ]);
+  });
+
+  it("draws the Network card's filters, request charts and month-to-date line", () => {
+    const { container } = render(<ServiceMetricsSkeleton />);
+    const card = region(container, "network-metrics");
+    const [heading, filters] = card.querySelector(
+      '[data-slot="card-header"]',
+    )!.children;
+    expect(words(heading)).toEqual(["Aggregated across all instances"]);
+    const [status, host, path] = filters.children;
+    expect(words(status)).toEqual(["Status Code", "All"]);
+    expect(words(host)).toEqual(["Host", "All"]);
+    for (const select of [status, host]) {
+      expect(select).toHaveClass(
+        "h-8",
+        "min-w-36",
+        "max-lg:min-h-11",
+        "max-sm:flex-1",
+        "max-[24rem]:basis-full",
+      );
+    }
+    expect(path).toHaveClass("h-8", "w-40", "max-sm:basis-full", "max-lg:h-11");
+    const [requests, latency, bandwidth, monthToDate] = sections(card);
+    expectChartSection(requests, "Total Requests");
+    expect(words(requests)).toEqual([
+      "Total Requests",
+      "Group by",
+      "All requests",
+    ]);
+    expectChartSection(latency, "Response Times");
+    expect(words(latency)).toEqual(["Response Times", "Percentile", "p90"]);
+    expectChartSection(bandwidth, "Outbound Bandwidth");
+    expect(monthToDate).toHaveClass("h-5");
+  });
+
+  it("draws a worker's Network card as Outbound Bandwidth and the month-to-date line", () => {
+    const { container } = render(
+      <ServiceMetricsSkeleton servesRequests={false} />,
+    );
+    const card = region(container, "network-metrics");
+    expect(
+      card.querySelector('[data-slot="card-header"]')!.children,
+    ).toHaveLength(1);
+    const [bandwidth, monthToDate] = sections(card);
+    expectChartSection(bandwidth, "Outbound Bandwidth");
+    expect(monthToDate).toHaveClass("h-5");
+  });
+
+  it("previews a suspended service's Metrics page from the parent with no instance filter", async () => {
+    const { container } = renderServiceTabParentSkeleton(
+      "web_service",
+      "metrics",
+      { runsInstances: false },
+    );
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-skeleton-region="application-metrics"]'),
+      ).not.toBeNull(),
+    );
+    expect(
+      container.querySelector(
+        '[data-skeleton-region="application-metrics"] [data-slot="card-header"] > :nth-child(2)',
+      )!.children,
+    ).toHaveLength(2);
+  });
+});
+
+// w3/124: the Shell frame drew the Web Shell and a full-width SSH card for
+// every service, where a Free, suspended or shell-less service lands on one
+// "Shell access isn't available" card (174 px at 1440), and the ready SSH
+// card keeps a reading measure.
+describe("service shell frame (w3/124)", () => {
+  const region = (container: HTMLElement, name: string) =>
+    container.querySelector(`[data-skeleton-region="${name}"]`)!;
+
+  it("previews the Web Shell and the SSH command on the ready cards", () => {
+    const { container } = render(
+      <ServiceShellSkeleton access={{ eligible: true }} />,
+    );
+    expect(regions(container)).toEqual([
+      "page-header",
+      "web-terminal",
+      "ssh-connection",
+    ]);
+    // The description is the page's own line, wrapping where it does.
+    const description = region(container, "page-header");
+    expect(description).toHaveClass("relative", "max-w-prose", "-mt-3");
+    expect(description.querySelector("span.invisible")).toHaveTextContent(
+      en["services.shellDescription"],
+    );
+    const terminal = region(container, "web-terminal");
+    expect(
+      terminal.querySelector('[data-slot="card-description"] span.invisible'),
+    ).toHaveTextContent(en["services.shellWebDescription"]);
+    expect(terminal.querySelector(".w-\\[220px\\]")).toHaveClass(
+      "h-8",
+      "max-lg:h-11",
+    );
+    const ssh = region(container, "ssh-connection");
+    expect(ssh.querySelector('[data-slot="card"]')).toHaveClass("max-w-3xl");
+    expect(ssh.textContent).toContain(en["services.shellSessionLifecycle"]);
+    expect(ssh.textContent).toContain(en["services.shellManageKeys"]);
+  });
+
+  it("draws the terminal while the service's access is unknown", () => {
+    const { container } = render(<ServiceShellSkeleton />);
+    expect(regions(container)).toContain("web-terminal");
+  });
+
+  it.each([
+    [
+      "a Free service",
+      {
+        reason: "services.sshUnavailableFree",
+        label: "services.sshRemedyChangePlan",
+      },
+      en["services.sshUnavailableFree"],
+      en["services.sshRemedyChangePlan"],
+    ],
+    [
+      "a service the gateway gives no address",
+      { reason: "services.sshUnavailableHint", label: null },
+      en["services.shellUnavailableBody"],
+      en["services.shellManageKeys"],
+    ],
+  ] as const)(
+    "draws %s as the one unavailable card",
+    (_, remedy, description, button) => {
+      const { container } = render(
+        <ServiceShellSkeleton
+          access={{
+            eligible: false,
+            remedy: {
+              reason: remedy.reason,
+              action: remedy.label
+                ? { label: remedy.label, path: "plan" }
+                : null,
+            },
+          }}
+        />,
+      );
+      expect(regions(container)).toEqual(["page-header", "ssh-connection"]);
+      const card = region(container, "ssh-connection").querySelector(
+        '[data-slot="card"]',
+      )!;
+      expect(card).toHaveClass("max-w-3xl");
+      expect(
+        card.querySelector('[data-slot="card-description"] span.invisible'),
+      ).toHaveTextContent(description);
+      // The button grows with the touch rule, as the ready link does.
+      const action = card.querySelector("[data-touch-spacer]")!;
+      expect(action).toHaveTextContent(button);
+    },
+  );
+
+  it("previews the unavailable card from the parent's cached access", async () => {
+    const { container } = renderServiceTabParentSkeleton(
+      "web_service",
+      "shell",
+      {
+        shellAccess: {
+          eligible: false,
+          remedy: { reason: "services.sshUnavailableHint", action: null },
+        },
+      },
+    );
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-route-skeleton="service-shell"]'),
+      ).not.toBeNull(),
+    );
+    expect(regions(container)).toEqual(["page-header", "ssh-connection"]);
+  });
 });
 
 // w3/121: a held Database read drew the Recovery card 76 px short at 390,

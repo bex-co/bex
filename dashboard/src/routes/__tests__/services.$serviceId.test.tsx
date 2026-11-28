@@ -43,6 +43,8 @@ vi.mock("@/features/services/hooks/use-cached-service-type", () => ({
   useCachedServiceType: () => null,
   useCachedServiceSource: () => cachedSource.value,
   useCachedServiceName: () => null,
+  useCachedRunsInstances: () => null,
+  useCachedServiceShellAccess: () => null,
 }));
 
 vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {

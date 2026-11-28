@@ -414,6 +414,21 @@ export function runsInstances(
 }
 
 /**
+ * runsInstances over a service's raw fields (`suspended` as Render's enum), as
+ * a cache or the layout's loader holds them, for a loading frame that draws
+ * what only a running service shows (w3/124). Null while its phase is unknown.
+ */
+export function rawRunsInstances(
+  s: { suspended?: string | null; phase?: string | null } | null | undefined,
+): boolean | null {
+  if (s?.phase == null) return null;
+  return runsInstances({
+    suspended: isSuspended(s.suspended ?? null),
+    phase: s.phase,
+  });
+}
+
+/**
  * True while the service is being torn down (w3/m81). Keyed on the raw phase,
  * NOT `deriveStatus`'s key — `deriveStatus` folds suspension over phase, so a
  * suspended-then-deleting service would resolve to "suspended" and skip the

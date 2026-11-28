@@ -25,7 +25,10 @@ import {
   supportsScaling,
 } from "@/features/services/lib/service-type";
 import type { ServiceView } from "@/features/services/types";
-import { runsInstances } from "@/features/services/lib/status";
+import {
+  rawRunsInstances,
+  runsInstances,
+} from "@/features/services/lib/status";
 import { ServiceMetricsSkeleton } from "@/common/components/route-skeletons";
 import { ActivityGate } from "@/features/capabilities/components/activity-gate";
 
@@ -41,15 +44,18 @@ export const Route = createFileRoute("/services/$serviceId/metrics")({
 });
 
 // The frame takes the page's shape from the service the parent loaded: a cron
-// job's range picker and Outbound Bandwidth (w3/103), and Outbound Bandwidth
-// alone for a type with no public requests (w4/613).
+// job's range picker and Outbound Bandwidth (w3/103), Outbound Bandwidth
+// alone for a type with no public requests (w4/613), and no instance filter
+// while it is suspended or asleep (w3/124).
 function ServiceMetricsPending() {
   const parent = getRouteApi("/services/$serviceId").useLoaderData();
-  const type = parent?.state === "ready" ? parent.resource.type : null;
+  const resource = parent?.state === "ready" ? parent.resource : null;
+  const type = resource?.type ?? null;
   return (
     <ServiceMetricsSkeleton
       cronJob={type != null && isCronType(type)}
       servesRequests={type == null || publiclyRoutable(type)}
+      runsInstances={rawRunsInstances(resource) ?? true}
     />
   );
 }

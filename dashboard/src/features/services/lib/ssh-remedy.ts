@@ -1,5 +1,6 @@
 import type { en } from "@/i18n";
 import type { ServiceView } from "@/features/services/types";
+import { isSuspended } from "@/features/services/lib/status";
 
 /**
  * Why a service has no SSH address, and what would change that. The gate is
@@ -52,4 +53,47 @@ export function sshRemedy(
     };
   }
   return { reason: "services.sshUnavailableHint", action: null };
+}
+
+/**
+ * What a service's Shell page draws (w3/124): the Web Shell and the SSH
+ * command when the service has an SSH address, else the "Shell access isn't
+ * available" card with its remedy. Its loading frame draws the same, from the
+ * service's fields as a cache or the layout's loader holds them.
+ */
+export type ShellAccess =
+  { eligible: true } | { eligible: false; remedy: SshRemedy };
+
+/**
+ * The Shell page's shape from a service's raw fields: its `sshAddress` when
+ * read (`server`), else bex-api's rule for one (`sshEligible`: a running, paid
+ * web, private or background service), as the services list does not select
+ * the address. Null until the type is known.
+ */
+export function shellAccess(
+  service:
+    | {
+        type?: string | null;
+        plan?: string | null;
+        suspended?: string | null;
+        sshAddress?: string | null;
+      }
+    | null
+    | undefined,
+): ShellAccess | null {
+  if (!service?.type) return null;
+  const suspended = isSuspended(service.suspended ?? null);
+  const plan = service.plan ?? null;
+  const eligible =
+    service.sshAddress !== undefined
+      ? Boolean(service.sshAddress)
+      : SSH_TYPES.has(service.type) &&
+        !suspended &&
+        plan != null &&
+        plan !== "free";
+  if (eligible) return { eligible: true };
+  return {
+    eligible: false,
+    remedy: sshRemedy({ type: service.type, plan, suspended }),
+  };
 }

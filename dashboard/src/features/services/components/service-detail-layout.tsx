@@ -18,7 +18,9 @@ import {
   serviceTabLabelKey,
 } from "@/features/services/components/service-nav";
 import {
+  useCachedRunsInstances,
   useCachedServiceName,
+  useCachedServiceShellAccess,
   useCachedServiceSource,
   useCachedServiceType,
 } from "@/features/services/hooks/use-cached-service-type";
@@ -251,6 +253,8 @@ function PendingTabContent({
     <ServiceRouteContentSkeleton
       base={base}
       serviceType={useCachedServiceType(serviceId)}
+      runsInstances={useCachedRunsInstances(serviceId)}
+      shellAccess={useCachedServiceShellAccess(serviceId)}
       deploys={<DeployHistorySkeleton />}
     />
   );
