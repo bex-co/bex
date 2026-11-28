@@ -355,6 +355,12 @@ describe("ServiceDetailHeader", () => {
     expect(
       screen.getByRole("button", { name: "Copy internal address" }),
     ).toBeInTheDocument();
+    // Render's line: the private network is per region (w4/m712).
+    expect(
+      screen.getByText(
+        "All of your bex services in the same region can communicate internally over their private network.",
+      ),
+    ).toBeInTheDocument();
   });
 
   describe("Free web service private-network guidance (w4/252, w8/m130)", () => {
@@ -408,6 +414,9 @@ describe("ServiceDetailHeader", () => {
     expect(screen.queryByText("Internal")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Copy internal address" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/same region can communicate internally/),
     ).not.toBeInTheDocument();
   });
 

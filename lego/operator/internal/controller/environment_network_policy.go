@@ -93,16 +93,16 @@ func environmentPeers(env string) []networkingv1.NetworkPolicyPeer {
 }
 
 // appTemplateEnvironmentLabels are the in-place labels an App's pod templates
-// should carry: its environment id, and never the isolation label, which an
-// environment's toggle flips (w4/m342).
+// should carry: its environment id and its region (w4/m712), and never the
+// isolation label, which an environment's toggle flips (w4/m342).
 func appTemplateEnvironmentLabels(app *appv1alpha1.App) map[string]string {
-	return map[string]string{labelEnvironment: app.Labels[labelEnvironment]}
+	return withRegion(map[string]string{labelEnvironment: app.Labels[labelEnvironment]}, app)
 }
 
 // relabelAppPods moves the App's running pods to the environment labels its
 // CR carries, in place: environment-id, which the workspace's isolation
-// boundary selects by (bex-api's allow-same-namespace and per-environment
-// policies), and the isolation label. The isolation label is the only per-pod
+// boundary selects by (bex-api's private-network and per-environment
+// policies), the isolation label, and the App's region (w4/m712). The isolation label is the only per-pod
 // "isolated" bit the operator's own selectors have: an ordinary App's build
 // reach (buildReachTargets) and a non-isolated Key Value's clients exclude
 // isolated environments by it, since the operator does not know which
@@ -112,7 +112,7 @@ func appTemplateEnvironmentLabels(app *appv1alpha1.App) map[string]string {
 // here without a fleet-wide rollout. Serving (ReplicaSet), cron run and
 // pre-deploy pods follow; build and backup pods keep their own labels.
 func (r *AppReconciler) relabelAppPods(ctx context.Context, app *appv1alpha1.App) error {
-	return relabelPodsInPlace(ctx, r.Client, app.Namespace, client.MatchingLabels{labelApp: app.Name}, app.Labels, func(pod *corev1.Pod, owner *metav1.OwnerReference) bool {
+	return relabelPodsInPlace(ctx, r.Client, app.Namespace, client.MatchingLabels{labelApp: app.Name}, inPlaceLabelsOf(app), func(pod *corev1.Pod, owner *metav1.OwnerReference) bool {
 		switch owner.Kind {
 		case kindReplicaSet:
 			return true

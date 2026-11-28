@@ -145,6 +145,7 @@ type Options struct {
 	Namespace    string   // namespace the pre-deploy Job runs in
 	Workspace    string   // owning tenant id (app.bex.co/workspace label); empty = omitted
 	Environment  string   // the App's environment id (pod label only); empty = omitted
+	Region       string   // the App's private-network region (appv1alpha1.LabelRegion, w4/m712); empty = omitted
 	AppNamespace string   // namespace the App CR lives in; used for log attribution
 	VerifyImage  bool     // select the Pod for signature admission when signing is enabled
 	Image        string   // the new revision's image (same ref the Deployment will run)
@@ -281,6 +282,11 @@ func Job(o Options) *batchv1.Job {
 	// the rest of the workspace, as for the service's own pods.
 	if o.Environment != "" {
 		podLabels[execution.LabelEnvironment] = o.Environment
+	}
+	// It dials its service's region's datastores, and no other region's
+	// (w4/m712).
+	if o.Region != "" {
+		podLabels[appv1alpha1.LabelRegion] = o.Region
 	}
 	var owners []metav1.OwnerReference
 	// App owner references are valid only for co-located Jobs. They also bind

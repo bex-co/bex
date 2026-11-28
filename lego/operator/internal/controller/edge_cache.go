@@ -169,14 +169,15 @@ func (r *AppReconciler) reconcileEdgeCacheTier(ctx context.Context, app *appv1al
 		revision := edgeCacheRevision(app, appDep, last)
 		metav1.SetMetaDataAnnotation(&dep.ObjectMeta, edgecache.RevisionAnnotation, revision)
 		projectEdgeCacheTier(dep, app, r.edgeCacheTierImage(dep, app, before, existed && revision == last))
-		holdIsolationLabel(&dep.Spec.Template, existed, before, app.Labels)
+		holdIsolationLabel(&dep.Spec.Template, existed, before, inPlaceLabelsOf(app))
 		return controllerutil.SetControllerReference(app, dep, r.Scheme)
 	}); err != nil {
 		return err
 	}
-	// The tier's environment labels move in place, as the App's own pods'
-	// do (relabelAppPods): a toggle or a move rolls no tier pod either.
-	if err := relabelPodsInPlace(ctx, r.Client, app.Namespace, client.MatchingLabels{labelEdgeCacheTier: app.Name}, app.Labels,
+	// The tier's environment labels and region move in place, as the App's
+	// own pods' do (relabelAppPods): a toggle or a move rolls no tier pod
+	// either. The tier dials the App's pods, so it shares their region.
+	if err := relabelPodsInPlace(ctx, r.Client, app.Namespace, client.MatchingLabels{labelEdgeCacheTier: app.Name}, inPlaceLabelsOf(app),
 		func(_ *corev1.Pod, owner *metav1.OwnerReference) bool { return owner.Kind == kindReplicaSet }); err != nil {
 		return err
 	}

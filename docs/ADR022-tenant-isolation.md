@@ -298,6 +298,10 @@ The original w7/m2 text follows; its "all Linux capabilities dropped" now descri
 
 **Residuals.** kpack builds get no build reach (w1/121).
 
+## Private network per region (w4/m712)
+
+The same-workspace allow is per region, as Render's private network is ([ADR043 D11](ADR043-tenant-namespace-isolation.md#d11--the-private-network-is-per-region-w4m712-2026-11-27)): every pod carries its resource's `app.bex.co/region` (none for a resource created without a region, which counts as `BEX_REGION`'s alias), and bex-api writes one allow per Render region, split again by isolated environment. A pod in another region of the same workspace is refused like one of another workspace, by pod IP, internal address or datastore URL.
+
 ## Datastore pod labels
 
 - **CNPG Postgres**: The `DatabaseReconciler` reads `db.Labels["app.bex.co/workspace"]` (stamped by bex-api's postgres service on create) and sets it in the CNPG Cluster's `spec.inheritedMetadata.labels`, causing CNPG to propagate the label to all postgres pods. Same-workspace pods can then reach the database service via the egress allow rule.
@@ -328,6 +332,8 @@ The original w7/m2 text follows; its "all Linux capabilities dropped" now descri
 | workspace-A build → an isolated environment's service | deny | BLOCKED |
 | workspace-A pod → workspace-A worker or cron run (w6/m640) | deny | BLOCKED |
 | workspace-A worker or cron run → workspace-A private svc | allow | PASSES |
+| workspace-A `oregon` pod → workspace-A `frankfurt` service, Postgres or Key Value (w4/m712) | deny | BLOCKED |
+| workspace-A `frankfurt` pod → workspace-A `frankfurt` (or unstamped) service, Postgres or Key Value | allow | PASSES |
 
 The metadata + node DENY probes and the external-egress ALLOW counter-probe are asserted by `scripts/verify-tenant-isolation.sh` (w7/m4); its egress-probe pod carries a per-App policy so it faithfully models a real tenant pod under the CNP.
 

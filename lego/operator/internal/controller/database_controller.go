@@ -1230,6 +1230,14 @@ func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alph
 		if env := db.Labels[labelNetworkIsolation]; env != "" {
 			inheritedLabels[labelNetworkIsolation] = env
 		}
+		// The private network admits only the database's own region
+		// (w4/m712). CNPG carries it onto the instances and their Jobs (a
+		// replica's join streams from the primary), read replicas copy it
+		// (readReplicaClusterSpec), and the Poolers get it themselves
+		// (upsertPooler).
+		if region := regionOf(db); region != "" {
+			inheritedLabels[labelRegion] = region
+		}
 		spec["inheritedMetadata"] = map[string]any{"labels": inheritedLabels}
 		if err := projectUnstructuredSpec(cluster, spec); err != nil {
 			return err
@@ -1533,12 +1541,14 @@ func (r *DatabaseReconciler) reconcilePooler(ctx context.Context, db *appv1alpha
 // upsertPooler creates or updates the Database's CNPG Pooler name, fronting
 // cluster, with labels. Its template follows the cluster's datastore class and
 // the certificate it serves (digest; "" for CNPG's own), so only those roll
-// PgBouncer.
+// PgBouncer. Its pods carry the database's region (holdPoolerRegion,
+// relabelPoolerPods).
 func (r *DatabaseReconciler) upsertPooler(ctx context.Context, db *appv1alpha1.Database, cluster *unstructured.Unstructured, name string, plan tiers.PostgresTier, digest string, labels map[string]string) error {
 	pooler := &unstructured.Unstructured{}
 	pooler.SetGroupVersionKind(cnpgPoolerGVK)
 	pooler.SetName(name)
 	pooler.SetNamespace(db.Namespace)
+	region := regionOf(db)
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, pooler, func() error {
 		spec := poolerSpec(cluster.GetName(), plan)
 		if !poolerAdoptsDatastorePriority(pooler, cluster) {
@@ -1547,6 +1557,7 @@ func (r *DatabaseReconciler) upsertPooler(ctx context.Context, db *appv1alpha1.D
 		if digest != "" {
 			stampPoolerCertificate(spec, pooler, digest)
 		}
+		holdPoolerRegion(spec, pooler, region)
 		if err := projectUnstructuredSpec(pooler, spec); err != nil {
 			return err
 		}
@@ -1555,7 +1566,64 @@ func (r *DatabaseReconciler) upsertPooler(ctx context.Context, db *appv1alpha1.D
 		}
 		return controllerutil.SetControllerReference(db, pooler, r.Scheme)
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return relabelPoolerPods(ctx, r.Client, db.Namespace, name, region)
+}
+
+// cnpgPoolerNameLabel is CloudNativePG's label on a Pooler's PgBouncer pods.
+const cnpgPoolerNameLabel = "cnpg.io/poolerName"
+
+// holdPoolerRegion puts region on the PgBouncer pod template of a new
+// Pooler, or of one whose template carries it already. PgBouncer dials the
+// database's instances and its clients dial it, so it must be in the
+// database's private network (w4/m712). An existing Pooler without it keeps
+// its template, since a template change rolls PgBouncer: relabelPoolerPods
+// gives its running pods the label in place instead.
+func holdPoolerRegion(spec map[string]any, live *unstructured.Unstructured, region string) {
+	if region == "" {
+		return
+	}
+	held, _, _ := unstructured.NestedString(live.Object, "spec", "template", "metadata", "labels", labelRegion)
+	if live.GetResourceVersion() != "" && held != region {
+		return
+	}
+	template, ok := spec["template"].(map[string]any)
+	if !ok {
+		template, _, _ = unstructured.NestedMap(live.Object, "spec", "template")
+		if template == nil {
+			template = map[string]any{}
+		}
+		spec["template"] = template
+	}
+	_ = unstructured.SetNestedField(template, region, "metadata", "labels", labelRegion)
+}
+
+// relabelPoolerPods gives the running PgBouncer pods of the Pooler name the
+// database's region in place, the one label a Pooler's pods take from the
+// Database: they carry neither environment label.
+func relabelPoolerPods(ctx context.Context, cl client.Client, namespace, name, region string) error {
+	if region == "" {
+		return nil
+	}
+	var pods corev1.PodList
+	if err := cl.List(ctx, &pods, client.InNamespace(namespace), client.MatchingLabels{cnpgPoolerNameLabel: name}); err != nil {
+		return err
+	}
+	for i := range pods.Items {
+		pod := &pods.Items[i]
+		owner := metav1.GetControllerOf(pod)
+		if owner == nil || owner.Kind != kindReplicaSet || !pod.DeletionTimestamp.IsZero() || pod.Labels[labelRegion] == region {
+			continue
+		}
+		patch := client.MergeFrom(pod.DeepCopy())
+		pod.Labels = withEntry(pod.Labels, labelRegion, region)
+		if err := client.IgnoreNotFound(cl.Patch(ctx, pod, patch)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // reconcilePoolerConnectionSecret projects the default credential

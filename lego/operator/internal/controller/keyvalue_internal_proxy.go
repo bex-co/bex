@@ -160,7 +160,7 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 		holdDatastorePriority(&dep.Spec.Template, !dep.CreationTimestamp.IsZero(), before)
 		// An isolation toggle alone must not roll the one proxy replica: its pods
 		// are relabelled in place (syncKeyValuePodIsolation, w8/220).
-		holdIsolationLabel(&dep.Spec.Template, !dep.CreationTimestamp.IsZero(), before, kv.Labels)
+		holdIsolationLabel(&dep.Spec.Template, !dep.CreationTimestamp.IsZero(), before, inPlaceLabelsOf(kv))
 		if held {
 			holdKeyValueInternalProxyTemplate(ctx, kv, dep, before)
 		}

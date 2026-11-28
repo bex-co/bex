@@ -5605,6 +5605,8 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	if env := app.Labels[labelEnvironment]; env != "" {
 		labels[labelEnvironment] = env
 	}
+	// A run reaches only its own region's private network (w4/m712).
+	labels = withRegion(labels, app)
 	if r.TenantSignKeySecret != "" {
 		labels[execution.LabelVerifyImage] = execution.VerifyImageEnabled
 	}
@@ -5629,6 +5631,7 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 		tmpl = *restore
 		syncRestoredPolicyLabels(&tmpl, app)
 		syncTemplateLabel(&tmpl, labelWorkspace, labels[labelWorkspace])
+		syncTemplateLabel(&tmpl, labelRegion, labels[labelRegion])
 		recordManagedOIDCOf(app, tmpl)
 	} else {
 		tmpl = r.cronPodSpec(effectiveApp, image, port, labels, launch, r.imageProvenance(ctx, app, image).Commit)
@@ -8104,6 +8107,7 @@ func (r *AppReconciler) stepJobOptions(app *appv1alpha1.App, gen int64) predeplo
 		Namespace:       app.Namespace,
 		Workspace:       app.Labels[labelWorkspace],
 		Environment:     app.Labels[labelEnvironment],
+		Region:          regionOf(app),
 		AppNamespace:    app.Namespace,
 		VerifyImage:     r.TenantSignKeySecret != "",
 		Revision:        appv1alpha1.BuildRevision(gen),

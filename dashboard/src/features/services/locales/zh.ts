@@ -33,6 +33,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Internal-address section label in the service connection menu (Render's Connect → Internal tab)",
   },
+  "services.connectInternalLead": {
+    message: "同一区域内你所有的 bex 服务都可以通过私有网络在内部通信。",
+    description:
+      "Connect menu's Internal section, under its title: Render's line on its Connect → Internal tab. The private network is per region, so a service in another region cannot reach this address (w4/m712)",
+  },
   "services.connectInternalFreeNote": {
     message: "免费 Web 服务无法接收私有网络流量。升级后即可使用内部地址。",
     description:

@@ -142,7 +142,9 @@ func keyValueBackupLabels(kv *appv1alpha1.KeyValue, component string) map[string
 	if workspace := kv.Labels[labelWorkspace]; workspace != "" {
 		labels[labelWorkspace] = workspace
 	}
-	return labels
+	// A backup dials the store, which admits only its own region's pods
+	// (w4/m712).
+	return withRegion(labels, kv)
 }
 
 // reconcileTenantBackupCredential projects the S3 credential into a KeyValue's

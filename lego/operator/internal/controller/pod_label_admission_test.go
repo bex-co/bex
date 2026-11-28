@@ -142,6 +142,13 @@ var _ = Describe("Operator pod label admission", func() {
 		got = relabel(nil)
 		Expect(got).NotTo(HaveKey(labelEnvironment))
 		Expect(got).To(HaveKeyWithValue(labelKeyValue, kvName))
+		// w4/m712: a running store gains its private-network region in place.
+		inRegion := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: kvName, Namespace: "default",
+			Annotations: map[string]string{appv1alpha1.AnnotationRegion: "oregon"}}}
+		Expect(r.syncKeyValuePodIsolation(ctx, inRegion)).To(Succeed())
+		regional := &corev1.Pod{}
+		Expect(admin.Get(ctx, client.ObjectKeyFromObject(pod), regional)).To(Succeed())
+		Expect(regional.Labels).To(HaveKeyWithValue(labelRegion, "oregon"))
 
 		for name, change := range map[string]func(*corev1.Pod){
 			"other label":  func(p *corev1.Pod) { p.Labels[labelKeyValue] = "red-foreign" },

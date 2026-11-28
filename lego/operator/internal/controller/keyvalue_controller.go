@@ -781,6 +781,7 @@ func keyValueIntentFor(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier, storageG
 	if env := kv.Labels[labelEnvironment]; env != "" {
 		podLabels[labelEnvironment] = env
 	}
+	podLabels = withRegion(podLabels, kv)
 	public := kv.Spec.Public && kvDomain != ""
 	tlsListener := public || (listening && kvDomain != "" && !kv.Spec.Suspended)
 	if tlsRuntime {
@@ -940,7 +941,7 @@ func writeKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue,
 	}
 	applyValkeyPodSpec(&sts.Spec.Template.Spec, kv, intent)
 	holdDatastorePriority(&sts.Spec.Template, !sts.CreationTimestamp.IsZero(), before)
-	holdIsolationLabel(&sts.Spec.Template, !sts.CreationTimestamp.IsZero(), before, kv.Labels)
+	holdIsolationLabel(&sts.Spec.Template, !sts.CreationTimestamp.IsZero(), before, inPlaceLabelsOf(kv))
 }
 
 // applyValkeyPodSpec writes the Valkey server + metrics-exporter template onto

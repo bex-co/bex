@@ -699,11 +699,16 @@ function ServiceConnectButton({
         {service.internalAddress ? (
           // Render's Connect → Internal tab: the private-network
           // `<slug>:<port>` sibling services dial (ADR041 D4, w9/m58), plus
-          // an image-port service's other open ports (w6/m148).
+          // an image-port service's other open ports (w6/m148). Render's
+          // line says the private network is per region, which bex enforces
+          // (w4/m712).
           <>
             <ConnectSectionTitle icon={Network}>
               {t("services.connectInternal")}
             </ConnectSectionTitle>
+            <p className="text-muted-foreground mb-2 text-xs">
+              {t("services.connectInternalLead")}
+            </p>
             <ConnectCodeRow
               className="mb-2"
               value={service.internalAddress}

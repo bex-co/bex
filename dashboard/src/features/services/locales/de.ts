@@ -33,6 +33,12 @@ const deServices: Record<string, TranslationEntry> = {
     description:
       "Internal-address section label in the service connection menu (Render's Connect → Internal tab)",
   },
+  "services.connectInternalLead": {
+    message:
+      "Alle deine bex-Services in derselben Region können über ihr privates Netzwerk intern kommunizieren.",
+    description:
+      "Connect menu's Internal section, under its title: Render's line on its Connect → Internal tab. The private network is per region, so a service in another region cannot reach this address (w4/m712)",
+  },
   "services.connectInternalFreeNote": {
     message:
       "Kostenlose Web Services können keinen privaten Netzwerkverkehr empfangen. Upgrade deinen Tarif, um die interne Adresse zu nutzen.",

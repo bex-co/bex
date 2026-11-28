@@ -437,7 +437,9 @@ func exportLabels(db *appv1alpha1.Database, exportID string) map[string]string {
 	if workspace := db.Labels[labelWorkspace]; workspace != "" {
 		labels[labelWorkspace] = workspace
 	}
-	return labels
+	// pg_dump dials the database, which admits only its own region's pods
+	// (w4/m712).
+	return withRegion(labels, db)
 }
 
 // countActiveExportJobs reports how many non-terminal pg_dump export Jobs exist

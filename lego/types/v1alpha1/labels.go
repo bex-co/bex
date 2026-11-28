@@ -57,6 +57,17 @@ const (
 	// LabelEnvironment above (unconditional membership), this label's mere
 	// PRESENCE is itself the signal, not just its value.
 	LabelNetworkIsolation = "app.bex.co/network-isolation"
+	// AnnotationRegion records, on an App, Database or KeyValue CR, the
+	// Render region it was created with (bex-api's resourcemeta.StampRegion;
+	// absent when the create named none). Render's region is fixed at
+	// creation, so it never changes.
+	AnnotationRegion = "app.bex.co/region"
+	// LabelRegion is a pod's private-network region (w4/m712): the operator
+	// copies its resource's AnnotationRegion onto every pod that resource
+	// runs, and bex-api's private-network policies admit only pods of the
+	// same region, as Render's per-region private networks do. A pod without
+	// it belongs to the region an unstamped resource reads back.
+	LabelRegion = "app.bex.co/region"
 	// LabelEgressAppID attributes a pod that must not carry LabelAppID (a
 	// pre-deploy Job runs the service's own command but is never a Service
 	// backend) to its service's egress. Stamped by the operator's predeploy

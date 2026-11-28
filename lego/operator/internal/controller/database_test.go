@@ -680,7 +680,8 @@ func TestCNPGWorkspaceLabelPropagated(t *testing.T) {
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "dpg-wstest", Namespace: "default",
-			Labels: map[string]string{labelWorkspace: ws, labelEnvironment: env, labelNetworkIsolation: env},
+			Labels:      map[string]string{labelWorkspace: ws, labelEnvironment: env, labelNetworkIsolation: env},
+			Annotations: map[string]string{appv1alpha1.AnnotationRegion: "oregon"},
 		},
 		Spec: appv1alpha1.DatabaseSpec{Plan: "basic-1gb"},
 	}
@@ -713,6 +714,11 @@ func TestCNPGWorkspaceLabelPropagated(t *testing.T) {
 	}
 	if got := meta["app.bex.co/component"]; got != "database" {
 		t.Errorf("inheritedMetadata.labels[app.bex.co/component] = %q, want database — the log shipper must distinguish tenant databases from platform CNPG clusters", got)
+	}
+	// w4/m712: the database is in its own region's private network, and CNPG
+	// relabels running instances from inheritedMetadata without a restart.
+	if got := meta[labelRegion]; got != "oregon" {
+		t.Errorf("inheritedMetadata.labels[%q] = %q, want oregon — an oregon database's pods must be in oregon's private network", labelRegion, got)
 	}
 	// w8/m136: an isolated environment's database leaves allow-same-namespace.
 	if got := meta[labelNetworkIsolation]; got != env {

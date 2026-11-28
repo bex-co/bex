@@ -54,15 +54,16 @@ func keyValueJobPeer(kv *appv1alpha1.KeyValue) *metav1.LabelSelector {
 }
 
 // inPlacePodLabels are the store's pod labels that follow its environment:
-// the isolation label (w8/220) and the environment label itself (w4/451).
-// NetworkPolicies select pods by both, and both change when the store joins,
+// the isolation label (w8/220) and the environment label itself (w4/451),
+// plus its private-network region (labelRegion, w4/m712). NetworkPolicies
+// select pods by all three, and the first two change when the store joins,
 // leaves or is isolated with an environment, so for an existing workload
-// neither may roll a pod: they are relabelled in place instead. App pods
+// none may roll a pod: they are relabelled in place instead. App pods
 // follow the same rule since w4/m342 (relabelAppPods). The
 // bex-operator-pod-labels admission policy
 // (deploy/gitops/base/operator-pod-label-admission.yaml) must admit exactly
 // these keys, or the relabel is denied and the store reads Failed (w3/055).
-var inPlacePodLabels = []string{labelNetworkIsolation, labelEnvironment}
+var inPlacePodLabels = []string{labelNetworkIsolation, labelEnvironment, labelRegion}
 
 // holdIsolationLabel sets the in-place labels on tmpl to the CR's values
 // (want), unless the workload already existed and the template is otherwise
@@ -123,18 +124,19 @@ func templateEqualIgnoringIsolation(a, b *corev1.PodTemplateSpec) bool {
 }
 
 // syncKeyValuePodIsolation relabels the store's running StatefulSet pods and its
-// internal proxy's pods to the isolation the CR carries. Patching metadata does
-// not restart a pod, so same-environment clients keep their path through an
-// isolation toggle (w8/220).
+// internal proxy's pods to the isolation and region the CR carries. Patching
+// metadata does not restart a pod, so same-environment clients keep their path
+// through an isolation toggle (w8/220).
 func (r *KeyValueReconciler) syncKeyValuePodIsolation(ctx context.Context, kv *appv1alpha1.KeyValue) error {
-	if err := relabelPodsInPlace(ctx, r.Client, kv.Namespace, client.MatchingLabels{labelKeyValue: kv.Name}, kv.Labels, func(pod *corev1.Pod, owner *metav1.OwnerReference) bool {
+	want := inPlaceLabelsOf(kv)
+	if err := relabelPodsInPlace(ctx, r.Client, kv.Namespace, client.MatchingLabels{labelKeyValue: kv.Name}, want, func(pod *corev1.Pod, owner *metav1.OwnerReference) bool {
 		return owner.Kind == "StatefulSet" && owner.Name == kv.Name
 	}); err != nil {
 		return err
 	}
 	// Proxy pods belong to the Deployment's ReplicaSets, which select them by the
 	// proxy label (never the isolation label), so a relabel keeps them owned.
-	return relabelPodsInPlace(ctx, r.Client, kv.Namespace, client.MatchingLabels{labelKeyValueInternalProxy: kv.Name}, kv.Labels, func(pod *corev1.Pod, owner *metav1.OwnerReference) bool {
+	return relabelPodsInPlace(ctx, r.Client, kv.Namespace, client.MatchingLabels{labelKeyValueInternalProxy: kv.Name}, want, func(pod *corev1.Pod, owner *metav1.OwnerReference) bool {
 		return owner.Kind == kindReplicaSet
 	})
 }

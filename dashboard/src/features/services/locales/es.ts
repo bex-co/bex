@@ -33,6 +33,12 @@ const esServices: Record<string, TranslationEntry> = {
     description:
       "Internal-address section label in the service connection menu (Render's Connect → Internal tab)",
   },
+  "services.connectInternalLead": {
+    message:
+      "Todos tus servicios de bex en la misma región pueden comunicarse internamente a través de su red privada.",
+    description:
+      "Connect menu's Internal section, under its title: Render's line on its Connect → Internal tab. The private network is per region, so a service in another region cannot reach this address (w4/m712)",
+  },
   "services.connectInternalFreeNote": {
     message:
       "Los Web Services gratuitos no pueden recibir tráfico de red privada. Mejora tu plan para usar la dirección interna.",

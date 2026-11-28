@@ -1,20 +1,20 @@
 # w4 · m712 — Services and datastores in different regions don't reach each other over the private network, as on Render
 
-**Worker:** worker4 **Goal:** a workspace's private network is split by the region each resource reads back, as Render's is. A service, a cron run or a pre-deploy command reaches another service's internal address, or a Postgres or Key Value internal URL, only when both read back the same region. Everything else stays as it is: same-region traffic, environment isolation, public URLs, external datastore URLs and SSH. Nothing restarts to apply it, and ADR041's unsigned "No region axis" goes. **Status:** todo
+**Worker:** worker4 **Goal:** a workspace's private network is split by the region each resource reads back, as Render's is. A service, a cron run or a pre-deploy command reaches another service's internal address, or a Postgres or Key Value internal URL, only when both read back the same region. Everything else stays as it is: same-region traffic, environment isolation, public URLs, external datastore URLs and SSH. Nothing restarts to apply it, and ADR041's unsigned "No region axis" goes. **Status:** in progress (t001–t004 and t006–t009 done; t005, the production check, and t010 open)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Count production's cross-region resources, design the boundary, and stop for the user if real cross-region traffic is found | 1h | — |
-| [t002](t002.md) | App pods (services, cron runs, pre-deploy) carry their region label, relabelled in place | 1h30m | t001 |
-| [t003](t003.md) | Postgres and Key Value pods carry their region label, relabelled in place | 1h30m | t001 |
-| [t004](t004.md) | The workspace's private-network policies split by region × environment | 2h | t002, t003 |
+| [t001](done/t001.md) | Count production's cross-region resources, design the boundary, and stop for the user if real cross-region traffic is found — **DONE** | 1h | — |
+| [t002](done/t002.md) | App pods (services, cron runs, pre-deploy) carry their region label, relabelled in place — **DONE** | 1h30m | t001 |
+| [t003](done/t003.md) | Postgres and Key Value pods carry their region label, relabelled in place — **DONE** | 1h30m | t001 |
+| [t004](done/t004.md) | The workspace's private-network policies split by region × environment — **DONE** | 2h | t002, t003 |
 | [t005](t005.md) | envtest, and a production check with disposable resources in two regions | 1h15m | t004 |
-| [t006](t006.md) | Connect → Internal says the private network is per region, ADR041 D5 is struck, and ADR018 records the rule | 45m | t005 |
-| [t007](t007.md) | Render parity | 20m | t006 |
-| [t008](t008.md) | Simplify | 15m | t007 |
-| [t009](t009.md) | Test coverage | 30m | t007, t008 |
+| [t006](done/t006.md) | Connect → Internal says the private network is per region, ADR041 D5 is struck, and ADR018 records the rule — **DONE** | 45m | t005 |
+| [t007](done/t007.md) | Render parity — **DONE** | 20m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007, t008 |
 | [t010](t010.md) | Closeout | 10m | t009 |
 
 Total: **10 tasks, about 9h15m**.
@@ -35,6 +35,24 @@ Total: **10 tasks, about 9h15m**.
   - app to app, and app to datastore.
 - On production, disposable resources in `bex-canary` show the refused and the admitted connection.
 - The Connect menu's Internal section says the private network is per region, as Render's does. ADR041 D5 is struck and ADR018's private network rows state the rule.
+
+## Production count (t001, 2026-11-27)
+
+Read-only, on the production app cluster (`scripts/fetch-app-kubeconfig.sh`), at about 04:05Z on 2026-11-28 (pin `7d1dce861173`, which carries w9/105's `StampRegion`, `018004cd3d`). bex-api runs with `BEX_REGION=fsn1`, so a resource without a region reads back `frankfurt`.
+
+- **Resources by region.** 32 App, 5 Database and 3 KeyValue CRs across 10 workspaces. **None** carries `app.bex.co/region`: every create so far named no region, so all 40 read back `frankfurt`.
+- **Workspaces whose resources read back more than one region: 0.** So no env var, secret file or Blueprint link can name a resource of another region, and no workspace has cross-region private traffic to lose. The milestone continues.
+- **Policies.** 84 hosting namespaces carry `allow-same-namespace`; none has an `isolate-<env>` boundary (no isolated environment). No CNPG Pooler runs.
+
+## Design (t001)
+
+- **Label.** `app.bex.co/region` (`appv1alpha1.LabelRegion`), the same key as the CR annotation, whose value it copies (`appv1alpha1.AnnotationRegion`, which `resourcemeta.AnnotRegion` now aliases). The operator sets it only when the CR carries the annotation: a resource created without a region gets no label. Render's region is fixed at creation, so the value never changes.
+- **A pod without the label** belongs to the region an unstamped resource reads back, `BEX_REGION`'s alias (`NamespaceReconciler.Region`, wired from `resourcemeta.Config.EffectiveRegion("")`). Its selector is `region NotIn [the other four Render regions]`, which matches a pod without the key and one labelled with the alias. With `BEX_REGION` unset the alias is empty: `NotIn [all five]`, so unstamped pods share no network with any region.
+- **Policies, region × environment.** Kubernetes cannot select "the same value as mine", so each region has its own policy, and all five Render regions get theirs whether or not the workspace uses them (a resource's first pod has its network from its first moment, and the converge lists no resource). In one selector the expressions are ANDed, so each policy's selector is `environment-id NotIn [isolated]` AND the region's expression, and its one ingress peer and one egress peer are that same selector: a pod reaches another privately only within its region and environment scope.
+  - The alias keeps the old names: `allow-same-namespace` and `isolate-<env>`. Each other region gets `allow-same-region-<region>` and `isolate-<env>-<region>`.
+  - Egress decides it: the operator's per-store ingress policies (the Key Value internal proxy's clients, an isolated datastore's peers) stay region-blind, and a pod of another region still cannot send to them.
+- **No gap.** No production pod carries the label and the alias's policies keep their names, so converging from today's set only narrows `allow-same-namespace` away from pods that do not exist yet. Other regions' policies are written before the alias's, and boundaries before allows, as today.
+- **No rollout.** The label joins the in-place labels (`inPlacePodLabels`, beside `environment-id` and `network-isolation`): new pods carry it from their template; an existing workload keeps its template (`holdIsolationLabel`) and its running pods are relabelled in place (`relabelPodsInPlace`), which `bex-operator-pod-labels` must admit. CNPG relabels instances from `inheritedMetadata`. A Pooler carries it in its template only when new (or already), and its running PgBouncer pods are relabelled in place. The store's own helpers that dial it carry it too: Key Value backup and purge Jobs, Postgres logical exports, CNPG's Jobs.
 
 ## Source + Goal linkage
 

@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // w4/m342: an environment's network isolation is the workspace's
@@ -70,6 +71,9 @@ type isolationHarness struct {
 	writes   []string
 	others   []string
 	converge func(context.Context, string) error
+	// afterWrite, when set, runs after every successful NetworkPolicy write,
+	// so a test can check what holds between two writes of one converge.
+	afterWrite func()
 }
 
 func newIsolationHarness(t *testing.T) *isolationHarness {
@@ -82,6 +86,9 @@ func newIsolationHarness(t *testing.T) *isolationHarness {
 	record := func(verb string, obj client.Object) {
 		if _, ok := obj.(*networkingv1.NetworkPolicy); ok {
 			h.writes = append(h.writes, verb+" "+obj.GetName())
+			if h.afterWrite != nil {
+				h.afterWrite()
+			}
 		} else {
 			h.others = append(h.others, fmt.Sprintf("%s %T %s", verb, obj, obj.GetName()))
 		}
@@ -95,15 +102,23 @@ func newIsolationHarness(t *testing.T) *isolationHarness {
 			return err
 		},
 		Update: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
-			record("update", obj)
-			return c.Update(ctx, obj, opts...)
+			err := c.Update(ctx, obj, opts...)
+			if err == nil {
+				record("update", obj)
+			}
+			return err
 		},
 		Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
-			record("delete", obj)
-			return c.Delete(ctx, obj, opts...)
+			err := c.Delete(ctx, obj, opts...)
+			if err == nil {
+				record("delete", obj)
+			}
+			return err
 		},
 	}).Build()
 	h.r = NewNamespaceReconciler(h.cl, h.st)
+	// As on production: an unstamped resource reads back frankfurt.
+	h.r.Region = "frankfurt"
 	h.converge = h.r.EnsureWorkspace
 	tenant, err := h.st.CreateTenant(context.Background(), "acme", "pro")
 	if err != nil {
@@ -210,20 +225,27 @@ func (h *isolationHarness) reachable(t *testing.T, from, to map[string]string) b
 	return ingress && egress
 }
 
-func TestSameNamespaceAllowWithNothingIsolatedSelectsEveryPod(t *testing.T) {
-	np := sameNamespaceNetworkPolicy("tea-x", nil)
+func TestSameNamespaceAllowWithNothingIsolatedSelectsEveryPodOfItsRegion(t *testing.T) {
+	policies := privateNetworkPolicies("tea-x", nil, "frankfurt")
+	np := policies[len(policies)-1]
+	if np.Name != "allow-same-namespace" {
+		t.Fatalf("the unstamped region's allow must keep its name, got %q", np.Name)
+	}
 	for _, pod := range []map[string]string{
 		{},
 		{core.LabelEnvironment: "evm-a"},
 		// A stale label of an environment no longer isolated is harmless.
 		{core.LabelNetworkIsolation: "evm-a"},
+		{appv1alpha1.LabelRegion: "frankfurt"},
 	} {
 		if !admits(t, np, pod, pod) {
 			t.Errorf("allow-same-namespace with no isolated environment must admit %v", pod)
 		}
 	}
-	if len(np.Spec.PodSelector.MatchExpressions) != 0 {
-		t.Errorf("an empty isolated list must not emit a NotIn requirement (NotIn with no values is invalid): %+v", np.Spec.PodSelector)
+	for _, req := range np.Spec.PodSelector.MatchExpressions {
+		if req.Key == core.LabelEnvironment {
+			t.Errorf("an empty isolated list must not emit a NotIn requirement (NotIn with no values is invalid): %+v", np.Spec.PodSelector)
+		}
 	}
 }
 
@@ -285,8 +307,8 @@ func testIsolationToggleRewritesPoliciesOnly(t *testing.T, h *isolationHarness) 
 	if widen < 0 || deleteBoundary < 0 || widen > deleteBoundary {
 		t.Errorf("turning off must widen allow-same-namespace before deleting the boundary, writes: %v", h.writes)
 	}
-	if got := h.policy(t, "allow-same-namespace"); len(got.Spec.PodSelector.MatchExpressions) != 0 {
-		t.Errorf("with nothing isolated allow-same-namespace must select every pod: %+v", got.Spec.PodSelector)
+	if got := h.policy(t, "allow-same-namespace"); len(got.Spec.PodSelector.MatchExpressions) != 1 || got.Spec.PodSelector.MatchExpressions[0].Key != appv1alpha1.LabelRegion {
+		t.Errorf("with nothing isolated allow-same-namespace must select every pod of its region: %+v", got.Spec.PodSelector)
 	}
 }
 
@@ -329,19 +351,23 @@ func testDeletedIsolatedEnvironmentLeavesTheBoundaryList(t *testing.T, h *isolat
 	h.setIsolation("evm-a", true)
 	h.setIsolation("evm-b", true)
 	h.ensure(t)
-	got := h.policy(t, "allow-same-namespace").Spec.PodSelector.MatchExpressions
-	if len(got) != 1 || got[0].Key != core.LabelEnvironment || !slices.Equal(got[0].Values, []string{"evm-a", "evm-b"}) || got[0].Operator != metav1.LabelSelectorOpNotIn {
-		t.Fatalf("allow-same-namespace must exclude both isolated environments, got %+v", got)
+	for _, name := range []string{"allow-same-namespace", "allow-same-region-oregon"} {
+		got := h.policy(t, name).Spec.PodSelector.MatchExpressions
+		if len(got) != 2 || got[0].Key != core.LabelEnvironment || !slices.Equal(got[0].Values, []string{"evm-a", "evm-b"}) || got[0].Operator != metav1.LabelSelectorOpNotIn {
+			t.Fatalf("%s must exclude both isolated environments, got %+v", name, got)
+		}
 	}
 
 	h.st.environments = h.st.environments[1:] // evm-a deleted
 	h.ensure(t)
-	got = h.policy(t, "allow-same-namespace").Spec.PodSelector.MatchExpressions
-	if len(got) != 1 || !slices.Equal(got[0].Values, []string{"evm-b"}) {
-		t.Fatalf("a deleted environment must leave the NotIn list, got %+v", got)
+	for _, name := range []string{"allow-same-namespace", "allow-same-region-oregon"} {
+		got := h.policy(t, name).Spec.PodSelector.MatchExpressions
+		if len(got) != 2 || !slices.Equal(got[0].Values, []string{"evm-b"}) {
+			t.Fatalf("a deleted environment must leave %s's NotIn list, got %+v", name, got)
+		}
 	}
-	if h.policy(t, "isolate-evm-a") != nil || h.policy(t, "isolate-evm-b") == nil {
-		t.Error("only the deleted environment's boundary must go")
+	if h.policy(t, "isolate-evm-a") != nil || h.policy(t, "isolate-evm-a-oregon") != nil || h.policy(t, "isolate-evm-b") == nil || h.policy(t, "isolate-evm-b-oregon") == nil {
+		t.Error("only the deleted environment's boundaries must go")
 	}
 }
 
@@ -383,7 +409,7 @@ func TestEnvironmentIsolationWritesOnlyTheIsolationPolicies(t *testing.T) {
 			t.Errorf("isolation %v: a toggle must write only NetworkPolicies, got %v", on, h.others)
 		}
 		for _, w := range h.writes {
-			if !strings.HasSuffix(w, " allow-same-namespace") && !strings.Contains(w, " isolate-evm-a") {
+			if !strings.HasSuffix(w, " allow-same-namespace") && !strings.Contains(w, " allow-same-region-") && !strings.Contains(w, " isolate-evm-a") {
 				t.Errorf("isolation %v: a toggle must touch only the isolation policies, wrote %q", on, w)
 			}
 		}

@@ -40,7 +40,8 @@ func keyValueInternalProxyPodLabels(kv *appv1alpha1.KeyValue) map[string]string 
 			labels[key] = value
 		}
 	}
-	return labels
+	// Its clients reach it only within the store's region (w4/m712).
+	return withRegion(labels, kv)
 }
 
 // The internal front needs both halves of an isolated connection: ingress from

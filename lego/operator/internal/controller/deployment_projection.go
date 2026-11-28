@@ -338,7 +338,9 @@ func appPodLabels(app *appv1alpha1.App, verifyImage bool) map[string]string {
 	if env := app.Labels[labelEnvironment]; env != "" {
 		labels[labelEnvironment] = env
 	}
-	return appPolicyLabels(app, labels)
+	// The private network admits only the App's own region (w4/m712); like
+	// the environment, it reaches running pods in place.
+	return appPolicyLabels(app, withRegion(labels, app))
 }
 
 const appContainerName = appv1alpha1.ReleaseRecordAppContainer

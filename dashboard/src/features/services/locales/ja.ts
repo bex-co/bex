@@ -33,6 +33,12 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "Internal-address section label in the service connection menu (Render's Connect → Internal tab)",
   },
+  "services.connectInternalLead": {
+    message:
+      "同じリージョンにあるすべての bex サービスは、プライベートネットワーク経由で内部通信できます。",
+    description:
+      "Connect menu's Internal section, under its title: Render's line on its Connect → Internal tab. The private network is per region, so a service in another region cannot reach this address (w4/m712)",
+  },
   "services.connectInternalFreeNote": {
     message:
       "無料の Web サービスはプライベートネットワークのトラフィックを受信できません。内部アドレスを使うにはアップグレードしてください。",

@@ -33,6 +33,12 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Internal-address section label in the service connection menu (Render's Connect → Internal tab)",
   },
+  "services.connectInternalLead": {
+    message:
+      "같은 리전의 모든 bex 서비스는 사설 네트워크로 내부 통신할 수 있습니다.",
+    description:
+      "Connect menu's Internal section, under its title: Render's line on its Connect → Internal tab. The private network is per region, so a service in another region cannot reach this address (w4/m712)",
+  },
   "services.connectInternalFreeNote": {
     message:
       "무료 Web Service는 프라이빗 네트워크 트래픽을 받을 수 없습니다. 내부 주소를 사용하려면 업그레이드하세요.",

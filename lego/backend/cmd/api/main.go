@@ -79,6 +79,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxfiles"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
@@ -2034,6 +2035,9 @@ func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler
 		cpIdentity := cfg.CPIdentity
 		nsRec := store.NewNamespaceReconciler(cl, st)
 		nsRec.Identity = cpIdentity
+		// The private network is split by region (w4/m712): a pod without a
+		// region label is in the one an unstamped resource reads back.
+		nsRec.Region = resourcemeta.Config{Region: cfg.Region}.EffectiveRegion("")
 		rec.Identity = cpIdentity
 		// w2/026: the reconciler only learns about a freshly minted workspace on
 		// its next resync (nothing kicks it on mint), so a first create within

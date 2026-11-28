@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -99,6 +100,12 @@ type NamespaceReconciler struct {
 	// stamped on every namespace this reconciler provisions and is the scope
 	// pruneOrphans deletes within. Empty is read as DefaultControlPlaneIdentity.
 	Identity string
+	// Region is the Render region a resource created without one reads back
+	// (resourcemeta.Config.EffectiveRegion(""): BEX_REGION's public alias,
+	// frankfurt on production), the private network a pod without
+	// appv1alpha1.LabelRegion belongs to (w4/m712). Empty when BEX_REGION is
+	// unset: such pods then share no network with any Render region.
+	Region string
 
 	kick chan struct{}
 }
@@ -244,8 +251,8 @@ func (r *NamespaceReconciler) ensureNamespace(ctx context.Context, t Tenant, reg
 			return err
 		}
 	}
-	allows := allowNetworkPolicies(name, regime, isolated)
-	boundaries := environmentIsolationPolicies(name, isolated)
+	allows := allowNetworkPolicies(name, regime, isolated, r.Region)
+	boundaries := environmentIsolationPolicies(name, isolated, r.Region)
 	desiredPolicies := map[string]bool{defaultDenyNetworkPolicyName: true}
 	for _, np := range slices.Concat(allows, boundaries) {
 		desiredPolicies[np.Name] = true
@@ -275,8 +282,9 @@ func (r *NamespaceReconciler) ensureNamespace(ctx context.Context, t Tenant, reg
 }
 
 // EnsureEnvironmentIsolation synchronously converges only the policies an
-// environment's network isolation consists of — allow-same-namespace and the
-// isolate-<env> boundaries in the workspace's hosting namespace. An isolation
+// environment's network isolation consists of — the private-network allows
+// (privateNetworkPolicies) and the isolate-<env> boundaries in the workspace's
+// hosting namespace. An isolation
 // toggle (and an isolated environment's create or delete) changes nothing
 // else, so it no longer pays for EnsureWorkspace's quotas, LimitRange, other
 // allows and RoleBindings inside the request (w4/648); the periodic resync
@@ -294,8 +302,8 @@ func (r *NamespaceReconciler) EnsureEnvironmentIsolation(ctx context.Context, wo
 	if err != nil {
 		return fmt.Errorf("workspace %s: %w", workspaceID, err)
 	}
-	allows := []*networkingv1.NetworkPolicy{sameNamespaceNetworkPolicy(name, isolated)}
-	if err := r.applyIsolationOrdered(ctx, name, environmentIsolationPolicies(name, isolated), allows); err != nil {
+	allows := privateNetworkPolicies(name, isolated, r.Region)
+	if err := r.applyIsolationOrdered(ctx, name, environmentIsolationPolicies(name, isolated, r.Region), allows); err != nil {
 		return fmt.Errorf("workspace %s: %w", workspaceID, err)
 	}
 	return nil
@@ -303,10 +311,10 @@ func (r *NamespaceReconciler) EnsureEnvironmentIsolation(ctx context.Context, wo
 
 // applyIsolationOrdered applies the environment boundaries, then the allows,
 // then prunes the boundaries no longer desired. An isolated environment's
-// boundary lands before allow-same-namespace narrows to exclude it, and a
-// lifted boundary goes only after allow-same-namespace widened to readmit its
-// pods, so the environment's own pods keep a path to each other through
-// either toggle (w4/m342).
+// boundaries land before the private-network allows narrow to exclude it, and
+// a lifted boundary goes only after the allows widened to readmit its pods, so
+// the environment's own pods keep a path to each other through either toggle
+// (w4/m342).
 func (r *NamespaceReconciler) applyIsolationOrdered(ctx context.Context, namespace string, boundaries, allows []*networkingv1.NetworkPolicy) error {
 	desired := make(map[string]bool, len(boundaries))
 	for _, np := range boundaries {
@@ -888,18 +896,17 @@ func baseLimitRange(namespace, ephemeralMax string) *corev1.LimitRange {
 //     native same-namespace, raw-DNS, or label-only lifecycle allow is
 //     installed. Cluster-wide Cilium policy owns both exact-ServiceAccount
 //     execd ingress and approved DNS/FQDN/SNI egress outside gVisor.
-func allowNetworkPolicies(namespace, regime string, isolated []string) []*networkingv1.NetworkPolicy {
+func allowNetworkPolicies(namespace, regime string, isolated []string, region string) []*networkingv1.NetworkPolicy {
 	switch regime {
 	case RegimeHosting:
-		return []*networkingv1.NetworkPolicy{
-			sameNamespaceNetworkPolicy(namespace, isolated),
+		return append(privateNetworkPolicies(namespace, isolated, region),
 			dnsEgressNetworkPolicy(namespace),
 			traefikIngressNetworkPolicy(namespace),
 			activatorIngressNetworkPolicy(namespace),
 			operatorProbeIngressNetworkPolicy(namespace),
 			internetEgressNetworkPolicy(namespace),
 			datastoreControlIngressNetworkPolicy(namespace),
-		}
+		)
 	case RegimeSandbox:
 		// Sandboxes stay k8s-NetworkPolicy default-deny. The one sanctioned inbound
 		// path — the isolated gateway dialing the in-sandbox agent-session driver's
@@ -921,31 +928,96 @@ func npMeta(namespace, name string) metav1.ObjectMeta {
 	}
 }
 
-// sameNamespaceNetworkPolicy allows ordinary same-namespace traffic only for
-// pods outside the workspace's isolated environments (isolated, their ids).
-// A pod belongs to an environment by its environment-id label, which App,
-// Postgres and Key Value pods carry whether or not the environment is
-// isolated, so an isolation toggle rewrites this selector and never a pod
-// (w4/m342). NotIn admits a pod without environment-id, and makes a stale
-// network-isolation pod label harmless. With nothing isolated the selector is
-// empty (every pod), since NotIn with no values is invalid. Each isolated
-// environment's own pods reach each other through
-// environmentIsolationPolicies instead.
-func sameNamespaceNetworkPolicy(namespace string, isolated []string) *networkingv1.NetworkPolicy {
-	ordinary := &metav1.LabelSelector{}
-	if len(isolated) > 0 {
-		ordinary.MatchExpressions = []metav1.LabelSelectorRequirement{{
-			Key: core.LabelEnvironment, Operator: metav1.LabelSelectorOpNotIn, Values: slices.Clone(isolated),
-		}}
+// A workspace's private network is split by region (w4/m712), as Render's
+// is: "Each region provides a separate private network … services in
+// different regions can't communicate directly over a private network"
+// (render.com/docs/regions). Every pod belongs to one region: the value of its
+// appv1alpha1.LabelRegion, which the operator copies from the resource's
+// region annotation, or, without the label, the region an unstamped resource
+// reads back (NamespaceReconciler.Region). A pod's private traffic is admitted
+// only within its region, and within its environment when that environment is
+// isolated. Kubernetes cannot select "the same value as mine", so each region
+// has its own policies. All of Render's regions get theirs whether or not the
+// workspace uses them, so a resource's first pod has its network from its
+// first moment and the converge lists no resource.
+
+// regionScope is one region's share of the private-network policies: the
+// policy-name suffix ("" for the region unstamped resources read back, so its
+// policies keep the names they had before the split and the converge to it
+// drops no traffic) and the selector requirement its pods match.
+type regionScope struct {
+	suffix string
+	member metav1.LabelSelectorRequirement
+}
+
+// regionScopes lists every private network a workspace's pods can be in:
+// each Render region other than region, by its label alone, then region's
+// own, which takes the pods without a label (NotIn admits a pod without the
+// key) as well as those labelled region. Policies are written in this order,
+// so a pod of another region gains its own region's policy before the one
+// it was in before the split stops admitting it.
+func regionScopes(region string) []regionScope {
+	var others []string
+	var scopes []regionScope
+	for _, r := range resourcemeta.RenderRegions {
+		if r == region {
+			continue
+		}
+		others = append(others, r)
+		scopes = append(scopes, regionScope{suffix: "-" + r, member: metav1.LabelSelectorRequirement{
+			Key: appv1alpha1.LabelRegion, Operator: metav1.LabelSelectorOpIn, Values: []string{r},
+		}})
 	}
-	inNamespace := []networkingv1.NetworkPolicyPeer{{PodSelector: ordinary}}
+	return append(scopes, regionScope{member: metav1.LabelSelectorRequirement{
+		Key: appv1alpha1.LabelRegion, Operator: metav1.LabelSelectorOpNotIn, Values: others,
+	}})
+}
+
+// privateNetworkPolicies are the hosting namespace's ordinary private
+// network: one allow per region (regionScopes), selecting that region's pods
+// outside the workspace's isolated environments (isolated, their ids) and
+// admitting traffic only among them. The region unstamped resources read
+// back keeps the name allow-same-namespace; each other Render region's is
+// allow-same-region-<region>. A pod belongs to an environment by its
+// environment-id label, which App, Postgres and Key Value pods carry whether
+// or not the environment is isolated, so an isolation toggle rewrites these
+// selectors and never a pod (w4/m342); NotIn admits a pod without
+// environment-id, and makes a stale network-isolation pod label harmless. With
+// nothing isolated the selectors carry only the region, since NotIn with no
+// values is invalid. Each isolated environment's own pods reach each other
+// through environmentIsolationPolicies instead.
+func privateNetworkPolicies(namespace string, isolated []string, region string) []*networkingv1.NetworkPolicy {
+	scopes := regionScopes(region)
+	policies := make([]*networkingv1.NetworkPolicy, 0, len(scopes))
+	for _, scope := range scopes {
+		var outsideIsolated []metav1.LabelSelectorRequirement
+		if len(isolated) > 0 {
+			outsideIsolated = []metav1.LabelSelectorRequirement{{
+				Key: core.LabelEnvironment, Operator: metav1.LabelSelectorOpNotIn, Values: slices.Clone(isolated),
+			}}
+		}
+		name := "allow-same-namespace"
+		if scope.suffix != "" {
+			name = "allow-same-region" + scope.suffix
+		}
+		policies = append(policies, privateNetworkPolicy(npMeta(namespace, name), metav1.LabelSelector{
+			MatchExpressions: append(outsideIsolated, scope.member),
+		}))
+	}
+	return policies
+}
+
+// privateNetworkPolicy selects members and lets them reach, and be reached
+// by, each other only.
+func privateNetworkPolicy(meta metav1.ObjectMeta, members metav1.LabelSelector) *networkingv1.NetworkPolicy {
+	peers := []networkingv1.NetworkPolicyPeer{{PodSelector: members.DeepCopy()}}
 	return &networkingv1.NetworkPolicy{
-		ObjectMeta: npMeta(namespace, "allow-same-namespace"),
+		ObjectMeta: meta,
 		Spec: networkingv1.NetworkPolicySpec{
-			PodSelector: *ordinary,
+			PodSelector: members,
 			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
-			Ingress:     []networkingv1.NetworkPolicyIngressRule{{From: inNamespace}},
-			Egress:      []networkingv1.NetworkPolicyEgressRule{{To: inNamespace}},
+			Ingress:     []networkingv1.NetworkPolicyIngressRule{{From: peers}},
+			Egress:      []networkingv1.NetworkPolicyEgressRule{{To: peers}},
 		},
 	}
 }
@@ -955,26 +1027,24 @@ func sameNamespaceNetworkPolicy(namespace string, isolated []string) *networking
 const isolatedEnvironmentLabel = "app.bex.co/isolated-environment"
 
 // environmentIsolationPolicies is the private network of each isolated
-// environment: "isolate-<env>" selects its pods by environment-id, and they
-// admit traffic from, and send it to, only that environment's pods. The
-// "-legacy" twin w4/m342 kept for pods from before environment-id is gone
-// (w4/647); the boundary prune deletes a leftover one.
-func environmentIsolationPolicies(namespace string, isolated []string) []*networkingv1.NetworkPolicy {
-	policies := make([]*networkingv1.NetworkPolicy, 0, len(isolated))
+// environment, split by region as the workspace's is (privateNetworkPolicies):
+// "isolate-<env>" selects its pods of the region unstamped resources read
+// back, "isolate-<env>-<region>" those of each other Render region, and they
+// admit traffic from, and send it to, only the pods of the same environment
+// and region. The "-legacy" twin w4/m342 kept for pods from before
+// environment-id is gone (w4/647); the boundary prune deletes a leftover one.
+func environmentIsolationPolicies(namespace string, isolated []string, region string) []*networkingv1.NetworkPolicy {
+	scopes := regionScopes(region)
+	policies := make([]*networkingv1.NetworkPolicy, 0, len(isolated)*len(scopes))
 	for _, env := range isolated {
-		selector := metav1.LabelSelector{MatchLabels: map[string]string{core.LabelEnvironment: env}}
-		peers := []networkingv1.NetworkPolicyPeer{{PodSelector: &selector}}
-		meta := npMeta(namespace, "isolate-"+env)
-		meta.Labels[isolatedEnvironmentLabel] = env
-		policies = append(policies, &networkingv1.NetworkPolicy{
-			ObjectMeta: meta,
-			Spec: networkingv1.NetworkPolicySpec{
-				PodSelector: selector,
-				PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
-				Ingress:     []networkingv1.NetworkPolicyIngressRule{{From: peers}},
-				Egress:      []networkingv1.NetworkPolicyEgressRule{{To: peers}},
-			},
-		})
+		for _, scope := range scopes {
+			meta := npMeta(namespace, "isolate-"+env+scope.suffix)
+			meta.Labels[isolatedEnvironmentLabel] = env
+			policies = append(policies, privateNetworkPolicy(meta, metav1.LabelSelector{
+				MatchLabels:      map[string]string{core.LabelEnvironment: env},
+				MatchExpressions: []metav1.LabelSelectorRequirement{scope.member},
+			}))
+		}
 	}
 	return policies
 }

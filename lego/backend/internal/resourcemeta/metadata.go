@@ -32,6 +32,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // UpdatedAtAnnotation records the last successful bex-api resource mutation.
@@ -144,8 +145,10 @@ var RenderRegions = []string{"frankfurt", "ohio", "oregon", "singapore", "virgin
 // created with. Placement stays BEX_REGION; the annotation is only what the
 // resource reads back, as Render reads back the region it was created in
 // (w9/105: Render's Terraform provider stores the response's region and
-// aborts an apply that reads back another).
-const AnnotRegion = "app.bex.co/region"
+// aborts an apply that reads back another). The operator copies it onto the
+// resource's pods as their private-network region (appv1alpha1.LabelRegion,
+// w4/m712).
+const AnnotRegion = appv1alpha1.AnnotationRegion
 
 // StampRegion records requested on a new resource when it is a Render region.
 // An omitted region records nothing, so the resource reads back the platform's
